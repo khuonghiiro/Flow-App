@@ -280,14 +280,15 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
       }
     });
 
-    // Only generate for 3D model formats
+    // Only generate for 3D model formats (including folder-bundle paths like scene.gltf)
     const p = cleanKey.toLowerCase();
     const is3DModel =
       p.endsWith('.glb') ||
       p.endsWith('.gltf') ||
       p.endsWith('.vrm') ||
       p.endsWith('.fbx') ||
-      p.endsWith('.obj');
+      p.endsWith('.obj') ||
+      p.endsWith('.dae');
 
     if (!is3DModel) return;
 

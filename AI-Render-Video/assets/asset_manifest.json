@@ -1,26 +1,30 @@
 {
   "version": "2.0.0",
-  "last_scanned": "2026-08-21T06:20:51.633Z",
-  "total_assets": 26,
-  "total_size_mb": 28.06,
+  "last_scanned": "2026-08-21T07:58:43.414Z",
+  "total_assets": 13,
+  "total_size_mb": 31.72,
   "structure": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "version": "2.0.0",
     "description": "Tệp cấu hình duy nhất quản lý toàn bộ danh mục, tên tab Tiếng Việt, Icon và quy tắc lọc giới tính cho FlowMy AI Render Video. Người dùng có thể chỉnh sửa trực tiếp tệp này để đổi tên tab, icon hoặc thêm folder mới.",
     "settings": {
       "auto_discover_new_folders": true,
+      "leaf_folder_max_depth_mode": true,
       "supported_model_formats": [
         ".glb",
         ".gltf",
         ".vrm",
         ".fbx",
-        ".obj"
+        ".obj",
+        ".dae"
       ],
       "supported_image_formats": [
         ".png",
         ".jpg",
         ".jpeg",
-        ".webp"
+        ".webp",
+        ".gif",
+        ".bmp"
       ]
     },
     "gender_rules": {
@@ -1110,467 +1114,408 @@
   "skyboxes": {
     "all": [
       {
-        "id": "binh_minh_it_may_1",
-        "name": "Binh Minh It May 1",
-        "filename": "binh_minh_it_may_1.png",
+        "id": "binh_minh",
+        "name": "Bình Minh",
+        "filename": "binh_minh",
         "relPath": "SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "path": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "bundleDir": "SkyBoxs/binh_minh",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "0.86",
+        "sizeMB": "2.57",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png"
+        "previewUrl": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "description": "Bình Minh (Model Bundle: .PNG)"
       },
       {
-        "id": "binh_minh_khong_may_1",
-        "name": "Binh Minh Khong May 1",
-        "filename": "binh_minh_khong_may_1.png",
-        "relPath": "SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png",
-        "format": "PNG",
-        "sizeMB": "0.86",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png"
-      },
-      {
-        "id": "binh_minh_nhieu_may_1",
-        "name": "Binh Minh Nhieu May 1",
-        "filename": "binh_minh_nhieu_may_1.png",
-        "relPath": "SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "0.86",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png"
-      },
-      {
-        "id": "buoi_chieu_it_may_1",
-        "name": "Buoi Chieu It May 1",
-        "filename": "buoi_chieu_it_may_1.png",
+        "id": "buoi_chieu",
+        "name": "Buổi Chiều",
+        "filename": "buoi_chieu",
         "relPath": "SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_chieu",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "0.86",
+        "sizeMB": "3.06",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png"
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "description": "Buổi Chiều (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_chieu_khong_may_1",
-        "name": "Buoi Chieu Khong May 1",
-        "filename": "buoi_chieu_khong_may_1.png",
-        "relPath": "SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
-        "format": "PNG",
-        "sizeMB": "0.86",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png"
-      },
-      {
-        "id": "buoi_chieu_nhieu_may_1",
-        "name": "Buoi Chieu Nhieu May 1",
-        "filename": "buoi_chieu_nhieu_may_1.png",
-        "relPath": "SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.35",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png"
-      },
-      {
-        "id": "buoi_sang_it_may_1",
-        "name": "Buoi Sang It May 1",
-        "filename": "buoi_sang_it_may_1.png",
+        "id": "buoi_sang",
+        "name": "Buổi Sáng",
+        "filename": "buoi_sang",
         "relPath": "SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_sang",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "0.86",
+        "sizeMB": "6.09",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png"
+        "previewUrl": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "description": "Buổi Sáng (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_sang_khong_may_1",
-        "name": "Buoi Sang Khong May 1",
-        "filename": "buoi_sang_khong_may_1.png",
-        "relPath": "SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.00",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png"
-      },
-      {
-        "id": "3",
-        "name": "3",
-        "filename": "3.png",
-        "relPath": "SkyBoxs/buoi_sang/nhieu_may/3.png",
-        "format": "PNG",
-        "sizeMB": "1.63",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/3.png"
-      },
-      {
-        "id": "buoi_sang_2",
-        "name": "Buoi Sang 2",
-        "filename": "buoi_sang_2.png",
-        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png",
-        "format": "PNG",
-        "sizeMB": "1.59",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png"
-      },
-      {
-        "id": "buoi_sang_nhieu_may_1",
-        "name": "Buoi Sang Nhieu May 1",
-        "filename": "buoi_sang_nhieu_may_1.png",
-        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.00",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png"
-      },
-      {
-        "id": "buoi_toi_it_may_1",
-        "name": "Buoi Toi It May 1",
-        "filename": "buoi_toi_it_may_1.png",
+        "id": "buoi_toi",
+        "name": "Buổi Tối",
+        "filename": "buoi_toi",
         "relPath": "SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_toi",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "0.27",
+        "sizeMB": "2.36",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png"
+        "previewUrl": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "description": "Buổi Tối (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_toi_khong_may_1",
-        "name": "Buoi Toi Khong May 1",
-        "filename": "buoi_toi_khong_may_1.png",
-        "relPath": "SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.05",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png"
-      },
-      {
-        "id": "buoi_toi_nhieu_may_1",
-        "name": "Buoi Toi Nhieu May 1",
-        "filename": "buoi_toi_nhieu_may_1.png",
-        "relPath": "SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.05",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png"
-      },
-      {
-        "id": "buoi_trua_it_may_1",
-        "name": "Buoi Trua It May 1",
-        "filename": "buoi_trua_it_may_1.png",
+        "id": "buoi_trua",
+        "name": "Buổi Trưa",
+        "filename": "buoi_trua",
         "relPath": "SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_trua",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "1.00",
+        "sizeMB": "3.01",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png"
+        "previewUrl": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "description": "Buổi Trưa (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_trua_khong_may_1",
-        "name": "Buoi Trua Khong May 1",
-        "filename": "buoi_trua_khong_may_1.png",
-        "relPath": "SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.00",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png"
-      },
-      {
-        "id": "buoi_trua_nhieu_may_1",
-        "name": "Buoi Trua Nhieu May 1",
-        "filename": "buoi_trua_nhieu_may_1.png",
-        "relPath": "SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.00",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png"
-      },
-      {
-        "id": "giong_bao_it_may_1",
-        "name": "Giong Bao It May 1",
-        "filename": "giong_bao_it_may_1.png",
+        "id": "giong_bao",
+        "name": "Giông Bão",
+        "filename": "giong_bao",
         "relPath": "SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "path": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "bundleDir": "SkyBoxs/giong_bao",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "1.35",
+        "sizeMB": "2.69",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png"
-      },
-      {
-        "id": "giong_bao_nhieu_may_1",
-        "name": "Giong Bao Nhieu May 1",
-        "filename": "giong_bao_nhieu_may_1.png",
-        "relPath": "SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.35",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png"
+        "previewUrl": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "description": "Giông Bão (Model Bundle: .PNG)"
       },
       {
         "id": "skybox-alien",
         "name": "Skybox Alien",
         "filename": "skybox-alien.png",
         "relPath": "SkyBoxs/skybox-alien.png",
+        "path": "assets/SkyBoxs/skybox-alien.png",
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/skybox-alien.png"
+        "previewUrl": "assets/SkyBoxs/skybox-alien.png",
+        "description": "Skybox Alien (PNG)"
       },
       {
         "id": "skybox-day",
         "name": "Skybox Day",
         "filename": "skybox-day.png",
         "relPath": "SkyBoxs/skybox-day.png",
+        "path": "assets/SkyBoxs/skybox-day.png",
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/skybox-day.png"
+        "previewUrl": "assets/SkyBoxs/skybox-day.png",
+        "description": "Skybox Day (PNG)"
       },
       {
         "id": "skybox-morning",
         "name": "Skybox Morning",
         "filename": "skybox-morning.png",
         "relPath": "SkyBoxs/skybox-morning.png",
+        "path": "assets/SkyBoxs/skybox-morning.png",
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/skybox-morning.png"
+        "previewUrl": "assets/SkyBoxs/skybox-morning.png",
+        "description": "Skybox Morning (PNG)"
       },
       {
         "id": "skybox-night",
         "name": "Skybox Night",
         "filename": "skybox-night.png",
         "relPath": "SkyBoxs/skybox-night.png",
+        "path": "assets/SkyBoxs/skybox-night.png",
         "format": "PNG",
         "sizeMB": "1.05",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/skybox-night.png"
+        "previewUrl": "assets/SkyBoxs/skybox-night.png",
+        "description": "Skybox Night (PNG)"
       },
       {
         "id": "skybox-space",
         "name": "Skybox Space",
         "filename": "skybox-space.png",
         "relPath": "SkyBoxs/skybox-space.png",
+        "path": "assets/SkyBoxs/skybox-space.png",
         "format": "PNG",
         "sizeMB": "0.27",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/skybox-space.png"
+        "previewUrl": "assets/SkyBoxs/skybox-space.png",
+        "description": "Skybox Space (PNG)"
       }
     ],
     "binh_minh": [
       {
-        "id": "binh_minh_it_may_1",
-        "name": "Binh Minh It May 1",
-        "filename": "binh_minh_it_may_1.png",
+        "id": "it_may",
+        "name": "It May",
+        "filename": "it_may",
         "relPath": "SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "path": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "bundleDir": "SkyBoxs/binh_minh/it_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png"
+        "description": "It May (Model Bundle: .PNG)"
       },
       {
-        "id": "binh_minh_khong_may_1",
-        "name": "Binh Minh Khong May 1",
-        "filename": "binh_minh_khong_may_1.png",
+        "id": "khong_may",
+        "name": "Khong May",
+        "filename": "khong_may",
         "relPath": "SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "path": "assets/SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "bundleDir": "SkyBoxs/binh_minh/khong_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png"
+        "description": "Khong May (Model Bundle: .PNG)"
       },
       {
-        "id": "binh_minh_nhieu_may_1",
-        "name": "Binh Minh Nhieu May 1",
-        "filename": "binh_minh_nhieu_may_1.png",
+        "id": "nhieu_may",
+        "name": "Nhieu May",
+        "filename": "nhieu_may",
         "relPath": "SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "path": "assets/SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "bundleDir": "SkyBoxs/binh_minh/nhieu_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png"
+        "description": "Nhieu May (Model Bundle: .PNG)"
       }
     ],
     "buoi_sang": [
       {
-        "id": "buoi_sang_it_may_1",
-        "name": "Buoi Sang It May 1",
-        "filename": "buoi_sang_it_may_1.png",
+        "id": "it_may",
+        "name": "It May",
+        "filename": "it_may",
         "relPath": "SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_sang/it_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png"
+        "description": "It May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_sang_khong_may_1",
-        "name": "Buoi Sang Khong May 1",
-        "filename": "buoi_sang_khong_may_1.png",
+        "id": "khong_may",
+        "name": "Khong May",
+        "filename": "khong_may",
         "relPath": "SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "path": "assets/SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_sang/khong_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png"
+        "description": "Khong May (Model Bundle: .PNG)"
       },
       {
-        "id": "3",
-        "name": "3",
-        "filename": "3.png",
+        "id": "nhieu_may",
+        "name": "Nhieu May",
+        "filename": "nhieu_may",
         "relPath": "SkyBoxs/buoi_sang/nhieu_may/3.png",
+        "path": "assets/SkyBoxs/buoi_sang/nhieu_may/3.png",
+        "bundleDir": "SkyBoxs/buoi_sang/nhieu_may",
+        "isFolderBundle": true,
         "format": "PNG",
-        "sizeMB": "1.63",
+        "sizeMB": "4.23",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/3.png"
-      },
-      {
-        "id": "buoi_sang_2",
-        "name": "Buoi Sang 2",
-        "filename": "buoi_sang_2.png",
-        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png",
-        "format": "PNG",
-        "sizeMB": "1.59",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png"
-      },
-      {
-        "id": "buoi_sang_nhieu_may_1",
-        "name": "Buoi Sang Nhieu May 1",
-        "filename": "buoi_sang_nhieu_may_1.png",
-        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
-        "format": "PNG",
-        "sizeMB": "1.00",
-        "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png"
+        "description": "Nhieu May (Model Bundle: .PNG)"
       }
     ],
     "buoi_trua": [
       {
-        "id": "buoi_trua_it_may_1",
-        "name": "Buoi Trua It May 1",
-        "filename": "buoi_trua_it_may_1.png",
+        "id": "it_may",
+        "name": "It May",
+        "filename": "it_may",
         "relPath": "SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_trua/it_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png"
+        "description": "It May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_trua_khong_may_1",
-        "name": "Buoi Trua Khong May 1",
-        "filename": "buoi_trua_khong_may_1.png",
+        "id": "khong_may",
+        "name": "Khong May",
+        "filename": "khong_may",
         "relPath": "SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "path": "assets/SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_trua/khong_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png"
+        "description": "Khong May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_trua_nhieu_may_1",
-        "name": "Buoi Trua Nhieu May 1",
-        "filename": "buoi_trua_nhieu_may_1.png",
+        "id": "nhieu_may",
+        "name": "Nhieu May",
+        "filename": "nhieu_may",
         "relPath": "SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "path": "assets/SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_trua/nhieu_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.00",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png"
+        "description": "Nhieu May (Model Bundle: .PNG)"
       }
     ],
     "buoi_chieu": [
       {
-        "id": "buoi_chieu_it_may_1",
-        "name": "Buoi Chieu It May 1",
-        "filename": "buoi_chieu_it_may_1.png",
+        "id": "it_may",
+        "name": "It May",
+        "filename": "it_may",
         "relPath": "SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_chieu/it_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png"
+        "description": "It May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_chieu_khong_may_1",
-        "name": "Buoi Chieu Khong May 1",
-        "filename": "buoi_chieu_khong_may_1.png",
+        "id": "khong_may",
+        "name": "Khong May",
+        "filename": "khong_may",
         "relPath": "SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "path": "assets/SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_chieu/khong_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.86",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png"
+        "description": "Khong May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_chieu_nhieu_may_1",
-        "name": "Buoi Chieu Nhieu May 1",
-        "filename": "buoi_chieu_nhieu_may_1.png",
+        "id": "nhieu_may",
+        "name": "Nhieu May",
+        "filename": "nhieu_may",
         "relPath": "SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "path": "assets/SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_chieu/nhieu_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png"
+        "description": "Nhieu May (Model Bundle: .PNG)"
       }
     ],
     "buoi_toi": [
       {
-        "id": "buoi_toi_it_may_1",
-        "name": "Buoi Toi It May 1",
-        "filename": "buoi_toi_it_may_1.png",
+        "id": "it_may",
+        "name": "It May",
+        "filename": "it_may",
         "relPath": "SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "path": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_toi/it_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "0.27",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png"
+        "description": "It May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_toi_khong_may_1",
-        "name": "Buoi Toi Khong May 1",
-        "filename": "buoi_toi_khong_may_1.png",
+        "id": "khong_may",
+        "name": "Khong May",
+        "filename": "khong_may",
         "relPath": "SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "path": "assets/SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_toi/khong_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.05",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png"
+        "description": "Khong May (Model Bundle: .PNG)"
       },
       {
-        "id": "buoi_toi_nhieu_may_1",
-        "name": "Buoi Toi Nhieu May 1",
-        "filename": "buoi_toi_nhieu_may_1.png",
+        "id": "nhieu_may",
+        "name": "Nhieu May",
+        "filename": "nhieu_may",
         "relPath": "SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "path": "assets/SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "bundleDir": "SkyBoxs/buoi_toi/nhieu_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.05",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png"
+        "description": "Nhieu May (Model Bundle: .PNG)"
       }
     ],
     "giong_bao": [
       {
-        "id": "giong_bao_it_may_1",
-        "name": "Giong Bao It May 1",
-        "filename": "giong_bao_it_may_1.png",
+        "id": "it_may",
+        "name": "It May",
+        "filename": "it_may",
         "relPath": "SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "path": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "bundleDir": "SkyBoxs/giong_bao/it_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png"
+        "description": "It May (Model Bundle: .PNG)"
       },
       {
-        "id": "giong_bao_nhieu_may_1",
-        "name": "Giong Bao Nhieu May 1",
-        "filename": "giong_bao_nhieu_may_1.png",
+        "id": "nhieu_may",
+        "name": "Nhieu May",
+        "filename": "nhieu_may",
         "relPath": "SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "path": "assets/SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "bundleDir": "SkyBoxs/giong_bao/nhieu_may",
+        "isFolderBundle": true,
         "format": "PNG",
         "sizeMB": "1.35",
         "gender": "unisex",
-        "previewUrl": "assets/SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png"
+        "description": "Nhieu May (Model Bundle: .PNG)"
       }
     ]
   },
   "maps": [
     {
-      "id": "scene",
-      "name": "Scene",
-      "filename": "scene.gltf",
+      "id": "medieval_fantasy_book",
+      "name": "Medieval Fantasy Book",
+      "filename": "medieval_fantasy_book",
       "relPath": "maps/medieval_fantasy_book/scene.gltf",
+      "path": "assets/maps/medieval_fantasy_book/scene.gltf",
+      "bundleDir": "maps/medieval_fantasy_book",
+      "isFolderBundle": true,
       "format": "GLTF",
-      "sizeMB": "0.03",
-      "gender": "unisex"
+      "sizeMB": "3.71",
+      "gender": "unisex",
+      "description": "Medieval Fantasy Book (Model Bundle: .GLTF)"
     },
     {
       "id": "medieval_fantasy_book",
       "name": "Medieval Fantasy Book",
       "filename": "medieval_fantasy_book.glb",
       "relPath": "maps/medieval_fantasy_book.glb",
+      "path": "assets/maps/medieval_fantasy_book.glb",
       "format": "GLB",
       "sizeMB": "3.70",
-      "gender": "unisex"
+      "gender": "unisex",
+      "description": "Medieval Fantasy Book (GLB)"
     }
   ],
   "audio": {

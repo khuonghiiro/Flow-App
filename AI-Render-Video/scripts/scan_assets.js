@@ -11,10 +11,10 @@ const outputMdVi = path.join(rootDir, 'ASSET_CATALOG_VI.md');
 const outputJson = path.join(rootDir, 'asset_manifest.json');
 const structureJsonPath = path.join(rootDir, 'asset_structure.json');
 
-const modelExts = ['.vrm', '.glb', '.gltf', '.fbx', '.obj'];
-const audioExts = ['.mp3', '.wav', '.ogg'];
+const modelExts = ['.vrm', '.glb', '.gltf', '.fbx', '.obj', '.dae'];
+const audioExts = ['.mp3', '.wav', '.ogg', '.m4a'];
 const animExts = ['.glb', '.bvh', '.fbx'];
-const imageExts = ['.png', '.jpg', '.jpeg', '.webp'];
+const imageExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'];
 
 // ─── 1. Load Single Source of Truth: asset_structure.json ─────
 let assetStructure = {
@@ -73,20 +73,6 @@ for (const [key, val] of Object.entries(assetStructure.dictionary || {})) {
 }
 
 /**
- * Resolve a human-friendly Vietnamese label & icon for any folder or item name
- */
-function resolveVietnameseFolderInfo(folderName) {
-  const cleanKey = folderName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  if (VIETNAMESE_LOOKUP.has(cleanKey)) {
-    return VIETNAMESE_LOOKUP.get(cleanKey);
-  }
-  return {
-    label: formatDisplayName(folderName),
-    icon: '📦'
-  };
-}
-
-/**
  * Clean human-readable display name formatter
  */
 function formatDisplayName(filename) {
@@ -119,71 +105,229 @@ function detectGender(relPath) {
 }
 
 /**
- * Recursively find all files with allowed extensions and auto-match companion preview images
+ * Recursively collect all files inside a directory (helper for bundle scanning)
  */
-function getFiles(folderPath, allowedExts) {
-  if (!fs.existsSync(folderPath)) return [];
+function getAllFilesInDir(dirPath) {
+  if (!fs.existsSync(dirPath)) return [];
   const results = [];
-  const entries = fs.readdirSync(folderPath, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = path.join(folderPath, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...getFiles(full, allowedExts));
-    } else if (allowedExts.includes(path.extname(entry.name).toLowerCase())) {
-      const stats = fs.statSync(full);
-      const rel = path.relative(rootDir, full).replace(/\\/g, '/');
-      const baseName = path.parse(entry.name).name;
-
-      // Look for companion reference photo matching model name
-      let previewUrl = '';
-      for (const imgExt of ['.png', '.jpg', '.jpeg', '.webp', '.svg']) {
-        const candidateImg = path.join(folderPath, `${baseName}${imgExt}`);
-        const candidatePreview = path.join(folderPath, `${baseName}.preview${imgExt}`);
-        if (fs.existsSync(candidateImg)) {
-          previewUrl = path.relative(rootDir, candidateImg).replace(/\\/g, '/');
-          break;
-        } else if (fs.existsSync(candidatePreview)) {
-          previewUrl = path.relative(rootDir, candidatePreview).replace(/\\/g, '/');
-          break;
-        }
+  try {
+    const list = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const item of list) {
+      if (item.name.startsWith('.')) continue;
+      const fullPath = path.join(dirPath, item.name);
+      if (item.isDirectory()) {
+        results.push(...getAllFilesInDir(fullPath));
+      } else {
+        const stats = fs.statSync(fullPath);
+        results.push({
+          name: item.name,
+          fullPath: fullPath,
+          size: stats.size
+        });
       }
-      if (!previewUrl) {
-        for (const imgExt of ['.png', '.jpg', '.jpeg', '.webp', '.svg']) {
-          const folderThumb = path.join(folderPath, `preview${imgExt}`);
-          const folderThumb2 = path.join(folderPath, `thumbnail${imgExt}`);
-          if (fs.existsSync(folderThumb)) {
-            previewUrl = path.relative(rootDir, folderThumb).replace(/\\/g, '/');
-            break;
-          } else if (fs.existsSync(folderThumb2)) {
-            previewUrl = path.relative(rootDir, folderThumb2).replace(/\\/g, '/');
-            break;
-          }
-        }
-      }
-
-      results.push({
-        id: baseName,
-        name: formatDisplayName(entry.name),
-        filename: entry.name,
-        relPath: rel,
-        format: path.extname(entry.name).replace('.', '').toUpperCase(),
-        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
-        gender: detectGender(rel),
-        previewUrl: previewUrl ? `assets/${previewUrl}` : undefined
-      });
     }
+  } catch (err) {
+    console.warn(`Lỗi duyệt thư mục ${dirPath}:`, err.message);
   }
   return results;
 }
 
 /**
- * Scan a list of folder aliases and combine results
+ * ─── LEAF FOLDER / MAX-DEPTH SCANNER ──────────────────────────────
+ * When a directory reaches its leaf category level (e.g. assets/maps or assets/dao_cu/dong_vat/tren_can):
+ * 1. Direct Model Files (.glb, .vrm, .gltf, .obj, .fbx, .dae) -> Scanned as Assets.
+ *    - If companion image (same basename) exists -> Assigned as model's previewUrl (not duplicated).
+ * 2. Subdirectories containing model files (e.g. medieval_fantasy_book/ containing scene.gltf + textures/)
+ *    -> Scanned as 1 Folder Model Bundle Asset (main model entry point detected).
+ * 3. Standalone Images / GIFs (no matching model) -> Scanned as independent Image Assets!
  */
-function scanFolderAliases(aliases, allowedExts) {
+function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) {
+  if (!fs.existsSync(folderPath)) return [];
+  const results = [];
+  let entries = [];
+  try {
+    entries = fs.readdirSync(folderPath, { withFileTypes: true });
+  } catch (err) {
+    return [];
+  }
+
+  const files = entries.filter(e => !e.isDirectory());
+  const dirs = entries.filter(e => e.isDirectory());
+
+  // Track image filenames in this folder used as companion previews to prevent duplication
+  const consumedCompanionImages = new Set();
+
+  // ─── 1. Scan Subdirectories as Model Bundles ─────────────────
+  for (const dir of dirs) {
+    // Ignore hidden or system folders
+    if (dir.name.startsWith('.') || dir.name === 'node_modules' || dir.name === 'presets') continue;
+    if (dir.name === '_lap_rap' || dir.name === '_custom_ban_do') continue;
+
+    const subDirPath = path.join(folderPath, dir.name);
+    const allSubFiles = getAllFilesInDir(subDirPath);
+    const subModelFiles = allSubFiles.filter(f => allowedModelExts.includes(path.extname(f.name).toLowerCase()));
+
+    if (subModelFiles.length > 0) {
+      // Find main entry model file
+      // Priority: scene.gltf/glb > main.gltf/glb > index.gltf/glb > [dirName].gltf/glb > any .gltf > any .glb > first
+      let mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'scene.gltf' || f.name.toLowerCase() === 'scene.glb');
+      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'main.gltf' || f.name.toLowerCase() === 'main.glb');
+      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === `${dir.name.toLowerCase()}.gltf` || f.name.toLowerCase() === `${dir.name.toLowerCase()}.glb`);
+      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase().endsWith('.gltf'));
+      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase().endsWith('.glb'));
+      if (!mainModel) mainModel = subModelFiles[0];
+
+      // Total size of entire bundle
+      const totalBundleSize = allSubFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+
+      // Find companion preview image for bundle
+      let bundlePreviewUrl = '';
+      const subImages = allSubFiles.filter(f => imageExts.includes(path.extname(f.name).toLowerCase()));
+      const previewImg = subImages.find(f => {
+        const lower = f.name.toLowerCase();
+        return lower.startsWith('preview') || lower.startsWith('thumbnail') || lower.startsWith('cover') || lower.startsWith(dir.name.toLowerCase());
+      });
+
+      if (previewImg) {
+        bundlePreviewUrl = path.relative(rootDir, previewImg.fullPath).replace(/\\/g, '/');
+      } else {
+        // Look in parent folder for [dirName].png
+        for (const imgExt of imageExts) {
+          const candidate = `${dir.name}${imgExt}`;
+          const candidateFull = path.join(folderPath, candidate);
+          if (fs.existsSync(candidateFull)) {
+            bundlePreviewUrl = path.relative(rootDir, candidateFull).replace(/\\/g, '/');
+            consumedCompanionImages.add(candidate);
+            break;
+          }
+        }
+      }
+
+      const relModelPath = path.relative(rootDir, mainModel.fullPath).replace(/\\/g, '/');
+      results.push({
+        id: dir.name,
+        name: formatDisplayName(dir.name),
+        filename: dir.name,
+        relPath: relModelPath,
+        path: `assets/${relModelPath}`,
+        bundleDir: path.relative(rootDir, subDirPath).replace(/\\/g, '/'),
+        isFolderBundle: true,
+        format: path.extname(mainModel.name).replace('.', '').toUpperCase(),
+        sizeMB: (totalBundleSize / (1024 * 1024)).toFixed(2),
+        gender: detectGender(relModelPath),
+        previewUrl: bundlePreviewUrl ? (bundlePreviewUrl.startsWith('assets/') ? bundlePreviewUrl : `assets/${bundlePreviewUrl}`) : undefined,
+        description: `${formatDisplayName(dir.name)} (Model Bundle: ${path.extname(mainModel.name).toUpperCase()})`
+      });
+    }
+  }
+
+  // ─── 2. Scan Direct Model Files ──────────────────────────────
+  for (const file of files) {
+    const ext = path.extname(file.name).toLowerCase();
+    if (allowedModelExts.includes(ext)) {
+      const fullPath = path.join(folderPath, file.name);
+      const stats = fs.statSync(fullPath);
+      const baseName = path.parse(file.name).name;
+      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+
+      // Look for companion reference photo matching this model name
+      let previewUrl = '';
+      for (const imgExt of imageExts) {
+        const candidate1 = `${baseName}${imgExt}`;
+        const candidate2 = `${baseName}.preview${imgExt}`;
+        const candidate3 = `${baseName}.thumbnail${imgExt}`;
+
+        if (files.some(f => f.name.toLowerCase() === candidate1.toLowerCase())) {
+          previewUrl = path.relative(rootDir, path.join(folderPath, candidate1)).replace(/\\/g, '/');
+          consumedCompanionImages.add(candidate1);
+          break;
+        } else if (files.some(f => f.name.toLowerCase() === candidate2.toLowerCase())) {
+          previewUrl = path.relative(rootDir, path.join(folderPath, candidate2)).replace(/\\/g, '/');
+          consumedCompanionImages.add(candidate2);
+          break;
+        } else if (files.some(f => f.name.toLowerCase() === candidate3.toLowerCase())) {
+          previewUrl = path.relative(rootDir, path.join(folderPath, candidate3)).replace(/\\/g, '/');
+          consumedCompanionImages.add(candidate3);
+          break;
+        }
+      }
+
+      results.push({
+        id: baseName,
+        name: formatDisplayName(file.name),
+        filename: file.name,
+        relPath: relPath,
+        path: `assets/${relPath}`,
+        format: ext.replace('.', '').toUpperCase(),
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        gender: detectGender(relPath),
+        previewUrl: previewUrl ? (previewUrl.startsWith('assets/') ? previewUrl : `assets/${previewUrl}`) : undefined,
+        description: `${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+      });
+    }
+  }
+
+  // ─── 3. Scan Standalone Image / GIF / Audio Files ────────────
+  // Files that are NOT companion previews for 3D models
+  for (const file of files) {
+    const ext = path.extname(file.name).toLowerCase();
+    
+    // Standalone Images & GIFs
+    if (imageExts.includes(ext)) {
+      if (consumedCompanionImages.has(file.name)) continue;
+      if (file.name.startsWith('.') || file.name.toLowerCase().startsWith('preview.') || file.name.toLowerCase().startsWith('thumbnail.')) continue;
+
+      const fullPath = path.join(folderPath, file.name);
+      const stats = fs.statSync(fullPath);
+      const baseName = path.parse(file.name).name;
+      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+
+      results.push({
+        id: baseName,
+        name: formatDisplayName(file.name),
+        filename: file.name,
+        relPath: relPath,
+        path: `assets/${relPath}`,
+        format: ext.replace('.', '').toUpperCase(),
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        gender: detectGender(relPath),
+        previewUrl: `assets/${relPath}`, // Standalone image is its own preview
+        isStandaloneImage: true,
+        description: `Tài nguyên Hình Ảnh/Texture: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+      });
+    }
+
+    // Audio Files
+    if (audioExts.includes(ext)) {
+      const fullPath = path.join(folderPath, file.name);
+      const stats = fs.statSync(fullPath);
+      const baseName = path.parse(file.name).name;
+      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+
+      results.push({
+        id: baseName,
+        name: formatDisplayName(file.name),
+        filename: file.name,
+        relPath: relPath,
+        path: `assets/${relPath}`,
+        format: ext.replace('.', '').toUpperCase(),
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        description: `Âm Thanh: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Scan a list of folder aliases and combine results using the Leaf Folder Scanner
+ */
+function scanFolderAliases(aliases, allowedModelExts = modelExts) {
   const all = [];
   for (const a of aliases) {
     const full = path.join(rootDir, a);
-    all.push(...getFiles(full, allowedExts));
+    all.push(...scanLeafFolder(full, allowedModelExts));
   }
   // Deduplicate by relPath
   return Array.from(new Map(all.map(item => [item.relPath, item])).values());
@@ -295,8 +439,8 @@ if (fs.existsSync(customMapDir)) {
 
 // Legacy root character files
 const rootCharFiles = [
-  ...getFiles(path.join(rootDir, 'characters'), modelExts).filter(f => !f.relPath.includes('/')),
-  ...getFiles(path.join(rootDir, 'nhan_vat'), modelExts).filter(f => !f.relPath.includes('/'))
+  ...scanLeafFolder(path.join(rootDir, 'characters'), modelExts).filter(f => !f.relPath.includes('/')),
+  ...scanLeafFolder(path.join(rootDir, 'nhan_vat'), modelExts).filter(f => !f.relPath.includes('/'))
 ];
 
 // ─── 3. Scan Props & World Environment ────────────────────────
@@ -467,4 +611,4 @@ const manifest = {
 };
 
 fs.writeFileSync(outputJson, JSON.stringify(manifest, null, 2), 'utf-8');
-console.log('✓ Generated asset_manifest.json from single source of truth asset_structure.json');
+console.log('✓ Generated asset_manifest.json with leaf-folder max-depth model bundle & companion image scanner.');

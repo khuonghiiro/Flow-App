@@ -4,8 +4,9 @@
   "description": "Tệp cấu hình duy nhất quản lý toàn bộ danh mục, tên tab Tiếng Việt, Icon và quy tắc lọc giới tính cho FlowMy AI Render Video. Người dùng có thể chỉnh sửa trực tiếp tệp này để đổi tên tab, icon hoặc thêm folder mới.",
   "settings": {
     "auto_discover_new_folders": true,
-    "supported_model_formats": [".glb", ".gltf", ".vrm", ".fbx", ".obj"],
-    "supported_image_formats": [".png", ".jpg", ".jpeg", ".webp"]
+    "leaf_folder_max_depth_mode": true,
+    "supported_model_formats": [".glb", ".gltf", ".vrm", ".fbx", ".obj", ".dae"],
+    "supported_image_formats": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]
   },
   "gender_rules": {
     "filter_enabled": true,

@@ -171,18 +171,20 @@ export const App: React.FC = () => {
 
     const baseMapName = (preset ? (preset.base_map || '') : (newScene.environment.map || '')).toLowerCase();
     const isCustomMap =
-      (baseMapName.endsWith('.glb') || baseMapName.endsWith('.gltf')) &&
+      (baseMapName.endsWith('.glb') || baseMapName.endsWith('.gltf') || baseMapName.endsWith('.fbx') || baseMapName.endsWith('.obj')) &&
       !baseMapName.includes('village');
 
     if (isCustomMap) {
       const glbSource = preset ? (preset.base_map || '') : newScene.environment.map;
-      const glbUrl = glbSource.startsWith('assets/') || glbSource.startsWith('/assets/')
-        ? (glbSource.startsWith('/') ? glbSource : `/${glbSource}`)
-        : `/assets/maps/${glbSource}`;
+      const glbUrl = glbSource.startsWith('http://') || glbSource.startsWith('https://')
+        ? glbSource
+        : (glbSource.startsWith('assets/') || glbSource.startsWith('/assets/')
+          ? (glbSource.startsWith('/') ? glbSource : `/${glbSource}`)
+          : `/assets/maps/${glbSource}`);
 
       try {
         setIsLoadingMap(true);
-        const mapModel = await AssetLoaderRegistry.loadGLTF(glbUrl);
+        const mapModel = await AssetLoaderRegistry.loadModel(glbUrl);
         mapModel.name = 'custom_glb_map_mesh';
 
         mapModel.position.set(0, 0, 0);

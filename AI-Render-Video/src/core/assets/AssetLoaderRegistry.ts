@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 export class AssetLoaderRegistry {
   private static gltfLoader: GLTFLoader | null = null;
+  private static fbxLoader: FBXLoader | null = null;
+  private static objLoader: OBJLoader | null = null;
   private static modelCache = new Map<string, THREE.Group>();
 
   public static getGLTFLoader(): GLTFLoader {
@@ -12,80 +16,26 @@ export class AssetLoaderRegistry {
     return this.gltfLoader;
   }
 
-  public static async loadGLTF(url: string): Promise<THREE.Group> {
-    if (this.modelCache.has(url)) {
-      const cached = this.modelCache.get(url)!;
-      const clone = cached.clone(true);
-      clone.animations = cached.animations;
-      return clone;
+  public static getFBXLoader(): FBXLoader {
+    if (!this.fbxLoader) {
+      this.fbxLoader = new FBXLoader();
     }
+    return this.fbxLoader;
+  }
 
-    const loader = this.getGLTFLoader();
-    return new Promise((resolve, reject) => {
-      loader.load(
-        url,
-        (gltf) => {
-          const model = gltf.scene;
-
-          // Decompose all matrix-only nodes so Three.js transforms and scales work accurately
-          model.traverse((child) => {
-            if (child.matrix && !child.matrixAutoUpdate) {
-              child.position.setFromMatrixPosition(child.matrix);
-              child.quaternion.setFromRotationMatrix(child.matrix);
-              child.scale.setFromMatrixScale(child.matrix);
-              child.matrixAutoUpdate = true;
-            }
-
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              // Map/Environment models only receive shadows; characters/props cast shadows
-              mesh.castShadow = false;
-              mesh.receiveShadow = true;
-              mesh.frustumCulled = true;
-              mesh.matrixAutoUpdate = false; // Static mesh optimization - don't recompute 2.1M matrices every frame
-              mesh.updateMatrix();
-
-              if (mesh.geometry) {
-                mesh.geometry.computeBoundingBox();
-                mesh.geometry.computeBoundingSphere();
-              }
-              if (mesh.material) {
-                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                mats.forEach((mat) => {
-                  mat.side = THREE.FrontSide;
-                  if ((mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
-                    const stdMat = mat as THREE.MeshStandardMaterial;
-                    if (stdMat.emissiveMap && !stdMat.map) {
-                      stdMat.map = stdMat.emissiveMap;
-                    }
-                    stdMat.roughness = Math.max(0.6, stdMat.roughness || 0.6);
-                    stdMat.metalness = Math.min(0.2, stdMat.metalness || 0.0);
-                  }
-                });
-              }
-            }
-          });
-
-          model.animations = gltf.animations || [];
-          this.modelCache.set(url, model);
-          const initialClone = model.clone(true);
-          initialClone.animations = model.animations;
-          resolve(initialClone);
-        },
-        undefined,
-        (err) => {
-          console.error(`Lỗi tải model GLTF từ ${url}:`, err);
-          reject(err);
-        }
-      );
-    });
+  public static getOBJLoader(): OBJLoader {
+    if (!this.objLoader) {
+      this.objLoader = new OBJLoader();
+    }
+    return this.objLoader;
   }
 
   /**
-   * Tải mô hình nhân vật hoặc bộ phận modular (quần áo, mặt, tóc, thân người)
-   * Tự động bật castShadow/receiveShadow và DoubleSide material để không bị mất mặt trong.
+   * Universal 3D Model Loader:
+   * Supports .glb, .vrm, .gltf (including multi-file folder bundles like medieval_fantasy_book/scene.gltf),
+   * .fbx, and .obj formats with memory caching and clone isolation.
    */
-  public static async loadCharacterPart(url: string): Promise<THREE.Group> {
+  public static async loadModel(url: string): Promise<THREE.Group> {
     const cleanUrl = url.startsWith('http://') || url.startsWith('https://') 
       ? url 
       : (url.startsWith('/') ? url : `/${url}`);
@@ -97,6 +47,67 @@ export class AssetLoaderRegistry {
       return clone;
     }
 
+    const lower = cleanUrl.toLowerCase();
+
+    // 1. FBX Model Loader
+    if (lower.endsWith('.fbx')) {
+      const fbxLoader = this.getFBXLoader();
+      return new Promise((resolve, reject) => {
+        fbxLoader.load(
+          cleanUrl,
+          (fbx) => {
+            fbx.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.frustumCulled = false;
+              }
+            });
+            this.modelCache.set(cleanUrl, fbx);
+            const initialClone = fbx.clone(true);
+            initialClone.animations = fbx.animations || [];
+            resolve(initialClone);
+          },
+          undefined,
+          (err) => {
+            console.warn(`[AssetLoaderRegistry] Lỗi tải model FBX từ ${cleanUrl}:`, err);
+            reject(err);
+          }
+        );
+      });
+    }
+
+    // 2. OBJ Model Loader
+    if (lower.endsWith('.obj')) {
+      const objLoader = this.getOBJLoader();
+      return new Promise((resolve, reject) => {
+        objLoader.load(
+          cleanUrl,
+          (obj) => {
+            const group = new THREE.Group();
+            group.add(obj);
+            group.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.frustumCulled = false;
+              }
+            });
+            this.modelCache.set(cleanUrl, group);
+            resolve(group.clone(true));
+          },
+          undefined,
+          (err) => {
+            console.warn(`[AssetLoaderRegistry] Lỗi tải model OBJ từ ${cleanUrl}:`, err);
+            reject(err);
+          }
+        );
+      });
+    }
+
+    // 3. GLTF / GLB / VRM / Folder Bundle Loader (.gltf + .bin + textures)
     const loader = this.getGLTFLoader();
     return new Promise((resolve, reject) => {
       loader.load(
@@ -120,7 +131,7 @@ export class AssetLoaderRegistry {
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
-                  mat.side = THREE.FrontSide; // FrontSide enables backface culling to hide inner mouth/tongue/teeth
+                  mat.side = THREE.FrontSide;
                   mat.depthTest = true;
                   mat.depthWrite = true;
                 });
@@ -136,11 +147,22 @@ export class AssetLoaderRegistry {
         },
         undefined,
         (err) => {
-          console.warn(`[AssetLoaderRegistry] Lỗi tải modular character part từ ${cleanUrl}:`, err);
+          console.warn(`[AssetLoaderRegistry] Lỗi tải model GLTF từ ${cleanUrl}:`, err);
           reject(err);
         }
       );
     });
+  }
+
+  public static async loadGLTF(url: string): Promise<THREE.Group> {
+    return this.loadModel(url);
+  }
+
+  /**
+   * Tải mô hình nhân vật hoặc bộ phận modular (quần áo, mặt, tóc, thân người)
+   */
+  public static async loadCharacterPart(url: string): Promise<THREE.Group> {
+    return this.loadModel(url);
   }
 
   public static async loadGLTFFromBuffer(buffer: ArrayBuffer): Promise<THREE.Group> {
