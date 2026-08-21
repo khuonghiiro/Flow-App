@@ -632,8 +632,12 @@ export const App: React.FC = () => {
           : (activeScene.environment.weather?.wind_direction ?? 45);
 
         const collisionQuality = envOverrideRef.current.enabled
-          ? (envOverrideRef.current.rain_collision_quality ?? 2)
-          : 2;
+          ? (envOverrideRef.current.rain_collision_quality ?? (activeScene.environment.weather?.rain_collision_quality ?? 2))
+          : (activeScene.environment.weather?.rain_collision_quality ?? 2);
+
+        const splashDistance = envOverrideRef.current.enabled
+          ? (envOverrideRef.current.rain_splash_distance ?? (activeScene.environment.weather?.rain_splash_distance ?? 45))
+          : (activeScene.environment.weather?.rain_splash_distance ?? 45);
 
         weatherParticlesRef.current.update(
           delta,
@@ -642,7 +646,8 @@ export const App: React.FC = () => {
           windIntensity,
           windDirection,
           mapGroupRef.current,
-          collisionQuality
+          collisionQuality,
+          splashDistance
         );
       }
 

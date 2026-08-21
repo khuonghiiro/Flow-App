@@ -434,7 +434,9 @@ export class WeatherParticleSystem {
   private spawnSplashAndRipple(
     x: number, y: number, z: number,
     nx: number, ny: number, nz: number,
-    wX: number, wZ: number
+    wX: number, wZ: number,
+    rainIntensity: number = 0.5,
+    windIntensity: number = 0.3
   ): void {
     WeatherParticleSystem._tempNormal.set(nx, ny, nz);
     if (WeatherParticleSystem._tempNormal.lengthSq() < 0.01) {
@@ -452,34 +454,35 @@ export class WeatherParticleSystem {
     }
     WeatherParticleSystem._tangent2.crossVectors(norm, WeatherParticleSystem._tangent1).normalize();
 
-    // 1. Splash droplets rebound along surface normal with lateral spray
-    const count = 3 + Math.floor(Math.random() * 2);
+    // 1. Splash droplets: quantity, ejection speed & wind blow scaled with rain & wind intensity
+    const count = Math.min(6, 2 + Math.floor(rainIntensity * 4.0));
     for (let s = 0; s < count; s++) {
       const sp = this.splashParticles[this.splashIndex];
       this.splashIndex = (this.splashIndex + 1) % this.maxSplashCount;
 
       // Position slightly offset along normal to avoid surface clipping
       sp.pos.set(
-        x + (Math.random() - 0.5) * 0.10 + norm.x * 0.04,
-        y + (Math.random() - 0.5) * 0.10 + norm.y * 0.04,
-        z + (Math.random() - 0.5) * 0.10 + norm.z * 0.04
+        x + (Math.random() - 0.5) * 0.08 + norm.x * 0.03,
+        y + (Math.random() - 0.5) * 0.08 + norm.y * 0.03,
+        z + (Math.random() - 0.5) * 0.08 + norm.z * 0.03
       );
 
       const sprayAngle = Math.random() * Math.PI * 2;
-      const normalSpeed = 2.4 + Math.random() * 2.8;
-      const tangentSpeed = 1.2 + Math.random() * 2.0;
+      const normalSpeed = (2.2 + rainIntensity * 3.5) * (0.8 + Math.random() * 0.4);
+      const tangentSpeed = (1.2 + rainIntensity * 2.2) * (0.8 + Math.random() * 0.4);
 
       sp.vel.set(0, 0, 0)
         .addScaledVector(norm, normalSpeed)
         .addScaledVector(WeatherParticleSystem._tangent1, Math.cos(sprayAngle) * tangentSpeed)
         .addScaledVector(WeatherParticleSystem._tangent2, Math.sin(sprayAngle) * tangentSpeed);
 
-      // Add wind influence
-      sp.vel.x += wX * 0.12;
-      sp.vel.z += wZ * 0.12;
+      // Strong lateral wind push on flying droplets
+      const windPush = 0.15 + windIntensity * 0.45;
+      sp.vel.x += wX * windPush;
+      sp.vel.z += wZ * windPush;
 
-      sp.scale = 0.22 + Math.random() * 0.18;
-      sp.maxLife = 0.24 + Math.random() * 0.10;
+      sp.scale = 0.20 + rainIntensity * 0.20;
+      sp.maxLife = 0.22 + rainIntensity * 0.12;
       sp.life = sp.maxLife;
       sp.active = true;
     }
@@ -499,8 +502,8 @@ export class WeatherParticleSystem {
       rp.quaternion.setFromUnitVectors(WeatherParticleSystem._planeDefaultNormal, norm);
 
       rp.currentScale = 0.10;
-      rp.maxScale = 0.40 + Math.random() * 0.25;
-      rp.maxLife = 0.28 + Math.random() * 0.10;
+      rp.maxScale = (0.28 + rainIntensity * 0.45) * (0.85 + Math.random() * 0.35);
+      rp.maxLife = 0.25 + rainIntensity * 0.15;
       rp.life = rp.maxLife;
       rp.active = true;
     }
@@ -517,17 +520,17 @@ export class WeatherParticleSystem {
     windIntensity: number = 0.3,
     windDirectionDeg: number = 45,
     _sceneObstaclesGroup?: THREE.Object3D,
-    collisionQuality: number = 2
+    collisionQuality: number = 2,
+    splashDistance: number = 45
   ): void {
     this.activeRainIntensity = Math.max(0, Math.min(1, rainIntensity));
     this.activeWindIntensity = Math.max(0, Math.min(1, windIntensity));
     this.activeWindDirection = windDirectionDeg;
     this.gustTimer += delta * (1.1 + this.activeWindIntensity * 2.2);
 
-    // Dynamic raycast budget from slider (0 = no collision, 10 = max quality)
-    this.maxNewRaycasts = Math.max(0, Math.min(10, Math.round(collisionQuality)));
-
-    // Reset per-frame raycast budget
+    const isCollisionEnabled = collisionQuality > 0;
+    // Dynamic raycast budget (0 = disabled, 1 to 10 = 3 to 35 raycasts/frame)
+    this.maxNewRaycasts = isCollisionEnabled ? Math.max(3, Math.round(collisionQuality * 3.5)) : 0;
     this.newRaycastsThisFrame = 0;
 
     if (this.activeRainIntensity <= 0.01) {
@@ -538,19 +541,19 @@ export class WeatherParticleSystem {
     }
 
     if (this.instancedRain && !this.instancedRain.visible) this.instancedRain.visible = true;
-    if (this.instancedSplashes && !this.instancedSplashes.visible) this.instancedSplashes.visible = true;
-    if (this.instancedRipples && !this.instancedRipples.visible) this.instancedRipples.visible = true;
+    if (this.instancedSplashes) this.instancedSplashes.visible = isCollisionEnabled;
+    if (this.instancedRipples) this.instancedRipples.visible = isCollisionEnabled;
 
     const activeCount = Math.floor(this.maxRainCount * this.activeRainIntensity);
     if (this.instancedRain) this.instancedRain.count = activeCount;
 
-    // Wind
+    // Wind velocity & Rain Fall Acceleration
     const windRad = (this.activeWindDirection * Math.PI) / 180;
-    const gustWave = 1.0 + Math.sin(this.gustTimer) * 0.2 + Math.cos(this.gustTimer * 0.75) * 0.12;
+    const gustWave = 1.0 + Math.sin(this.gustTimer) * 0.25 + Math.cos(this.gustTimer * 0.75) * 0.15;
     const effectiveWind = this.activeWindIntensity * gustWave;
-    const windVelX = Math.sin(windRad) * (effectiveWind * 26.0);
-    const windVelZ = Math.cos(windRad) * (effectiveWind * 26.0);
-    const fallAccel = 1.0 + this.activeWindIntensity * 0.4 + this.activeRainIntensity * 0.35;
+    const windVelX = Math.sin(windRad) * (effectiveWind * 30.0);
+    const windVelZ = Math.cos(windRad) * (effectiveWind * 30.0);
+    const fallAccel = 1.0 + this.activeWindIntensity * 0.85 + this.activeRainIntensity * 0.45;
     const slantAngleX = Math.atan2(windVelZ, 28 * fallAccel);
     const slantAngleZ = -Math.atan2(windVelX, 28 * fallAccel);
 
@@ -559,6 +562,10 @@ export class WeatherParticleSystem {
     const camX = cameraPos.x;
     const camY = cameraPos.y;
     const camZ = cameraPos.z;
+
+    const hitChance = isCollisionEnabled
+      ? (0.40 + (collisionQuality / 10) * 0.45) * (0.6 + this.activeRainIntensity * 0.4)
+      : 0;
 
     // ── Raindrop update with spatial grid cached mesh collision ──
     if (this.instancedRain) {
@@ -579,26 +586,33 @@ export class WeatherParticleSystem {
           distScale = Math.max(0.001, 1.0 - (distFromCam - 10.0) / 12.0);
         }
 
-        // Surface collision via spatial grid cache (mesh raycast with surface normal)
-        const surfInfo = this.getSurfaceInfo(drop.pos.x, drop.pos.z);
-
-        if (drop.pos.y <= surfInfo.y) {
-          // Hit surface → splash + ripple with surface normal orientation
-          if (distFromCam < 45.0 && Math.random() < 0.65 + this.activeRainIntensity * 0.30) {
-            this.spawnSplashAndRipple(
-              drop.pos.x, surfInfo.y, drop.pos.z,
-              surfInfo.nx, surfInfo.ny, surfInfo.nz,
-              windVelX, windVelZ
-            );
+        if (isCollisionEnabled) {
+          const surfInfo = this.getSurfaceInfo(drop.pos.x, drop.pos.z);
+          if (drop.pos.y <= surfInfo.y) {
+            if (distFromCam < splashDistance && Math.random() < hitChance) {
+              this.spawnSplashAndRipple(
+                drop.pos.x, surfInfo.y, drop.pos.z,
+                surfInfo.nx, surfInfo.ny, surfInfo.nz,
+                windVelX, windVelZ,
+                this.activeRainIntensity,
+                this.activeWindIntensity
+              );
+            }
+            drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
+            drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
+            drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+          } else if (relX < -halfW || relX > halfW || relZ < -halfD || relZ > halfD || drop.pos.y > camY + this.boxHeight + 10) {
+            drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
+            drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
+            drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
           }
-          drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
-          drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
-          drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
-        } else if (relX < -halfW || relX > halfW || relZ < -halfD || relZ > halfD || drop.pos.y > camY + this.boxHeight + 10) {
-          // Out of bounds
-          drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
-          drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
-          drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+        } else {
+          // Free fall without collision check (max performance)
+          if (drop.pos.y < camY - 12 || relX < -halfW || relX > halfW || relZ < -halfD || relZ > halfD || drop.pos.y > camY + this.boxHeight + 10) {
+            drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
+            drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
+            drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+          }
         }
 
         this.dummyObj.position.copy(drop.pos);

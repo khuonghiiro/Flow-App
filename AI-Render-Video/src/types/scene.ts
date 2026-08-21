@@ -45,6 +45,8 @@ export interface EnvironmentConfig {
     skybox_rotation?: number;      // 0 to 360 degrees
     skybox_exposure?: number;      // 0.2 to 2.5
     skybox_blur?: number;          // 0.0 to 1.0
+    rain_collision_quality?: number; // 0 to 10
+    rain_splash_distance?: number;   // 5 to 100
   };
   placed_props?: PlacedProp[];     // Additional placed props specific to this scene
 }
@@ -81,6 +83,7 @@ export interface EnvironmentOverride {
   lightning_cloud_intensity?: number;  // 0.0 to 2.0 (Nhịp & độ sáng chớp trong mây)
   lightning_strike_intensity?: number; // 0.0 to 2.0 (Tỉ lệ & cường độ tia sét đánh xuống đất)
   rain_collision_quality?: number;     // 0 to 10 (Chất lượng va chạm mưa: 0=tắt, 10=max raycasts/frame)
+  rain_splash_distance?: number;       // 5 to 100 (Bán kính tầm nhìn va chạm mưa & tóe nước tính bằng mét)
 }
 
 export interface SubtitlesConfig {
