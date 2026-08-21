@@ -8,6 +8,7 @@ export interface CustomPreset {
   costume: string;
   face: string;
   gender: 'male' | 'female';
+  preview?: string;
 }
 
 interface PresetsBarProps {

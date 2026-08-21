@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench } from 'lucide-react';
-import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from '../types/scene';
+import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride, CharacterAssembly } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
 import { VRMAvatar } from '../core/actors/VRMAvatar';
@@ -56,7 +56,7 @@ interface StudioLayoutProps {
   onUpdateEnvOverride: (override: EnvironmentOverride) => void;
   onPlaceProp?: (prop: any) => void;
   onSelectMap?: (mapId: string) => void;
-  onSelectAvatar?: (actorId: string, vrmUrl: string) => void;
+  onSelectAvatar?: (actorId: string, vrmUrl: string, assembly?: CharacterAssembly) => void;
   onPlayAnimationPreview?: (animName: string) => void;
   selectedObject?: SelectedSceneObject | null;
   onSelectObject?: (obj: SelectedSceneObject | null) => void;
@@ -588,7 +588,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 <AssetBrowserPanel
                   onPlaceProp={(prop) => onPlaceProp?.(prop)}
                   onSelectMap={(mapId) => onSelectMap?.(mapId)}
-                  onSelectAvatar={(actorId, vrmUrl) => onSelectAvatar?.(actorId, vrmUrl)}
+                  onSelectAvatar={(actorId, vrmUrl, assembly) => onSelectAvatar?.(actorId, vrmUrl, assembly)}
                   onPlayAnimationPreview={onPlayAnimationPreview}
                   onImportCustomFiles={onImportCustomMap}
                   actorsList={scene.actors.map((a) => ({ id: a.id, name: a.name || a.id }))}

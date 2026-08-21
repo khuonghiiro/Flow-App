@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ActorConfig, CharacterAssembly } from '../../types/scene';
 import { SocketAttacher } from '../assets/SocketAttacher';
 import { AssetLoaderRegistry } from '../assets/AssetLoaderRegistry';
+import { FaceSliderConfig } from '../../ui/CharacterAssetRegistry';
 
 export class VRMAvatar {
   public config: ActorConfig;
@@ -488,6 +489,8 @@ export class VRMAvatar {
       if (loadedCount > 0) {
         // Successfully loaded real 3D modular meshes, hide procedural placeholder
         this.proceduralGroup.visible = false;
+        // Instantly apply face sliders (0% base face, 0% nose, 0% mouth)
+        this.applyFaceSliders();
       }
     } else if (modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf') || modelPath.endsWith('.vrm'))) {
       if (!modelPath.includes('dark_mage') && !modelPath.includes('warrior.vrm')) {
@@ -496,11 +499,112 @@ export class VRMAvatar {
           fullModel.name = 'full_character_model';
           this.modularGroup.add(fullModel);
           this.proceduralGroup.visible = false;
+          this.applyFaceSliders();
         } catch (err) {
           console.warn(`[VRMAvatar] Không thể nạp full model ${modelPath}:`, err);
         }
       }
     }
+  }
+
+  /**
+   * Instantly applies face sliders to 3D character without requiring manual slider drag
+   */
+  public applyFaceSliders(sliders?: FaceSliderConfig): void {
+    let activeSliders: FaceSliderConfig = sliders || {
+      baseFaceOpacity: 0.0,
+      eyebrowOpacity: 1.0,
+      pupilOpacity: 1.0,
+      noseOpacity: 0.0,
+      mouthOpacity: 0.0,
+      skinSmoothness: 0.75,
+      costumeOpacity: 1.0,
+    };
+
+    try {
+      if (!sliders) {
+        const cached = localStorage.getItem('flow_character_face_sliders');
+        if (cached) activeSliders = { ...activeSliders, ...JSON.parse(cached) };
+      }
+    } catch {}
+
+    const { baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity } = activeSliders;
+
+    this.rootObject.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const name = mesh.name.toLowerCase();
+        const parentName = (mesh.parent?.name || '').toLowerCase();
+        const matName = Array.isArray(mesh.material)
+          ? mesh.material.map((m) => m.name.toLowerCase()).join(' ')
+          : (mesh.material?.name || '').toLowerCase();
+
+        const isBaseFace =
+          (name.includes('face') || parentName.includes('face') || matName.includes('face')) &&
+          !name.includes('p0054') && !name.includes('p0052') && !matName.includes('p0054') && !matName.includes('p0052');
+
+        const isEyebrow = name.includes('eyebrow') || parentName.includes('eyebrow') || matName.includes('eyebrow');
+        const isPupil = name.includes('pupil') || parentName.includes('pupil') || matName.includes('pupil');
+        const isNose = name.includes('nose') || parentName.includes('nose');
+        const isMouth = name.includes('mouth') || parentName.includes('mouth') || name.includes('lip') || parentName.includes('lip');
+
+        if (mesh.material) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          mats.forEach((m: any) => {
+            m.side = THREE.FrontSide;
+
+            // Base Face
+            if (isBaseFace) {
+              mesh.visible = baseFaceOpacity > 0.02;
+              m.transparent = baseFaceOpacity < 0.98;
+              m.opacity = baseFaceOpacity;
+            }
+
+            // Eyebrow
+            if (isEyebrow) {
+              mesh.visible = eyebrowOpacity > 0.02;
+              m.transparent = eyebrowOpacity < 0.98;
+              m.opacity = eyebrowOpacity;
+            }
+
+            // Pupil
+            if (isPupil) {
+              mesh.visible = pupilOpacity > 0.02;
+              m.transparent = pupilOpacity < 0.98;
+              m.opacity = pupilOpacity;
+            }
+
+            // Nose
+            if (isNose) {
+              mesh.visible = noseOpacity > 0.02;
+              m.transparent = noseOpacity < 0.98;
+              m.opacity = noseOpacity;
+            }
+
+            // Mouth
+            if (isMouth) {
+              mesh.visible = mouthOpacity > 0.02;
+              m.transparent = mouthOpacity < 0.98;
+              m.opacity = mouthOpacity;
+            }
+
+            // Skin Smoothness
+            if (name.includes('body') || name.includes('face') || parentName.includes('face') || matName.includes('face')) {
+              if (m.roughness !== undefined) {
+                m.roughness = Math.max(0.1, 1.0 - skinSmoothness * 0.45);
+              }
+            }
+
+            // Costume Opacity
+            if (!name.includes('body') && !name.includes('face') && !isPupil && !isEyebrow && !isBaseFace && !isNose && !isMouth) {
+              mesh.visible = costumeOpacity > 0.02;
+              m.transparent = costumeOpacity < 0.98;
+              m.opacity = costumeOpacity;
+            }
+          });
+        }
+      }
+    });
   }
 
   public getHeadPosition(out: THREE.Vector3 = new THREE.Vector3()): THREE.Vector3 {

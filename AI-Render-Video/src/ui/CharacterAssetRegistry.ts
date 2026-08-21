@@ -17,6 +17,7 @@ export interface CharacterPartItem {
   format?: string;
   sizeMB?: string;
   description?: string;
+  presetData?: any;
 }
 
 export interface CharacterCategory {
@@ -190,7 +191,32 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
 
         // Include default presets if empty for key base categories
         let finalItems = parsed;
-        if (finalItems.length === 0) {
+        if (catConfig.id === '_lap_rap' || catConfig.id === 'nhan_vat_lap_rap') {
+          const customAssembled: CharacterPartItem[] = [];
+          try {
+            const raw = localStorage.getItem('custom_character_presets');
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                list.forEach((p: any, idx: number) => {
+                  const preview = p.preview || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
+                  customAssembled.push({
+                    id: p.id || `custom_preset_${idx}`,
+                    name: p.name || `Nhân Vật ${idx + 1}`,
+                    path: p.body || 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
+                    preview: preview && !preview.startsWith('/') && !preview.startsWith('data:') ? `/${preview}` : preview,
+                    gender: p.gender || 'unisex',
+                    format: 'JSON',
+                    sizeMB: '0.01',
+                    description: `Thân + Trang phục + Mặt`,
+                    presetData: p,
+                  });
+                });
+              }
+            }
+          } catch {}
+          finalItems = [...customAssembled, ...parsed];
+        } else if (finalItems.length === 0) {
           if (catConfig.id === 'than_co_ban') finalItems = BASE_BODIES;
           else if (catConfig.id === 'trang_phuc') finalItems = COSTUMES;
           else if (catConfig.id === 'khuon_mat') finalItems = FACES;
@@ -260,11 +286,11 @@ export interface FaceSliderConfig {
 }
 
 export const DEFAULT_FACE_SLIDERS: FaceSliderConfig = {
-  baseFaceOpacity: 1.0,
+  baseFaceOpacity: 0.0,
   eyebrowOpacity: 1.0,
   pupilOpacity: 1.0,
-  noseOpacity: 1.0,
-  mouthOpacity: 1.0,
+  noseOpacity: 0.0,
+  mouthOpacity: 0.0,
   skinSmoothness: 0.75,
   costumeOpacity: 1.0,
 };

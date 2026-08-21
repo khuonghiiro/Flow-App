@@ -27,9 +27,9 @@ import {
   Layers,
   RefreshCw,
   Sliders,
-  Filter,
 } from 'lucide-react';
 import { PlacedProp } from '../types/map_preset';
+import { CharacterAssembly } from '../types/scene';
 import { Live3DThumbnail } from './Live3DThumbnail';
 
 export interface AssetItem {
@@ -48,6 +48,7 @@ export interface AssetItem {
   previewUrl?: string;
   previewColor?: string;
   gender?: 'male' | 'female' | 'unisex';
+  assembly?: CharacterAssembly;
   // Specific data
   propData?: Partial<PlacedProp>;
   mapId?: string;
@@ -73,7 +74,7 @@ export interface CategoryTab {
 interface AssetBrowserPanelProps {
   onPlaceProp: (prop: AssetItem) => void;
   onSelectMap: (mapId: string) => void;
-  onSelectAvatar: (actorId: string, vrmUrl: string) => void;
+  onSelectAvatar: (actorId: string, vrmUrl: string, assembly?: CharacterAssembly) => void;
   onPlayAnimationPreview?: (animName: string) => void;
   onImportCustomFiles?: (files: FileList | File[]) => void;
   actorsList?: { id: string; name: string }[];
@@ -227,10 +228,22 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         if (pathLower.includes('/male/') || pathLower.includes('/man/') || pathLower.includes('/nam/')) gender = 'male';
         if (pathLower.includes('/female/') || pathLower.includes('/woman/') || pathLower.includes('/nu/')) gender = 'female';
 
+        const assembly = raw.assembly || (raw.character_data ? {
+          base_body: raw.character_data.base_body || raw.character_data.body,
+          costume: raw.character_data.costume,
+          face: raw.character_data.face,
+          hairstyle: raw.character_data.hairstyle,
+        } : undefined);
+
+        let finalPath = raw.relPath ? (raw.relPath.startsWith('assets/') ? raw.relPath : `assets/${raw.relPath}`) : (raw.path || '');
+        if (raw.format === 'JSON' && assembly?.base_body) {
+          finalPath = assembly.base_body;
+        }
+
         return {
           id: raw.id || raw.name || raw.relPath,
           name: raw.name || raw.filename || 'Tài nguyên',
-          path: raw.relPath ? (raw.relPath.startsWith('assets/') ? raw.relPath : `assets/${raw.relPath}`) : (raw.path || ''),
+          path: finalPath,
           category,
           subCategory,
           folder: raw.relPath ? raw.relPath.split('/').slice(0, -1).join('/') : '',
@@ -239,6 +252,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
           sizeMB: raw.sizeMB || '0.00',
           previewUrl: raw.previewUrl ? (raw.previewUrl.startsWith('/') ? raw.previewUrl : `/${raw.previewUrl}`) : undefined,
           gender,
+          assembly,
           description: raw.description || `${raw.name || raw.filename} (${raw.format || 'GLB'})`,
         };
       };
@@ -264,6 +278,50 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         if (Array.isArray(list)) {
           list.forEach((c: any) => items.push(parseAsset(c, catId, 'character')));
         }
+      }
+
+      // ─── Assembled Characters from LocalStorage (_lap_rap) ───
+      try {
+        const savedPresetsRaw = localStorage.getItem('custom_character_presets');
+        if (savedPresetsRaw) {
+          const savedPresets = JSON.parse(savedPresetsRaw);
+          if (Array.isArray(savedPresets)) {
+            savedPresets.forEach((p: any, idx: number) => {
+              const previewUrl = p.preview
+                ? p.preview
+                : p.costume
+                ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume)
+                : p.body
+                ? (p.body.endsWith('.glb') ? p.body.replace('.glb', '.png') : p.body)
+                : undefined;
+
+              const charBody = p.body || p.base_body || 'assets/characters/base_bodies/nam/body_base_-_manekin.glb';
+
+              items.push({
+                id: p.id || `assembled_preset_${idx}`,
+                name: p.name || `Nhân Vật Đã Ráp #${idx + 1}`,
+                category: '_lap_rap',
+                subCategory: undefined,
+                path: charBody,
+                folder: 'characters/assembled',
+                type: 'character',
+                format: 'JSON',
+                sizeMB: '0.01',
+                previewUrl: previewUrl && !previewUrl.startsWith('/') && !previewUrl.startsWith('data:') ? `/${previewUrl}` : previewUrl,
+                gender: p.gender || (charBody.includes('manekina') ? 'female' : 'male'),
+                description: `Đã ráp: Thân [${charBody.split('/').pop() || 'Gốc'}] + Trang phục [${p.costume?.split('/').pop() || 'Mặc định'}] + Mặt [${p.face?.split('/').pop() || 'Gốc'}]`,
+                assembly: {
+                  base_body: charBody,
+                  costume: p.costume,
+                  face: p.face,
+                  hairstyle: p.hairstyle,
+                },
+              });
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc custom_character_presets:', err);
       }
 
       // Root Male & Female
@@ -339,8 +397,8 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         vfx.forEach((v: any) => items.push(parseAsset(v, 'hieu_ung', 'vfx')));
       }
 
-      // Deduplicate by path
-      const uniqueItems = Array.from(new Map(items.map((i) => [i.path, i])).values());
+      // Deduplicate by ID (or path fallback) to ensure all custom presets are displayed
+      const uniqueItems = Array.from(new Map(items.map((i) => [i.id || i.path, i])).values());
       setAllAssets(uniqueItems);
     } catch (err) {
       console.warn('Lỗi đọc asset_manifest.json trong Project Assets:', err);
@@ -351,6 +409,13 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
 
   useEffect(() => {
     loadManifest();
+    const handleAssetsUpdated = () => loadManifest();
+    window.addEventListener('flow_assets_updated', handleAssetsUpdated);
+    window.addEventListener('storage', handleAssetsUpdated);
+    return () => {
+      window.removeEventListener('flow_assets_updated', handleAssetsUpdated);
+      window.removeEventListener('storage', handleAssetsUpdated);
+    };
   }, [loadManifest]);
 
   // ─── Active Category & Subcategories ──────────────────────────
@@ -411,7 +476,11 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
       setTimeout(() => setSpawnNotification(null), 2500);
     } else if (asset.type === 'character') {
       const targetActor = actorsList[0]?.id || 'actor_warrior';
-      onSelectAvatar(targetActor, asset.path);
+      if (asset.category === '_lap_rap' && asset.assembly) {
+        onSelectAvatar(targetActor, asset.path, asset.assembly);
+      } else {
+        onSelectAvatar(targetActor, asset.path);
+      }
       setSpawnNotification(`Đã gán "${asset.name}" cho nhân vật!`);
       setTimeout(() => setSpawnNotification(null), 2500);
     } else if (asset.type === 'animation' && onPlayAnimationPreview) {
@@ -424,10 +493,69 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0 && onImportCustomFiles) {
-      onImportCustomFiles(e.target.files);
+  const handleDeleteCustomPreset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const savedRaw = localStorage.getItem('custom_character_presets');
+      if (savedRaw) {
+        const list = JSON.parse(savedRaw);
+        const updated = list.filter((p: any) => p.id !== id && `assembled_preset_${p.id}` !== id && p.name !== id);
+        localStorage.setItem('custom_character_presets', JSON.stringify(updated));
+        window.dispatchEvent(new Event('flow_assets_updated'));
+      }
+    } catch {}
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+
+    // Check if user uploaded JSON character profiles
+    const jsonFiles = files.filter((f) => f.name.toLowerCase().endsWith('.json'));
+    const otherFiles = files.filter((f) => !f.name.toLowerCase().endsWith('.json'));
+
+    if (jsonFiles.length > 0) {
+      let importedCount = 0;
+      for (const jf of jsonFiles) {
+        try {
+          const text = await jf.text();
+          const profile = JSON.parse(text);
+          if (profile.base_body || profile.costume || profile.face || profile.assembly || profile.character_assembly || profile.model) {
+            const body = profile.base_body || profile.assembly?.base_body || profile.model || 'assets/characters/base_bodies/nam/body_base_-_manekin.glb';
+            const preset: any = {
+              id: profile.id || `preset_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name: `${body.includes('manekina') ? '👩' : '🧑'} ${profile.name || jf.name.replace('.json', '')}`,
+              body,
+              costume: profile.costume || profile.assembly?.costume || '',
+              face: profile.face || profile.assembly?.face || '',
+              hairstyle: profile.hairstyle || profile.assembly?.hairstyle || '',
+              gender: profile.gender || (body.includes('manekina') ? 'female' : 'male'),
+              preview: profile.preview_image || undefined,
+            };
+
+            const savedRaw = localStorage.getItem('custom_character_presets');
+            const savedList = savedRaw ? JSON.parse(savedRaw) : [];
+            const updated = [preset, ...savedList.filter((p: any) => p.name !== preset.name && p.id !== preset.id)];
+            localStorage.setItem('custom_character_presets', JSON.stringify(updated));
+            importedCount++;
+          }
+        } catch (err) {
+          console.warn('Lỗi đọc file JSON nhân vật:', err);
+        }
+      }
+
+      if (importedCount > 0) {
+        window.dispatchEvent(new Event('flow_assets_updated'));
+        setSpawnNotification(`✅ Đã nạp ${importedCount} nhân vật vào tab "Nhân Vật Đã Ráp"!`);
+        setActiveCategoryId('_lap_rap');
+        setTimeout(() => setSpawnNotification(null), 4000);
+      }
     }
+
+    if (otherFiles.length > 0 && onImportCustomFiles) {
+      onImportCustomFiles(otherFiles);
+    }
+    e.target.value = '';
   };
 
   return (
@@ -544,6 +672,30 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
             accept=".glb,.gltf,.vrm,.mp3,.json,.png,.jpg"
             onChange={handleFileUpload}
           />
+
+          {activeCategoryId === '_lap_rap' && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Nhập file JSON nhân vật từ máy tính"
+              style={{
+                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                border: '1px solid #38bdf8',
+                color: '#fff',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+              }}
+            >
+              <Upload size={12} />
+              Nhập JSON Nhân Vật
+            </button>
+          )}
 
           <button
             onClick={loadManifest}
@@ -869,13 +1021,47 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: 40,
-                  gap: 8,
-                  color: '#64748b',
+                  gap: 12,
+                  color: '#94a3b8',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: 10,
+                  border: '1px dashed rgba(255, 255, 255, 0.1)',
+                  margin: '20px 10px',
                 }}
               >
-                <Box size={32} />
-                <span style={{ fontSize: 12 }}>Chưa có tài nguyên nào trong mục này</span>
-                <span style={{ fontSize: 10 }}>Thả file vào thư mục assets/ và chạy _scan_assets.bat</span>
+                <div style={{ fontSize: 36 }}>✨</div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>
+                  {activeCategoryId === '_lap_rap'
+                    ? 'Chưa có nhân vật nào trong mục "Nhân Vật Đã Ráp"'
+                    : 'Chưa có tài nguyên nào trong mục này'}
+                </span>
+                <span style={{ fontSize: 11, color: '#64748b', maxWidth: 420, textAlign: 'center' }}>
+                  {activeCategoryId === '_lap_rap'
+                    ? 'Bạn có thể vào tab "Xưởng Nhân Vật" phối đồ rồi bấm "Lưu Mẫu", hoặc bấm nút bên dưới để nạp file .JSON nhân vật có sẵn từ máy tính!'
+                    : 'Thả file vào thư mục assets/ và chạy _scan_assets.bat'}
+                </span>
+                {activeCategoryId === '_lap_rap' && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      marginTop: 6,
+                      background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                      border: '1px solid #38bdf8',
+                      color: '#fff',
+                      borderRadius: 6,
+                      padding: '8px 16px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)',
+                    }}
+                  >
+                    <Upload size={14} /> Chọn File .JSON Nhân Vật Từ Máy Tính
+                  </button>
+                )}
               </div>
             ) : (
               filteredAssets.map((asset) => {
@@ -899,6 +1085,29 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                       position: 'relative',
                     }}
                   >
+                    {/* Delete button for assembled characters */}
+                    {asset.category === '_lap_rap' && (
+                      <button
+                        onClick={(e) => handleDeleteCustomPreset(asset.id, e)}
+                        title="Xóa mẫu nhân vật này khỏi danh sách"
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          zIndex: 5,
+                          background: 'rgba(0, 0, 0, 0.75)',
+                          border: '1px solid rgba(239, 68, 68, 0.5)',
+                          color: '#ef4444',
+                          borderRadius: 4,
+                          padding: '2px 5px',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
                     {/* Live 3D Preview / Companion Photo */}
                     <Live3DThumbnail
                       assetPath={asset.path}

@@ -356,49 +356,64 @@ const tails = scanFolderAliases(['nhan_vat/duoi', 'characters/duoi'], modelExts)
 
 // 2.1 Assembled Characters (_lap_rap)
 const assembledChars = [];
-const lapRapDir = path.join(rootDir, 'nhan_vat/_lap_rap');
-if (fs.existsSync(lapRapDir)) {
-  const files = fs.readdirSync(lapRapDir);
-  for (const file of files) {
-    const full = path.join(lapRapDir, file);
-    const baseName = path.parse(file).name;
-    if (file.endsWith('.json')) {
-      try {
-        const json = JSON.parse(fs.readFileSync(full, 'utf-8'));
-        const pngCandidate = path.join(lapRapDir, `${baseName}.png`);
-        let previewUrl = fs.existsSync(pngCandidate)
-          ? `assets/nhan_vat/_lap_rap/${baseName}.png`
-          : (json.preview_image || undefined);
+const possibleLapRapDirs = [
+  path.join(rootDir, 'characters/_lap_rap'),
+  path.join(rootDir, 'characters/lap_rap'),
+  path.join(rootDir, 'nhan_vat/_lap_rap'),
+  path.join(rootDir, 'nhan_vat/lap_rap'),
+];
 
+for (const lapRapDir of possibleLapRapDirs) {
+  if (fs.existsSync(lapRapDir)) {
+    const files = fs.readdirSync(lapRapDir);
+    for (const file of files) {
+      const full = path.join(lapRapDir, file);
+      const baseName = path.parse(file).name;
+      const relFolder = path.relative(rootDir, lapRapDir).replace(/\\/g, '/');
+      if (file.endsWith('.json')) {
+        try {
+          const json = JSON.parse(fs.readFileSync(full, 'utf-8'));
+          const pngCandidate = path.join(lapRapDir, `${baseName}.png`);
+          let previewUrl = fs.existsSync(pngCandidate)
+            ? `assets/${relFolder}/${baseName}.png`
+            : (json.preview_image || undefined);
+
+          assembledChars.push({
+            id: json.id || baseName,
+            name: json.name || formatDisplayName(baseName),
+            filename: file,
+            relPath: `${relFolder}/${file}`,
+            path: `assets/${relFolder}/${file}`,
+            format: 'JSON',
+            sizeMB: '0.01',
+            gender: json.gender || 'unisex',
+            previewUrl,
+            character_data: json,
+            assembly: json.assembly || {
+              base_body: json.base_body,
+              costume: json.costume,
+              face: json.face,
+              hairstyle: json.hairstyle,
+            }
+          });
+        } catch (err) {
+          console.warn(`Lỗi đọc nhân vật lắp ráp ${file}:`, err.message);
+        }
+      } else if (modelExts.includes(path.extname(file).toLowerCase())) {
+        const stats = fs.statSync(full);
+        const pngCandidate = path.join(lapRapDir, `${baseName}.png`);
         assembledChars.push({
-          id: json.id || baseName,
-          name: json.name || formatDisplayName(baseName),
+          id: baseName,
+          name: formatDisplayName(file),
           filename: file,
-          relPath: `nhan_vat/_lap_rap/${file}`,
-          path: `assets/nhan_vat/_lap_rap/${file}`,
-          format: 'JSON',
-          sizeMB: '0.01',
-          gender: json.gender || 'unisex',
-          previewUrl,
-          character_data: json
+          relPath: `${relFolder}/${file}`,
+          path: `assets/${relFolder}/${file}`,
+          format: path.extname(file).replace('.', '').toUpperCase(),
+          sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+          gender: detectGender(file),
+          previewUrl: fs.existsSync(pngCandidate) ? `assets/${relFolder}/${baseName}.png` : undefined
         });
-      } catch (err) {
-        console.warn(`Lỗi đọc nhân vật lắp ráp ${file}:`, err.message);
       }
-    } else if (modelExts.includes(path.extname(file).toLowerCase())) {
-      const stats = fs.statSync(full);
-      const pngCandidate = path.join(lapRapDir, `${baseName}.png`);
-      assembledChars.push({
-        id: baseName,
-        name: formatDisplayName(file),
-        filename: file,
-        relPath: `nhan_vat/_lap_rap/${file}`,
-        path: `assets/nhan_vat/_lap_rap/${file}`,
-        format: path.extname(file).replace('.', '').toUpperCase(),
-        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
-        gender: detectGender(file),
-        previewUrl: fs.existsSync(pngCandidate) ? `assets/nhan_vat/_lap_rap/${baseName}.png` : undefined
-      });
     }
   }
 }

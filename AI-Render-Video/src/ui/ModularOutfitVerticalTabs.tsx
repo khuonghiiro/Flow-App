@@ -111,9 +111,9 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const [useSharedFaceSliders, setUseSharedFaceSliders] = useState(true);
   const [selectedActorId, setSelectedActorId] = useState(scene.actors[0]?.id || '');
 
-  // Visible categories filtered by empty count
+  // Visible categories filtered by empty count (always show _lap_rap and key tabs)
   const visibleCategories = hideEmptyCategories
-    ? categories.filter((cat) => filterByGender(cat.items, genderFilter).length > 0)
+    ? categories.filter((cat) => cat.id === '_lap_rap' || cat.id === 'nhan_vat_lap_rap' || cat.id === 'than_co_ban' || cat.id === 'trang_phuc' || filterByGender(cat.items, genderFilter).length > 0)
     : categories;
 
   useEffect(() => {
@@ -159,41 +159,6 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const [jsonImportToast, setJsonImportToast] = useState('');
   const jsonImportRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchLiveCharacterCategories().then((cats) => {
-      setCategories(cats);
-      if (cats.length > 0 && !cats.some((c) => c.id === activeCategoryId)) {
-        setActiveCategoryId(cats[0].id);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    const actor = scene.actors.find((a) => a.id === selectedActorId);
-    if (actor) {
-      setCharName(actor.name || 'Nhân Vật');
-      if (actor.profile) {
-        setCharAge(actor.profile.age !== undefined ? actor.profile.age : 22);
-        setCharGender(actor.profile.gender || 'male');
-        setCharHeightCm(actor.profile.height_cm || 178);
-        setCharEducation(actor.profile.education_level || 'Đại Học');
-        setCharOccupation(actor.profile.occupation || 'Kiếm Khách');
-        setCharFaction(actor.profile.faction || 'Thục Sơn Kiếm Tông');
-        setCharPersonality(actor.profile.personality || 'Điềm đạm, cương trực');
-        setCharVoiceStyle(actor.profile.voice_style || 'Trầm ấm');
-        setCharPowerLevel(actor.profile.power_level || 100);
-        setCharElement(actor.profile.element || 'Kiếm Khí');
-        setCharBiography(actor.profile.biography || '');
-        setCharSkills(actor.profile.skills || []);
-        if (actor.profile.custom_attributes) {
-          setCustomAttributes(
-            Object.entries(actor.profile.custom_attributes).map(([key, value]) => ({ key, value: String(value) }))
-          );
-        }
-      }
-    }
-  }, [selectedActorId, scene.actors]);
-
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => {
     try {
       const saved = localStorage.getItem('custom_character_presets');
@@ -203,24 +168,63 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     }
   });
 
+  useEffect(() => {
+    const loadCategories = () => {
+      fetchLiveCharacterCategories().then((cats) => {
+        setCategories(cats);
+      });
+    };
+    loadCategories();
+
+    const handleAssetsUpdate = () => {
+      try {
+        const saved = localStorage.getItem('custom_character_presets');
+        if (saved) setCustomPresets(JSON.parse(saved));
+      } catch {}
+      loadCategories();
+    };
+
+    window.addEventListener('flow_assets_updated', handleAssetsUpdate);
+    return () => window.removeEventListener('flow_assets_updated', handleAssetsUpdate);
+  }, []);
+
   const [perActorSliders, setPerActorSliders] = useState<Record<string, FaceSliderConfig>>({});
   const currentSliders = useSharedFaceSliders ? sliders : (perActorSliders[selectedActorId] || sliders);
 
   const handleSliderChange = (key: keyof FaceSliderConfig, value: number) => {
+    let updated: FaceSliderConfig;
     if (useSharedFaceSliders) {
-      onSlidersChange({ ...sliders, [key]: value });
+      updated = { ...sliders, [key]: value };
+      onSlidersChange(updated);
     } else {
-      const updated = { ...(perActorSliders[selectedActorId] || sliders), [key]: value };
+      updated = { ...(perActorSliders[selectedActorId] || sliders), [key]: value };
       setPerActorSliders((prev) => ({ ...prev, [selectedActorId]: updated }));
       onSlidersChange(updated);
     }
+    try {
+      localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated));
+    } catch {}
   };
 
   const handleResetSliders = () => {
-    onSlidersChange({ ...DEFAULT_FACE_SLIDERS });
+    const updated: FaceSliderConfig = { ...DEFAULT_FACE_SLIDERS };
+    onSlidersChange(updated);
     if (!useSharedFaceSliders) {
-      setPerActorSliders((prev) => ({ ...prev, [selectedActorId]: { ...DEFAULT_FACE_SLIDERS } }));
+      setPerActorSliders((prev) => ({ ...prev, [selectedActorId]: updated }));
     }
+    try {
+      localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated));
+    } catch {}
+    setPresetSavedToast('✅ Đã đặt lại thanh trượt về mặc định (Face cũ 0%, Mũi 0%, Miệng 0%)!');
+    setTimeout(() => setPresetSavedToast(''), 3000);
+  };
+
+  const handleSaveSliderCache = () => {
+    try {
+      localStorage.setItem('flow_character_face_sliders', JSON.stringify(currentSliders));
+      setPresetSavedToast('💾 Đã lưu cấu hình thanh trượt vào Cache!');
+      setTimeout(() => setPresetSavedToast(''), 3000);
+    } catch {}
   };
 
   const handleSaveCustomPreset = () => {
@@ -237,7 +241,10 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     };
     const updated = [newPreset, ...customPresets];
     setCustomPresets(updated);
-    try { localStorage.setItem('custom_character_presets', JSON.stringify(updated)); } catch {}
+    try {
+      localStorage.setItem('custom_character_presets', JSON.stringify(updated));
+      window.dispatchEvent(new Event('flow_assets_updated'));
+    } catch {}
     setPresetSavedToast(`Đã lưu mẫu "${name}" thành công!`);
     setTimeout(() => setPresetSavedToast(''), 3500);
   };
@@ -246,7 +253,10 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     e.stopPropagation();
     const updated = customPresets.filter((p) => p.id !== id);
     setCustomPresets(updated);
-    try { localStorage.setItem('custom_character_presets', JSON.stringify(updated)); } catch {}
+    try {
+      localStorage.setItem('custom_character_presets', JSON.stringify(updated));
+      window.dispatchEvent(new Event('flow_assets_updated'));
+    } catch {}
   };
 
   const handleExportJSON = () => {
@@ -294,6 +304,23 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       aImg.download = `${safeName}.png`;
       aImg.click();
     }
+
+    // Auto-save to custom_character_presets for _lap_rap tab
+    const exportedPreset: CustomPreset = {
+      id: `preset_${Date.now()}`,
+      name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName || 'Nhân Vật Đã Ráp'}`,
+      body: baseBody,
+      costume,
+      face,
+      gender: baseBody.includes('manekina') ? 'female' : 'male',
+    };
+    const updatedOnExport = [exportedPreset, ...customPresets.filter((p) => p.name !== exportedPreset.name)];
+    setCustomPresets(updatedOnExport);
+    try {
+      localStorage.setItem('custom_character_presets', JSON.stringify(updatedOnExport));
+      window.dispatchEvent(new Event('flow_assets_updated'));
+    } catch {}
+
     setJsonImportToast(`✅ Đã xuất "${safeName}.json" + "${safeName}.png"!`);
     setTimeout(() => setJsonImportToast(''), 5000);
   };
@@ -328,6 +355,23 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
           );
         }
         if (profile.gender && profile.gender !== 'unisex') setGenderFilter(profile.gender);
+
+        // Auto-save to custom_character_presets for _lap_rap tab
+        const importedPreset: CustomPreset = {
+          id: `preset_${Date.now()}`,
+          name: `${(profile.base_body || baseBody).includes('manekina') ? '👩' : '🧑'} ${profile.name || 'Nhân Vật Nhập'}`,
+          body: profile.base_body || baseBody,
+          costume: profile.costume || costume,
+          face: profile.face || face,
+          gender: (profile.base_body || baseBody).includes('manekina') ? 'female' : 'male',
+        };
+        const updatedOnImport = [importedPreset, ...customPresets.filter((p) => p.name !== importedPreset.name)];
+        setCustomPresets(updatedOnImport);
+        try {
+          localStorage.setItem('custom_character_presets', JSON.stringify(updatedOnImport));
+          window.dispatchEvent(new Event('flow_assets_updated'));
+        } catch {}
+
         setJsonImportToast(`✅ Đã nhập hồ sơ "${profile.name}" thành công!`);
         setTimeout(() => setJsonImportToast(''), 4000);
       } catch (err) {
@@ -367,6 +411,25 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     targetActor.model = baseBody;
     targetActor.assembly = { base_body: baseBody, costume, face, hairstyle: hairstyle || undefined };
     targetActor.profile = profileData;
+
+    // Save/update into custom_character_presets so it immediately shows up in 'Nhân Vật Đã Ráp'
+    const appliedPreset: CustomPreset = {
+      id: `preset_${targetActor.id}`,
+      name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName}`,
+      body: baseBody,
+      costume,
+      face,
+      gender: charGender === 'female' ? 'female' : 'male',
+    };
+    const existingIndex = customPresets.findIndex((p) => p.id === appliedPreset.id || p.name === appliedPreset.name);
+    const updatedPresets = existingIndex >= 0
+      ? customPresets.map((p, idx) => (idx === existingIndex ? appliedPreset : p))
+      : [appliedPreset, ...customPresets];
+    setCustomPresets(updatedPresets);
+    try {
+      localStorage.setItem('custom_character_presets', JSON.stringify(updatedPresets));
+      window.dispatchEvent(new Event('flow_assets_updated'));
+    } catch {}
 
     const updatedScene: MasterSceneConfig = {
       ...scene,
@@ -416,12 +479,44 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       };
       onUpdateScene({ ...scene, actors: [...scene.actors, newActor] });
       setSelectedActorId(newId);
+
+      // Auto-save to custom_character_presets for _lap_rap tab
+      const newPreset: CustomPreset = {
+        id: `preset_${newId}`,
+        name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName.trim()}`,
+        body: baseBody,
+        costume,
+        face,
+        gender: charGender === 'female' ? 'female' : 'male',
+      };
+      const updatedPresets = [newPreset, ...customPresets.filter((p) => p.name !== newPreset.name && p.id !== newPreset.id)];
+      setCustomPresets(updatedPresets);
+      try {
+        localStorage.setItem('custom_character_presets', JSON.stringify(updatedPresets));
+        window.dispatchEvent(new Event('flow_assets_updated'));
+      } catch {}
     } else {
       const targetActor = scene.actors.find((a) => a.id === selectedActorId) || scene.actors[0];
       if (targetActor) {
         targetActor.name = charName.trim();
         targetActor.profile = profileData;
+        targetActor.assembly = { base_body: baseBody, costume, face, hairstyle: hairstyle || undefined };
         onUpdateScene({ ...scene, actors: scene.actors.map((a) => (a.id === targetActor.id ? { ...targetActor } : a)) });
+
+        const editPreset: CustomPreset = {
+          id: `preset_${targetActor.id}`,
+          name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName.trim()}`,
+          body: baseBody,
+          costume,
+          face,
+          gender: charGender === 'female' ? 'female' : 'male',
+        };
+        const updatedPresets = [editPreset, ...customPresets.filter((p) => p.name !== editPreset.name && p.id !== editPreset.id)];
+        setCustomPresets(updatedPresets);
+        try {
+          localStorage.setItem('custom_character_presets', JSON.stringify(updatedPresets));
+          window.dispatchEvent(new Event('flow_assets_updated'));
+        } catch {}
       }
     }
     setShowProfileModal(false);
@@ -453,14 +548,21 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const activeCategory = categories.find((c) => c.id === activeCategoryId);
   const filteredItems = activeCategory ? filterByGender(activeCategory.items, genderFilter) : [];
 
-  const SLIDER_DEFS: { key: keyof FaceSliderConfig; label: string; icon: string; min: number }[] = [
-    { key: 'baseFaceOpacity', label: 'Độ Hiện Face Cũ', icon: '🎭', min: 0 },
-    { key: 'eyebrowOpacity', label: 'Độ Đậm Lông Mày', icon: '👁️', min: 0 },
-    { key: 'pupilOpacity', label: 'Độ Sáng Tròng Mắt', icon: '✨', min: 0 },
-    { key: 'noseOpacity', label: 'Độ Nổi Mũi', icon: '👃', min: 0 },
-    { key: 'mouthOpacity', label: 'Độ Rõ Miệng & Môi', icon: '👄', min: 0 },
-    { key: 'skinSmoothness', label: 'Độ Mịn Da', icon: '🌸', min: 0.1 },
-    { key: 'costumeOpacity', label: 'Độ Đậm Trang Phục', icon: '🥋', min: 0 },
+  const SLIDER_DEFS: {
+    key: keyof FaceSliderConfig;
+    label: string;
+    icon: string;
+    min: number;
+    description: string;
+    color: string;
+  }[] = [
+    { key: 'baseFaceOpacity', label: 'Độ Hiện Face Cũ', icon: '🎭', min: 0, description: 'Ẩn/hiện mặt và đầu gốc (0% = ẩn hoàn toàn)', color: '#f59e0b' },
+    { key: 'noseOpacity', label: 'Độ Nổi Mũi', icon: '👃', min: 0, description: 'Độ nổi chi tiết sống mũi & chóp mũi (0% = làm phẳng)', color: '#8b5cf6' },
+    { key: 'mouthOpacity', label: 'Độ Rõ Miệng & Môi', icon: '👄', min: 0, description: 'Độ rõ nét khuôn miệng và viền môi (0% = ẩn viền)', color: '#ec4899' },
+    { key: 'eyebrowOpacity', label: 'Độ Đậm Lông Mày', icon: '🤨', min: 0, description: 'Độ đậm nét của lông mày', color: '#06b6d4' },
+    { key: 'pupilOpacity', label: 'Độ Sáng Tròng Mắt', icon: '✨', min: 0, description: 'Độ sáng tròng mắt và phản chiếu', color: '#38bdf8' },
+    { key: 'skinSmoothness', label: 'Độ Mịn Da', icon: '🌸', min: 0.1, description: 'Độ mịn và phản quang làn da', color: '#10b981' },
+    { key: 'costumeOpacity', label: 'Độ Đậm Trang Phục', icon: '🥋', min: 0, description: 'Độ rõ nét của quần áo & giáp', color: '#a855f7' },
   ];
 
   return (
@@ -536,7 +638,8 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
         >
           {visibleCategories.map((cat) => {
             const isActive = activeCategoryId === cat.id;
-            const count = filterByGender(cat.items, genderFilter).length;
+            const isAssembled = cat.id === '_lap_rap' || cat.id === 'nhan_vat_lap_rap';
+            const count = isAssembled ? customPresets.length : filterByGender(cat.items, genderFilter).length;
             return (
               <button
                 key={cat.id}
@@ -564,7 +667,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
                 <span style={{ fontSize: 16 }}>{cat.icon}</span>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'left' }}>{cat.label}</span>
-                  <span style={{ fontSize: 8, color: isActive ? '#38bdf8' : '#64748b', fontWeight: 600 }}>{count} món</span>
+                  <span style={{ fontSize: 8, color: isActive ? '#38bdf8' : '#64748b', fontWeight: 600 }}>{count} {isAssembled ? 'mẫu' : 'món'}</span>
                 </div>
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)', color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569' }}>{count}</span>
               </button>
@@ -601,10 +704,35 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 
         {/* Content Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          {/* 1. Items Grid / Sliders Area */}
+          {/* 1. Items Grid / Sliders / Assembled Characters Area */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }}>
             {activeCategoryId === '_sliders' ? (
-              <SlidersPanel sliders={currentSliders} sliderDefs={SLIDER_DEFS} useShared={useSharedFaceSliders} onToggleShared={() => setUseSharedFaceSliders(!useSharedFaceSliders)} onChange={handleSliderChange} onReset={handleResetSliders} />
+              <SlidersPanel
+                sliders={currentSliders}
+                sliderDefs={SLIDER_DEFS}
+                useShared={useSharedFaceSliders}
+                onToggleShared={() => setUseSharedFaceSliders(!useSharedFaceSliders)}
+                onChange={handleSliderChange}
+                onReset={handleResetSliders}
+                onSaveCache={handleSaveSliderCache}
+              />
+            ) : activeCategoryId === '_lap_rap' || activeCategoryId === 'nhan_vat_lap_rap' ? (
+              <AssembledCharactersPanel
+                presets={customPresets}
+                currentBody={baseBody}
+                currentCostume={costume}
+                currentFace={face}
+                onApply={(p) => {
+                  onBaseBodyChange(p.body);
+                  onCostumeChange(p.costume);
+                  onFaceChange(p.face);
+                  setGenderFilter(p.gender);
+                  setCharGender(p.gender);
+                  setCharName(p.name.replace(/^[^\w\s]*\s*/, ''));
+                }}
+                onDelete={handleDeletePreset}
+                onImportClick={() => jsonImportRef.current?.click()}
+              />
             ) : (
               <ItemsGrid items={filteredItems} selectedPath={getSelectionForCategory(activeCategoryId)} onSelect={(path) => handleSelectItem(activeCategoryId, path)} fallbackIcon={activeCategory?.icon || '📦'} />
             )}
@@ -628,7 +756,19 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
           />
 
           {/* 4. Action Bar */}
-          <ActionBar scene={scene} selectedActorId={selectedActorId} onSelectActorId={setSelectedActorId} onApply={handleApplyToCurrentActor} onAddNew={() => { setProfileModalMode('create'); setValidationError(null); setShowProfileModal(true); }} />
+          <ActionBar
+            scene={scene}
+            selectedActorId={selectedActorId}
+            onSelectActorId={setSelectedActorId}
+            onApply={handleApplyToCurrentActor}
+            onAddNew={() => {
+              setProfileModalMode('create');
+              setCharName(`Nhân Vật ${scene.actors.length + 1}`);
+              setCharAge(20);
+              setValidationError(null);
+              setShowProfileModal(true);
+            }}
+          />
         </div>
       </div>
 
@@ -676,6 +816,179 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 };
 
 // ─── Subcomponents ───────────────────────────────────────
+
+function AssembledCharactersPanel({
+  presets,
+  currentBody,
+  currentCostume,
+  currentFace,
+  onApply,
+  onDelete,
+  onImportClick,
+}: {
+  presets: CustomPreset[];
+  currentBody: string;
+  currentCostume: string;
+  currentFace: string;
+  onApply: (preset: CustomPreset) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+  onImportClick: () => void;
+}) {
+  if (presets.length === 0) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '36px 16px',
+          gap: 12,
+          color: '#94a3b8',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: 10,
+          border: '1px dashed rgba(255, 255, 255, 0.1)',
+          margin: '10px 0',
+        }}
+      >
+        <div style={{ fontSize: 32 }}>✨</div>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>
+          Chưa có mẫu nhân vật lắp ráp nào
+        </span>
+        <span style={{ fontSize: 11, color: '#64748b', maxWidth: 360, textAlign: 'center' }}>
+          Bạn có thể chọn Thân + Trang Phục + Mặt rồi bấm nút "Lưu Mẫu" ở thanh dưới cùng, hoặc bấm nút nạp file .JSON bên dưới!
+        </span>
+        <button
+          onClick={onImportClick}
+          style={{
+            marginTop: 4,
+            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+            border: '1px solid #38bdf8',
+            color: '#fff',
+            borderRadius: 6,
+            padding: '6px 14px',
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <Upload size={13} /> Nạp File .JSON Nhân Vật
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Top action strip for _lap_rap */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>✨ Danh Sách Nhân Vật Đã Ráp ({presets.length})</span>
+        <button
+          onClick={onImportClick}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 10px',
+            borderRadius: 6,
+            fontSize: 10,
+            fontWeight: 700,
+            background: 'rgba(56, 189, 248, 0.15)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            color: '#38bdf8',
+            cursor: 'pointer',
+          }}
+        >
+          <Upload size={11} /> Nhập File JSON
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+        {presets.map((p) => {
+          const isCurrentActive = currentBody === p.body && currentCostume === p.costume && currentFace === p.face;
+          const preview = p.preview || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
+
+          return (
+            <div
+              key={p.id}
+              onClick={() => onApply(p)}
+              style={{
+                cursor: 'pointer',
+                borderRadius: 8,
+                padding: 6,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                border: isCurrentActive ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                background: isCurrentActive ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.03)',
+                position: 'relative',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {/* Delete button */}
+              <button
+                onClick={(e) => onDelete(p.id, e)}
+                title="Xóa mẫu phối đồ này"
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 5,
+                  background: 'rgba(0, 0, 0, 0.75)',
+                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                  color: '#ef4444',
+                  borderRadius: 4,
+                  padding: '2px 5px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+
+              <div style={{ width: '100%', height: 85, overflow: 'hidden', borderRadius: 6 }}>
+                <Live3DThumbnail assetPath={p.body} previewUrl={preview} altText={p.name} fallbackIcon="✨" format="JSON" height={85} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isCurrentActive ? '#38bdf8' : '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {p.name}
+                </span>
+                <span style={{ fontSize: 9, color: '#64748b' }}>
+                  {p.gender === 'female' ? 'Nữ' : 'Nam'} • Đã phối đồ
+                </span>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApply(p);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '4px 0',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: isCurrentActive ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)',
+                  color: isCurrentActive ? '#090d16' : '#cbd5e1',
+                }}
+              >
+                {isCurrentActive ? '✓ Đang Dùng' : 'Áp Dụng'}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function ItemsGrid({ items, selectedPath, onSelect, fallbackIcon }: {
   items: CharacterPartItem[];
@@ -735,34 +1048,190 @@ function ItemsGrid({ items, selectedPath, onSelect, fallbackIcon }: {
   );
 }
 
-function SlidersPanel({ sliders, sliderDefs, useShared, onToggleShared, onChange, onReset }: {
+function SlidersPanel({
+  sliders,
+  sliderDefs,
+  useShared,
+  onToggleShared,
+  onChange,
+  onReset,
+  onSaveCache,
+}: {
   sliders: FaceSliderConfig;
-  sliderDefs: { key: keyof FaceSliderConfig; label: string; icon: string; min: number }[];
+  sliderDefs: {
+    key: keyof FaceSliderConfig;
+    label: string;
+    icon: string;
+    min: number;
+    description: string;
+    color: string;
+  }[];
   useShared: boolean;
   onToggleShared: () => void;
   onChange: (key: keyof FaceSliderConfig, value: number) => void;
   onReset: () => void;
+  onSaveCache: () => void;
 }) {
+  const quickPresets = [0, 0.25, 0.5, 0.75, 1.0];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div onClick={onToggleShared} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-          {useShared ? <ToggleRight size={16} color="#38bdf8" /> : <ToggleLeft size={16} color="#94a3b8" />}
-          <span style={{ fontSize: 11, fontWeight: 600, color: useShared ? '#38bdf8' : '#94a3b8' }}>{useShared ? 'Dùng Chung Sliders' : 'Riêng Actor Này'}</span>
+      {/* Control Header Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          borderRadius: 8,
+          background: 'rgba(255, 255, 255, 0.04)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+        }}
+      >
+        <div
+          onClick={onToggleShared}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}
+          title="Chọn áp dụng đồng bộ tất cả nhân vật hoặc riêng cho nhân vật đang chọn"
+        >
+          {useShared ? <ToggleRight size={18} color="#38bdf8" /> : <ToggleLeft size={18} color="#94a3b8" />}
+          <span style={{ fontSize: 11, fontWeight: 700, color: useShared ? '#38bdf8' : '#cbd5e1' }}>
+            {useShared ? 'Dùng Chung Cho Mọi Actor' : 'Riêng Cho Actor Này'}
+          </span>
         </div>
-        <button onClick={onReset} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer' }}>Đặt Lại</button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            onClick={onSaveCache}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 10px',
+              borderRadius: 6,
+              fontSize: 10,
+              fontWeight: 700,
+              background: 'rgba(16, 185, 129, 0.2)',
+              border: '1px solid rgba(16, 185, 129, 0.5)',
+              color: '#34d399',
+              cursor: 'pointer',
+            }}
+            title="Lưu cấu hình thanh trượt vào bộ nhớ trình duyệt"
+          >
+            <Save size={11} /> Lưu Cache
+          </button>
+          <button
+            onClick={onReset}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              fontSize: 10,
+              fontWeight: 600,
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: '#94a3b8',
+              cursor: 'pointer',
+            }}
+            title="Đặt lại về mặc định (Face cũ 0%, Mũi 0%, Miệng 0%)"
+          >
+            Đặt Lại Mặc Định
+          </button>
+        </div>
       </div>
 
+      {/* Sliders List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sliderDefs.map((def) => {
-          const val = sliders[def.key] ?? 1.0;
+          const val = sliders[def.key] ?? (def.key === 'baseFaceOpacity' || def.key === 'noseOpacity' || def.key === 'mouthOpacity' ? 0.0 : 1.0);
+          const percent = Math.round(val * 100);
+
           return (
-            <div key={def.key} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                <span style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4 }}><span>{def.icon}</span> {def.label}</span>
-                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{Math.round(val * 100)}%</span>
+            <div
+              key={def.key}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: 'rgba(255, 255, 255, 0.025)',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>{def.icon}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>{def.label}</span>
+                    <span style={{ fontSize: 9, color: '#64748b' }}>{def.description}</span>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 44,
+                    padding: '2px 6px',
+                    borderRadius: 6,
+                    background: percent === 0 ? 'rgba(239, 68, 68, 0.15)' : percent === 100 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.15)',
+                    border: `1px solid ${percent === 0 ? 'rgba(239, 68, 68, 0.3)' : percent === 100 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(56, 189, 248, 0.3)'}`,
+                    color: percent === 0 ? '#f87171' : percent === 100 ? '#34d399' : '#38bdf8',
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  {percent}%
+                </div>
               </div>
-              <input type="range" min={def.min} max={1.0} step={0.01} value={val} onChange={(e) => onChange(def.key, parseFloat(e.target.value))} style={{ width: '100%', accentColor: '#38bdf8' }} />
+
+              {/* Smooth Range Slider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
+                <input
+                  type="range"
+                  min={def.min}
+                  max={1.0}
+                  step={0.01}
+                  value={val}
+                  onChange={(e) => onChange(def.key, parseFloat(e.target.value))}
+                  style={{
+                    flex: 1,
+                    accentColor: def.color,
+                    height: 5,
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                {quickPresets.map((preset) => {
+                  const isPresetActive = Math.abs(val - preset) < 0.03;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => onChange(def.key, preset)}
+                      style={{
+                        flex: 1,
+                        padding: '3px 0',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        border: isPresetActive ? `1px solid ${def.color}` : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: isPresetActive ? `rgba(${hexToRgb(def.color)}, 0.25)` : 'rgba(255, 255, 255, 0.02)',
+                        color: isPresetActive ? '#ffffff' : '#94a3b8',
+                        transition: 'all 0.1s ease',
+                      }}
+                    >
+                      {preset === 0 ? '0% (Ẩn)' : preset === 1 ? '100%' : `${Math.round(preset * 100)}%`}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
