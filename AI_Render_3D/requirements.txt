@@ -1,0 +1,35 @@
+# Core PyTorch (Recommended CUDA 12.1+ for NVIDIA RTX 3060)
+# Install via: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+
+# Image & 3D Processing Libraries
+numpy>=1.24.0,<2.0.0
+scipy>=1.10.0
+Pillow>=10.0.0
+opencv-python>=4.8.0
+trimesh>=4.0.0
+pygltflib>=1.16.0
+rembg>=2.0.50
+onnxruntime-gpu>=1.16.0
+
+# Hugging Face & ML Infrastructure
+huggingface_hub>=0.20.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+einops>=0.7.0
+
+# Web UI & REST API
+gradio>=4.20.0
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+python-multipart>=0.0.9
+
+# Testing & Utilities
+pytest>=7.4.0
+requests>=2.31.0
+psutil>=5.9.0
+tqdm>=4.66.0

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rigged GLB 3D Viewer & Animation Tester</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #121316;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #e0e0e0;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #ui-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(24, 26, 32, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      width: 320px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      color: #58a6ff;
+    }
+    p {
+      font-size: 13px;
+      color: #8b949e;
+      line-height: 1.4;
+      margin: 0 0 15px 0;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .btn:hover {
+      background: #2ea043;
+    }
+    .btn-secondary {
+      background: #30363d;
+    }
+    .btn-secondary:hover {
+      background: #3c444d;
+    }
+    .drop-zone {
+      border: 2px dashed #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    .drop-zone:hover {
+      border-color: #58a6ff;
+      color: #58a6ff;
+    }
+    #bone-list {
+      max-height: 150px;
+      overflow-y: auto;
+      background: #0d1117;
+      padding: 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  
+  <div id="ui-panel">
+    <h2>🎭 Rigged Asset Viewer</h2>
+    <p>Test glTF 2.0 .glb assets exported from <code>image-to-rig-pipeline</code>.</p>
+    
+    <div class="drop-zone" id="dropZone">
+      📂 Kéo thả file <b>.glb</b> vào đây<br>hoặc click để chọn
+      <input type="file" id="fileInput" accept=".glb" style="display: none;">
+    </div>
+
+    <button class="btn btn-secondary" id="btnToggleSkeleton">🦴 Bật/Tắt Khung Xương</button>
+    <button class="btn" id="btnWaveAnim">👋 Chạy Animation Thử Nghiệm</button>
+
+    <div style="margin-top: 15px;">
+      <span style="font-size: 12px; font-weight: bold;">Danh sách xương phát hiện:</span>
+      <div id="bone-list">Chưa load model...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    // 1. Scene & Renderer Setup
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x121316);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.2, 3.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.0, 0);
+    controls.enableDamping = true;
+
+    // 2. Lighting & Grid
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(5, 10, 7);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const gridHelper = new THREE.GridHelper(10, 20, 0x30363d, 0x1f242c);
+    scene.add(gridHelper);
+
+    // 3. State Management
+    let currentModel = null;
+    let skeletonHelper = null;
+    let bonesMap = new Map();
+    let isAnimating = false;
+
+    const loader = new GLTFLoader();
+
+    function loadGLBBuffer(buffer) {
+      if (currentModel) scene.remove(currentModel);
+      if (skeletonHelper) scene.remove(skeletonHelper);
+      bonesMap.clear();
+
+      loader.parse(buffer, '', (gltf) => {
+        currentModel = gltf.scene;
+        scene.add(currentModel);
+
+        const boneListEl = document.getElementById('bone-list');
+        boneListEl.innerHTML = '';
+
+        gltf.scene.traverse((child) => {
+          if (child.isBone) {
+            bonesMap.set(child.name, child);
+            const item = document.createElement('div');
+            item.textContent = `• ${child.name}`;
+            boneListEl.appendChild(item);
+          }
+        });
+
+        skeletonHelper = new THREE.SkeletonHelper(currentModel);
+        skeletonHelper.material.linewidth = 2;
+        scene.add(skeletonHelper);
+
+        console.log('Model loaded. Bones count:', bonesMap.size);
+      });
+    }
+
+    // 4. Drag and drop file loading
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => loadGLBBuffer(ev.target.result);
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith('.glb')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => loadGLBBuffer(ev.target.result);
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    // 5. UI Controls
+    document.getElementById('btnToggleSkeleton').addEventListener('click', () => {
+      if (skeletonHelper) skeletonHelper.visible = !skeletonHelper.visible;
+    });
+
+    document.getElementById('btnWaveAnim').addEventListener('click', () => {
+      isAnimating = !isAnimating;
+      document.getElementById('btnWaveAnim').textContent = isAnimating ? '⏹️ Dừng Animation' : '👋 Chạy Animation Thử Nghiệm';
+    });
+
+    // 6. Animation Loop
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = clock.getElapsedTime();
+
+      if (isAnimating) {
+        const rArm = bonesMap.get('RightUpperArm');
+        const rForeArm = bonesMap.get('RightLowerArm');
+        const lArm = bonesMap.get('LeftUpperArm');
+
+        if (rArm && rForeArm) {
+          rArm.rotation.z = Math.PI / 3 + Math.sin(time * 3) * 0.2;
+          rForeArm.rotation.y = Math.sin(time * 6) * 0.5;
+        }
+        if (lArm) {
+          lArm.rotation.z = -Math.PI / 6 + Math.cos(time * 2) * 0.1;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
