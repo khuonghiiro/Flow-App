@@ -45,13 +45,14 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
 
   // --- 1. MODULAR OUTFIT STATE (lifted for 3D preview sync) ---
-  const [baseBody, setBaseBody] = useState<string>('assets/characters/base_bodies/man/body_base_-_manekin.glb');
-  const [costume, setCostume] = useState<string>('assets/characters/costumes/man/amber_nectar_-_manekin.glb');
-  const [face, setFace] = useState<string>('assets/characters/faces/man/dawnbreaker_-_manekin.glb');
+  const [baseBody, setBaseBody] = useState<string>('assets/characters/base_bodies/nam/body_base_-_manekin.glb');
+  const [costume, setCostume] = useState<string>('assets/characters/costumes/nam/amber_nectar_-_manekin.glb');
+  const [face, setFace] = useState<string>('assets/characters/faces/nam/dawnbreaker_-_manekin.glb');
   const [hairstyle, setHairstyle] = useState<string>('');
+  const [sceneReadyToken, setSceneReadyToken] = useState<number>(0);
 
   // --- 2. AUTO-RIG STATE ---
-  const [modelToRig, setModelToRig] = useState<string>('assets/characters/base_bodies/man/body_base_-_manekin.glb');
+  const [modelToRig, setModelToRig] = useState<string>('assets/characters/base_bodies/nam/body_base_-_manekin.glb');
   const [isRigged, setIsRigged] = useState<boolean>(false);
   const [isRiggingLoading, setIsRiggingLoading] = useState<boolean>(false);
   const [showJoints, setShowJoints] = useState<boolean>(true);
@@ -318,6 +319,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     });
 
     resizeObserver.observe(canvasContainerRef.current);
+    setSceneReadyToken((t) => t + 1);
 
     return () => {
       domEl.removeEventListener('pointermove', onPointerMove as any);
@@ -326,8 +328,14 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       controls.dispose();
       renderer.dispose();
+      previewRendererRef.current = null;
+      previewSceneRef.current = null;
+      previewCameraRef.current = null;
+      previewControlsRef.current = null;
+      floorGridRef.current = null;
+      currentPreviewGroupRef.current = null;
     };
-  }, []);
+  }, [activeTab]);
 
   // Update 3D Preview when Modular Selection changes (with Face Z-Fighting Fix)
   useEffect(() => {
@@ -354,9 +362,20 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       { key: 'hair', path: hairstyle },
     ].filter((p) => Boolean(p.path));
 
-    Promise.all(parts.map((p) => AssetLoaderRegistry.loadCharacterPart(p.path).then((model) => ({ key: p.key, model }))))
-      .then((loadedList) => {
+    Promise.all(
+      parts.map(async (p) => {
+        try {
+          const model = await AssetLoaderRegistry.loadCharacterPart(p.path);
+          return { key: p.key, model };
+        } catch (err) {
+          console.warn(`[Workbench] Không thể tải bộ phận ${p.key} (${p.path}):`, err);
+          return null;
+        }
+      })
+    )
+      .then((results) => {
         if (!isMounted) return;
+        const loadedList = results.filter((item): item is { key: string; model: THREE.Group } => item !== null);
 
         const hasFace = loadedList.some((item) => item.key === 'face');
         const bodyItem = loadedList.find((item) => item.key === 'body');
@@ -471,7 +490,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     return () => {
       isMounted = false;
     };
-  }, [baseBody, costume, face, hairstyle, activeTab]);
+  }, [baseBody, costume, face, hairstyle, activeTab, sceneReadyToken]);
 
   // Execute Auto-Rigging on Selected Model
   const handleRunAutoRig = async () => {

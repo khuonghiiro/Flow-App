@@ -293,16 +293,19 @@ export class WeatherParticleSystem {
     canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, 128, 128);
-    ctx.lineWidth = 5.0;
-    ctx.strokeStyle = 'rgba(240, 250, 255, 0.90)';
+
+    // Soft, realistic, single-circle water drop ripple
+    const grad = ctx.createRadialGradient(64, 64, 38, 64, 64, 58);
+    grad.addColorStop(0, 'rgba(180, 220, 255, 0)');
+    grad.addColorStop(0.5, 'rgba(215, 240, 255, 0.70)');
+    grad.addColorStop(0.8, 'rgba(180, 220, 255, 0.30)');
+    grad.addColorStop(1, 'rgba(160, 210, 255, 0)');
+
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(64, 64, 36, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.lineWidth = 3.0;
-    ctx.strokeStyle = 'rgba(195, 230, 255, 0.60)';
-    ctx.beginPath();
-    ctx.arc(64, 64, 50, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(64, 64, 58, 0, Math.PI * 2);
+    ctx.fill();
+
     return new THREE.CanvasTexture(canvas);
   }
 
@@ -338,7 +341,8 @@ export class WeatherParticleSystem {
         width: 0.95 + Math.random() * 0.45,
         phase: Math.random() * Math.PI * 2,
       });
-      this.dummyObj.position.set(0, -999, 0);
+      this.dummyObj.position.set(0, -9999, 0);
+      this.dummyObj.scale.set(0, 0, 0);
       this.dummyObj.updateMatrix();
       this.instancedRain.setMatrixAt(i, this.dummyObj.matrix);
     }
@@ -362,10 +366,11 @@ export class WeatherParticleSystem {
 
     for (let i = 0; i < this.maxSplashCount; i++) {
       this.splashParticles.push({
-        pos: new THREE.Vector3(0, -999, 0), vel: new THREE.Vector3(),
+        pos: new THREE.Vector3(0, -9999, 0), vel: new THREE.Vector3(),
         scale: 0.2, life: 0, maxLife: 0.22, active: false,
       });
-      this.dummyObj.position.set(0, -999, 0);
+      this.dummyObj.position.set(0, -9999, 0);
+      this.dummyObj.scale.set(0, 0, 0);
       this.dummyObj.updateMatrix();
       this.instancedSplashes.setMatrixAt(i, this.dummyObj.matrix);
     }
@@ -375,6 +380,7 @@ export class WeatherParticleSystem {
   private initInstancedRipples(): void {
     const geom = new THREE.PlaneGeometry(1.0, 1.0);
     geom.rotateX(-Math.PI / 2);
+
     this.rippleMaterial = new THREE.ShaderMaterial({
       vertexShader: `
         varying vec2 vUv;
@@ -386,16 +392,16 @@ export class WeatherParticleSystem {
       fragmentShader: `
         varying vec2 vUv;
         void main() {
-          vec2 p = vUv - vec2(0.5);
-          float r = length(p) * 2.0;
+          vec2 p = (vUv - vec2(0.5)) * 2.0;
+          float r = length(p);
           if (r > 1.0) discard;
           
-          float wave1 = smoothstep(0.06, 0.0, abs(r - 0.78));
-          float wave2 = smoothstep(0.04, 0.0, abs(r - 0.48));
-          float alpha = (wave1 * 0.45 + wave2 * 0.20) * pow(1.0 - r, 0.7);
+          // Soft single circular water drop ripple ring
+          float ring = smoothstep(0.12, 0.0, abs(r - 0.78));
+          float alpha = ring * 0.45 * pow(1.0 - r, 0.5);
+          if (alpha < 0.008) discard;
           
-          if (alpha < 0.01) discard;
-          vec3 col = vec3(0.68, 0.84, 0.98);
+          vec3 col = vec3(0.72, 0.88, 1.0);
           gl_FragColor = vec4(col * alpha, alpha);
         }
       `,
@@ -412,15 +418,16 @@ export class WeatherParticleSystem {
 
     for (let i = 0; i < this.maxRippleCount; i++) {
       this.rippleParticles.push({
-        pos: new THREE.Vector3(0, -999, 0),
+        pos: new THREE.Vector3(0, -9999, 0),
         quaternion: new THREE.Quaternion(),
-        currentScale: 0.12,
-        maxScale: 0.65,
+        currentScale: 0.05,
+        maxScale: 0.28,
         life: 0,
-        maxLife: 0.32,
+        maxLife: 0.22,
         active: false,
       });
-      this.dummyObj.position.set(0, -999, 0);
+      this.dummyObj.position.set(0, -9999, 0);
+      this.dummyObj.scale.set(0, 0, 0);
       this.dummyObj.updateMatrix();
       this.instancedRipples.setMatrixAt(i, this.dummyObj.matrix);
     }
@@ -487,23 +494,23 @@ export class WeatherParticleSystem {
       sp.active = true;
     }
 
-    // 2. Ripple rings ONLY spawn on horizontal or gently sloping surfaces (ground, roofs, rocks)
-    if (norm.y > 0.65) {
+    // 2. Ripple rings ONLY spawn on horizontal surfaces with active rainfall
+    if (norm.y > 0.75 && rainIntensity > 0.05) {
       const rp = this.rippleParticles[this.rippleIndex];
       this.rippleIndex = (this.rippleIndex + 1) % this.maxRippleCount;
 
       // Offset slightly along normal to avoid Z-fighting
       rp.pos.set(
-        x + norm.x * 0.015,
-        y + 0.015,
-        z + norm.z * 0.015
+        x + norm.x * 0.012,
+        y + 0.012,
+        z + norm.z * 0.012
       );
 
       rp.quaternion.setFromUnitVectors(WeatherParticleSystem._planeDefaultNormal, norm);
 
-      rp.currentScale = 0.10;
-      rp.maxScale = (0.28 + rainIntensity * 0.45) * (0.85 + Math.random() * 0.35);
-      rp.maxLife = 0.25 + rainIntensity * 0.15;
+      rp.currentScale = 0.04;
+      rp.maxScale = (0.12 + rainIntensity * 0.18) * (0.85 + Math.random() * 0.3);
+      rp.maxLife = 0.20 + rainIntensity * 0.10;
       rp.life = rp.maxLife;
       rp.active = true;
     }
@@ -572,48 +579,47 @@ export class WeatherParticleSystem {
       for (let i = 0; i < activeCount; i++) {
         const drop = this.rainDrops[i];
 
-        drop.pos.x += windVelX * delta;
         drop.pos.y -= drop.speed * fallAccel * delta;
+        drop.pos.x += windVelX * delta;
         drop.pos.z += windVelZ * delta;
 
-        const relX = drop.pos.x - camX;
-        const relZ = drop.pos.z - camZ;
-        const distFromCam = Math.sqrt(relX * relX + relZ * relZ);
-
-        // Distance LOD
-        let distScale = 1.0;
-        if (distFromCam > 10.0) {
-          distScale = Math.max(0.001, 1.0 - (distFromCam - 10.0) / 12.0);
-        }
+        // Wrap around camera
+        if (drop.pos.x < camX - halfW) drop.pos.x += this.boxWidth;
+        if (drop.pos.x > camX + halfW) drop.pos.x -= this.boxWidth;
+        if (drop.pos.z < camZ - halfD) drop.pos.z += this.boxDepth;
+        if (drop.pos.z > camZ + halfD) drop.pos.z -= this.boxDepth;
 
         if (isCollisionEnabled) {
-          const surfInfo = this.getSurfaceInfo(drop.pos.x, drop.pos.z);
-          if (drop.pos.y <= surfInfo.y) {
-            if (distFromCam < splashDistance && Math.random() < hitChance) {
+          const hitInfo = this.getSurfaceInfo(drop.pos.x, drop.pos.z);
+          if (drop.pos.y <= hitInfo.y) {
+            const distToCamSq =
+              (drop.pos.x - camX) * (drop.pos.x - camX) +
+              (drop.pos.z - camZ) * (drop.pos.z - camZ);
+
+            if (distToCamSq < splashDistance * splashDistance && Math.random() < hitChance) {
               this.spawnSplashAndRipple(
-                drop.pos.x, surfInfo.y, drop.pos.z,
-                surfInfo.nx, surfInfo.ny, surfInfo.nz,
-                windVelX, windVelZ,
+                drop.pos.x,
+                hitInfo.y,
+                drop.pos.z,
+                hitInfo.nx,
+                hitInfo.ny,
+                hitInfo.nz,
+                windVelX,
+                windVelZ,
                 this.activeRainIntensity,
                 this.activeWindIntensity
               );
             }
-            drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
-            drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
-            drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
-          } else if (relX < -halfW || relX > halfW || relZ < -halfD || relZ > halfD || drop.pos.y > camY + this.boxHeight + 10) {
-            drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
-            drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
-            drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+            drop.pos.y = camY + (this.boxHeight * 0.5) + Math.random() * 8.0;
           }
         } else {
           // Free fall without collision check (max performance)
-          if (drop.pos.y < camY - 12 || relX < -halfW || relX > halfW || relZ < -halfD || relZ > halfD || drop.pos.y > camY + this.boxHeight + 10) {
-            drop.pos.x = camX + (Math.random() - 0.5) * this.boxWidth;
-            drop.pos.y = Math.max(camY + 8, 14) + Math.random() * (this.boxHeight * 0.70);
-            drop.pos.z = camZ + (Math.random() - 0.5) * this.boxDepth;
+          if (drop.pos.y < camY - 2.0) {
+            drop.pos.y = camY + (this.boxHeight * 0.5) + Math.random() * 8.0;
           }
         }
+
+        const distScale = Math.min(1.0, 0.4 + (Math.abs(drop.pos.y - camY) / (this.boxHeight * 0.5)) * 0.6);
 
         this.dummyObj.position.copy(drop.pos);
         this.dummyObj.rotation.set(slantAngleX, 0, slantAngleZ);
@@ -636,8 +642,8 @@ export class WeatherParticleSystem {
         sp.life -= delta;
         if (sp.life <= 0) {
           sp.active = false;
-          this.dummyObj.position.set(0, -999, 0);
-          this.dummyObj.scale.set(0.001, 0.001, 0.001);
+          this.dummyObj.position.set(0, -9999, 0);
+          this.dummyObj.scale.set(0, 0, 0);
           this.dummyObj.updateMatrix();
           this.instancedSplashes.setMatrixAt(i, this.dummyObj.matrix);
           continue;
@@ -658,12 +664,18 @@ export class WeatherParticleSystem {
     if (this.instancedRipples) {
       for (let i = 0; i < this.maxRippleCount; i++) {
         const rp = this.rippleParticles[i];
-        if (!rp.active) continue;
+        if (!rp.active) {
+          this.dummyObj.position.set(0, -9999, 0);
+          this.dummyObj.scale.set(0, 0, 0);
+          this.dummyObj.updateMatrix();
+          this.instancedRipples.setMatrixAt(i, this.dummyObj.matrix);
+          continue;
+        }
         rp.life -= delta;
         if (rp.life <= 0) {
           rp.active = false;
-          this.dummyObj.position.set(0, -999, 0);
-          this.dummyObj.scale.set(0.001, 0.001, 0.001);
+          this.dummyObj.position.set(0, -9999, 0);
+          this.dummyObj.scale.set(0, 0, 0);
           this.dummyObj.updateMatrix();
           this.instancedRipples.setMatrixAt(i, this.dummyObj.matrix);
           continue;

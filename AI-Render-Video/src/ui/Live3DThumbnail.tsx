@@ -255,14 +255,31 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
   }, [assetPath, previewUrl]);
 
   useEffect(() => {
-    // If explicit preview URL is provided and has not failed, use it
-    if (previewUrl && previewUrl.trim() !== '' && !hasFailed) {
-      setImgSrc(previewUrl);
+    const cleanKey = (assetPath || '').trim();
+    if (!cleanKey) return;
+
+    const p = cleanKey.toLowerCase();
+    const isImage =
+      p.endsWith('.png') ||
+      p.endsWith('.jpg') ||
+      p.endsWith('.jpeg') ||
+      p.endsWith('.webp') ||
+      p.endsWith('.gif') ||
+      p.endsWith('.bmp');
+
+    // If it's a 2D image (skybox, background, texture), load directly as image
+    if (isImage) {
+      const url = cleanKey.startsWith('/') || cleanKey.startsWith('http') ? cleanKey : `/${cleanKey}`;
+      setImgSrc(url);
       return;
     }
 
-    const cleanKey = (assetPath || '').trim();
-    if (!cleanKey) return;
+    // If explicit preview URL is provided and has not failed, use it
+    if (previewUrl && previewUrl.trim() !== '' && !hasFailed) {
+      const pUrl = previewUrl.startsWith('/') || previewUrl.startsWith('http') ? previewUrl : `/${previewUrl}`;
+      setImgSrc(pUrl);
+      return;
+    }
 
     // 1. Check RAM Cache (Instant)
     if (snapshotCache.has(cleanKey)) {
@@ -281,7 +298,6 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
     });
 
     // Only generate for 3D model formats (including folder-bundle paths like scene.gltf)
-    const p = cleanKey.toLowerCase();
     const is3DModel =
       p.endsWith('.glb') ||
       p.endsWith('.gltf') ||

@@ -85,6 +85,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   const [categories, setCategories] = useState<MapCategory[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState('ban_do');
   const [activeSubCategoryId, setActiveSubCategoryId] = useState('all');
+  const [hideEmptyCategories, setHideEmptyCategories] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingManifest, setIsLoadingManifest] = useState(true);
 
@@ -655,9 +656,24 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   };
 
   // ─── Current Active Category & Subcategory Items ──────────────
+  const visibleCategories = hideEmptyCategories
+    ? categories.filter((cat) => cat.items.length > 0)
+    : categories;
+
   const currentCategory = categories.find((c) => c.id === activeCategoryId);
-  const subCategories = currentCategory?.subCategories || [];
+  const rawSubCategories = currentCategory?.subCategories || [];
+  const subCategories = hideEmptyCategories
+    ? rawSubCategories.filter((s) => s.items.length > 0)
+    : rawSubCategories;
   const hasSubCategories = subCategories.length > 0;
+
+  useEffect(() => {
+    const isCurrentCatVisible = visibleCategories.some((c) => c.id === activeCategoryId);
+    if (!isCurrentCatVisible && visibleCategories.length > 0) {
+      setActiveCategoryId(visibleCategories[0].id);
+      setActiveSubCategoryId('all');
+    }
+  }, [hideEmptyCategories, categories, visibleCategories, activeCategoryId]);
 
   const rawItems =
     activeSubCategoryId === 'all' || !hasSubCategories
@@ -1275,15 +1291,42 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             background: 'rgba(255,255,255,0.02)',
-            gap: 12,
+            gap: 10,
             flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Layers size={14} color="#4ade80" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#4ade80' }}>
-              Kho Tài Nguyên Bối Cảnh & Map
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Layers size={14} color="#4ade80" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#4ade80' }}>
+                Kho Tài Nguyên Bối Cảnh & Map
+              </span>
+            </div>
+
+            {/* Hide Empty Items (Count = 0) Toggle */}
+            <div
+              onClick={() => setHideEmptyCategories(!hideEmptyCategories)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '3px 9px',
+                borderRadius: 20,
+                cursor: 'pointer',
+                background: hideEmptyCategories ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1px solid ${hideEmptyCategories ? 'rgba(74, 222, 128, 0.4)' : 'rgba(255, 255, 255, 0.15)'}`,
+                color: hideEmptyCategories ? '#4ade80' : '#94a3b8',
+                fontSize: 11,
+                fontWeight: 600,
+                userSelect: 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title="Bật/Tắt ẩn danh mục không có tài nguyên (số lượng = 0)"
+            >
+              {hideEmptyCategories ? <EyeOff size={13} color="#4ade80" /> : <Eye size={13} color="#94a3b8" />}
+              <span>{hideEmptyCategories ? 'Đang Ẩn mục (0)' : 'Hiện tất cả'}</span>
+            </div>
+
             {toastMessage && (
               <span style={{ fontSize: 11, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <CheckCircle size={13} /> {toastMessage}
@@ -1292,7 +1335,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
           </div>
 
           {/* Search Box */}
-          <div style={{ position: 'relative', width: 220 }}>
+          <div style={{ position: 'relative', width: 200 }}>
             <Search size={12} color="#64748b" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
@@ -1313,32 +1356,25 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
           </div>
         </div>
 
-        {/* Catalog Layout: Dynamic Width Vertical Tabs + Content Grid */}
+        {/* Catalog Layout: Single-Column Vertical Tabs + Content Grid */}
         <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          {/* Tabs Sidebar with Multi-Column Overflow Grid (Col 1 -> Col 2 -> Col 3) & Horizontal Scroll */}
+          {/* Single-Column Clean Vertical Sidebar Tabs */}
           <div
-            onWheel={(e) => {
-              if (e.deltaY !== 0) {
-                e.currentTarget.scrollLeft += e.deltaY;
-              }
-            }}
             style={{
-              maxHeight: '100%',
+              width: 140,
               height: '100%',
               flexShrink: 0,
               display: 'flex',
               flexDirection: 'column',
-              flexWrap: 'wrap',
-              alignContent: 'flex-start',
               borderRight: '1px solid rgba(255, 255, 255, 0.08)',
               background: 'rgba(15, 23, 42, 0.95)',
               gap: 4,
-              padding: '6px',
-              overflowX: 'auto',
-              overflowY: 'hidden',
+              padding: '8px 6px',
+              overflowY: 'auto',
+              overflowX: 'hidden',
             }}
           >
-            {categories.map((cat) => {
+            {visibleCategories.map((cat) => {
               const isActive = activeCategoryId === cat.id;
               const count = cat.items.length;
               return (
@@ -1350,21 +1386,21 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                   }}
                   title={cat.label}
                   style={{
-                    width: 114,
-                    height: 42,
+                    width: '100%',
+                    minHeight: 40,
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '4px 6px',
+                    padding: '6px 8px',
                     border: 'none',
                     cursor: 'pointer',
                     borderRadius: 6,
                     borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
                     background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.03)',
-                    color: isActive ? '#38bdf8' : '#94a3b8',
+                    color: isActive ? '#38bdf8' : count > 0 ? '#cbd5e1' : '#64748b',
+                    opacity: count === 0 ? 0.6 : 1.0,
                     transition: 'all 0.15s ease',
-                    position: 'relative',
                     boxSizing: 'border-box',
                   }}
                 >
@@ -1372,7 +1408,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 700,
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
@@ -1390,9 +1426,9 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                   {/* Badge */}
                   <span
                     style={{
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: 700,
-                      padding: '1px 4px',
+                      padding: '1px 5px',
                       borderRadius: 8,
                       background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)',
                       color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569',
@@ -1494,8 +1530,9 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
                     gap: 10,
+                    alignItems: 'stretch',
                   }}
                 >
                   {displayItems.map((item) => {
@@ -1513,16 +1550,17 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                         title="Nhấn hoặc Kéo thả vào khung 3D bên trái"
                         style={{
                           background: isAlreadyPlaced ? 'rgba(74, 222, 128, 0.12)' : 'rgba(255,255,255,0.03)',
-                          border: isAlreadyPlaced ? '1px solid #4ade80' : '1px solid rgba(255,255,255,0.08)',
+                          border: isAlreadyPlaced ? '1.5px solid #4ade80' : '1px solid rgba(255,255,255,0.08)',
                           borderRadius: 8,
-                          padding: 8,
+                          padding: 7,
                           cursor: 'grab',
                           display: 'flex',
                           flexDirection: 'column',
-                          alignItems: 'center',
+                          alignItems: 'stretch',
+                          justifyContent: 'space-between',
                           gap: 6,
                           position: 'relative',
-                          transition: 'all 0.15s',
+                          transition: 'all 0.15s ease',
                         }}
                       >
                         {/* Placed Indicator Badge */}
@@ -1530,8 +1568,8 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                           <div
                             style={{
                               position: 'absolute',
-                              top: 4,
-                              left: 4,
+                              top: 5,
+                              left: 5,
                               background: '#16a34a',
                               color: '#fff',
                               fontSize: 8,
@@ -1554,8 +1592,8 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                           title="Thêm nhanh vào bản đồ"
                           style={{
                             position: 'absolute',
-                            top: 4,
-                            right: 4,
+                            top: 5,
+                            right: 5,
                             background: '#38bdf8',
                             color: '#000',
                             border: 'none',
@@ -1567,40 +1605,42 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                             justifyContent: 'center',
                             cursor: 'pointer',
                             zIndex: 2,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
                           }}
                         >
-                          <Plus size={12} strokeWidth={3} />
+                          <Plus size={11} strokeWidth={3} />
                         </button>
 
                         {/* Live 3D Thumbnail / 2D Companion Preview */}
-                        <Live3DThumbnail
-                          assetPath={item.path}
-                          previewUrl={item.previewUrl}
-                          altText={item.name}
-                          fallbackIcon={currentCategory?.icon || '📦'}
-                          format={item.format}
-                          height={85}
-                        />
+                        <div style={{ width: '100%', height: 80, overflow: 'hidden', borderRadius: 6 }}>
+                          <Live3DThumbnail
+                            assetPath={item.path}
+                            previewUrl={item.previewUrl}
+                            altText={item.name}
+                            fallbackIcon={currentCategory?.icon || '📦'}
+                            format={item.format}
+                            height={80}
+                          />
+                        </div>
 
                         {/* Item Title & Info */}
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            color: isAlreadyPlaced ? '#4ade80' : '#e2e8f0',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            width: '100%',
-                          }}
-                        >
-                          {item.name}
-                        </span>
-
-                        <span style={{ fontSize: 9, color: '#64748b' }}>
-                          {item.format} • {item.sizeMB} MB
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: isAlreadyPlaced ? '#4ade80' : '#e2e8f0',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {item.name}
+                          </span>
+                          <span style={{ fontSize: 9, color: '#64748b' }}>
+                            {item.format} • {item.sizeMB} MB
+                          </span>
+                        </div>
                       </div>
                     );
                   })}

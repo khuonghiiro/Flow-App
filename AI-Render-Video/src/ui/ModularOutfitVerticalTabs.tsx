@@ -19,6 +19,8 @@ import {
   ToggleLeft,
   ToggleRight,
   Download,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import {
   CHARACTER_CATEGORIES,
@@ -57,33 +59,33 @@ const DEFAULT_PRESETS: CustomPreset[] = [
   {
     id: 'preset_amber_nectar',
     name: '🧑 Lý Tiên Sinh',
-    body: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/man/amber_nectar_-_manekin.glb',
-    face: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
+    body: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
+    costume: 'assets/characters/costumes/nam/amber_nectar_-_manekin.glb',
+    face: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
     gender: 'male',
   },
   {
     id: 'preset_precision_strike',
     name: '👩 Nữ Võ Khách',
-    body: 'assets/characters/base_bodies/male/body_base_-_manekina.glb',
-    costume: 'assets/characters/costumes/male/precision_strike_-_manekina.glb',
+    body: 'assets/characters/base_bodies/nu/body_base_-_manekina.glb',
+    costume: 'assets/characters/costumes/nu/precision_strike_-_manekina.glb',
     face: '',
     gender: 'female',
   },
   {
     id: 'preset_scary_cat',
     name: '🐱 Hắc Miêu Hiệp Sĩ',
-    body: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/man/scary_cat_-_manekin.glb',
-    face: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
+    body: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
+    costume: 'assets/characters/costumes/nam/scary_cat_-_manekin.glb',
+    face: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
     gender: 'male',
   },
   {
     id: 'preset_sleuth_verdict',
     name: '🕵️ Thám Tử',
-    body: 'assets/characters/base_bodies/man/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/man/sleuths_verdict_-_manekin.glb',
-    face: 'assets/characters/faces/man/dawnbreaker_-_manekin.glb',
+    body: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
+    costume: 'assets/characters/costumes/nam/sleuths_verdict_-_manekin.glb',
+    face: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
     gender: 'male',
   },
 ];
@@ -105,8 +107,23 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const [categories, setCategories] = useState<CharacterCategory[]>(CHARACTER_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState('than_co_ban');
   const [genderFilter, setGenderFilter] = useState<'male' | 'female'>('male');
+  const [hideEmptyCategories, setHideEmptyCategories] = useState<boolean>(true);
   const [useSharedFaceSliders, setUseSharedFaceSliders] = useState(true);
   const [selectedActorId, setSelectedActorId] = useState(scene.actors[0]?.id || '');
+
+  // Visible categories filtered by empty count
+  const visibleCategories = hideEmptyCategories
+    ? categories.filter((cat) => filterByGender(cat.items, genderFilter).length > 0)
+    : categories;
+
+  useEffect(() => {
+    if (activeCategoryId !== '_sliders') {
+      const isCurrentVisible = visibleCategories.some((c) => c.id === activeCategoryId);
+      if (!isCurrentVisible && visibleCategories.length > 0) {
+        setActiveCategoryId(visibleCategories[0].id);
+      }
+    }
+  }, [genderFilter, hideEmptyCategories, categories, visibleCategories, activeCategoryId]);
 
   // Character Profile State
   const currentActor = scene.actors.find((a) => a.id === selectedActorId) || scene.actors[0];
@@ -452,17 +469,45 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', gap: 8, flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8' }}>Xưởng Lắp Ráp & Hồ Sơ Nhân Vật</span>
+
+          {/* Gender Filter Toggle */}
           <div
             onClick={() => { const nextG = genderFilter === 'male' ? 'female' : 'male'; setGenderFilter(nextG); setCharGender(nextG); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 20, cursor: 'pointer', background: genderFilter === 'male' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(236, 72, 153, 0.15)', border: `1px solid ${genderFilter === 'male' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(236, 72, 153, 0.4)'}` }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 20, cursor: 'pointer', background: genderFilter === 'male' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(236, 72, 153, 0.15)', border: `1px solid ${genderFilter === 'male' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(236, 72, 153, 0.4)'}`, userSelect: 'none' }}
           >
             {genderFilter === 'male' ? <ToggleLeft size={14} color="#38bdf8" /> : <ToggleRight size={14} color="#ec4899" />}
             <span style={{ fontSize: 11, fontWeight: 700, color: genderFilter === 'male' ? '#38bdf8' : '#ec4899' }}>{genderFilter === 'male' ? '♂ Nam' : '♀ Nữ'}</span>
           </div>
+
+          {/* Hide Empty Items (Count = 0) Toggle */}
+          <div
+            onClick={() => setHideEmptyCategories(!hideEmptyCategories)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 9px',
+              borderRadius: 20,
+              cursor: 'pointer',
+              background: hideEmptyCategories ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              border: `1px solid ${hideEmptyCategories ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.15)'}`,
+              color: hideEmptyCategories ? '#38bdf8' : '#94a3b8',
+              fontSize: 11,
+              fontWeight: 600,
+              userSelect: 'none',
+              transition: 'all 0.15s ease',
+            }}
+            title="Bật/Tắt ẩn danh mục không có tài nguyên (số lượng = 0)"
+          >
+            {hideEmptyCategories ? <EyeOff size={13} color="#38bdf8" /> : <Eye size={13} color="#94a3b8" />}
+            <span>{hideEmptyCategories ? 'Đang Ẩn mục (0)' : 'Hiện tất cả'}</span>
+          </div>
+
           {isAppliedSuccess && <span style={{ fontSize: 11, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={13} /> Đã áp dụng!</span>}
           {presetSavedToast && <span style={{ fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={13} /> {presetSavedToast}</span>}
           {jsonImportToast && <span style={{ fontSize: 11, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={13} /> {jsonImportToast}</span>}
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={handleSaveCustomPreset} style={btnStyle('#10b981', '#34d399')}><Save size={12} /> Lưu Mẫu</button>
           <button onClick={handleExportJSON} style={btnStyle('#0ea5e9', '#38bdf8')}><Download size={12} /> Xuất JSON</button>
@@ -473,12 +518,23 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 
       {/* ─── MAIN AREA ──────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Sidebar Tabs */}
+        {/* Single-Column Clean Vertical Sidebar Tabs */}
         <div
-          onWheel={(e) => { if (e.deltaY !== 0) e.currentTarget.scrollLeft += e.deltaY; }}
-          style={{ maxHeight: '100%', height: '100%', flexShrink: 0, display: 'flex', flexDirection: 'column', flexWrap: 'wrap', alignContent: 'flex-start', borderRight: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(15, 23, 42, 0.95)', gap: 4, padding: '6px', overflowX: 'auto', overflowY: 'hidden', scrollBehavior: 'smooth' }}
+          style={{
+            width: 140,
+            height: '100%',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(15, 23, 42, 0.95)',
+            gap: 4,
+            padding: '8px 6px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
         >
-          {categories.map((cat) => {
+          {visibleCategories.map((cat) => {
             const isActive = activeCategoryId === cat.id;
             const count = filterByGender(cat.items, genderFilter).length;
             return (
@@ -486,25 +542,58 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
                 key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
                 title={cat.label}
-                style={{ width: 112, height: 42, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, padding: '4px 6px', border: 'none', cursor: 'pointer', borderRadius: 6, borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent', background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.03)', color: isActive ? '#38bdf8' : '#94a3b8', boxSizing: 'border-box' }}
+                style={{
+                  width: '100%',
+                  minHeight: 40,
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
+                  background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                  color: isActive ? '#38bdf8' : count > 0 ? '#cbd5e1' : '#64748b',
+                  opacity: count === 0 ? 0.6 : 1.0,
+                  boxSizing: 'border-box',
+                  transition: 'all 0.15s ease',
+                }}
               >
                 <span style={{ fontSize: 16 }}>{cat.icon}</span>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'left' }}>{cat.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'left' }}>{cat.label}</span>
                   <span style={{ fontSize: 8, color: isActive ? '#38bdf8' : '#64748b', fontWeight: 600 }}>{count} món</span>
                 </div>
-                <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 8, background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)', color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569' }}>{count}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)', color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569' }}>{count}</span>
               </button>
             );
           })}
           <button
             onClick={() => setActiveCategoryId('_sliders')}
             title="Cấu Hình Slider Khuôn Mặt"
-            style={{ width: 112, height: 42, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, padding: '4px 6px', border: 'none', cursor: 'pointer', borderRadius: 6, borderLeft: activeCategoryId === '_sliders' ? '3px solid #fbbf24' : '3px solid transparent', background: activeCategoryId === '_sliders' ? 'rgba(251, 191, 36, 0.18)' : 'rgba(255, 255, 255, 0.03)', color: activeCategoryId === '_sliders' ? '#fbbf24' : '#94a3b8', boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              minHeight: 40,
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 8px',
+              border: 'none',
+              cursor: 'pointer',
+              borderRadius: 6,
+              borderLeft: activeCategoryId === '_sliders' ? '3px solid #fbbf24' : '3px solid transparent',
+              background: activeCategoryId === '_sliders' ? 'rgba(251, 191, 36, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+              color: activeCategoryId === '_sliders' ? '#fbbf24' : '#94a3b8',
+              boxSizing: 'border-box',
+              transition: 'all 0.15s ease',
+            }}
           >
             <Sliders size={16} />
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Thanh Trượt</span>
+              <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Thanh Trượt</span>
               <span style={{ fontSize: 8, color: activeCategoryId === '_sliders' ? '#fbbf24' : '#64748b', fontWeight: 600 }}>Chi tiết mặt</span>
             </div>
           </button>
@@ -599,7 +688,7 @@ function ItemsGrid({ items, selectedPath, onSelect, fallbackIcon }: {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))', gap: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(115px, 1fr))', gap: 10, alignItems: 'stretch' }}>
       {items.map((item) => {
         const isSelected = selectedPath === item.path;
         return (
@@ -607,15 +696,36 @@ function ItemsGrid({ items, selectedPath, onSelect, fallbackIcon }: {
             key={item.id || item.path}
             onClick={() => onSelect(item.path)}
             title={item.name}
-            style={{ cursor: 'pointer', borderRadius: 6, padding: 5, display: 'flex', flexDirection: 'column', gap: 4, border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.06)', background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255,255,255,0.02)', position: 'relative' }}
+            style={{
+              cursor: 'pointer',
+              borderRadius: 8,
+              padding: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              justifyContent: 'space-between',
+              gap: 6,
+              border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+              background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.03)',
+              position: 'relative',
+              boxShadow: isSelected ? '0 0 10px rgba(56, 189, 248, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
           >
-            <Live3DThumbnail assetPath={item.path} previewUrl={item.preview} altText={item.name} fallbackIcon={fallbackIcon} format={item.format || 'GLB'} height={70} />
-            <span style={{ fontSize: 10, fontWeight: 600, color: isSelected ? '#38bdf8' : '#e2e8f0', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>
-              {item.name}
-            </span>
+            <div style={{ width: '100%', height: 75, overflow: 'hidden', borderRadius: 6 }}>
+              <Live3DThumbnail assetPath={item.path} previewUrl={item.preview} altText={item.name} fallbackIcon={fallbackIcon} format={item.format || 'GLB'} height={75} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: isSelected ? '#38bdf8' : '#e2e8f0', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {item.name}
+              </span>
+              <span style={{ fontSize: 9, color: '#64748b' }}>
+                {item.format || 'GLB'} • {item.sizeMB || '0.5'} MB
+              </span>
+            </div>
             {isSelected && (
-              <div style={{ position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: 7, background: '#38bdf8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Check size={9} strokeWidth={3} />
+              <div style={{ position: 'absolute', top: 6, right: 6, width: 16, height: 16, borderRadius: 8, background: '#38bdf8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                <Check size={10} strokeWidth={3} />
               </div>
             )}
           </div>
