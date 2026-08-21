@@ -1,31 +1,73 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Folder, FolderOpen, Box, User, Map as MapIcon, Music, Sparkles, Film, 
-  Search, Plus, Check, ChevronRight, Upload, Play, Eye, Maximize2, Minimize2,
-  Layers, RefreshCw
+/**
+ * AssetBrowserPanel.tsx
+ *
+ * Full-featured Project Assets Browser with Vertical Tabs, Vietnamese Taxonomy,
+ * Subcategory Pills, Gender Filters, Quick Actions, and Live 3D Preview with IndexedDB caching.
+ * Designed to match the look-and-feel of Character Workbench & Map Designer.
+ */
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import {
+  Folder,
+  FolderOpen,
+  Box,
+  User,
+  Map as MapIcon,
+  Music,
+  Sparkles,
+  Film,
+  Search,
+  Plus,
+  Check,
+  ChevronRight,
+  Upload,
+  Play,
+  Eye,
+  Maximize2,
+  Minimize2,
+  Layers,
+  RefreshCw,
+  Sliders,
+  Filter,
 } from 'lucide-react';
 import { PlacedProp } from '../types/map_preset';
-import { fetchLiveAssetManifest } from '../core/assets/AssetManifestLoader';
+import { Live3DThumbnail } from './Live3DThumbnail';
 
 export interface AssetItem {
   id: string;
   name: string;
   path: string;
+  category?: string;
+  subCategory?: string;
   folder: string;
   type: 'prop' | 'character' | 'map' | 'audio' | 'vfx' | 'animation' | 'skybox';
   format: string;
   size?: string;
+  sizeMB?: string;
   tags?: string[];
   description?: string;
-  previewColor?: string;
   previewUrl?: string;
-  gender?: 'male' | 'female';
+  previewColor?: string;
+  gender?: 'male' | 'female' | 'unisex';
   // Specific data
   propData?: Partial<PlacedProp>;
   mapId?: string;
   vrmUrl?: string;
   audioUrl?: string;
   animName?: string;
+}
+
+export interface SubCategoryTab {
+  id: string;
+  label: string;
+  icon?: string;
+}
+
+export interface CategoryTab {
+  id: string;
+  label: string;
+  icon: string;
+  group: 'character' | 'world' | 'media';
+  subCategories?: SubCategoryTab[];
 }
 
 interface AssetBrowserPanelProps {
@@ -39,395 +81,93 @@ interface AssetBrowserPanelProps {
   onToggleMaximize?: () => void;
 }
 
-const DEFAULT_ASSET_DATABASE: AssetItem[] = [
-  // --- PROPS: NATURE ---
+// ─── Standard Category Tabs (Vietnamese taxonomy) ───────────────
+const CATEGORY_TABS: CategoryTab[] = [
+  // ─── Characters ───
+  { id: 'than_co_ban', label: 'Thân Cơ Bản', icon: '🧍', group: 'character' },
+  { id: 'trang_phuc', label: 'Trang Phục', icon: '👘', group: 'character' },
+  { id: 'khuon_mat', label: 'Khuôn Mặt', icon: '🎭', group: 'character' },
+  { id: 'kieu_toc', label: 'Kiểu Tóc', icon: '💇', group: 'character' },
+  { id: 'mu_non', label: 'Mũ & Nón', icon: '🎩', group: 'character' },
+  { id: 'giay_dep', label: 'Giày Dép', icon: '👟', group: 'character' },
+  { id: 'phu_kien', label: 'Phụ Kiện', icon: '💍', group: 'character' },
+  { id: 'kieu_rau', label: 'Râu', icon: '🧔', group: 'character' },
+  { id: 'canh', label: 'Đôi Cánh', icon: '🪽', group: 'character' },
+  { id: 'duoi', label: 'Đuôi Thú', icon: '🦊', group: 'character' },
+  { id: '_lap_rap', label: 'Nhân Vật Đã Ráp', icon: '✨', group: 'character' },
+
+  // ─── World & Maps ───
+  { id: 'ban_do', label: 'Bản Đồ 3D', icon: '🗺️', group: 'world' },
+  { id: '_custom_ban_do', label: 'Map Tự Thiết Kế', icon: '🏰', group: 'world' },
+  { id: 'cay_coi', label: 'Cây Cối', icon: '🌳', group: 'world' },
+  { id: 'da_dia_hinh', label: 'Đá & Địa Hình', icon: '🪨', group: 'world' },
   {
-    id: 'prop_tree_sakura',
-    name: 'Cây Hoa Anh Đào',
-    path: 'Assets/Props/Nature/tree_sakura.glb',
-    folder: 'Assets/Props/Nature',
-    type: 'prop',
-    format: 'GLB',
-    size: '1.4 MB',
-    tags: ['cây', 'hoa anh đào', 'thiên nhiên', 'leo trèo'],
-    description: 'Cây anh đào tán rộng nở hoa rực rỡ, có socket leo trèo',
-    previewColor: '#ec4899',
-    propData: {
-      type: 'nature',
-      scale: 1.2,
-      is_obstacle: true,
-      obstacle_radius: 0.8,
-      smart_socket: {
-        socket_type: 'climb',
-        entry_offset: [0, 0, 1.2],
-        target_offset: [0, 2.2, 0],
-        target_rotation_y: 0
-      }
-    }
+    id: 'dong_vat',
+    label: 'Động Vật',
+    icon: '🐾',
+    group: 'world',
+    subCategories: [
+      { id: 'tren_can', label: 'Trên Cạn', icon: '🐾' },
+      { id: 'duoi_nuoc', label: 'Dưới Nước', icon: '🐟' },
+      { id: 'tren_troi', label: 'Trên Trời', icon: '🦅' },
+    ],
   },
+  { id: 'vu_khi', label: 'Vũ Khí', icon: '⚔️', group: 'world' },
+  { id: 'dung_cu', label: 'Dụng Cụ', icon: '🛠️', group: 'world' },
+  { id: 'do_tieu_hao', label: 'Đồ Tiêu Hao', icon: '🏺', group: 'world' },
+  { id: 'noi_that', label: 'Nội Thất', icon: '🪑', group: 'world' },
+  { id: 'cong_trinh', label: 'Công Trình', icon: '🏯', group: 'world' },
+  { id: 'phuong_tien', label: 'Phương Tiện', icon: '🚗', group: 'world' },
   {
-    id: 'prop_tree_oak',
-    name: 'Cây Sồi Cổ Thụ',
-    path: 'Assets/Props/Nature/tree_oak.glb',
-    folder: 'Assets/Props/Nature',
-    type: 'prop',
-    format: 'Procedural',
-    size: '12 KB',
-    tags: ['cây', 'sồi', 'bóng mát'],
-    description: 'Cây xanh tán tròn thân gỗ sồi tự nhiên',
-    previewColor: '#16a34a',
-    propData: { type: 'nature', scale: 1.0, is_obstacle: true, obstacle_radius: 0.6 }
-  },
-  {
-    id: 'prop_farm_plot',
-    name: 'Vườn Nông Trại & Thảo Dược',
-    path: 'Assets/Props/Nature/farm_plot.glb',
-    folder: 'Assets/Props/Nature',
-    type: 'prop',
-    format: 'Procedural',
-    size: '18 KB',
-    tags: ['nông trại', 'vườn', 'cây trồng'],
-    description: 'Luống đất cày xới trồng rau củ xanh tươi',
-    previewColor: '#854d0e',
-    propData: { type: 'nature', scale: 1.0, is_obstacle: false }
-  },
-  {
-    id: 'prop_duck',
-    name: 'Chú Vịt Đồng Quê',
-    path: 'Assets/Props/Creatures/duck_prop.glb',
-    folder: 'Assets/Props/Creatures',
-    type: 'prop',
-    format: 'GLB',
-    size: '120 KB',
-    tags: ['vịt', 'động vật', 'vui nhộn'],
-    description: 'Chú vịt vàng bơi lội sinh động',
-    previewColor: '#eab308',
-    propData: { type: 'animal', scale: 1.0, is_obstacle: false }
+    id: 'bau_troi',
+    label: 'Bầu Trời & Skybox',
+    icon: '🌅',
+    group: 'world',
+    subCategories: [
+      { id: 'binh_minh', label: 'Bình Minh', icon: '🌅' },
+      { id: 'buoi_sang', label: 'Buổi Sáng', icon: '☀️' },
+      { id: 'buoi_trua', label: 'Buổi Trưa', icon: '🌞' },
+      { id: 'buoi_chieu', label: 'Buổi Chiều', icon: '🌇' },
+      { id: 'buoi_toi', label: 'Buổi Tối', icon: '🌙' },
+      { id: 'giong_bao', label: 'Giông Bão', icon: '⛈️' },
+    ],
   },
 
-  // --- PROPS: FURNITURE ---
+  // ─── Media & VFX ───
   {
-    id: 'prop_chair_wood',
-    name: 'Ghế Gỗ Nghỉ Ngơi',
-    path: 'Assets/Props/Furniture/chair_wooden.glb',
-    folder: 'Assets/Props/Furniture',
-    type: 'prop',
-    format: 'Procedural',
-    size: '8 KB',
-    tags: ['ghế', 'nội thất', 'ngồi'],
-    description: 'Ghế tựa bằng gỗ có socket ngồi nghỉ',
-    previewColor: '#d97706',
-    propData: {
-      type: 'furniture',
-      scale: 1.0,
-      is_obstacle: true,
-      obstacle_radius: 0.5,
-      smart_socket: {
-        socket_type: 'sit',
-        entry_offset: [0, 0, 0.8],
-        target_offset: [0, 0.45, 0],
-        target_rotation_y: 0
-      }
-    }
+    id: 'audio',
+    label: 'Âm Thanh',
+    icon: '🎵',
+    group: 'media',
+    subCategories: [
+      { id: 'bgm', label: 'Nhạc Nền (BGM)', icon: '🎼' },
+      { id: 'sfx_combat', label: 'SFX Chiến Đấu', icon: '⚔️' },
+      { id: 'sfx_ambient', label: 'SFX Môi Trường', icon: '🍃' },
+      { id: 'sfx_interaction', label: 'SFX Tương Tác', icon: '💬' },
+    ],
   },
   {
-    id: 'prop_lantern_stand',
-    name: 'Trụ Đèn Lồng Cổ Trang',
-    path: 'Assets/Props/Furniture/lantern_stand.glb',
-    folder: 'Assets/Props/Furniture',
-    type: 'prop',
-    format: 'GLB',
-    size: '9.8 MB',
-    tags: ['đèn', 'ánh sáng', 'lồng đèn'],
-    description: 'Trụ đèn lồng phát ánh sáng vàng ấm cúng ban đêm',
-    previewColor: '#f97316',
-    propData: { type: 'furniture', scale: 1.0, is_obstacle: true, obstacle_radius: 0.4 }
+    id: 'animations',
+    label: 'Hoạt Ảnh (Anim)',
+    icon: '🎬',
+    group: 'media',
+    subCategories: [
+      { id: 'combat', label: 'Chiến Đấu', icon: '⚔️' },
+      { id: 'xianxia', label: 'Tiên Hiệp', icon: '🧘' },
+      { id: 'locomotion', label: 'Di Chuyển', icon: '🚶' },
+      { id: 'interactions', label: 'Tương Tác', icon: '🤝' },
+    ],
   },
   {
-    id: 'prop_stone_bench',
-    name: 'Ghế Đá Ven Hồ',
-    path: 'Assets/Props/Furniture/bench_stone.glb',
-    folder: 'Assets/Props/Furniture',
-    type: 'prop',
-    format: 'Procedural',
-    size: '14 KB',
-    tags: ['ghế đá', 'ven hồ', 'ngồi'],
-    description: 'Ghế dài phiến đá tự nhiên',
-    previewColor: '#64748b',
-    propData: {
-      type: 'furniture',
-      scale: 1.1,
-      is_obstacle: true,
-      obstacle_radius: 0.6,
-      smart_socket: {
-        socket_type: 'sit',
-        entry_offset: [0, 0, 0.9],
-        target_offset: [0, 0.5, 0],
-        target_rotation_y: 0
-      }
-    }
+    id: 'hieu_ung',
+    label: 'Hiệu Ứng (VFX)',
+    icon: '✨',
+    group: 'media',
+    subCategories: [
+      { id: 'cam_xuc', label: 'Cảm Xúc', icon: '💭' },
+      { id: 'bao_phu', label: 'Bao Phủ', icon: '🌪️' },
+    ],
   },
-
-  // --- MAPS & PRESETS ---
-  {
-    id: 'map_farming_village',
-    name: 'Làng Quê Yên Bình',
-    path: 'Assets/Maps/farming_village',
-    folder: 'Assets/Maps',
-    type: 'map',
-    format: 'Map Preset',
-    size: 'Standard',
-    tags: ['làng quê', 'đồng cỏ', 'yên bình'],
-    description: 'Bản đồ đồng quê cỏ xanh với cây cối, luống cày và vịt đồng',
-    previewColor: '#22c55e',
-    mapId: 'farming_village'
-  },
-  {
-    id: 'map_sakura_lake',
-    name: 'Làng Hoa Anh Đào Ven Hồ',
-    path: 'Assets/Maps/sakura_lake_village.json',
-    folder: 'Assets/Maps',
-    type: 'map',
-    format: 'Preset JSON',
-    size: '8 KB',
-    tags: ['anh đào', 'ven hồ', 'hoàng hôn'],
-    description: 'Cảnh sắc hồ nước lãng mạn phủ cánh hoa anh đào',
-    previewColor: '#f43f5e',
-    mapId: 'sakura_lake_village'
-  },
-  {
-    id: 'map_cathedral',
-    name: 'Thánh Đường Cổ Kính (3D)',
-    path: 'Assets/Maps/cathedral.glb',
-    folder: 'Assets/Maps',
-    type: 'map',
-    format: 'GLB 3D',
-    size: '108 MB',
-    tags: ['thánh đường', 'cổ kính', 'kiến trúc gothic', '3d'],
-    description: 'Kiến trúc thánh đường châu Âu cổ nguy nga tráng lệ',
-    previewColor: '#8b5cf6',
-    mapId: 'cathedral.glb'
-  },
-  {
-    id: 'map_pirate_island',
-    name: 'Đảo Hải Tặc Phiêu Lưu (3D)',
-    path: 'Assets/Maps/game_pirate_adventure_map.glb',
-    folder: 'Assets/Maps',
-    type: 'map',
-    format: 'GLB 3D',
-    size: '7.8 MB',
-    tags: ['hải tặc', 'biển', 'đảo', 'phiêu lưu'],
-    description: 'Quần đảo nhiệt đới với boong tàu và pháo đài biển',
-    previewColor: '#06b6d4',
-    mapId: 'game_pirate_adventure_map.glb'
-  },
-
-  // --- CHARACTERS: MALE (NAM) ---
-  {
-    id: 'char_warrior_male',
-    name: 'Nam Kiếm Khách (Sample Avatar)',
-    path: 'Assets/Characters/Male/sample_avatar.vrm',
-    folder: 'Assets/Characters/Male',
-    type: 'character',
-    format: 'VRM 1.0',
-    size: '10.3 MB',
-    gender: 'male',
-    tags: ['nam', 'chiến binh', 'kiếm khách', 'vrm'],
-    description: 'Avatar nam kiếm khách tóc bạc dũng mãnh, kèm ảnh tham chiếu 2D',
-    previewColor: '#38bdf8',
-    previewUrl: '/assets/characters/male/sample_avatar.png',
-    vrmUrl: '/assets/characters/male/sample_avatar.vrm'
-  },
-  {
-    id: 'char_manekin_male',
-    name: 'Nam Manekin (Precision Strike)',
-    path: 'Assets/Characters/Male/precision_strike_manekin.glb',
-    folder: 'Assets/Characters/Male',
-    type: 'character',
-    format: 'GLB 3D',
-    size: '1.2 MB',
-    gender: 'male',
-    tags: ['nam', 'manekin', 'xương chuẩn', 'glb'],
-    description: 'Model nam manekin gắn sẵn xương animation, kèm ảnh tham chiếu',
-    previewColor: '#0284c7',
-    previewUrl: '/assets/characters/male/precision_strike_manekin.png',
-    vrmUrl: '/assets/characters/male/precision_strike_manekin.glb'
-  },
-
-  // --- CHARACTERS: FEMALE (NỮ) ---
-  {
-    id: 'char_female_tzitzimitl',
-    name: 'Nữ Chiến Binh (Tzitzimitl)',
-    path: 'Assets/Characters/Female/tzitzimitl_female.glb',
-    folder: 'Assets/Characters/Female',
-    type: 'character',
-    format: 'GLB 3D',
-    size: '3.6 MB',
-    gender: 'female',
-    tags: ['nữ', 'chiến binh', 'xương chuẩn', 'glb'],
-    description: 'Model nữ chiến binh ma pháp gắn sẵn xương animation, kèm ảnh tham chiếu',
-    previewColor: '#ec4899',
-    previewUrl: '/assets/characters/female/tzitzimitl_female.png',
-    vrmUrl: '/assets/characters/female/tzitzimitl_female.glb'
-  },
-  {
-    id: 'char_villager_female',
-    name: 'Nữ Thần Dân Làng',
-    path: 'Assets/Characters/Female/female_villager.vrm',
-    folder: 'Assets/Characters/Female',
-    type: 'character',
-    format: 'VRM',
-    size: '11.2 MB',
-    gender: 'female',
-    tags: ['dân làng', 'nữ', 'trang phục truyền thống'],
-    description: 'Avatar thiếu nữ thôn quê hiền hòa đáng yêu',
-    previewColor: '#a855f7',
-    vrmUrl: '/assets/characters/male/sample_avatar.vrm'
-  },
-
-  // --- ANIMATIONS ---
-  {
-    id: 'anim_heavy_slash',
-    name: 'Combo Trảm Kích (Heavy Slash)',
-    path: 'Assets/Animations/heavy_slash_combo',
-    folder: 'Assets/Animations',
-    type: 'animation',
-    format: 'Motion',
-    tags: ['chém kiếm', 'combat', 'tấn công'],
-    description: 'Động tác chém kiếm xoay vòng 3 nhát liên hoàn tốc biến',
-    previewColor: '#ef4444',
-    animName: 'heavy_slash_combo'
-  },
-  {
-    id: 'anim_talk',
-    name: 'Cử Chỉ Thoại (Talk Gesture)',
-    path: 'Assets/Animations/talk_gesture',
-    folder: 'Assets/Animations',
-    type: 'animation',
-    format: 'Motion',
-    tags: ['nói chuyện', 'hội thoại', 'tay'],
-    description: 'Cử động vẫy tay giao tiếp tự nhiên',
-    previewColor: '#10b981',
-    animName: 'talk_gesture'
-  },
-  {
-    id: 'anim_block',
-    name: 'Đỡ Đòn Phòng Thủ (Block Defend)',
-    path: 'Assets/Animations/block_defend',
-    folder: 'Assets/Animations',
-    type: 'animation',
-    format: 'Motion',
-    tags: ['đỡ', 'thủ', 'khiên'],
-    description: 'Động tác giơ khiên/kiếm chống đỡ chấn động',
-    previewColor: '#eab308',
-    animName: 'block_defend'
-  },
-  {
-    id: 'anim_sit',
-    name: 'Ngồi Nghỉ (Sit Rest)',
-    path: 'Assets/Animations/sit',
-    folder: 'Assets/Animations',
-    type: 'animation',
-    format: 'Motion',
-    tags: ['ngồi', 'ghế', 'thư giãn'],
-    description: 'Tư thế ngồi trên ghế hoặc bậc thềm',
-    previewColor: '#6366f1',
-    animName: 'sit'
-  },
-
-  // --- VFX & AUDIO ---
-  {
-    id: 'vfx_slash_flame',
-    name: 'Vệt Chém Lửa Đỏ (Fire Slash)',
-    path: 'Assets/VFX/vfx_heavy_slash',
-    folder: 'Assets/VFX',
-    type: 'vfx',
-    format: 'Particle Ring',
-    tags: ['vfx', 'lửa', 'vệt chém'],
-    description: 'Vòng sáng rực đỏ quét cung 160 độ khi chém kiếm',
-    previewColor: '#dc2626'
-  },
-  {
-    id: 'audio_slash_sfx',
-    name: 'SFX Kiếm Chém Xé Gió',
-    path: 'Assets/Audio/SFX/heavy_slash.mp3',
-    folder: 'Assets/Audio',
-    type: 'audio',
-    format: 'MP3',
-    size: '45 KB',
-    tags: ['sfx', 'kiếm', 'va chạm'],
-    description: 'Âm thanh vũ khí vung xé gió và chém trúng mục tiêu',
-    previewColor: '#38bdf8'
-  }
-];
-
-const FOLDER_TREE = [
-  {
-    name: 'Assets',
-    path: 'Assets',
-    children: [
-      {
-        name: 'Characters',
-        path: 'Assets/Characters',
-        children: [
-          { name: 'Male (Nam)', path: 'Assets/Characters/Male' },
-          { name: 'Female (Nữ)', path: 'Assets/Characters/Female' },
-          {
-            name: 'Base Bodies',
-            path: 'Assets/Characters/Base_Bodies',
-            children: [
-              { name: 'Male (Nam)', path: 'Assets/Characters/Base_Bodies/Male' },
-              { name: 'Female (Nữ)', path: 'Assets/Characters/Base_Bodies/Female' },
-            ]
-          },
-          {
-            name: 'Costumes (Trang Phục)',
-            path: 'Assets/Characters/Costumes',
-            children: [
-              { name: 'Male (Nam)', path: 'Assets/Characters/Costumes/Male' },
-              { name: 'Female (Nữ)', path: 'Assets/Characters/Costumes/Female' },
-            ]
-          },
-          {
-            name: 'Faces (Khuôn Mặt)',
-            path: 'Assets/Characters/Faces',
-            children: [
-              { name: 'Male (Nam)', path: 'Assets/Characters/Faces/Male' },
-              { name: 'Female (Nữ)', path: 'Assets/Characters/Faces/Female' },
-            ]
-          },
-          { name: 'Hairstyles (Mái Tóc)', path: 'Assets/Characters/Hairstyles' },
-          { name: 'Beards (Râu)', path: 'Assets/Characters/Beards' },
-          { name: 'Accessories (Phụ Kiện)', path: 'Assets/Characters/Accessories' },
-        ]
-      },
-      {
-        name: 'SkyBoxs 360°',
-        path: 'Assets/SkyBoxs',
-        children: [
-          { name: 'Bình Minh', path: 'Assets/SkyBoxs/Binh_Minh' },
-          { name: 'Buổi Sáng', path: 'Assets/SkyBoxs/Buoi_Sang' },
-          { name: 'Buổi Trưa', path: 'Assets/SkyBoxs/Buoi_Trua' },
-          { name: 'Buổi Chiều', path: 'Assets/SkyBoxs/Buoi_Chieu' },
-          { name: 'Buổi Tối', path: 'Assets/SkyBoxs/Buoi_Toi' },
-          { name: 'Giông Bão', path: 'Assets/SkyBoxs/Giong_Bao' },
-        ]
-      },
-      {
-        name: 'Props',
-        path: 'Assets/Props',
-        children: [
-          { name: 'Nature', path: 'Assets/Props/Nature' },
-          { name: 'Furniture', path: 'Assets/Props/Furniture' },
-          { name: 'Creatures', path: 'Assets/Props/Creatures' },
-        ]
-      },
-      { name: 'Maps & Presets', path: 'Assets/Maps' },
-      { name: 'Animations', path: 'Assets/Animations' },
-      { name: 'VFX', path: 'Assets/VFX' },
-      { name: 'Audio', path: 'Assets/Audio' },
-    ]
-  }
 ];
 
 export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
@@ -436,88 +176,250 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
   onSelectAvatar,
   onPlayAnimationPreview,
   onImportCustomFiles,
-  actorsList = [{ id: 'actor_warrior', name: 'Chiến Binh (Warrior)' }],
+  actorsList = [],
   isMaximized = false,
-  onToggleMaximize
+  onToggleMaximize,
 }) => {
-  const [selectedFolder, setSelectedFolder] = useState<string>('Assets');
+  // ─── State ──────────────────────────────────────────────────
+  const [mainSection, setMainSection] = useState<'character' | 'world' | 'media'>('character');
+  const [allAssets, setAllAssets] = useState<AssetItem[]>([]);
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('than_co_ban');
+  const [activeSubCategoryId, setActiveSubCategoryId] = useState<string>('all');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterType, setFilterType] = useState<string>('all');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [isLoadingManifest, setIsLoadingManifest] = useState<boolean>(true);
   const [spawnNotification, setSpawnNotification] = useState<string | null>(null);
-  const [assetDatabase, setAssetDatabase] = useState<AssetItem[]>(DEFAULT_ASSET_DATABASE);
-  const [isLoadingManifest, setIsLoadingManifest] = useState<boolean>(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Load live assets from /assets/asset_manifest.json on mount
-  const refreshAssets = useCallback(async () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Switch active category when main section changes
+  const handleSwitchSection = (section: 'character' | 'world' | 'media') => {
+    setMainSection(section);
+    setActiveSubCategoryId('all');
+    if (section === 'character') {
+      setActiveCategoryId('than_co_ban');
+    } else if (section === 'world') {
+      setActiveCategoryId('ban_do');
+    } else {
+      setActiveCategoryId('audio');
+    }
+  };
+
+  // ─── 1. Load Live Assets from asset_manifest.json ─────────────
+  const loadManifest = useCallback(async () => {
     setIsLoadingManifest(true);
     try {
-      const liveItems = await fetchLiveAssetManifest();
-      if (liveItems && liveItems.length > 0) {
-        // Merge with preset custom demo items for props that have smart sockets
-        const mergedMap = new Map<string, AssetItem>();
-        // Add default sample items
-        DEFAULT_ASSET_DATABASE.forEach((item) => mergedMap.set(item.id, item));
-        // Overwrite or append with live disk assets from manifest
-        liveItems.forEach((item) => mergedMap.set(item.id, item));
-        setAssetDatabase(Array.from(mergedMap.values()));
+      const res = await fetch(`/assets/asset_manifest.json?t=${Date.now()}`);
+      if (!res.ok) throw new Error('Could not fetch asset_manifest.json');
+      const manifest = await res.json();
+
+      const items: AssetItem[] = [];
+
+      const parseAsset = (
+        raw: any,
+        category: string,
+        type: AssetItem['type'],
+        subCategory?: string
+      ): AssetItem => {
+        const pathLower = (raw.relPath || raw.path || '').toLowerCase();
+        let gender: AssetItem['gender'] = raw.gender || 'unisex';
+        if (pathLower.includes('/male/') || pathLower.includes('/man/') || pathLower.includes('/nam/')) gender = 'male';
+        if (pathLower.includes('/female/') || pathLower.includes('/woman/') || pathLower.includes('/nu/')) gender = 'female';
+
+        return {
+          id: raw.id || raw.name || raw.relPath,
+          name: raw.name || raw.filename || 'Tài nguyên',
+          path: raw.relPath ? (raw.relPath.startsWith('assets/') ? raw.relPath : `assets/${raw.relPath}`) : (raw.path || ''),
+          category,
+          subCategory,
+          folder: raw.relPath ? raw.relPath.split('/').slice(0, -1).join('/') : '',
+          type,
+          format: raw.format || 'GLB',
+          sizeMB: raw.sizeMB || '0.00',
+          previewUrl: raw.previewUrl ? (raw.previewUrl.startsWith('/') ? raw.previewUrl : `/${raw.previewUrl}`) : undefined,
+          gender,
+          description: raw.description || `${raw.name || raw.filename} (${raw.format || 'GLB'})`,
+        };
+      };
+
+      // Characters
+      const chars = manifest.characters || {};
+      const charCatMap: Record<string, string> = {
+        base_bodies: 'than_co_ban',
+        costumes: 'trang_phuc',
+        faces: 'khuon_mat',
+        hairstyles: 'kieu_toc',
+        hats: 'mu_non',
+        shoes: 'giay_dep',
+        accessories: 'phu_kien',
+        beards: 'kieu_rau',
+        wings: 'canh',
+        tails: 'duoi',
+        _lap_rap: '_lap_rap',
+      };
+
+      for (const [key, catId] of Object.entries(charCatMap)) {
+        const list = chars[key] || [];
+        if (Array.isArray(list)) {
+          list.forEach((c: any) => items.push(parseAsset(c, catId, 'character')));
+        }
       }
-    } catch (e) {
-      console.warn('Failed to load asset manifest:', e);
+
+      // Root Male & Female
+      (chars.male || []).forEach((c: any) => items.push(parseAsset(c, 'than_co_ban', 'character')));
+      (chars.female || []).forEach((c: any) => items.push(parseAsset(c, 'than_co_ban', 'character')));
+
+      // Maps
+      const mapList = manifest.maps || manifest.structure?.map_presets || [];
+      if (Array.isArray(mapList)) {
+        mapList.forEach((m: any) => items.push(parseAsset(m, 'ban_do', 'map')));
+      }
+
+      // Custom Maps
+      const customMaps = manifest.props?._custom_ban_do || manifest.map_presets || [];
+      if (Array.isArray(customMaps)) {
+        customMaps.forEach((m: any) => items.push(parseAsset(m, '_custom_ban_do', 'map')));
+      }
+
+      // World Props
+      const props = manifest.props || {};
+      const propMap: Record<string, string> = {
+        trees: 'cay_coi',
+        rocks: 'da_dia_hinh',
+        weapons: 'vu_khi',
+        tools: 'dung_cu',
+        consumables: 'do_tieu_hao',
+        furniture: 'noi_that',
+        buildings: 'cong_trinh',
+        vehicles: 'phuong_tien',
+      };
+
+      for (const [key, catId] of Object.entries(propMap)) {
+        const list = props[key] || [];
+        if (Array.isArray(list)) {
+          list.forEach((p: any) => items.push(parseAsset(p, catId, 'prop')));
+        }
+      }
+
+      // Animals with subcategories
+      if (props.animals) {
+        (props.animals.terrestrial || []).forEach((p: any) => items.push(parseAsset(p, 'dong_vat', 'prop', 'tren_can')));
+        (props.animals.aquatic || []).forEach((p: any) => items.push(parseAsset(p, 'dong_vat', 'prop', 'duoi_nuoc')));
+        (props.animals.aerial || []).forEach((p: any) => items.push(parseAsset(p, 'dong_vat', 'prop', 'tren_troi')));
+      }
+
+      // Skyboxes
+      const skies = manifest.skyboxes || {};
+      ['binh_minh', 'buoi_sang', 'buoi_trua', 'buoi_chieu', 'buoi_toi', 'giong_bao'].forEach((time) => {
+        (skies[time] || []).forEach((s: any) => items.push(parseAsset(s, 'bau_troi', 'skybox', time)));
+      });
+
+      // Audio
+      const audio = manifest.audio || {};
+      (audio.bgm || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'bgm')));
+      (audio.sfx?.combat || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'sfx_combat')));
+      (audio.sfx?.ambient || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'sfx_ambient')));
+      (audio.sfx?.interactions || audio.sfx?.interaction || []).forEach((a: any) =>
+        items.push(parseAsset(a, 'audio', 'audio', 'sfx_interaction'))
+      );
+
+      // Animations
+      const anims = manifest.animations || {};
+      (anims.combat || []).forEach((a: any) => items.push(parseAsset(a, 'animations', 'animation', 'combat')));
+      (anims.xianxia || []).forEach((a: any) => items.push(parseAsset(a, 'animations', 'animation', 'xianxia')));
+      (anims.locomotion || []).forEach((a: any) => items.push(parseAsset(a, 'animations', 'animation', 'locomotion')));
+      (anims.interactions || anims.interaction || []).forEach((a: any) =>
+        items.push(parseAsset(a, 'animations', 'animation', 'interactions'))
+      );
+
+      // VFX
+      const vfx = manifest.props?.vfx || manifest.vfx || [];
+      if (Array.isArray(vfx)) {
+        vfx.forEach((v: any) => items.push(parseAsset(v, 'hieu_ung', 'vfx')));
+      }
+
+      // Deduplicate by path
+      const uniqueItems = Array.from(new Map(items.map((i) => [i.path, i])).values());
+      setAllAssets(uniqueItems);
+    } catch (err) {
+      console.warn('Lỗi đọc asset_manifest.json trong Project Assets:', err);
     } finally {
       setIsLoadingManifest(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshAssets();
-  }, [refreshAssets]);
+    loadManifest();
+  }, [loadManifest]);
 
-  // Filtered Assets
+  // ─── Active Category & Subcategories ──────────────────────────
+  const currentCategoryTab = CATEGORY_TABS.find((t) => t.id === activeCategoryId) || CATEGORY_TABS[0];
+  const subCategories = currentCategoryTab.subCategories || [];
+  const hasSubCategories = subCategories.length > 0;
+
+  // ─── Count Items Per Category ─────────────────────────────────
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    CATEGORY_TABS.forEach((cat) => {
+      counts[cat.id] = allAssets.filter((a) => a.category === cat.id).length;
+    });
+    return counts;
+  }, [allAssets]);
+
+  // ─── Filtered Items for Display ───────────────────────────────
   const filteredAssets = useMemo(() => {
-    return assetDatabase.filter((asset) => {
-      // Folder filter (if not Assets root, match prefix)
-      if (selectedFolder !== 'Assets' && !asset.folder.startsWith(selectedFolder)) {
-        return false;
+    return allAssets.filter((asset) => {
+      // Category Match
+      if (asset.category !== activeCategoryId) return false;
+
+      // SubCategory Match
+      if (hasSubCategories && activeSubCategoryId !== 'all') {
+        if (asset.subCategory !== activeSubCategoryId) return false;
       }
-      // Type filter
-      if (filterType !== 'all' && asset.type !== filterType) {
-        return false;
+
+      // Gender Match
+      if (genderFilter !== 'all' && asset.gender && asset.gender !== 'unisex') {
+        if (asset.gender !== genderFilter) return false;
       }
-      // Search query
+
+      // Search Query
       if (searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase();
         const matchName = asset.name.toLowerCase().includes(q);
         const matchPath = asset.path.toLowerCase().includes(q);
-        const matchTag = asset.tags?.some((t) => t.toLowerCase().includes(q));
-        if (!matchName && !matchPath && !matchTag) return false;
+        if (!matchName && !matchPath) return false;
       }
+
       return true;
     });
-  }, [assetDatabase, selectedFolder, filterType, searchQuery]);
+  }, [allAssets, activeCategoryId, activeSubCategoryId, genderFilter, searchQuery, hasSubCategories]);
 
   const selectedAsset = useMemo(() => {
-    return assetDatabase.find((a) => a.id === selectedAssetId) || null;
-  }, [assetDatabase, selectedAssetId]);
+    return allAssets.find((a) => a.id === selectedAssetId) || filteredAssets[0] || null;
+  }, [allAssets, selectedAssetId, filteredAssets]);
 
+  // ─── Actions Handler ──────────────────────────────────────────
   const handleAction = (asset: AssetItem) => {
     if (asset.type === 'prop') {
       onPlaceProp(asset);
       setSpawnNotification(`Đã đặt "${asset.name}" vào Scene!`);
       setTimeout(() => setSpawnNotification(null), 2500);
-    } else if (asset.type === 'map' && asset.mapId) {
-      onSelectMap(asset.mapId);
-      setSpawnNotification(`Đang tải Map: ${asset.name}...`);
+    } else if (asset.type === 'map') {
+      onSelectMap(asset.path || asset.id);
+      setSpawnNotification(`Đang áp dụng Bản Đồ: ${asset.name}...`);
       setTimeout(() => setSpawnNotification(null), 2500);
-    } else if (asset.type === 'character' && asset.vrmUrl) {
+    } else if (asset.type === 'character') {
       const targetActor = actorsList[0]?.id || 'actor_warrior';
-      onSelectAvatar(targetActor, asset.vrmUrl);
-      setSpawnNotification(`Đã gán Avatar "${asset.name}"!`);
+      onSelectAvatar(targetActor, asset.path);
+      setSpawnNotification(`Đã gán "${asset.name}" cho nhân vật!`);
       setTimeout(() => setSpawnNotification(null), 2500);
-    } else if (asset.type === 'animation' && asset.animName && onPlayAnimationPreview) {
-      onPlayAnimationPreview(asset.animName);
-      setSpawnNotification(`Đang phát Animation: ${asset.name}`);
+    } else if (asset.type === 'animation' && onPlayAnimationPreview) {
+      onPlayAnimationPreview(asset.name || asset.id);
+      setSpawnNotification(`Đang phát hoạt ảnh: ${asset.name}`);
+      setTimeout(() => setSpawnNotification(null), 2500);
+    } else if (asset.type === 'skybox') {
+      setSpawnNotification(`Đã chọn Skybox: ${asset.name}`);
       setTimeout(() => setSpawnNotification(null), 2500);
     }
   };
@@ -528,85 +430,108 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
     }
   };
 
-  // Render Folder Tree item recursively
-  const renderTreeItem = (node: any, level: number = 0) => {
-    const isSelected = selectedFolder === node.path;
-    const hasChildren = node.children && node.children.length > 0;
-
-    return (
-      <div key={node.path} style={{ marginLeft: level * 10 }}>
-        <div
-          className={`unity-folder-item ${isSelected ? 'active' : ''}`}
-          onClick={() => setSelectedFolder(node.path)}
-        >
-          {isSelected ? <FolderOpen size={13} color="#38bdf8" /> : <Folder size={13} color="#94a3b8" />}
-          <span className="folder-name">{node.name}</span>
-        </div>
-        {hasChildren && (
-          <div>
-            {node.children.map((child: any) => renderTreeItem(child, level + 1))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <div className={`unity-asset-browser ${isMaximized ? 'maximized' : ''}`}>
-      {/* Top Toolbar */}
-      <div className="unity-browser-toolbar">
-        {/* Left: Breadcrumbs */}
-        <div className="unity-breadcrumbs">
-          <Layers size={13} color="#38bdf8" />
-          {selectedFolder.split('/').map((crumb, idx, arr) => (
-            <React.Fragment key={idx}>
-              <span
-                className={`crumb ${idx === arr.length - 1 ? 'active' : ''}`}
-                onClick={() => setSelectedFolder(arr.slice(0, idx + 1).join('/'))}
-              >
-                {crumb}
-              </span>
-              {idx < arr.length - 1 && <ChevronRight size={10} color="#64748b" />}
-            </React.Fragment>
-          ))}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
+        background: '#090d16',
+        color: '#f8fafc',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        overflow: 'hidden',
+      }}
+    >
+      {/* ─── Top Header Toolbar ───────────────────────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 14px',
+          background: 'rgba(15, 23, 42, 0.95)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
+        {/* Left Title & Total Count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Layers size={18} color="#38bdf8" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+            Kho Tài Nguyên Dự Án (Project Assets)
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.12)',
+              padding: '2px 8px',
+              borderRadius: 12,
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+            }}
+          >
+            {allAssets.length} Tổng tài nguyên
+          </span>
         </div>
 
-        {/* Center: Search & Filter Tabs */}
-        <div className="unity-search-filter">
-          <div className="unity-search-box">
-            <Search size={12} color="#64748b" />
-            <input
-              type="text"
-              placeholder="Tìm props, maps, avatars, vfx..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="unity-type-filters">
-            {[
-              { id: 'all', label: 'Tất cả' },
-              { id: 'prop', label: 'Props (3D)' },
-              { id: 'map', label: 'Maps' },
-              { id: 'character', label: 'Avatars' },
-              { id: 'animation', label: 'Động tác' },
-              { id: 'vfx', label: 'VFX' },
-            ].map((f) => (
-              <button
-                key={f.id}
-                className={`type-pill ${filterType === f.id ? 'active' : ''}`}
-                onClick={() => setFilterType(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        {/* Center Search Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'rgba(0, 0, 0, 0.4)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 6,
+            padding: '4px 10px',
+            width: 260,
+            gap: 6,
+          }}
+        >
+          <Search size={13} color="#94a3b8" />
+          <input
+            type="text"
+            placeholder="Tìm theo tên Tiếng Việt, mã tài nguyên..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#f8fafc',
+              fontSize: 11,
+              outline: 'none',
+              width: '100%',
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Right: Actions */}
-        <div className="unity-toolbar-actions">
+        {/* Right Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {spawnNotification && (
-            <div className="unity-notification">
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: 4,
+                padding: '3px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
               <Check size={12} /> {spawnNotification}
             </div>
           )}
@@ -616,31 +541,66 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
             ref={fileInputRef}
             style={{ display: 'none' }}
             multiple
-            accept=".glb,.gltf,.vrm,.mp3,.json"
+            accept=".glb,.gltf,.vrm,.mp3,.json,.png,.jpg"
             onChange={handleFileUpload}
           />
 
           <button
-            className="unity-btn"
+            onClick={loadManifest}
             title="Quét lại toàn bộ tài nguyên từ asset_manifest.json"
-            onClick={refreshAssets}
+            style={{
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: '#38bdf8',
+              borderRadius: 6,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
           >
-            <RefreshCw size={12} style={{ animation: isLoadingManifest ? 'spin 1s linear infinite' : 'none' }} /> Quét lại
+            <RefreshCw size={12} style={{ animation: isLoadingManifest ? 'spin 1s linear infinite' : 'none' }} />
+            Quét lại
           </button>
 
           <button
-            className="unity-btn"
-            title="Import file .glb / .vrm từ máy"
             onClick={() => fileInputRef.current?.click()}
+            title="Import file 3D hoặc audio từ máy tính"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: '#cbd5e1',
+              borderRadius: 6,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
           >
-            <Upload size={12} /> Import
+            <Upload size={12} />
+            Import
           </button>
 
           {onToggleMaximize && (
             <button
-              className="unity-btn icon-only"
               onClick={onToggleMaximize}
-              title={isMaximized ? 'Thu nhỏ' : 'Mở rộng cửa sổ'}
+              title={isMaximized ? 'Thu nhỏ' : 'Mở rộng toàn màn hình'}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: '#cbd5e1',
+                borderRadius: 6,
+                padding: '4px 8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+              }}
             >
               {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             </button>
@@ -648,85 +608,349 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         </div>
       </div>
 
-      {/* Main Browser Layout: Left Folder Tree, Center Grid, Right Quick Inspector */}
-      <div className="unity-browser-body">
-        {/* Left: Folder Hierarchy Tree */}
-        <div className="unity-folder-tree">
-          <div className="folder-tree-header">THƯ MỤC DỰ ÁN</div>
-          <div className="folder-tree-list">
-            {FOLDER_TREE.map((root) => renderTreeItem(root, 0))}
+      {/* ─── Main Body: Left Vertical Tabs + Center Grid + Right Inspector ── */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* ─── 1. Left Sidebar: Section Tabs + Multi-Column Wrap Grid ─ */}
+        <div
+          style={{
+            maxHeight: '100%',
+            height: '100%',
+            background: 'rgba(15, 23, 42, 0.98)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Top 3 Main Section Selector Tabs */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'rgba(0, 0, 0, 0.3)',
+              padding: '4px',
+              gap: 4,
+            }}
+          >
+            {[
+              { id: 'character', label: 'Nhân Vật', icon: '👤' },
+              { id: 'world', label: 'Bối Cảnh', icon: '🗺️' },
+              { id: 'media', label: 'Hiệu Ứng & Âm Thanh', icon: '✨' },
+            ].map((sec) => {
+              const isSecActive = mainSection === sec.id;
+              return (
+                <button
+                  key={sec.id}
+                  onClick={() => handleSwitchSection(sec.id as any)}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: isSecActive ? '#38bdf8' : 'rgba(255, 255, 255, 0.04)',
+                    color: isSecActive ? '#090d16' : '#94a3b8',
+                    transition: 'all 0.15s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span style={{ fontSize: 12 }}>{sec.icon}</span>
+                  <span>{sec.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Multi-Column Overflow Grid of Category Tabs (Col 1 -> Col 2 -> Col 3) with Horizontal Scrolling */}
+          <div
+            onWheel={(e) => {
+              if (e.deltaY !== 0) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              flexWrap: 'wrap',
+              alignContent: 'flex-start',
+              gap: 4,
+              padding: '6px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              scrollBehavior: 'smooth',
+            }}
+          >
+            {CATEGORY_TABS.filter((cat) => cat.group === mainSection).map((cat) => {
+              const isActive = activeCategoryId === cat.id;
+              const count = categoryCounts[cat.id] || 0;
+
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setActiveCategoryId(cat.id);
+                    setActiveSubCategoryId('all');
+                  }}
+                  title={cat.label}
+                  style={{
+                    width: 116,
+                    height: 42,
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 6px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                    color: isActive ? '#38bdf8' : '#94a3b8',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: 10,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                    borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{cat.icon}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        width: '100%',
+                      }}
+                    >
+                      {cat.label}
+                    </span>
+                    <span style={{ fontSize: 8, color: isActive ? '#38bdf8' : '#64748b', fontWeight: 600 }}>
+                      {count} mục
+                    </span>
+                  </div>
+                  {/* Badge */}
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 700,
+                      padding: '1px 4px',
+                      borderRadius: 8,
+                      background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)',
+                      color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569',
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Center: Asset Grid */}
-        <div className="unity-asset-grid-container">
-          <div className="unity-asset-grid">
+        {/* ─── 2. Center Content: Sub-tabs Bar + Asset Grid ─────── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Sub-tabs & Gender Filter Header Bar */}
+          <div
+            style={{
+              padding: '6px 12px',
+              background: 'rgba(0, 0, 0, 0.25)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              flexShrink: 0,
+            }}
+          >
+            {/* Sub-categories Horizontal Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto' }}>
+              {hasSubCategories && (
+                <>
+                  <button
+                    onClick={() => setActiveSubCategoryId('all')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: 'none',
+                      background: activeSubCategoryId === 'all' ? '#38bdf8' : 'rgba(255,255,255,0.06)',
+                      color: activeSubCategoryId === 'all' ? '#090d16' : '#cbd5e1',
+                    }}
+                  >
+                    Tất Cả ({filteredAssets.length})
+                  </button>
+                  {subCategories.map((sub) => {
+                    const isActiveSub = activeSubCategoryId === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => setActiveSubCategoryId(sub.id)}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          background: isActiveSub ? '#38bdf8' : 'rgba(255,255,255,0.06)',
+                          color: isActiveSub ? '#090d16' : '#cbd5e1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {sub.icon && <span>{sub.icon}</span>}
+                        <span>{sub.label}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+
+            {/* Gender Filter Toggle for Character items */}
+            {currentCategoryTab.group === 'character' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ fontSize: 10, color: '#94a3b8' }}>Giới tính:</span>
+                {(['all', 'male', 'female'] as const).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setGenderFilter(g)}
+                    style={{
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: 'none',
+                      background: genderFilter === g ? '#38bdf8' : 'rgba(255,255,255,0.06)',
+                      color: genderFilter === g ? '#090d16' : '#cbd5e1',
+                    }}
+                  >
+                    {g === 'all' ? 'Tất cả' : g === 'male' ? '👦 Nam' : '👧 Nữ'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Asset Grid Cards */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: 12,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+              gap: 10,
+              alignContent: 'start',
+            }}
+          >
             {filteredAssets.length === 0 ? (
-              <div className="empty-assets">
-                <Box size={24} color="#64748b" />
-                <span>Không tìm thấy tài nguyên nào phù hợp</span>
+              <div
+                style={{
+                  gridColumn: '1 / -1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 40,
+                  gap: 8,
+                  color: '#64748b',
+                }}
+              >
+                <Box size={32} />
+                <span style={{ fontSize: 12 }}>Chưa có tài nguyên nào trong mục này</span>
+                <span style={{ fontSize: 10 }}>Thả file vào thư mục assets/ và chạy _scan_assets.bat</span>
               </div>
             ) : (
               filteredAssets.map((asset) => {
-                const isSelected = selectedAssetId === asset.id;
-                let Icon = Box;
-                if (asset.type === 'character') Icon = User;
-                if (asset.type === 'map') Icon = MapIcon;
-                if (asset.type === 'audio') Icon = Music;
-                if (asset.type === 'vfx') Icon = Sparkles;
-                if (asset.type === 'animation') Icon = Film;
+                const isSelected = selectedAsset?.id === asset.id;
 
                 return (
                   <div
                     key={asset.id}
-                    className={`unity-asset-card ${isSelected ? 'selected' : ''}`}
                     onClick={() => setSelectedAssetId(asset.id)}
                     onDoubleClick={() => handleAction(asset)}
+                    style={{
+                      background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${isSelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)'}`,
+                      borderRadius: 8,
+                      padding: 6,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      position: 'relative',
+                    }}
                   >
-                    <div
-                      className="asset-icon-box"
-                      style={{
-                        backgroundColor: asset.previewColor ? `${asset.previewColor}18` : 'rgba(255,255,255,0.05)',
-                        borderColor: isSelected ? '#38bdf8' : 'rgba(255,255,255,0.08)',
-                        overflow: 'hidden',
-                        position: 'relative'
-                      }}
-                    >
-                      {asset.previewUrl ? (
-                        <img
-                          src={asset.previewUrl}
-                          alt={asset.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <Icon size={24} color={asset.previewColor || '#94a3b8'} />
-                      )}
-                      <span className="asset-format-badge">{asset.format}</span>
-                    </div>
+                    {/* Live 3D Preview / Companion Photo */}
+                    <Live3DThumbnail
+                      assetPath={asset.path}
+                      previewUrl={asset.previewUrl}
+                      altText={asset.name}
+                      fallbackIcon={currentCategoryTab.icon}
+                      format={asset.format}
+                      height={90}
+                    />
 
-                    <div className="asset-info">
-                      <div className="asset-name" title={asset.name}>
+                    {/* Asset Name & Meta Info */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <span
+                        title={asset.name}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: isSelected ? '#38bdf8' : '#e2e8f0',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
                         {asset.name}
-                      </div>
-                      <div className="asset-meta">
-                        {asset.size || asset.type.toUpperCase()}
-                      </div>
+                      </span>
+                      <span style={{ fontSize: 9, color: '#64748b' }}>
+                        {asset.sizeMB ? `${asset.sizeMB} MB` : asset.format}
+                        {asset.gender && asset.gender !== 'unisex' && ` • ${asset.gender === 'male' ? 'Nam' : 'Nữ'}`}
+                      </span>
                     </div>
 
+                    {/* Quick Action Button */}
                     <button
-                      className="card-quick-btn"
-                      title={
-                        asset.type === 'prop'
-                          ? 'Đặt vào Scene'
-                          : asset.type === 'map'
-                          ? 'Tải Map này'
-                          : asset.type === 'character'
-                          ? 'Đổi Avatar'
-                          : 'Phát Thử'
-                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAction(asset);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '4px 0',
+                        borderRadius: 4,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: isSelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)',
+                        color: isSelected ? '#090d16' : '#cbd5e1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
                       }}
                     >
                       {asset.type === 'prop' ? (
@@ -739,7 +963,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                         </>
                       ) : asset.type === 'character' ? (
                         <>
-                          <User size={11} /> Đổi Avatar
+                          <User size={11} /> Gán Avatar
                         </>
                       ) : (
                         <>
@@ -754,83 +978,84 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
           </div>
         </div>
 
-        {/* Right: Quick Inspector Preview for Selected Asset */}
+        {/* ─── 3. Right Quick Inspector Preview ─────────────────── */}
         {selectedAsset && (
-          <div className="unity-asset-inspector">
-            <div className="inspector-header">THÔNG TIN ASSET</div>
-            
-            <div className="inspector-preview-box">
-              <div
-                className="preview-icon-large"
-                style={{
-                  backgroundColor: selectedAsset.previewColor ? `${selectedAsset.previewColor}22` : '#1e293b',
-                  borderColor: selectedAsset.previewColor || '#38bdf8',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                {selectedAsset.previewUrl ? (
-                  <img
-                    src={selectedAsset.previewUrl}
-                    alt={selectedAsset.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <>
-                    {selectedAsset.type === 'character' && <User size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                    {selectedAsset.type === 'map' && <MapIcon size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                    {selectedAsset.type === 'prop' && <Box size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                    {selectedAsset.type === 'audio' && <Music size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                    {selectedAsset.type === 'vfx' && <Sparkles size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                    {selectedAsset.type === 'animation' && <Film size={36} color={selectedAsset.previewColor || '#38bdf8'} />}
-                  </>
-                )}
-              </div>
-              <div className="preview-title">{selectedAsset.name}</div>
-              <div className="preview-type-badge">{selectedAsset.format} • {selectedAsset.type.toUpperCase()}{selectedAsset.gender ? ` • ${selectedAsset.gender === 'male' ? 'NAM' : 'NỮ'}` : ''}</div>
+          <div
+            style={{
+              width: 220,
+              background: 'rgba(15, 23, 42, 0.98)',
+              borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 10,
+              gap: 10,
+              flexShrink: 0,
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 4 }}>
+              THÔNG TIN CHI TIẾT
             </div>
 
-            <div className="inspector-details">
-              <div className="detail-row">
-                <span className="label">Đường dẫn:</span>
-                <span className="val" title={selectedAsset.path}>{selectedAsset.path}</span>
+            {/* Large 3D Preview Box */}
+            <Live3DThumbnail
+              assetPath={selectedAsset.path}
+              previewUrl={selectedAsset.previewUrl}
+              altText={selectedAsset.name}
+              fallbackIcon={currentCategoryTab.icon}
+              format={selectedAsset.format}
+              height={140}
+            />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>{selectedAsset.name}</span>
+              <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 600 }}>
+                {selectedAsset.format} • {(selectedAsset.category || selectedAsset.type).toUpperCase()}
+                {selectedAsset.gender && ` • ${selectedAsset.gender === 'male' ? 'NAM' : selectedAsset.gender === 'female' ? 'NỮ' : 'CHUNG'}`}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 10, color: '#94a3b8' }}>
+              <div>
+                <span style={{ color: '#64748b' }}>Đường dẫn: </span>
+                <span style={{ color: '#cbd5e1', wordBreak: 'break-all' }}>{selectedAsset.path}</span>
               </div>
-              {selectedAsset.size && (
-                <div className="detail-row">
-                  <span className="label">Dung lượng:</span>
-                  <span className="val">{selectedAsset.size}</span>
-                </div>
-              )}
-              {selectedAsset.description && (
-                <div className="detail-desc">
-                  {selectedAsset.description}
-                </div>
-              )}
-              {selectedAsset.tags && selectedAsset.tags.length > 0 && (
-                <div className="tag-list">
-                  {selectedAsset.tags.map((t, i) => (
-                    <span key={i} className="tag">{t}</span>
-                  ))}
+              {selectedAsset.sizeMB && (
+                <div>
+                  <span style={{ color: '#64748b' }}>Dung lượng: </span>
+                  <span style={{ color: '#cbd5e1' }}>{selectedAsset.sizeMB} MB</span>
                 </div>
               )}
             </div>
 
-            <div className="inspector-actions">
-              <button
-                className="primary-action-btn"
-                onClick={() => handleAction(selectedAsset)}
-              >
-                {selectedAsset.type === 'prop' && <><Plus size={14} /> Chèn vào Scene Ngay</>}
-                {selectedAsset.type === 'map' && <><MapIcon size={14} /> Kích Hoạt Bản Đồ Này</>}
-                {selectedAsset.type === 'character' && <><User size={14} /> Gán Cho Nhân Vật</>}
-                {selectedAsset.type === 'animation' && <><Play size={14} /> Chạy Thử Động Tác</>}
-                {selectedAsset.type === 'vfx' && <><Sparkles size={14} /> Xem Thử Hiệu Ứng</>}
-                {selectedAsset.type === 'audio' && <><Play size={14} /> Nghe Thử SFX</>}
-              </button>
-            </div>
+            {/* Primary Action Button */}
+            <button
+              onClick={() => handleAction(selectedAsset)}
+              style={{
+                marginTop: 'auto',
+                width: '100%',
+                padding: '8px 0',
+                borderRadius: 6,
+                background: '#38bdf8',
+                color: '#090d16',
+                fontWeight: 700,
+                fontSize: 11,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+              }}
+            >
+              {selectedAsset.type === 'prop' && <><Plus size={13} /> Chèn vào Scene</>}
+              {selectedAsset.type === 'map' && <><MapIcon size={13} /> Kích Hoạt Bản Đồ</>}
+              {selectedAsset.type === 'character' && <><User size={13} /> Gán Cho Nhân Vật</>}
+              {selectedAsset.type === 'animation' && <><Play size={13} /> Chạy Hoạt Ảnh</>}
+              {selectedAsset.type === 'skybox' && <><Sparkles size={13} /> Đổi Bầu Trời</>}
+              {selectedAsset.type === 'audio' && <><Music size={13} /> Nghe Thử</>}
+              {selectedAsset.type === 'vfx' && <><Sparkles size={13} /> Kích Hoạt VFX</>}
+            </button>
           </div>
         )}
       </div>

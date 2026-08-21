@@ -435,18 +435,30 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 
       {/* Main area: Vertical Tabs + Content */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Vertical Tabs Sidebar with DYNAMIC WIDTH */}
-        <div style={{
-          minWidth: 84,
-          maxWidth: 130,
-          width: 'auto',
-          flexShrink: 0,
-          display: 'flex', flexDirection: 'column',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-          background: 'rgba(0,0,0,0.2)',
-          overflowY: 'auto', overflowX: 'hidden',
-          gap: 2, padding: '6px 4px',
-        }}>
+        {/* Tabs Sidebar with Multi-Column Overflow Grid (Col 1 -> Col 2 -> Col 3) */}
+        <div
+          onWheel={(e) => {
+            if (e.deltaY !== 0) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+          style={{
+            maxHeight: '100%',
+            height: '100%',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            flexWrap: 'wrap',
+            alignContent: 'flex-start',
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(15, 23, 42, 0.95)',
+            gap: 4,
+            padding: '6px',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollBehavior: 'smooth',
+          }}
+        >
           {categories.map((cat) => {
             const isActive = activeCategoryId === cat.id;
             const count = filterByGender(cat.items, genderFilter).length;
@@ -456,65 +468,92 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
                 onClick={() => setActiveCategoryId(cat.id)}
                 title={cat.label}
                 style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  gap: 3, padding: '8px 6px',
-                  border: 'none', cursor: 'pointer',
+                  width: 112,
+                  height: 42,
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 6px',
+                  border: 'none',
+                  cursor: 'pointer',
                   borderRadius: 6,
                   borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
-                  background: isActive ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
+                  background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.03)',
                   color: isActive ? '#38bdf8' : '#94a3b8',
-                  transition: 'all 0.15s',
+                  transition: 'all 0.15s ease',
                   position: 'relative',
-                  textAlign: 'center',
+                  boxSizing: 'border-box',
                 }}
               >
-                <span style={{ fontSize: 18, lineHeight: 1 }}>{cat.icon}</span>
-                <span style={{
-                  fontSize: 10, fontWeight: 600,
-                  lineHeight: 1.2,
-                  wordBreak: 'break-word',
-                  maxWidth: 110,
-                }}>
-                  {cat.label}
-                </span>
+                <span style={{ fontSize: 16 }}>{cat.icon}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      width: '100%',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {cat.label}
+                  </span>
+                  <span style={{ fontSize: 8, color: isActive ? '#38bdf8' : '#64748b', fontWeight: 600 }}>
+                    {count} món
+                  </span>
+                </div>
                 {/* Badge */}
-                <span style={{
-                  position: 'absolute', top: 3, right: 3,
-                  fontSize: 9, fontWeight: 700,
-                  minWidth: 15, height: 15, lineHeight: '15px',
-                  textAlign: 'center', borderRadius: 8,
-                  background: count > 0
-                    ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.3)')
-                    : 'rgba(255,255,255,0.06)',
-                  color: count > 0 ? (isActive ? '#000' : '#cbd5e1') : '#475569',
-                }}>
+                <span
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 700,
+                    padding: '1px 4px',
+                    borderRadius: 8,
+                    background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)',
+                    color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569',
+                  }}
+                >
                   {count}
                 </span>
               </button>
             );
           })}
 
-          {/* Sliders Tab at bottom */}
-          <div style={{ marginTop: 'auto' }}>
-            <button
-              onClick={() => setActiveCategoryId('_sliders')}
-              title="Cấu Hình Slider"
-              style={{
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                gap: 2, padding: '8px 4px', width: '100%',
-                border: 'none', cursor: 'pointer',
-                borderLeft: activeCategoryId === '_sliders' ? '3px solid #fbbf24' : '3px solid transparent',
-                background: activeCategoryId === '_sliders' ? 'rgba(251, 191, 36, 0.12)' : 'transparent',
-                color: activeCategoryId === '_sliders' ? '#fbbf24' : '#94a3b8',
-                transition: 'all 0.15s',
-              }}
-            >
-              <Sliders size={16} />
-              <span style={{ fontSize: 9, fontWeight: 600 }}>Slider</span>
-            </button>
-          </div>
+          {/* Sliders Tab Button */}
+          <button
+            onClick={() => setActiveCategoryId('_sliders')}
+            title="Cấu Hình Slider Khuôn Mặt"
+            style={{
+              width: 112,
+              height: 42,
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 6px',
+              border: 'none',
+              cursor: 'pointer',
+              borderRadius: 6,
+              borderLeft: activeCategoryId === '_sliders' ? '3px solid #fbbf24' : '3px solid transparent',
+              background: activeCategoryId === '_sliders' ? 'rgba(251, 191, 36, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+              color: activeCategoryId === '_sliders' ? '#fbbf24' : '#94a3b8',
+              transition: 'all 0.15s ease',
+              boxSizing: 'border-box',
+            }}
+          >
+            <Sliders size={16} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Thanh Trượt
+              </span>
+              <span style={{ fontSize: 8, color: activeCategoryId === '_sliders' ? '#fbbf24' : '#64748b', fontWeight: 600 }}>
+                Chi tiết mặt
+              </span>
+            </div>
+          </button>
         </div>
 
         {/* Content Area */}

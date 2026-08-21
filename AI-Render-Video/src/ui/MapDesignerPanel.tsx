@@ -1315,21 +1315,27 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
 
         {/* Catalog Layout: Dynamic Width Vertical Tabs + Content Grid */}
         <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          {/* Vertical Tabs Sidebar with DYNAMIC WIDTH */}
+          {/* Tabs Sidebar with Multi-Column Overflow Grid (Col 1 -> Col 2 -> Col 3) & Horizontal Scroll */}
           <div
+            onWheel={(e) => {
+              if (e.deltaY !== 0) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
             style={{
-              minWidth: 84,
-              maxWidth: 130,
-              width: 'auto',
+              maxHeight: '100%',
+              height: '100%',
               flexShrink: 0,
               display: 'flex',
               flexDirection: 'column',
-              borderRight: '1px solid rgba(255,255,255,0.06)',
-              background: 'rgba(0,0,0,0.2)',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              gap: 2,
-              padding: '6px 4px',
+              flexWrap: 'wrap',
+              alignContent: 'flex-start',
+              borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'rgba(15, 23, 42, 0.95)',
+              gap: 4,
+              padding: '6px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
             }}
           >
             {categories.map((cat) => {
@@ -1344,52 +1350,52 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                   }}
                   title={cat.label}
                   style={{
+                    width: 114,
+                    height: 42,
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 3,
-                    padding: '8px 6px',
+                    gap: 6,
+                    padding: '4px 6px',
                     border: 'none',
                     cursor: 'pointer',
                     borderRadius: 6,
-                    borderLeft: isActive ? '3px solid #4ade80' : '3px solid transparent',
-                    background: isActive ? 'rgba(74, 222, 128, 0.14)' : 'transparent',
-                    color: isActive ? '#4ade80' : '#94a3b8',
-                    transition: 'all 0.15s',
+                    borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
+                    background: isActive ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                    color: isActive ? '#38bdf8' : '#94a3b8',
+                    transition: 'all 0.15s ease',
                     position: 'relative',
-                    textAlign: 'center',
+                    boxSizing: 'border-box',
                   }}
                 >
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>{cat.icon}</span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      lineHeight: 1.2,
-                      wordBreak: 'break-word',
-                      maxWidth: 110,
-                    }}
-                  >
-                    {cat.label}
-                  </span>
+                  <span style={{ fontSize: 16 }}>{cat.icon}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        width: '100%',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {cat.label}
+                    </span>
+                    <span style={{ fontSize: 8, color: isActive ? '#38bdf8' : '#64748b', fontWeight: 600 }}>
+                      {count} mục
+                    </span>
+                  </div>
                   {/* Badge */}
                   <span
                     style={{
-                      position: 'absolute',
-                      top: 3,
-                      right: 3,
-                      fontSize: 9,
+                      fontSize: 8,
                       fontWeight: 700,
-                      minWidth: 15,
-                      height: 15,
-                      lineHeight: '15px',
-                      textAlign: 'center',
+                      padding: '1px 4px',
                       borderRadius: 8,
-                      background: count > 0
-                        ? (isActive ? '#4ade80' : 'rgba(148, 163, 184, 0.3)')
-                        : 'rgba(255,255,255,0.06)',
-                      color: count > 0 ? (isActive ? '#000' : '#cbd5e1') : '#475569',
+                      background: count > 0 ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.25)') : 'rgba(255,255,255,0.06)',
+                      color: count > 0 ? (isActive ? '#090d16' : '#cbd5e1') : '#475569',
                     }}
                   >
                     {count}
