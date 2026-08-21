@@ -2,22 +2,76 @@
  * Live3DThumbnail.tsx
  *
  * Lightweight, high-performance on-demand 3D snapshot thumbnail renderer.
- * When an asset does not have a 2D companion image (*.png), this component:
- * 1. Checks memory cache for previously generated snapshot.
- * 2. Uses a shared headless WebGLRenderer to load the .glb/.vrm model offscreen.
- * 3. Auto-centers and auto-frames the camera to capture a clean 3D preview snapshot.
- * 4. Caches the resulting data URL for instantaneous re-renders without overhead.
+ * Multi-Tier Caching Architecture:
+ *   Tier 1: In-Memory RAM Cache (Instant synchronous access during runtime)
+ *   Tier 2: Persistent IndexedDB Disk Cache (Preserves generated snapshots across reboots & re-launches)
+ *   Tier 3: Lazy Headless WebGL Offscreen Snapshot (Only generated ONCE if never cached before)
  */
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Loader2 } from 'lucide-react';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
 
-// Global memory cache for generated 3D snapshots
+// Global memory cache for generated 3D snapshots (Tier 1)
 const snapshotCache = new Map<string, string>();
 const loadingPromises = new Map<string, Promise<string>>();
 
-// Shared headless renderer for thumbnail generation
+// Persistent IndexedDB Cache Setup (Tier 2)
+const DB_NAME = 'flowmy_asset_snapshots_v1';
+const STORE_NAME = 'snapshots';
+
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function getDB(): Promise<IDBDatabase> {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      reject(new Error('IndexedDB not supported'));
+      return;
+    }
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => {
+      dbPromise = null;
+      reject(request.error);
+    };
+  });
+  return dbPromise;
+}
+
+async function getPersistentSnapshot(key: string): Promise<string | null> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function savePersistentSnapshot(key: string, dataUrl: string): Promise<void> {
+  try {
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.put(dataUrl, key);
+  } catch (err) {
+    console.warn('Could not persist snapshot to IndexedDB:', err);
+  }
+}
+
+// Shared headless renderer for thumbnail generation (Tier 3)
 let sharedRenderer: THREE.WebGLRenderer | null = null;
 let sharedScene: THREE.Scene | null = null;
 let sharedCamera: THREE.PerspectiveCamera | null = null;
@@ -71,20 +125,32 @@ function getSharedRenderer(): {
 }
 
 /**
- * Capture a 3D model snapshot as a lightweight base64 image URL
+ * Capture or retrieve 3D model snapshot with persistent IndexedDB & RAM caching
  */
 async function capture3DModelSnapshot(assetPath: string): Promise<string> {
   const cleanKey = assetPath.trim();
+
+  // Tier 1: Check In-Memory RAM Cache
   if (snapshotCache.has(cleanKey)) {
     return snapshotCache.get(cleanKey)!;
   }
 
+  // Check In-Flight Promises to avoid duplicate rendering
   if (loadingPromises.has(cleanKey)) {
     return loadingPromises.get(cleanKey)!;
   }
 
   const promise = (async () => {
     try {
+      // Tier 2: Check Persistent IndexedDB Disk Cache
+      const persistentUrl = await getPersistentSnapshot(cleanKey);
+      if (persistentUrl) {
+        snapshotCache.set(cleanKey, persistentUrl);
+        loadingPromises.delete(cleanKey);
+        return persistentUrl;
+      }
+
+      // Tier 3: Render 3D Model Offscreen Once
       const { renderer, scene, camera } = getSharedRenderer();
 
       // Load model clone via registry
@@ -144,7 +210,10 @@ async function capture3DModelSnapshot(assetPath: string): Promise<string> {
       scene.remove(container);
       container.remove(model);
 
+      // Save to RAM Cache & Persistent Disk Cache
       snapshotCache.set(cleanKey, dataUrl);
+      savePersistentSnapshot(cleanKey, dataUrl);
+
       loadingPromises.delete(cleanKey);
       return dataUrl;
     } catch (err) {
@@ -192,14 +261,27 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
       return;
     }
 
-    // Check if snapshot is already cached
-    if (assetPath && snapshotCache.has(assetPath.trim())) {
-      setImgSrc(snapshotCache.get(assetPath.trim()));
+    const cleanKey = (assetPath || '').trim();
+    if (!cleanKey) return;
+
+    // 1. Check RAM Cache (Instant)
+    if (snapshotCache.has(cleanKey)) {
+      setImgSrc(snapshotCache.get(cleanKey));
       return;
     }
 
+    // 2. Check Persistent IndexedDB Cache (Fast)
+    let isMounted = true;
+    getPersistentSnapshot(cleanKey).then((cached) => {
+      if (!isMounted) return;
+      if (cached) {
+        snapshotCache.set(cleanKey, cached);
+        setImgSrc(cached);
+      }
+    });
+
     // Only generate for 3D model formats
-    const p = (assetPath || '').toLowerCase();
+    const p = cleanKey.toLowerCase();
     const is3DModel =
       p.endsWith('.glb') ||
       p.endsWith('.gltf') ||
@@ -209,12 +291,17 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
 
     if (!is3DModel) return;
 
-    let isMounted = true;
     let observer: IntersectionObserver | null = null;
 
     const triggerSnapshot = () => {
+      // If already resolved by IndexedDB, do not re-render
+      if (snapshotCache.has(cleanKey)) {
+        setImgSrc(snapshotCache.get(cleanKey));
+        return;
+      }
+
       setIsGenerating3D(true);
-      capture3DModelSnapshot(assetPath)
+      capture3DModelSnapshot(cleanKey)
         .then((url) => {
           if (isMounted) {
             setImgSrc(url);
@@ -273,7 +360,7 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
           src={imgSrc}
           alt={altText}
           onError={() => {
-            // If the 2D preview image failed, trigger 3D generation fallback
+            // If the 2D preview image failed (404), trigger 3D generation fallback
             if (previewUrl && imgSrc === previewUrl) {
               setImgSrc(undefined);
               setHasFailed(true);
