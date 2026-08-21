@@ -203,6 +203,7 @@ export class VolumetricCloudLighting {
    */
   public static applyToMaterial(material: THREE.Material): void {
     if (!material) return;
+    if ((material as any).isMeshBasicMaterial || (material as any).isLineBasicMaterial || (material as any).isPointsMaterial) return;
     if ((material as any).__cloudLightingHooked) return;
     (material as any).__cloudLightingHooked = true;
 

@@ -4,6 +4,7 @@ export interface ViewportSettings {
   showCoordinates: boolean;
   showCC: boolean;
   isFreeCam: boolean;
+  showNavWidget: boolean;
 }
 
 const STORAGE_KEY = 'studio_viewport_settings_v1';
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS: ViewportSettings = {
   showCoordinates: false,
   showCC: true,
   isFreeCam: false,
+  showNavWidget: true,
 };
 
 export const getSavedViewportSettings = (): ViewportSettings => {

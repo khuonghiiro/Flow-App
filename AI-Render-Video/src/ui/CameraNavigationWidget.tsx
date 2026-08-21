@@ -8,6 +8,7 @@ import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 interface CameraNavigationWidgetProps {
   renderer: ThreeRenderer | null;
   visible?: boolean;
+  onClose?: () => void;
 }
 
 interface ContinuousButtonProps {
@@ -77,36 +78,12 @@ const ContinuousButton: React.FC<ContinuousButtonProps> = ({
 export const CameraNavigationWidget: React.FC<CameraNavigationWidgetProps> = ({
   renderer,
   visible = true,
+  onClose,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
 
-  if (!visible || !isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        style={{
-          position: 'absolute',
-          bottom: 16,
-          right: 16,
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          background: 'rgba(15, 23, 42, 0.85)',
-          border: '1px solid rgba(56, 189, 248, 0.4)',
-          color: '#38bdf8',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.4)',
-          zIndex: 40,
-          cursor: 'pointer',
-        }}
-        title="Mở Bảng Điều Khiển & Xoay Camera 360"
-      >
-        <Compass size={16} />
-      </button>
-    );
+  if (!visible) {
+    return null;
   }
 
   return (
@@ -155,16 +132,18 @@ export const CameraNavigationWidget: React.FC<CameraNavigationWidgetProps> = ({
           >
             {isCollapsed ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
-          <button
-            onClick={() => setIsOpen(false)}
-            style={{
-              background: 'transparent', border: 'none', color: '#94a3b8',
-              cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center',
-            }}
-            title="Ẩn bảng điều khiển camera"
-          >
-            <X size={12} />
-          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent', border: 'none', color: '#94a3b8',
+                cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center',
+              }}
+              title="Ẩn bảng điều khiển camera"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
       </div>
 

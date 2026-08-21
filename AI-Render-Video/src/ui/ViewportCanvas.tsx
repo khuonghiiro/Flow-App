@@ -76,8 +76,14 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   const [showControlsGuide, setShowControlsGuide] = useState(() => getSavedViewportSettings().showControlsGuide);
   const [showCoordinates, setShowCoordinates] = useState(() => getSavedViewportSettings().showCoordinates);
   const [is2DMode, setIs2DMode] = useState(false);
-  const [showNavWidget, setShowNavWidget] = useState(true);
+  const [showNavWidget, setShowNavWidget] = useState(() => getSavedViewportSettings().showNavWidget ?? true);
   const [projectedMarkers, setProjectedMarkers] = useState<ProjectedMarker[]>([]);
+
+  const handleToggleNavWidget = (val?: boolean) => {
+    const nextVal = typeof val === 'boolean' ? val : !showNavWidget;
+    setShowNavWidget(nextVal);
+    saveViewportSetting('showNavWidget', nextVal);
+  };
 
   useEffect(() => {
     if (!renderer || !mountRef.current) return;
@@ -640,8 +646,8 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                 fontSize: 9,
                 boxShadow: showNavWidget ? '0 0 12px rgba(56, 189, 248, 0.5)' : 'none',
               }}
-              onClick={() => setShowNavWidget(!showNavWidget)}
-              title={showNavWidget ? "Ẩn bảng điều hướng camera" : "Bật bảng điều hướng camera (Xoay 360, Pan, Zoom)"}
+              onClick={() => handleToggleNavWidget()}
+              title={showNavWidget ? "Ẩn bảng điều hướng camera" : "Mở bảng điều hướng camera (Xoay 360, Pan, Zoom)"}
             >
               <Compass size={14} />
             </button>
@@ -675,7 +681,11 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       </div>
 
       {/* Unity-Style Camera Quick Navigation Widget (Bottom-Right of Viewport with Long-Press Repeat) */}
-      <CameraNavigationWidget renderer={renderer} visible={showUI && showNavWidget} />
+      <CameraNavigationWidget
+        renderer={renderer}
+        visible={showUI && showNavWidget}
+        onClose={() => handleToggleNavWidget(false)}
+      />
 
       {/* Subtitles Overlay Layer */}
       {showCC && activeSubtitle && (

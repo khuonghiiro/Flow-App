@@ -82,6 +82,7 @@ export class LightningSystem {
     this.impactMesh = new THREE.Mesh(impactGeom, impactMat);
     this.impactMesh.rotation.x = -Math.PI / 2;
     this.impactMesh.position.set(0, 0.1, 0);
+    this.impactMesh.visible = false;
     this.lightningGroup.add(this.impactMesh);
   }
 
@@ -180,6 +181,7 @@ export class LightningSystem {
       this.impactLight.position.set(groundX, 5.0, groundZ);
       if (this.impactMesh) {
         this.impactMesh.position.set(groundX, 0.08, groundZ);
+        this.impactMesh.visible = true;
       }
     }
 
@@ -324,6 +326,7 @@ export class LightningSystem {
         this.boltMaterial.opacity = 0;
         this.impactLight.intensity = 0;
         if (this.impactMesh) {
+          this.impactMesh.visible = false;
           (this.impactMesh.material as THREE.MeshBasicMaterial).opacity = 0;
         }
       } else {
@@ -351,6 +354,7 @@ export class LightningSystem {
 
           // Ground impact shockwave
           if (this.impactMesh) {
+            this.impactMesh.visible = true;
             (this.impactMesh.material as THREE.MeshBasicMaterial).opacity = intensity * 0.85 * Math.min(1.0, strikeIntensity);
             const ringScale = 1.0 + (this.flashTimer / this.flashDuration) * 2.5;
             this.impactMesh.scale.set(ringScale, ringScale, 1);
@@ -359,6 +363,7 @@ export class LightningSystem {
           this.boltMaterial.opacity = 0;
           this.impactLight.intensity = 0;
           if (this.impactMesh) {
+            this.impactMesh.visible = false;
             (this.impactMesh.material as THREE.MeshBasicMaterial).opacity = 0;
           }
         }
