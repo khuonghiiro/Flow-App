@@ -36,7 +36,8 @@ pip install -r requirements.txt
 
 echo ======================================================================
 echo [SUCCESS] Environment setup complete!
-echo To start Gradio Web UI: run 'python app.py'
+echo To download all AI models into 'models/': run 'python download_models.py'
+echo To start Gradio Web UI: run 'python app.py' (or double-click _start.bat)
 echo To start FastAPI REST Server: run 'python server.py'
 echo ======================================================================
 pause

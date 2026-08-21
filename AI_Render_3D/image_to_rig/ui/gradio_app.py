@@ -1,6 +1,6 @@
 """
 Interactive Gradio Web UI for Image-to-Rig Pipeline.
-Provides single-step and end-to-end execution with real-time 3D model previews.
+Provides single-step and end-to-end execution, 3D model previews, AI prompt guides, and model management.
 """
 
 from pathlib import Path
@@ -13,6 +13,13 @@ from PIL import Image
 from image_to_rig.config import DEFAULT_CONFIG
 from image_to_rig.core.pipeline import ImageToRigPipeline
 from image_to_rig.core.stage2_rig import Stage2RigResult
+from image_to_rig.ui.prompt_guide import (
+    FULL_GUIDE_MARKDOWN,
+    QUICK_GUIDE_MARKDOWN,
+    PROMPT_TEMPLATES,
+    get_template_choices,
+)
+from image_to_rig.ui.models_tab import build_models_tab
 from image_to_rig.utils.gpu_utils import GPUManager
 from image_to_rig.utils.logger import get_logger
 
@@ -28,9 +35,6 @@ def create_gradio_app() -> gr.Blocks:
         "current_mesh_path": None,
         "stage2_rig_result": None,
     }
-
-    def log_handler(level: str, msg: str):
-        pass  # Hooked into logger
 
     # Callbacks for UI actions
     def on_image_uploaded(image_pil: Optional[Image.Image]) -> Tuple[str, str]:
@@ -129,22 +133,33 @@ def create_gradio_app() -> gr.Blocks:
             f"💾 VRAM Trống: {vram['free_mb']} MB"
         )
 
+    def on_select_template(template_key: str) -> Tuple[str, str, str]:
+        item = PROMPT_TEMPLATES.get(template_key, {})
+        desc = item.get("description", "")
+        prompt = item.get("prompt", "")
+        neg = item.get("negative_prompt", "")
+        return desc, prompt, neg
+
     # Gradio Blocks UI Layout
     with gr.Blocks(title="Studio Image-to-Rig Pipeline", theme=gr.themes.Soft()) as demo:
         gr.Markdown(
             """
             # 🎨 Studio Image-to-Rig Pipeline (TripoSR + UniRig)
             **Tự động hóa chuyển đổi ảnh nhân vật 2D thành model 3D có sẵn Skeleton & Skinning Weights (.glb) cho Three.js.**
-            *Tối ưu cho GPU NVIDIA RTX 3060 12GB VRAM.*
+            *Tối ưu cho GPU NVIDIA RTX 3060 12GB VRAM & Quản lý Model trong thư mục `models/`.*
             """
         )
 
         with gr.Tabs():
             # TAB 1: Image to Rig Main
-            with gr.TabItem("🚀 1. Image to Rigged 3D"):
+            with gr.TabItem("🚀 1. Tạo Model 3D & Auto-Rig"):
                 with gr.Row():
                     with gr.Column(scale=1):
                         input_image = gr.Image(type="pil", label="1. Tải ảnh nhân vật 2D (PNG / JPG / WEBP)")
+                        
+                        with gr.Accordion("💡 Hướng dẫn nhanh: Chuẩn ảnh tạo 3D & Rigging", open=False):
+                            gr.Markdown(QUICK_GUIDE_MARKDOWN)
+
                         validation_box = gr.Textbox(label="Kiểm tra ảnh đầu vào", interactive=False, lines=2)
                         
                         with gr.Row():
@@ -161,8 +176,39 @@ def create_gradio_app() -> gr.Blocks:
                 with gr.Accordion("📋 Metadata JSON Asset (Dành cho Asset Catalog Scanner)", open=False):
                     metadata_display = gr.Code(label="metadata.json", language="json")
 
-            # TAB 2: VRM Branch A
-            with gr.TabItem("👤 2. Nhánh A — Chuyển đổi VRoid / VRM"):
+            # TAB 2: AI Prompt Guide
+            with gr.TabItem("📖 2. Hướng Dẫn Prompt & Chuẩn Ảnh AI"):
+                gr.Markdown("### 🎯 Kho Mẫu Prompt AI Chuẩn (Sẵn Sàng Sao Chép)")
+                with gr.Row():
+                    tpl_dropdown = gr.Dropdown(
+                        label="Chọn phong cách / mẫu nhân vật",
+                        choices=get_template_choices(),
+                        value="nam_casual",
+                    )
+                
+                tpl_desc = gr.Markdown(value=PROMPT_TEMPLATES["nam_casual"]["description"])
+                with gr.Row():
+                    tpl_prompt = gr.Textbox(
+                        label="Prompt Tiếng Anh (Dành cho Midjourney / SD / Flux)",
+                        value=PROMPT_TEMPLATES["nam_casual"]["prompt"],
+                        lines=4,
+                    )
+                    tpl_negative = gr.Textbox(
+                        label="Negative Prompt",
+                        value=PROMPT_TEMPLATES["nam_casual"]["negative_prompt"],
+                        lines=4,
+                    )
+
+                tpl_dropdown.change(
+                    fn=on_select_template,
+                    inputs=[tpl_dropdown],
+                    outputs=[tpl_desc, tpl_prompt, tpl_negative],
+                )
+
+                gr.Markdown(FULL_GUIDE_MARKDOWN)
+
+            # TAB 3: VRM Branch A
+            with gr.TabItem("👤 3. Chuyển Đổi VRoid / VRM"):
                 gr.Markdown(
                     """
                     ### Nhánh A: Nhân vật từ VRoid Studio (.vrm)
@@ -174,8 +220,8 @@ def create_gradio_app() -> gr.Blocks:
                 vrm_btn = gr.Button("Trích xuất & Bảo toàn Blendshapes", variant="primary")
                 vrm_output = gr.Textbox(label="Kết quả VRM", interactive=False)
 
-            # TAB 3: Face Blendshape Helper Branch B
-            with gr.TabItem("🎭 3. Nhánh B — Hỗ trợ Sculpt Biểu cảm Khuôn mặt"):
+            # TAB 4: Face Blendshape Helper Branch B
+            with gr.TabItem("🎭 4. Sculpt Biểu Cảm Khuôn Mặt (Blender)"):
                 gr.Markdown(
                     """
                     ### ⚠️ Lưu ý kỹ thuật quan trọng về TripoSR & UniRig:
@@ -189,8 +235,12 @@ def create_gradio_app() -> gr.Blocks:
                 )
                 gr.File(label="Tải file Blender Sculpt Helper Script")
 
-            # TAB 4: GPU Hardware Monitor
-            with gr.TabItem("⚙️ 4. Giám sát Phần cứng GPU"):
+            # TAB 5: Models Downloader & Manager
+            with gr.TabItem("📦 5. Quản Lý & Tải Model (models/)"):
+                build_models_tab()
+
+            # TAB 6: GPU Hardware Monitor
+            with gr.TabItem("⚙️ 6. Giám Sát Phần Cứng GPU"):
                 hw_status = gr.Textbox(value=get_hardware_status, label="Trạng thái GPU & VRAM", interactive=False, lines=5)
                 btn_refresh_hw = gr.Button("🔄 Làm mới thông số VRAM")
                 btn_refresh_hw.click(fn=get_hardware_status, outputs=[hw_status])

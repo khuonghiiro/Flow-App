@@ -157,3 +157,47 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
+
+# ==============================================================================
+# Python, AI Modules & Machine Learning Weights
+# ==============================================================================
+**/__pycache__/
+**/*.py[cod]
+**/venv/
+**/.venv/
+**/env/
+**/.pytest_cache/
+**/.cache/
+
+# AI Model Checkpoint Weights (Exclude multi-GB binaries from git)
+**/models/**
+!**/models/
+!**/models/**/
+!**/models/README.md
+!**/models/**/README.md
+!**/models/**/README.txt
+!**/models/**/config.yaml
+!**/models/**/.gitkeep
+**/*.ckpt
+**/*.pt
+**/*.pth
+**/*.safetensors
+**/*.onnx
+
+# Pipeline Temporary Workspaces & Render Outputs
+**/temp_workspace/
+**/outputs/
+**/face_scaffolds/
+**/*.tmp
+**/*.part
+
+# ==============================================================================
+# Node.js & Web Bundles
+# ==============================================================================
+**/node_modules/
+**/.npm/
+**/dist/
+**/build/
+**/.next/
+**/.turbo/
+**/.parcel-cache/

@@ -36,15 +36,24 @@ class TripoSRMeshGenerator:
         self._model = None
 
     def _load_model_if_needed(self):
-        """Lazily initialize and load the TripoSR model on GPU."""
+        """Lazily initialize and load the TripoSR model on GPU from local models/ or HF."""
         if self._model is not None:
             return self._model
 
+        # Ensure U2NET_HOME is set for RemBG
+        rembg_home = Path("models/rembg").resolve()
+        rembg_home.mkdir(parents=True, exist_ok=True)
+        os.environ["U2NET_HOME"] = str(rembg_home)
+
+        # Check local checkpoint folder in models/triposr
+        local_dir = Path(getattr(self.config, "local_model_dir", "models/triposr"))
+        target_pretrained = str(local_dir) if (local_dir / "model.ckpt").exists() else self.config.model_id
+
         try:
             from tsr.system import TSR
-            self.logger.info(f"Loading TripoSR model checkpoint '{self.config.model_id}'...")
+            self.logger.info(f"Loading TripoSR model checkpoint from '{target_pretrained}'...")
             model = TSR.from_pretrained(
-                self.config.model_id,
+                target_pretrained,
                 config_name="config.yaml",
                 weight_name="model.ckpt",
             )
@@ -67,9 +76,14 @@ class TripoSRMeshGenerator:
 
         if self.config.remove_background:
             try:
+                # Direct RemBG to use models/rembg
+                rembg_home = Path("models/rembg").resolve()
+                rembg_home.mkdir(parents=True, exist_ok=True)
+                os.environ["U2NET_HOME"] = str(rembg_home)
+
                 import rembg
                 image = rembg.remove(image)
-                self.logger.info("Background removed successfully via rembg.")
+                self.logger.info("Background removed successfully via rembg (models/rembg).")
             except Exception as ex:
                 self.logger.warning(f"rembg background removal skipped: {ex}")
 

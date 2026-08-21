@@ -118,18 +118,37 @@ def create_api_app() -> FastAPI:
 
         return FileResponse(path=str(target_path), filename=filename)
 
-    @app.get("/api/v1/status/{job_id}", response_model=JobStatusResponse)
-    async def get_job_status(job_id: str):
-        """Query status and progress for a given job ID."""
-        job = queue.get_job(job_id)
-        if not job:
-            raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
-        return JobStatusResponse(
-            job_id=job.job_id,
-            status=job.status.value,
-            progress=job.progress,
-            current_stage=job.current_stage,
-            error_message=job.error_message,
+    @app.get("/api/v1/models/status")
+    async def get_models_status_api() -> Dict:
+        """Inspect and return current status of AI models in the root models/ directory."""
+        from image_to_rig.tools.model_downloader import get_model_status
+        return get_model_status()
+
+    @app.post("/api/v1/models/download")
+    async def trigger_model_download(background_tasks: BackgroundTasks, component: str = "all") -> Dict:
+        """Trigger background download of AI models into models/."""
+        from image_to_rig.tools.model_downloader import (
+            download_triposr,
+            download_rembg,
+            download_unirig,
+            download_all_models,
         )
+
+        def bg_download():
+            if component == "triposr":
+                download_triposr()
+            elif component == "rembg":
+                download_rembg()
+            elif component == "unirig":
+                download_unirig()
+            else:
+                download_all_models()
+
+        background_tasks.add_task(bg_download)
+        return {
+            "status": "download_started",
+            "component": component,
+            "message": f"Downloading {component} in background into models/.",
+        }
 
     return app
