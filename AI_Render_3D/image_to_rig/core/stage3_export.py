@@ -1,6 +1,6 @@
 """
 Stage 3: glTF 2.0 Binary (.glb) Exporter and Asset Metadata Generator.
-Builds valid skinned humanoid meshes with joint hierarchies and inverse bind matrices.
+Builds valid skinned humanoid meshes with joint hierarchies, materials, vertex colors, and embedded textures.
 """
 
 import json
@@ -29,7 +29,7 @@ class Stage3ExportResult:
 
 
 class GLBExporter:
-    """Exports rigged mesh and skeleton into standard glTF 2.0 binary (.glb) files."""
+    """Exports rigged mesh and skeleton into standard glTF 2.0 binary (.glb) files with textures."""
 
     def __init__(self, config: ExportConfig):
         self.config = config
@@ -38,15 +38,46 @@ class GLBExporter:
     def _compute_inverse_bind_matrices(
         self, joint_positions: np.ndarray
     ) -> np.ndarray:
-        """Compute $4 \\times 4$ column-major inverse bind matrices for all skeleton joints."""
+        """Compute 4x4 column-major inverse bind matrices for all skeleton joints."""
         num_joints = len(joint_positions)
         ibms = np.zeros((num_joints, 4, 4), dtype=np.float32)
         for i in range(num_joints):
             mat = np.eye(4, dtype=np.float32)
             mat[0:3, 3] = -joint_positions[i]
-            # Column-major format for glTF specification
             ibms[i] = mat.T
         return ibms
+
+    def _compute_dual_tile_uvs(self, mesh: trimesh.Trimesh) -> np.ndarray:
+        """
+        Computes precise, distortion-free 360-degree dual-tile UV coordinates:
+        - Front tile: [0.0, 0.5] for front-facing vertices (Nz >= 0 or Z >= 0)
+        - Back tile: [0.5, 1.0] for back-facing vertices (Nz < 0, horizontally flipped)
+        Includes 4% padding margin to ensure limbs, head, and feet never sample outer background.
+        """
+        vertices = mesh.vertices
+        normals = mesh.vertex_normals
+        bounds = mesh.bounds
+
+        span_x = bounds[1, 0] - bounds[0, 0] + 1e-5
+        span_y = bounds[1, 1] - bounds[0, 1] + 1e-5
+
+        u_rel = np.clip((vertices[:, 0] - bounds[0, 0]) / span_x, 0.0, 1.0)
+        v_rel = np.clip((vertices[:, 1] - bounds[0, 1]) / span_y, 0.0, 1.0)
+
+        # Front Tile occupies U in [0.04, 0.46]
+        u_front = 0.04 + u_rel * (0.46 - 0.04)
+        # Back Tile occupies U in [0.54, 0.96] (horizontally mirrored)
+        u_back = 0.96 - u_rel * (0.96 - 0.54)
+
+        # V is inverted for glTF 2.0 (V=0 is top, V=1 is bottom)
+        v_gltf = 1.0 - (0.04 + v_rel * (0.96 - 0.04))
+
+        is_front = (normals[:, 2] >= 0.0) | (vertices[:, 2] >= 0.0)
+
+        u_final = np.where(is_front, u_front, u_back)
+        v_final = v_gltf
+
+        return np.column_stack([np.clip(u_final, 0.0, 1.0), np.clip(v_final, 0.0, 1.0)]).astype(np.float32)
 
     def export_rigged_glb(
         self,
@@ -57,7 +88,7 @@ class GLBExporter:
     ) -> Stage3ExportResult:
         """
         Assemble complete glTF 2.0 binary containing skinned mesh, joint hierarchy,
-        inverse bind matrices, materials, and generate companion metadata JSON.
+        inverse bind matrices, materials, vertex colors, embedded texture, and companion metadata.
         """
         start_time = time.time()
         self.logger.start_stage("Stage 3: Convert & Export GLB")
@@ -71,14 +102,15 @@ class GLBExporter:
         faces = np.array(mesh.faces, dtype=np.uint32)
         normals = np.array(mesh.vertex_normals, dtype=np.float32)
 
-        # Fallback UV coordinates if not present
+        # UV Coordinates: compute dual-tile 360-degree coordinates
         if hasattr(mesh.visual, "uv") and mesh.visual.uv is not None and len(mesh.visual.uv) == len(vertices):
-            uvs = np.array(mesh.visual.uv, dtype=np.float32)
+            u_max = mesh.visual.uv[:, 0].max()
+            if u_max > 0.5:
+                uvs = np.array(mesh.visual.uv, dtype=np.float32)
+            else:
+                uvs = self._compute_dual_tile_uvs(mesh)
         else:
-            # Cylindrical procedural UV mapping
-            theta = np.arctan2(vertices[:, 0], vertices[:, 2]) / (2 * np.pi) + 0.5
-            y_norm = (vertices[:, 1] - mesh.bounds[0, 1]) / (mesh.bounds[1, 1] - mesh.bounds[0, 1] + 1e-5)
-            uvs = np.column_stack([theta, y_norm]).astype(np.float32)
+            uvs = self._compute_dual_tile_uvs(mesh)
 
         joints = rig_result.skinning_joints.astype(np.uint16)
         weights = rig_result.skinning_weights.astype(np.float32)
@@ -158,7 +190,26 @@ class GLBExporter:
             )
         )
 
-        # 5. Joints (JOINTS_0)
+        # 5. Vertex Colors (COLOR_0)
+        col_acc = None
+        if hasattr(mesh.visual, "vertex_colors") and mesh.visual.vertex_colors is not None and len(mesh.visual.vertex_colors) == len(vertices):
+            vcols = np.array(mesh.visual.vertex_colors, dtype=np.float32)
+            if vcols.max() > 1.0:
+                vcols = vcols / 255.0
+            if vcols.shape[1] == 3:
+                vcols = np.column_stack([vcols, np.ones(len(vcols), dtype=np.float32)])
+            col_bv = add_buffer_data(vcols.astype(np.float32).tobytes(), target=34962)
+            col_acc = len(gltf.accessors)
+            gltf.accessors.append(
+                pygltflib.Accessor(
+                    bufferView=col_bv,
+                    componentType=pygltflib.FLOAT,
+                    count=len(vcols),
+                    type=pygltflib.VEC4,
+                )
+            )
+
+        # 6. Joints (JOINTS_0)
         joints_bv = add_buffer_data(joints.tobytes(), target=34962)
         joints_acc = len(gltf.accessors)
         gltf.accessors.append(
@@ -170,7 +221,7 @@ class GLBExporter:
             )
         )
 
-        # 6. Weights (WEIGHTS_0)
+        # 7. Weights (WEIGHTS_0)
         weights_bv = add_buffer_data(weights.tobytes(), target=34962)
         weights_acc = len(gltf.accessors)
         gltf.accessors.append(
@@ -182,7 +233,7 @@ class GLBExporter:
             )
         )
 
-        # 7. Inverse Bind Matrices (IBM)
+        # 8. Inverse Bind Matrices (IBM)
         ibm_bv = add_buffer_data(ibms.tobytes())
         ibm_acc = len(gltf.accessors)
         gltf.accessors.append(
@@ -199,7 +250,6 @@ class GLBExporter:
         for i, (name, pos, parent_idx) in enumerate(
             zip(rig_result.joint_names, rig_result.joint_positions, rig_result.joint_parents)
         ):
-            # If root (parent -1), position is relative to origin; otherwise relative to parent
             if parent_idx >= 0:
                 rel_pos = pos - rig_result.joint_positions[parent_idx]
             else:
@@ -222,35 +272,71 @@ class GLBExporter:
                 child_node_idx = joint_nodes_indices[i]
                 gltf.nodes[parent_node_idx].children.append(child_node_idx)
 
-        # Mesh Definition
+        # 9. Embedded Texture and Material definition
+        tex_info = None
+        if texture_path and Path(texture_path).exists():
+            try:
+                with open(texture_path, "rb") as f:
+                    img_data = f.read()
+                img_bv = add_buffer_data(img_data)
+                img_idx = len(gltf.images)
+                mime = "image/png" if str(texture_path).lower().endswith(".png") else "image/jpeg"
+                gltf.images.append(pygltflib.Image(bufferView=img_bv, mimeType=mime))
+
+                sampler_idx = len(gltf.samplers)
+                gltf.samplers.append(
+                    pygltflib.Sampler(
+                        magFilter=pygltflib.LINEAR,
+                        minFilter=pygltflib.LINEAR_MIPMAP_LINEAR,
+                        wrapS=pygltflib.CLAMP_TO_EDGE,
+                        wrapT=pygltflib.CLAMP_TO_EDGE,
+                    )
+                )
+
+                tex_idx = len(gltf.textures)
+                gltf.textures.append(pygltflib.Texture(sampler=sampler_idx, source=img_idx))
+                tex_info = pygltflib.TextureInfo(index=tex_idx)
+            except Exception as tex_err:
+                self.logger.warning(f"Texture embedding notice: {tex_err}")
+
+        # Material with texture and PBR attributes
+        pbr_dict: Dict[str, Any] = {
+            "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+            "roughnessFactor": 0.5,
+            "metallicFactor": 0.05,
+        }
+        if tex_info is not None:
+            pbr_dict["baseColorTexture"] = tex_info
+
+        gltf.materials.append(
+            pygltflib.Material(
+                name="CharacterMaterial",
+                pbrMetallicRoughness=pygltflib.PbrMetallicRoughness(**pbr_dict),
+                doubleSided=True,
+            )
+        )
+
+        # Primitive Attributes
+        prim_attrs_dict = {
+            "POSITION": pos_acc,
+            "NORMAL": norm_acc,
+            "TEXCOORD_0": uv_acc,
+            "JOINTS_0": joints_acc,
+            "WEIGHTS_0": weights_acc,
+        }
+        if col_acc is not None and tex_info is None:
+            prim_attrs_dict["COLOR_0"] = col_acc
+
         gltf.meshes.append(
             pygltflib.Mesh(
                 name="CharacterMesh",
                 primitives=[
                     pygltflib.Primitive(
-                        attributes=pygltflib.Attributes(
-                            POSITION=pos_acc,
-                            NORMAL=norm_acc,
-                            TEXCOORD_0=uv_acc,
-                            JOINTS_0=joints_acc,
-                            WEIGHTS_0=weights_acc,
-                        ),
+                        attributes=pygltflib.Attributes(**prim_attrs_dict),
                         indices=idx_acc,
                         material=0,
                     )
                 ],
-            )
-        )
-
-        # Materials
-        gltf.materials.append(
-            pygltflib.Material(
-                name="CharacterMaterial",
-                pbrMetallicRoughness=pygltflib.PbrMetallicRoughness(
-                    baseColorFactor=[0.9, 0.9, 0.9, 1.0],
-                    roughnessFactor=0.6,
-                    metallicFactor=0.1,
-                ),
             )
         )
 
@@ -294,7 +380,7 @@ class GLBExporter:
         file_size = out_glb.stat().st_size
         duration = self.logger.end_stage("Stage 3: Convert & Export GLB")
 
-        # Step 3.2: Export Metadata JSON for Studio Asset Scanner
+        # Step 3.2: Export Metadata JSON
         vram_stats = GPUManager.get_vram_status_mb()
         bounds_dim = (mesh.bounds[1] - mesh.bounds[0]).tolist()
 

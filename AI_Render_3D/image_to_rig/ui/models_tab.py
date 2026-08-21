@@ -10,11 +10,14 @@ import gradio as gr
 from image_to_rig.tools.model_downloader import (
     get_models_root,
     get_model_status,
+    download_hunyuan3d,
+    download_trellis,
     download_triposr,
     download_rembg,
     download_unirig,
     download_all_models,
 )
+
 
 
 def render_model_status_markdown() -> str:
@@ -55,12 +58,13 @@ def build_models_tab() -> Dict:
             
             with gr.Row():
                 btn_refresh = gr.Button("🔄 Làm mới trạng thái", variant="secondary")
-                btn_download_all = gr.Button("📥 Tải tất cả Model (~2.4 GB)", variant="primary")
+                btn_download_all = gr.Button("📥 Tải tất cả Model (~6.5 GB)", variant="primary")
 
             with gr.Row():
+                btn_dl_hunyuan = gr.Button("📥 Tải Hunyuan3D-2GP SOTA (2.9 GB)", variant="primary")
+                btn_dl_trellis = gr.Button("📥 Tải TRELLIS SOTA (2.8 GB)", variant="secondary")
                 btn_dl_triposr = gr.Button("📥 Tải TripoSR (1.7 GB)", variant="secondary")
                 btn_dl_rembg = gr.Button("📥 Tải RemBG (176 MB)", variant="secondary")
-                btn_dl_unirig = gr.Button("📁 Chuẩn bị UniRig", variant="secondary")
 
         with gr.Column(scale=1):
             log_box = gr.Textbox(
@@ -74,6 +78,22 @@ def build_models_tab() -> Dict:
     def on_refresh() -> Tuple[str, str]:
         md = render_model_status_markdown()
         return md, "✅ Đã làm mới trạng thái thư mục models/."
+
+    def on_download_hunyuan(progress=gr.Progress()) -> Tuple[str, str]:
+        def cb(p, msg):
+            progress(p, desc=msg)
+        progress(0.1, desc="Đang tải Hunyuan3D-2GP SOTA...")
+        res = download_hunyuan3d(progress_cb=cb)
+        md = render_model_status_markdown()
+        return md, f"Hunyuan3D-2GP: {res.get('message', 'Hoàn tất!')}"
+
+    def on_download_trellis(progress=gr.Progress()) -> Tuple[str, str]:
+        def cb(p, msg):
+            progress(p, desc=msg)
+        progress(0.1, desc="Đang tải TRELLIS SOTA...")
+        res = download_trellis(progress_cb=cb)
+        md = render_model_status_markdown()
+        return md, f"TRELLIS: {res.get('message', 'Hoàn tất!')}"
 
     def on_download_triposr(progress=gr.Progress()) -> Tuple[str, str]:
         def cb(p, msg):
@@ -108,10 +128,12 @@ def build_models_tab() -> Dict:
         return md, "🎉 Đã tải hoàn tất tất cả model vào thư mục models/!"
 
     btn_refresh.click(fn=on_refresh, outputs=[status_markdown, log_box])
-    btn_download_triposr.click(fn=on_download_triposr, outputs=[status_markdown, log_box])
-    btn_download_rembg.click(fn=on_download_rembg, outputs=[status_markdown, log_box])
-    btn_dl_unirig.click(fn=on_download_unirig, outputs=[status_markdown, log_box])
+    btn_dl_hunyuan.click(fn=on_download_hunyuan, outputs=[status_markdown, log_box])
+    btn_dl_trellis.click(fn=on_download_trellis, outputs=[status_markdown, log_box])
+    btn_dl_triposr.click(fn=on_download_triposr, outputs=[status_markdown, log_box])
+    btn_dl_rembg.click(fn=on_download_rembg, outputs=[status_markdown, log_box])
     btn_download_all.click(fn=on_download_all, outputs=[status_markdown, log_box])
+
 
     return {
         "status_markdown": status_markdown,

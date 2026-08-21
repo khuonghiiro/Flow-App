@@ -20,9 +20,9 @@ def temp_pipeline(tmp_path):
     return ImageToRigPipeline(config)
 
 
-def test_full_pipeline_execution(temp_pipeline, tmp_path):
+def test_full_pipeline_execution_trellis(temp_pipeline, tmp_path):
     # Create test input image
-    img_path = tmp_path / "hero.png"
+    img_path = tmp_path / "hero_trellis.png"
     img = Image.new("RGBA", (512, 512), color=(200, 200, 200, 255))
     img.save(img_path)
 
@@ -35,6 +35,7 @@ def test_full_pipeline_execution(temp_pipeline, tmp_path):
         image_path=str(img_path),
         progress_cb=on_progress,
         extract_face_scaffold=True,
+        engine="trellis",
     )
 
     assert result.success is True
@@ -42,8 +43,47 @@ def test_full_pipeline_execution(temp_pipeline, tmp_path):
     assert Path(result.glb_path).exists()
     assert result.metadata is not None
     assert result.metadata["bone_count"] > 10
+    assert result.stage1_result.engine_used == "trellis"
     assert result.face_scaffold is not None
     assert len(progress_events) > 0
+
+
+def test_full_pipeline_execution_hunyuan3d(temp_pipeline, tmp_path):
+    # Create test input image
+    img_path = tmp_path / "hero_hunyuan.png"
+    img = Image.new("RGBA", (512, 512), color=(210, 210, 210, 255))
+    img.save(img_path)
+
+    result = temp_pipeline.run_pipeline(
+        image_path=str(img_path),
+        extract_face_scaffold=True,
+        engine="hunyuan3d",
+    )
+
+    assert result.success is True
+    assert result.glb_path is not None
+    assert Path(result.glb_path).exists()
+    assert result.stage1_result.engine_used == "hunyuan3d"
+    assert result.face_scaffold is not None
+
+
+def test_full_pipeline_execution_triposr(temp_pipeline, tmp_path):
+    # Create test input image
+    img_path = tmp_path / "hero_triposr.png"
+    img = Image.new("RGBA", (512, 512), color=(180, 180, 180, 255))
+    img.save(img_path)
+
+    result = temp_pipeline.run_pipeline(
+        image_path=str(img_path),
+        extract_face_scaffold=False,
+        engine="triposr",
+    )
+
+    assert result.success is True
+    assert result.glb_path is not None
+    assert Path(result.glb_path).exists()
+    assert result.stage1_result.engine_used == "triposr"
+
 
 
 def test_gpu_queue_serial_execution():

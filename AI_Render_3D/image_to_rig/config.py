@@ -9,8 +9,36 @@ from typing import List
 
 
 @dataclass
+class Hunyuan3DConfig:
+    """Configuration for SOTA Stage 1: Tencent Hunyuan3D-2GP Image to 3D."""
+    model_id: str = "tencent/Hunyuan3D-2"
+    local_model_dir: str = "models/hunyuan3d"
+    low_vram_mode: bool = True  # Automatically uses mmgp offloading for 12GB VRAM
+    texture_resolution: int = 2048  # 360-degree PBR texture atlas
+    finger_refinement: bool = True  # Anatomical digit isolation & hand geometry mesh refinement
+    foreground_ratio: float = 0.88
+    remove_background: bool = True
+    device: str = "cuda"
+
+
+@dataclass
+class TrellisConfig:
+    """Configuration for SOTA Stage 1: TRELLIS Image to High-Fidelity 3D Mesh."""
+    model_id: str = "microsoft/TRELLIS-image-large"
+    local_model_dir: str = "models/trellis"
+    sparse_structure_resolution: int = 512
+    ss_steps: int = 12
+    slat_steps: int = 12
+    simplify_target_faces: int = 50000  # Optimized for real-time Three.js & rigging
+    texture_size: int = 2048  # High resolution PBR texture atlas
+    foreground_ratio: float = 0.88
+    remove_background: bool = True
+    device: str = "cuda"
+
+
+@dataclass
 class TripoSRConfig:
-    """Configuration for Stage 1: TripoSR Image to Mesh."""
+    """Configuration for Stage 1: TripoSR Image to Mesh (Fast Preview Mode)."""
     model_id: str = "stabilityai/TripoSR"
     local_model_dir: str = "models/triposr"
     chunk_size: int = 8192  # Reduced chunk size for 12GB VRAM safety
@@ -20,6 +48,7 @@ class TripoSRConfig:
     foreground_ratio: float = 0.85
     remove_background: bool = True
     device: str = "cuda"
+
 
 
 @dataclass
@@ -84,6 +113,9 @@ class PipelineConfig:
     """Master pipeline configuration combining all stages."""
     models_dir: str = "models"
     rembg_dir: str = "models/rembg"
+    default_engine: str = "hunyuan3d"  # "hunyuan3d" (SOTA Meshy-Grade), "trellis", or "triposr" (Fast Preview)
+    hunyuan3d: Hunyuan3DConfig = field(default_factory=Hunyuan3DConfig)
+    trellis: TrellisConfig = field(default_factory=TrellisConfig)
     triposr: TripoSRConfig = field(default_factory=TripoSRConfig)
     unirig: UniRigConfig = field(default_factory=UniRigConfig)
     validation: ValidationConfig = field(default_factory=ValidationConfig)
@@ -96,10 +128,13 @@ class PipelineConfig:
         """Create necessary project runtime directories if missing."""
         Path(self.models_dir).mkdir(parents=True, exist_ok=True)
         Path(self.rembg_dir).mkdir(parents=True, exist_ok=True)
+        Path(self.hunyuan3d.local_model_dir).mkdir(parents=True, exist_ok=True)
+        Path(self.trellis.local_model_dir).mkdir(parents=True, exist_ok=True)
         Path(self.triposr.local_model_dir).mkdir(parents=True, exist_ok=True)
         Path(self.unirig.checkpoint_dir).mkdir(parents=True, exist_ok=True)
         Path(self.export.output_dir).mkdir(parents=True, exist_ok=True)
         Path(self.temp_dir).mkdir(parents=True, exist_ok=True)
+
 
 
 # Default global singleton configuration instance

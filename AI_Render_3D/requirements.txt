@@ -8,24 +8,28 @@ torchaudio>=2.1.0
 numpy>=1.24.0,<2.0.0
 scipy>=1.10.0
 Pillow>=10.0.0
-opencv-python>=4.8.0
+opencv-python>=4.8.0,<4.10.0
+opencv-python-headless>=4.8.0,<4.10.0
 trimesh>=4.0.0
 pygltflib>=1.16.0
-rembg>=2.0.50
-onnxruntime-gpu>=1.16.0
+rembg[gpu]>=2.0.50
+onnxruntime-gpu>=1.18.0,<1.19.0
 
 # Hugging Face & ML Infrastructure
 huggingface_hub>=0.20.0
-transformers>=4.36.0
+transformers>=4.38.0,<4.45.0
+diffusers>=0.30.0
+mmgp>=3.7.0
 accelerate>=0.25.0
 safetensors>=0.4.0
 einops>=0.7.0
 
 # Web UI & REST API
-gradio>=4.20.0
-fastapi>=0.109.0
+gradio>=5.15.0,<6.0.0
+fastapi>=0.115.0,<0.116.0
+starlette>=0.40.0,<0.46.0
 uvicorn[standard]>=0.27.0
-pydantic>=2.5.0
+pydantic>=2.5.0,<=2.12.3
 python-multipart>=0.0.9
 
 # Testing & Utilities

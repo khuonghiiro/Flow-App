@@ -16,6 +16,12 @@ class PipelineLogger:
         self.logger = logging.getLogger(name)
         if not self.logger.handlers:
             self.logger.setLevel(logging.INFO)
+            # Ensure UTF-8 stream handling on Windows
+            if hasattr(sys.stdout, "reconfigure"):
+                try:
+                    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass
             handler = logging.StreamHandler(sys.stdout)
             formatter = logging.Formatter(
                 "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
@@ -23,6 +29,7 @@ class PipelineLogger:
             )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
+
 
         self._callbacks: List[Callable[[str, str], None]] = []
         self._stage_start_times: dict[str, float] = {}

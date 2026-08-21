@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, Optional
 from image_to_rig.config import PipelineConfig, DEFAULT_CONFIG
 from image_to_rig.core.queue_manager import GPUJobQueue, get_gpu_queue
 from image_to_rig.core.validator import PipelineValidator, ValidationResult
-from image_to_rig.core.stage1_mesh import TripoSRMeshGenerator, Stage1MeshResult
+from image_to_rig.core.stage1_mesh import Stage1MeshRouter, Stage1MeshResult
 from image_to_rig.core.stage2_rig import UniRigAutoRigger, Stage2RigResult
 from image_to_rig.core.stage3_export import GLBExporter, Stage3ExportResult
 from image_to_rig.core.stage4_blendshapes import FacialBlendshapeManager, FaceScaffoldResult
@@ -43,7 +43,11 @@ class ImageToRigPipeline:
         self.logger = get_logger()
 
         self.validator = PipelineValidator(self.config.validation)
-        self.stage1_mesh = TripoSRMeshGenerator(self.config.triposr)
+        self.stage1_mesh = Stage1MeshRouter(
+            trellis_config=self.config.trellis,
+            triposr_config=self.config.triposr,
+            hunyuan3d_config=self.config.hunyuan3d,
+        )
         self.stage2_rig = UniRigAutoRigger(self.config.unirig)
         self.stage3_export = GLBExporter(self.config.export)
         self.stage4_blendshapes = FacialBlendshapeManager()
@@ -54,7 +58,10 @@ class ImageToRigPipeline:
         return self.validator.validate_image(image_path)
 
     def run_image_to_mesh(
-        self, image_path: str, output_obj_path: Optional[str] = None
+        self,
+        image_path: str,
+        output_obj_path: Optional[str] = None,
+        engine: Optional[str] = None,
     ) -> Stage1MeshResult:
         """Execute Stage 1 alone (Image -> Mesh OBJ)."""
         val = self.validate_input(image_path)
@@ -65,7 +72,8 @@ class ImageToRigPipeline:
             stem = Path(image_path).stem
             output_obj_path = str(Path(self.config.temp_dir) / f"{stem}_raw_mesh.obj")
 
-        return self.stage1_mesh.generate(image_path, output_obj_path)
+        active_engine = engine or self.config.default_engine
+        return self.stage1_mesh.generate(image_path, output_obj_path, engine=active_engine)
 
     def run_auto_rig(self, obj_mesh_path: str) -> Stage2RigResult:
         """Execute Stage 2 alone (Mesh OBJ -> Rigging)."""
@@ -90,13 +98,15 @@ class ImageToRigPipeline:
         output_glb_path: Optional[str] = None,
         progress_cb: Optional[Callable[[float, str], None]] = None,
         extract_face_scaffold: bool = True,
+        engine: Optional[str] = None,
     ) -> PipelineExecutionResult:
         """
         Execute full end-to-end pipeline:
         Image -> Validation -> Stage 1 -> Stage 2 -> Stage 3 -> Stage 4.
         """
         start_time = time.time()
-        self.logger.info(f"Initiating full Image-to-Rig pipeline for: {image_path}")
+        active_engine = engine or self.config.default_engine
+        self.logger.info(f"Initiating full Image-to-Rig pipeline for: {image_path} (Engine: {active_engine})")
 
         try:
             # 1. Validation (0% - 10%)
@@ -112,10 +122,16 @@ class ImageToRigPipeline:
                 Path(self.config.export.output_dir) / f"{stem}_rigged.glb"
             )
 
-            # 2. Stage 1: TripoSR (10% - 50%)
+            # 2. Stage 1: SOTA 3D Mesh (10% - 50%)
             if progress_cb:
-                progress_cb(0.15, "Generating 3D mesh via TripoSR...")
-            s1_res = self.stage1_mesh.generate(image_path, temp_obj)
+                if active_engine == "hunyuan3d":
+                    engine_label = "Hunyuan3D-2GP SOTA"
+                elif active_engine == "trellis":
+                    engine_label = "TRELLIS SOTA"
+                else:
+                    engine_label = "TripoSR Fast"
+                progress_cb(0.15, f"Generating 3D mesh via {engine_label}...")
+            s1_res = self.stage1_mesh.generate(image_path, temp_obj, engine=active_engine)
 
             # 3. Stage 2: UniRig (50% - 80%)
             if progress_cb:

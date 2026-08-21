@@ -106,17 +106,19 @@ class UniRigAutoRigger:
 
         return top4_weights, top4_joints
 
-    def rig_mesh(self, obj_mesh_path: str) -> Stage2RigResult:
+    def rig_mesh(self, obj_mesh_path) -> Stage2RigResult:
         """
         Execute Stage 2 Auto-Rigging: validate symmetry, predict skeleton, compute skinning.
         """
         self.logger.start_stage("Stage 2: UniRig Auto-Rigging")
-        mesh_path = Path(obj_mesh_path)
-        if not mesh_path.exists():
-            raise FileNotFoundError(f"Mesh file not found: {obj_mesh_path}")
-
-        loaded = trimesh.load(str(mesh_path), process=False)
-        mesh = loaded if isinstance(loaded, trimesh.Trimesh) else loaded.dump().sum()
+        if isinstance(obj_mesh_path, trimesh.Trimesh):
+            mesh = obj_mesh_path
+        else:
+            mesh_path = Path(obj_mesh_path)
+            if not mesh_path.exists():
+                raise FileNotFoundError(f"Mesh file not found: {obj_mesh_path}")
+            loaded = trimesh.load(str(mesh_path), process=False)
+            mesh = loaded if isinstance(loaded, trimesh.Trimesh) else loaded.dump().sum()
 
         # Step 2.1: Validate Mesh Symmetry
         self.logger.info("Validating mesh bilateral symmetry...")

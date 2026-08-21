@@ -71,6 +71,40 @@ class GPUManager:
         return 0.0, 0.0
 
     @classmethod
+    def register_torch_cuda_dlls(cls) -> bool:
+        """
+        Register PyTorch bundled CUDA DLLs (e.g. cublas, cudnn) into Windows DLL search path.
+        Allows ONNXRuntime and other C++ extensions to seamlessly bind to CUDA 12.
+        """
+        import os
+        import sys
+        from pathlib import Path
+
+        registered = False
+        try:
+            import torch
+            torch_lib = Path(torch.__file__).parent / "lib"
+            if torch_lib.exists():
+                str_path = str(torch_lib.resolve())
+                if sys.platform == "win32" and hasattr(os, "add_dll_directory"):
+                    try:
+                        os.add_dll_directory(str_path)
+                        registered = True
+                    except Exception:
+                        pass
+                if str_path not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = f"{str_path};{os.environ.get('PATH', '')}"
+                    registered = True
+        except Exception:
+            pass
+        return registered
+
+    @classmethod
     def get_optimal_device_str(cls) -> str:
         """Determine device string ('cuda:0' or 'cpu')."""
         return "cuda:0" if cls.is_cuda_available() else "cpu"
+
+
+# Auto-register torch CUDA DLLs on module import
+GPUManager.register_torch_cuda_dlls()
+

@@ -2,7 +2,7 @@
 # Git Ignore Configuration for AI_Render_3D (Image-to-Rig Pipeline)
 # ==============================================================================
 
-# --- Python & Virtual Environments ---
+# --- Python Bytecode & Cache ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -26,21 +26,24 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# --- Virtual Environments ---
 venv/
 env/
 ENV/
 .venv/
 env.bak/
 venv.bak/
+python/
 
-# Environment Variables & Secrets
+# --- Environment Variables & Secrets ---
 .env
 .env.local
 .env.*.local
+*.key
+*.pem
 
 # --- AI Models, Weights & Checkpoints (Heavy Binaries: Multi-GB) ---
-# Ignore all model weight binaries but preserve documentation and READMEs
+# Ignore model weight files and caches
 models/**
 !models/
 !models/**/
@@ -50,7 +53,7 @@ models/**
 !models/**/.gitkeep
 !models/**/config.yaml
 
-# Model weight file extensions
+# Model weight file formats
 *.ckpt
 *.pt
 *.pth
@@ -59,12 +62,17 @@ models/**
 *.onnx
 *.engine
 *.trt
+*.mar
+*.h5
+*.pkl
+*.weights
 checkpoints/
 
-# HuggingFace & RemBG cache
+# HuggingFace, PyTorch Hub & RemBG cache
 .cache/
 huggingface/
 .u2net/
+.torch/
 
 # --- Pipeline Runtime, Temp Files & Outputs ---
 temp_workspace/
@@ -74,15 +82,31 @@ uploads/
 *.tmp
 *.part
 *.log
+*.log.*
 
-# Generated 3D & Image Outputs (Exclude generated .glb / .obj / .png from git)
+# Generated 3D Models & Render Outputs (Exclude runtime .glb / .fbx / .obj / .ply / .png)
 outputs/
 face_scaffolds/
 *.glb
+*.gltf
+*.fbx
+*.obj
+*.ply
+*.stl
 !examples/**/*.glb
 !examples/**/*.gltf
+!examples/**/*.obj
+!examples/**/*.png
 
-# --- Unit Testing & Coverage ---
+# Temporary Scratch Files & Test Inputs in AI_Render_3D root
+gggg.png
+test_*.png
+render_*.png
+scratch/
+scratch_*
+temp_*
+
+# --- Unit Testing & Code Coverage ---
 .pytest_cache/
 .coverage
 .coverage.*
@@ -94,12 +118,18 @@ coverage.xml
 *.cover
 *.py,cover
 
-# --- IDEs, Editors & OS Trash ---
+# --- IDEs, Editors & OS Detritus ---
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.bak
+*.backup
+*.old
+*.orig
+* - Copy*
+*-Copy*
 .DS_Store
 Thumbs.db
 ehthumbs.db

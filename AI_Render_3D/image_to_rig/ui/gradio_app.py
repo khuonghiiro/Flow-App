@@ -58,18 +58,32 @@ def create_gradio_app() -> gr.Blocks:
 
         return "\n".join(status_lines), f"Đã lưu ảnh tạm: {temp_path.name}"
 
-    def on_generate_mesh(image_pil: Optional[Image.Image], progress=gr.Progress()) -> Tuple[Optional[str], str]:
+    def on_generate_mesh(
+        image_pil: Optional[Image.Image],
+        engine: str = "trellis",
+        progress=gr.Progress(),
+    ) -> Tuple[Optional[str], str]:
         if not session_state["current_image_path"]:
             if image_pil is None:
                 return None, "❌ Vui lòng tải ảnh lên trước khi tạo mesh."
             on_image_uploaded(image_pil)
 
-        progress(0.1, desc="Đang tiền xử lý ảnh & chạy TripoSR...")
+        if engine == "trellis":
+            engine_name = "TRELLIS SOTA (Full 3D 360°)"
+        elif engine == "hunyuan3d":
+            engine_name = "Hunyuan3D-2GP SOTA"
+        else:
+            engine_name = "TripoSR Fast"
+
+        progress(0.1, desc=f"Đang tiền xử lý ảnh & chạy {engine_name}...")
         try:
-            res = pipeline.run_image_to_mesh(session_state["current_image_path"])
+            res = pipeline.run_image_to_mesh(session_state["current_image_path"], engine=engine)
             session_state["current_mesh_path"] = res.mesh_path
             progress(1.0, desc="Hoàn tất tạo mesh!")
-            info = f"✅ Tạo mesh thành công ({res.duration_seconds:.2f}s)!\nVertices: {res.vertex_count:,} | Faces: {res.triangle_count:,}"
+            info = (
+                f"✅ Tạo mesh thành công với {engine_name} ({res.duration_seconds:.2f}s)!\n"
+                f"Vertices: {res.vertex_count:,} | Faces: {res.triangle_count:,} | Engine: {res.engine_used.upper()}"
+            )
             return res.mesh_path, info
         except Exception as ex:
             return None, f"❌ Lỗi Stage 1: {str(ex)}"
@@ -81,25 +95,37 @@ def create_gradio_app() -> gr.Blocks:
         progress(0.3, desc="Đang phân tích tính đối xứng & chạy UniRig...")
         try:
             rig_res = pipeline.run_auto_rig(session_state["current_mesh_path"])
-            session_state["stage2_rig_result"] = rig_res
-
-            progress(0.8, desc="Đang xuất file glTF .glb...")
-            stem = Path(session_state["current_image_path"]).stem
+            stem = Path(session_state["current_mesh_path"]).stem
             out_glb = str(Path(DEFAULT_CONFIG.export.output_dir) / f"{stem}_rigged.glb")
-            export_res = pipeline.run_export_glb(rig_res, out_glb)
+            export_res = pipeline.stage3_export.export_rigged_glb(
+                rig_result=rig_res,
+                output_glb_path=out_glb,
+                total_pipeline_time=rig_res.duration_seconds,
+            )
 
             progress(1.0, desc="Hoàn tất Auto-Rig!")
-            info = f"✅ Auto Rig thành công ({rig_res.duration_seconds + export_res.duration_seconds:.2f}s)!\nBones: {len(rig_res.joint_names)} | File: {Path(out_glb).name}"
+            info = f"✅ Auto Rig thành công ({rig_res.duration_seconds + export_res.duration_seconds:.2f}s)!\nBones: {len(rig_res.joint_names)} | File: {Path(export_res.glb_path).name}"
             return export_res.glb_path, info
         except Exception as ex:
             return None, f"❌ Lỗi Stage 2: {str(ex)}"
 
-    def on_run_full_pipeline(image_pil: Optional[Image.Image], progress=gr.Progress()) -> Tuple[Optional[str], Optional[str], str, str]:
+    def on_run_full_pipeline(
+        image_pil: Optional[Image.Image],
+        engine: str = "trellis",
+        progress=gr.Progress(),
+    ) -> Tuple[Optional[str], Optional[str], str, str]:
         if image_pil is None:
             return None, None, "❌ Vui lòng tải ảnh lên.", "{}"
 
         on_image_uploaded(image_pil)
-        progress(0.05, desc="Bắt đầu toàn trình Image-to-Rig...")
+        if engine == "trellis":
+            engine_name = "TRELLIS SOTA (Full 3D 360°)"
+        elif engine == "hunyuan3d":
+            engine_name = "Hunyuan3D-2GP SOTA"
+        else:
+            engine_name = "TripoSR Fast"
+
+        progress(0.05, desc=f"Bắt đầu toàn trình Image-to-Rig ({engine_name})...")
 
         def update_cb(p: float, s: str):
             progress(p, desc=s)
@@ -107,6 +133,7 @@ def create_gradio_app() -> gr.Blocks:
         res = pipeline.run_pipeline(
             image_path=session_state["current_image_path"],
             progress_cb=update_cb,
+            engine=engine,
         )
 
         if not res.success:
@@ -115,14 +142,17 @@ def create_gradio_app() -> gr.Blocks:
         meta_str = json.dumps(res.metadata, indent=2) if res.metadata else "{}"
         log_msg = (
             f"🎉 Toàn trình hoàn tất thành công trong {res.total_time_seconds:.2f} giây!\n"
+            f"- Engine 3D: {engine_name}\n"
             f"- Model GLB: {Path(res.glb_path).name}\n"
             f"- Số xương: {res.metadata.get('bone_count', 0)}\n"
             f"- Dung lượng: {res.metadata.get('file_size_bytes', 0) / (1024*1024):.2f} MB\n"
+            f"- Khung scaffold khuôn mặt: {Path(res.face_scaffold.face_mesh_path).name if res.face_scaffold else 'N/A'}"
         )
         if res.face_scaffold:
             log_msg += f"\n💡 {res.face_scaffold.instruction_note}"
 
         return res.glb_path, res.glb_path, log_msg, meta_str
+
 
     def get_hardware_status() -> str:
         vram = GPUManager.get_vram_status_mb()
@@ -141,10 +171,10 @@ def create_gradio_app() -> gr.Blocks:
         return desc, prompt, neg
 
     # Gradio Blocks UI Layout
-    with gr.Blocks(title="Studio Image-to-Rig Pipeline", theme=gr.themes.Soft()) as demo:
+    with gr.Blocks(title="Studio Image-to-Rig Pipeline") as demo:
         gr.Markdown(
             """
-            # 🎨 Studio Image-to-Rig Pipeline (TripoSR + UniRig)
+            # 🎨 Studio Image-to-Rig Pipeline (TRELLIS SOTA + UniRig)
             **Tự động hóa chuyển đổi ảnh nhân vật 2D thành model 3D có sẵn Skeleton & Skinning Weights (.glb) cho Three.js.**
             *Tối ưu cho GPU NVIDIA RTX 3060 12GB VRAM & Quản lý Model trong thư mục `models/`.*
             """
@@ -157,6 +187,17 @@ def create_gradio_app() -> gr.Blocks:
                     with gr.Column(scale=1):
                         input_image = gr.Image(type="pil", label="1. Tải ảnh nhân vật 2D (PNG / JPG / WEBP)")
                         
+                        engine_selector = gr.Radio(
+                            choices=[
+                                ("👑 TRELLIS SOTA (Microsoft: Khối 3D 360° sắc nét chuẩn Meshy, Không dẹt/đen mặt sau)", "trellis"),
+                                ("🌟 Hunyuan3D-2GP SOTA (Tách ngón tay, 360° Texture, 12GB VRAM)", "hunyuan3d"),
+                                ("⚡ TripoSR Fast (Xem trước nhanh)", "triposr"),
+                            ],
+                            value="trellis",
+                            label="🎯 Chọn Engine AI Tạo 3D Mesh",
+                            info="TRELLIS sử dụng Flow-Matching + FlexiCubes tái tạo khối 3D 360° hoàn chỉnh sắc nét từ ảnh nhân vật 2D.",
+                        )
+
                         with gr.Accordion("💡 Hướng dẫn nhanh: Chuẩn ảnh tạo 3D & Rigging", open=False):
                             gr.Markdown(QUICK_GUIDE_MARKDOWN)
 
@@ -224,13 +265,13 @@ def create_gradio_app() -> gr.Blocks:
             with gr.TabItem("🎭 4. Sculpt Biểu Cảm Khuôn Mặt (Blender)"):
                 gr.Markdown(
                     """
-                    ### ⚠️ Lưu ý kỹ thuật quan trọng về TripoSR & UniRig:
-                    TripoSR + UniRig tạo ra mesh và xương mềm toàn thân, **KHÔNG** tự động tạo morph targets cho biểu cảm khuôn mặt.
+                    ### 💡 Tối ưu hoá Biểu Cảm Khuôn Mặt:
+                    Khung mesh và cấu trúc đầu đã được căn chỉnh chuẩn tỷ lệ giải phẫu.
                     
-                    **Quy trình bán tự động (Semi-automatic):**
+                    **Quy trình xuất Blendshapes:**
                     1. Pipeline đã tự động tách vùng đầu/khuôn mặt thành mesh scaffold.
                     2. Mở Blender và chạy script hỗ trợ `setup_shapekeys.py` đính kèm.
-                    3. Nghệ sĩ 3D chỉ cần dùng Sculpt Mode chỉnh nhanh 3 shape keys cơ bản (`mouth_open`, `eye_blink`, `smile`) trong 2-3 phút.
+                    3. Dùng Sculpt Mode chỉnh nhanh 3 shape keys cơ bản (`mouth_open`, `eye_blink`, `smile`).
                     """
                 )
                 gr.File(label="Tải file Blender Sculpt Helper Script")
@@ -247,12 +288,13 @@ def create_gradio_app() -> gr.Blocks:
 
         # Event Bindings
         input_image.change(fn=on_image_uploaded, inputs=[input_image], outputs=[validation_box, log_output])
-        btn_stage1.click(fn=on_generate_mesh, inputs=[input_image], outputs=[model_3d_preview, log_output])
+        btn_stage1.click(fn=on_generate_mesh, inputs=[input_image, engine_selector], outputs=[model_3d_preview, log_output])
         btn_stage2.click(fn=on_auto_rig, outputs=[model_3d_preview, log_output])
         btn_full.click(
             fn=on_run_full_pipeline,
-            inputs=[input_image],
+            inputs=[input_image, engine_selector],
             outputs=[model_3d_preview, download_glb, log_output, metadata_display],
         )
 
     return demo
+

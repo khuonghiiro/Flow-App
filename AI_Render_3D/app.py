@@ -17,9 +17,18 @@ if __name__ == "__main__":
     logger.info("Starting Gradio Web Application on http://localhost:7860 ...")
     
     app = create_gradio_app()
-    app.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_error=True,
-    )
+    try:
+        app.launch(
+            server_name="127.0.0.1",
+            server_port=7860,
+            share=False,
+            show_error=True,
+        )
+    except OSError:
+        logger.warning("Port 7860 is busy, attempting alternative port 7861...")
+        app.launch(
+            server_name="127.0.0.1",
+            server_port=7861,
+            share=False,
+            show_error=True,
+        )
