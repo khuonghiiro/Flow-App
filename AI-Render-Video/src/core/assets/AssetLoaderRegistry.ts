@@ -129,6 +129,45 @@ export class AssetLoaderRegistry {
               mesh.receiveShadow = true;
               mesh.frustumCulled = false; // Keep map visible at all times, prevent chunk culling disappearance
 
+              // Filter out fake artificial polygon godray / sunbeam quads (triangles with gigantic edge length > 25 units)
+              const geom = mesh.geometry;
+              if (geom && geom.attributes.position && geom.index) {
+                const pos = geom.attributes.position;
+                const index = geom.index;
+                const indices = index.array;
+                const newIndices: number[] = [];
+                let removedHugeCount = 0;
+
+                for (let i = 0; i < indices.length; i += 3) {
+                  const i1 = indices[i];
+                  const i2 = indices[i + 1];
+                  const i3 = indices[i + 2];
+
+                  const x1 = pos.getX(i1), y1 = pos.getY(i1), z1 = pos.getZ(i1);
+                  const x2 = pos.getX(i2), y2 = pos.getY(i2), z2 = pos.getZ(i2);
+                  const x3 = pos.getX(i3), y3 = pos.getY(i3), z3 = pos.getZ(i3);
+
+                  const d12 = Math.hypot(x2 - x1, y2 - y1, z2 - z1);
+                  const d23 = Math.hypot(x3 - x2, y3 - y2, z3 - z2);
+                  const d31 = Math.hypot(x1 - x3, y1 - y3, z1 - z3);
+                  const maxEdge = Math.max(d12, d23, d31);
+
+                  // Standard voxel structures have block edge lengths 1.0 to 8.0.
+                  // Fake baked sunbeam polygon quads spanning the nave have gigantic edge lengths > 25.0 (up to 1200 units)!
+                  if (maxEdge > 25.0) {
+                    removedHugeCount++;
+                    continue; // Discard fake white sunbeam quad!
+                  }
+
+                  newIndices.push(i1, i2, i3);
+                }
+
+                if (removedHugeCount > 0) {
+                  geom.setIndex(newIndices);
+                  geom.computeVertexNormals();
+                }
+              }
+
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
@@ -142,9 +181,9 @@ export class AssetLoaderRegistry {
 
                   if (isTransparent) {
                     // Alpha cutout rendering: MUST be transparent=false + alphaTest to render in Opaque Pass
-                    // This completely eliminates triangle sorting errors and see-through artifacts from top-down angles!
+                    // alphaTest=0.25 cleanly discards fake polygon sunbeam quads (which have alpha < 0.1) while preserving 100% of leaves, stained glass, chandeliers, torches, and lanterns
                     mat.transparent = false;
-                    mat.alphaTest = 0.5;
+                    mat.alphaTest = 0.25;
                     mat.side = THREE.DoubleSide;
                   } else {
                     mat.transparent = false;
@@ -162,7 +201,7 @@ export class AssetLoaderRegistry {
                     }
 
                     if (isTransparent) {
-                      // Foliage, leaves, stained glass, water:
+                      // Foliage, leaves, stained glass, torches, candles, chandeliers, water:
                       // If model stored RGB color in emissiveMap (texture 2) and alpha mask in map (texture 1):
                       if (stdMat.emissiveMap) {
                         if (stdMat.map && stdMat.map !== stdMat.emissiveMap) {
@@ -172,10 +211,14 @@ export class AssetLoaderRegistry {
                       }
                       stdMat.color.setHex(0xffffff);
                       stdMat.transparent = false;
-                      stdMat.alphaTest = 0.5; // Hardware GPU discard on alpha < 0.5; solid pixels write to depth
+                      stdMat.alphaTest = 0.25; // Cleanly discards fake white sunbeam planes, keeps real objects 100% solid
                       stdMat.depthWrite = true;
                       stdMat.depthTest = true;
                       stdMat.side = THREE.DoubleSide;
+
+                      // Keep rich emissive glow on light-emitting objects (candles, torches, chandeliers, stained glass)
+                      stdMat.emissive.setHex(0xffffff);
+                      stdMat.emissiveIntensity = 0.75;
                     } else {
                       // Solid surface materials (stone walls, pillars, roofs):
                       if (stdMat.emissiveMap && !stdMat.map) {
@@ -187,6 +230,8 @@ export class AssetLoaderRegistry {
                       stdMat.depthWrite = true;
                       stdMat.depthTest = true;
                       stdMat.side = THREE.FrontSide;
+                      stdMat.emissive.setHex(0x000000);
+                      stdMat.emissiveIntensity = 0.0;
                     }
 
                     stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
@@ -246,6 +291,42 @@ export class AssetLoaderRegistry {
               mesh.receiveShadow = true;
               mesh.frustumCulled = false;
 
+              const geom = mesh.geometry;
+              if (geom && geom.attributes.position && geom.index) {
+                const pos = geom.attributes.position;
+                const index = geom.index;
+                const indices = index.array;
+                const newIndices: number[] = [];
+                let removedHugeCount = 0;
+
+                for (let i = 0; i < indices.length; i += 3) {
+                  const i1 = indices[i];
+                  const i2 = indices[i + 1];
+                  const i3 = indices[i + 2];
+
+                  const x1 = pos.getX(i1), y1 = pos.getY(i1), z1 = pos.getZ(i1);
+                  const x2 = pos.getX(i2), y2 = pos.getY(i2), z2 = pos.getZ(i2);
+                  const x3 = pos.getX(i3), y3 = pos.getY(i3), z3 = pos.getZ(i3);
+
+                  const d12 = Math.hypot(x2 - x1, y2 - y1, z2 - z1);
+                  const d23 = Math.hypot(x3 - x2, y3 - y2, z3 - z2);
+                  const d31 = Math.hypot(x1 - x3, y1 - y3, z1 - z3);
+                  const maxEdge = Math.max(d12, d23, d31);
+
+                  if (maxEdge > 25.0) {
+                    removedHugeCount++;
+                    continue;
+                  }
+
+                  newIndices.push(i1, i2, i3);
+                }
+
+                if (removedHugeCount > 0) {
+                  geom.setIndex(newIndices);
+                  geom.computeVertexNormals();
+                }
+              }
+
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
@@ -259,7 +340,7 @@ export class AssetLoaderRegistry {
 
                   if (isTransparent) {
                     mat.transparent = false;
-                    mat.alphaTest = 0.5;
+                    mat.alphaTest = 0.25;
                     mat.side = THREE.DoubleSide;
                   } else {
                     mat.transparent = false;
@@ -282,8 +363,10 @@ export class AssetLoaderRegistry {
                       }
                       stdMat.color.setHex(0xffffff);
                       stdMat.transparent = false;
-                      stdMat.alphaTest = 0.5;
+                      stdMat.alphaTest = 0.25;
                       stdMat.side = THREE.DoubleSide;
+                      stdMat.emissive.setHex(0xffffff);
+                      stdMat.emissiveIntensity = 0.75;
                     } else {
                       if (stdMat.emissiveMap && !stdMat.map) {
                         stdMat.map = stdMat.emissiveMap;
@@ -292,6 +375,8 @@ export class AssetLoaderRegistry {
                       stdMat.transparent = false;
                       stdMat.alphaTest = 0.0;
                       stdMat.side = THREE.FrontSide;
+                      stdMat.emissive.setHex(0x000000);
+                      stdMat.emissiveIntensity = 0.0;
                     }
                     stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
                     stdMat.metalness = Math.min(0.15, stdMat.metalness || 0.0);
@@ -324,6 +409,43 @@ export class AssetLoaderRegistry {
         mesh.castShadow = false;
         mesh.frustumCulled = false;
 
+        // Strip fake sunbeam polygon slabs dynamically if not already stripped
+        const geom = mesh.geometry;
+        if (geom && geom.attributes.position && geom.index) {
+          const pos = geom.attributes.position;
+          const index = geom.index;
+          const indices = index.array;
+          const newIndices: number[] = [];
+          let removedHugeCount = 0;
+
+          for (let i = 0; i < indices.length; i += 3) {
+            const i1 = indices[i];
+            const i2 = indices[i + 1];
+            const i3 = indices[i + 2];
+
+            const x1 = pos.getX(i1), y1 = pos.getY(i1), z1 = pos.getZ(i1);
+            const x2 = pos.getX(i2), y2 = pos.getY(i2), z2 = pos.getZ(i2);
+            const x3 = pos.getX(i3), y3 = pos.getY(i3), z3 = pos.getZ(i3);
+
+            const d12 = Math.hypot(x2 - x1, y2 - y1, z2 - z1);
+            const d23 = Math.hypot(x3 - x2, y3 - y2, z3 - z2);
+            const d31 = Math.hypot(x1 - x3, y1 - y3, z1 - z3);
+            const maxEdge = Math.max(d12, d23, d31);
+
+            if (maxEdge > 25.0) {
+              removedHugeCount++;
+              continue;
+            }
+
+            newIndices.push(i1, i2, i3);
+          }
+
+          if (removedHugeCount > 0) {
+            geom.setIndex(newIndices);
+            geom.computeVertexNormals();
+          }
+        }
+
         if (mesh.material) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           mats.forEach((mat) => {
@@ -345,7 +467,7 @@ export class AssetLoaderRegistry {
               stdMat.depthWrite = true;
 
               if (isTransparent) {
-                // Transparent materials (foliage, leaves, stained glass, water)
+                // Transparent materials (foliage, leaves, stained glass, torches, candles, chandeliers, water)
                 if (stdMat.emissiveMap) {
                   if (stdMat.map && stdMat.map !== stdMat.emissiveMap) {
                     stdMat.alphaMap = stdMat.map;
@@ -353,14 +475,14 @@ export class AssetLoaderRegistry {
                   stdMat.map = stdMat.emissiveMap;
                 }
                 stdMat.color.setHex(0xffffff);
-                stdMat.transparent = false; // Render in Opaque Pass with Alpha Cutout (eliminates top-down see-through!)
-                stdMat.alphaTest = 0.5;
+                stdMat.transparent = false;
+                stdMat.alphaTest = 0.25; // Cleanly discards fake white sunbeam quads while keeping all 3D objects solid!
                 stdMat.side = THREE.DoubleSide;
 
                 if (dynamicLighting) {
-                  // Dynamic Sunlight & Weather Shadow Mode
-                  stdMat.emissive.setHex(0x000000);
-                  stdMat.emissiveIntensity = 0.0;
+                  // Dynamic Sunlight Mode: Keep vibrant light emission on torches, chandeliers, candles & stained glass!
+                  stdMat.emissive.setHex(0xffffff);
+                  stdMat.emissiveIntensity = 0.75;
                 } else {
                   // Original Baked Lightmap Mode (as configured in .glb): Full-bright self-illumination
                   stdMat.emissive.setHex(0xffffff);
@@ -379,7 +501,7 @@ export class AssetLoaderRegistry {
                 stdMat.side = THREE.FrontSide;
 
                 if (dynamicLighting) {
-                  // Dynamic Sunlight & Weather Shadow Mode
+                  // Dynamic Sunlight & Weather Shadow Mode: Stone surfaces react to sun and shadows
                   stdMat.emissive.setHex(0x000000);
                   stdMat.emissiveIntensity = 0.0;
                   stdMat.roughness = Math.max(0.65, stdMat.roughness || 0.65);
