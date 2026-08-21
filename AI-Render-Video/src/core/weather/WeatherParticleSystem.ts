@@ -85,7 +85,7 @@ export class WeatherParticleSystem {
   private static readonly _tempNormal = new THREE.Vector3();
   private static readonly _worldUp = new THREE.Vector3(0, 1, 0);
   private static readonly _worldRight = new THREE.Vector3(1, 0, 0);
-  private static readonly _planeDefaultNormal = new THREE.Vector3(0, 0, 1);
+  private static readonly _planeDefaultNormal = new THREE.Vector3(0, 1, 0);
   private static readonly _tangent1 = new THREE.Vector3();
   private static readonly _tangent2 = new THREE.Vector3();
   private static readonly _defaultSurface: SurfaceHitInfo = { y: 0, nx: 0, ny: 1, nz: 0 };
@@ -346,11 +346,13 @@ export class WeatherParticleSystem {
   }
 
   private initInstancedSplashes(): void {
-    const tex = this.createSplashTexture();
-    const geom = new THREE.PlaneGeometry(0.24, 0.24);
+    const geom = new THREE.SphereGeometry(0.024, 6, 4);
     this.splashMaterial = new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: 0.92,
-      depthWrite: false, side: THREE.DoubleSide,
+      color: 0xd6eeff,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
 
     this.instancedSplashes = new THREE.InstancedMesh(geom, this.splashMaterial, this.maxSplashCount);
@@ -371,14 +373,39 @@ export class WeatherParticleSystem {
   }
 
   private initInstancedRipples(): void {
-    const tex = this.createRippleTexture();
-    const geom = new THREE.PlaneGeometry(0.65, 0.65);
-    this.rippleMaterial = new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: 0.85,
-      depthWrite: false, side: THREE.DoubleSide,
-    });
+    const geom = new THREE.PlaneGeometry(1.0, 1.0);
+    geom.rotateX(-Math.PI / 2);
+    this.rippleMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv;
+        void main() {
+          vec2 p = vUv - vec2(0.5);
+          float r = length(p) * 2.0;
+          if (r > 1.0) discard;
+          
+          float wave1 = smoothstep(0.06, 0.0, abs(r - 0.78));
+          float wave2 = smoothstep(0.04, 0.0, abs(r - 0.48));
+          float alpha = (wave1 * 0.45 + wave2 * 0.20) * pow(1.0 - r, 0.7);
+          
+          if (alpha < 0.01) discard;
+          vec3 col = vec3(0.68, 0.84, 0.98);
+          gl_FragColor = vec4(col * alpha, alpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }) as any;
 
-    this.instancedRipples = new THREE.InstancedMesh(geom, this.rippleMaterial, this.maxRippleCount);
+    this.instancedRipples = new THREE.InstancedMesh(geom, this.rippleMaterial as any, this.maxRippleCount);
     this.instancedRipples.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.instancedRipples.frustumCulled = false;
     this.rainGroup.add(this.instancedRipples);
@@ -426,21 +453,21 @@ export class WeatherParticleSystem {
     WeatherParticleSystem._tangent2.crossVectors(norm, WeatherParticleSystem._tangent1).normalize();
 
     // 1. Splash droplets rebound along surface normal with lateral spray
-    const count = 2 + Math.floor(Math.random() * 2);
+    const count = 3 + Math.floor(Math.random() * 2);
     for (let s = 0; s < count; s++) {
       const sp = this.splashParticles[this.splashIndex];
       this.splashIndex = (this.splashIndex + 1) % this.maxSplashCount;
 
       // Position slightly offset along normal to avoid surface clipping
       sp.pos.set(
-        x + (Math.random() - 0.5) * 0.08 + norm.x * 0.03,
-        y + (Math.random() - 0.5) * 0.08 + norm.y * 0.03,
-        z + (Math.random() - 0.5) * 0.08 + norm.z * 0.03
+        x + (Math.random() - 0.5) * 0.10 + norm.x * 0.04,
+        y + (Math.random() - 0.5) * 0.10 + norm.y * 0.04,
+        z + (Math.random() - 0.5) * 0.10 + norm.z * 0.04
       );
 
       const sprayAngle = Math.random() * Math.PI * 2;
-      const normalSpeed = 2.0 + Math.random() * 2.6;
-      const tangentSpeed = 1.0 + Math.random() * 1.8;
+      const normalSpeed = 2.4 + Math.random() * 2.8;
+      const tangentSpeed = 1.2 + Math.random() * 2.0;
 
       sp.vel.set(0, 0, 0)
         .addScaledVector(norm, normalSpeed)
@@ -451,31 +478,32 @@ export class WeatherParticleSystem {
       sp.vel.x += wX * 0.12;
       sp.vel.z += wZ * 0.12;
 
-      sp.scale = 0.15 + Math.random() * 0.12;
-      sp.maxLife = 0.17 + Math.random() * 0.08;
+      sp.scale = 0.22 + Math.random() * 0.18;
+      sp.maxLife = 0.24 + Math.random() * 0.10;
       sp.life = sp.maxLife;
       sp.active = true;
     }
 
-    // 2. Ripple rings align perfectly flush to the surface orientation (roof tilt, rock slope, ground)
-    const rp = this.rippleParticles[this.rippleIndex];
-    this.rippleIndex = (this.rippleIndex + 1) % this.maxRippleCount;
+    // 2. Ripple rings ONLY spawn on horizontal or gently sloping surfaces (ground, roofs, rocks)
+    if (norm.y > 0.65) {
+      const rp = this.rippleParticles[this.rippleIndex];
+      this.rippleIndex = (this.rippleIndex + 1) % this.maxRippleCount;
 
-    // Offset slightly along normal to avoid Z-fighting on roofs/slopes
-    rp.pos.set(
-      x + norm.x * 0.015,
-      y + norm.y * 0.015,
-      z + norm.z * 0.015
-    );
+      // Offset slightly along normal to avoid Z-fighting
+      rp.pos.set(
+        x + norm.x * 0.015,
+        y + 0.015,
+        z + norm.z * 0.015
+      );
 
-    // Align PlaneGeometry (which faces +Z in local space) to the world normal
-    rp.quaternion.setFromUnitVectors(WeatherParticleSystem._planeDefaultNormal, norm);
+      rp.quaternion.setFromUnitVectors(WeatherParticleSystem._planeDefaultNormal, norm);
 
-    rp.currentScale = 0.10;
-    rp.maxScale = 0.40 + Math.random() * 0.30;
-    rp.maxLife = 0.26 + Math.random() * 0.10;
-    rp.life = rp.maxLife;
-    rp.active = true;
+      rp.currentScale = 0.10;
+      rp.maxScale = 0.40 + Math.random() * 0.25;
+      rp.maxLife = 0.28 + Math.random() * 0.10;
+      rp.life = rp.maxLife;
+      rp.active = true;
+    }
   }
 
   // ══════════════════════════════════════════════════
@@ -556,7 +584,7 @@ export class WeatherParticleSystem {
 
         if (drop.pos.y <= surfInfo.y) {
           // Hit surface → splash + ripple with surface normal orientation
-          if (distFromCam < 14.0 && Math.random() < 0.45 + this.activeRainIntensity * 0.30) {
+          if (distFromCam < 45.0 && Math.random() < 0.65 + this.activeRainIntensity * 0.30) {
             this.spawnSplashAndRipple(
               drop.pos.x, surfInfo.y, drop.pos.z,
               surfInfo.nx, surfInfo.ny, surfInfo.nz,
@@ -600,9 +628,9 @@ export class WeatherParticleSystem {
           this.instancedSplashes.setMatrixAt(i, this.dummyObj.matrix);
           continue;
         }
-        sp.vel.y -= 13.0 * delta;
+        sp.vel.y -= 14.0 * delta;
         sp.pos.addScaledVector(sp.vel, delta);
-        const s = sp.scale * (sp.life / sp.maxLife);
+        const s = (sp.life / sp.maxLife);
         this.dummyObj.position.copy(sp.pos);
         this.dummyObj.rotation.set(0, 0, 0);
         this.dummyObj.scale.set(s, s, s);
@@ -630,7 +658,7 @@ export class WeatherParticleSystem {
         const scale = rp.currentScale + progress * (rp.maxScale - rp.currentScale);
         this.dummyObj.position.copy(rp.pos);
         this.dummyObj.quaternion.copy(rp.quaternion);
-        this.dummyObj.scale.set(scale, scale, 1.0);
+        this.dummyObj.scale.set(scale, 1.0, scale);
         this.dummyObj.updateMatrix();
         this.instancedRipples.setMatrixAt(i, this.dummyObj.matrix);
       }

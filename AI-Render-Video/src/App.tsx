@@ -1514,6 +1514,11 @@ export const App: React.FC = () => {
         }
       });
 
+      // Update 3D rain collision obstacles directly from true map geometry
+      if (weatherParticlesRef.current) {
+        weatherParticlesRef.current.updateColliders(mapGroupRef.current);
+      }
+
       // Update scene config
       const updatedScene: MasterSceneConfig = {
         ...sceneRef.current,
