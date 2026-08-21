@@ -168,6 +168,7 @@ export class CloudSystem {
           opacity: 0,
           depthWrite: false,
           blending: THREE.NormalBlending,
+          fog: false, // Clouds are high in the sky and never obscured by ground fog
         });
 
         const sprite = new THREE.Sprite(mat);

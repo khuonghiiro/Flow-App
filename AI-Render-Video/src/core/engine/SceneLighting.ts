@@ -27,26 +27,26 @@ export class SceneLighting {
     this.hemiLight.position.set(0, 50, 0);
     this.scene.add(this.hemiLight);
 
-    // Directional Sun Light with Shadows (high celestial dome far above 150m-300m clouds)
+    // Directional Sun Light with Shadows (high precision shadow map)
     this.sunLight = new THREE.DirectionalLight(0xfff1d2, 3.2);
-    this.sunLight.position.set(100, 3500, 100);
+    this.sunLight.position.set(50, 120, 50);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 2048;
     this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.camera.near = 10.0;
-    this.sunLight.shadow.camera.far = 10000;
-    const d = 250;
+    this.sunLight.shadow.camera.near = 1.0;
+    this.sunLight.shadow.camera.far = 350.0;
+    const d = 80;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
-    this.sunLight.shadow.bias = -0.0003;
-    this.sunLight.shadow.normalBias = 0.03;
+    this.sunLight.shadow.bias = -0.0001;
+    this.sunLight.shadow.normalBias = 0.02;
     this.scene.add(this.sunLight);
     this.scene.add(this.sunLight.target);
 
-    // Fog
-    this.fog = new THREE.FogExp2(0x93c5fd, 0.012);
+    // Fog (Soft atmospheric horizon haze)
+    this.fog = new THREE.FogExp2(0x93c5fd, 0.001);
     this.scene.fog = this.fog;
 
     // Visible Glowing Sun Sprite on Celestial Sphere
@@ -57,9 +57,10 @@ export class SceneLighting {
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      fog: false, // Celestial sun is never obscured by ground fog
     });
     this.sunSprite = new THREE.Sprite(sunMat);
-    this.sunSprite.scale.set(380, 380, 1);
+    this.sunSprite.scale.set(320, 320, 1);
     this.sunSprite.renderOrder = 1; // Behind 3D clouds (renderOrder 100) so clouds pass in front of the sun
     this.scene.add(this.sunSprite);
   }
@@ -111,24 +112,26 @@ export class SceneLighting {
   }
 
   private applyLightingState(progress: number, overrideEnv?: EnvironmentOverride, flashIntensity: number = 0): void {
-    // Celestial Sphere Sun Trajectory: High celestial dome (Y = 1500m - 5000m)
-    // progress 0.0 (East Dawn) -> 0.5 (Zenith Noon High) -> 0.85 (West Dusk) -> 1.0 (Night Below Horizon)
+    // Celestial Sphere Sun Trajectory
     const angle = Math.PI * (0.06 + progress * 0.88);
-    const sunDist = 4500; // Far in the outer celestial dome
-    const sunX = -Math.cos(angle) * (sunDist * 0.85); // East (-X) to West (+X)
-    const sunY = Math.sin(angle) * 3500 + 1500; // Always far above clouds (Y = 1500m - 5000m at daytime)
-    const sunZ = -350 + Math.sin(progress * Math.PI) * 350;
+    const sunDist = 2400;
+    const sunX = -Math.cos(angle) * (sunDist * 0.85);
+    const sunY = Math.sin(angle) * 1800 + 400;
+    const sunZ = -300 + Math.sin(progress * Math.PI) * 300;
 
     this.sunSprite.position.set(sunX, sunY, sunZ);
-    // Sun light source follows high celestial position
-    this.sunLight.position.set(sunX, sunY, sunZ);
+
+    // Directional shadow caster light positioned close (120m) for millimeter-precision shadow maps
+    const sunDir = new THREE.Vector3(sunX, sunY, sunZ).normalize();
+    this.sunLight.position.set(sunDir.x * 140, Math.max(35, sunDir.y * 140), sunDir.z * 140);
+    this.sunLight.target.position.set(0, 0, 0);
 
     const altitude = Math.max(0, (sunY - 25) / (sunDist * 0.82));
 
     if (overrideEnv && overrideEnv.fog_density !== undefined) {
-      this.fog.density = overrideEnv.fog_density;
+      this.fog.density = Math.min(0.002, overrideEnv.fog_density);
     } else {
-      this.fog.density = this.currentEnv.weather?.fog || 0.012;
+      this.fog.density = Math.min(0.002, this.currentEnv.weather?.fog || 0.001);
     }
 
     const explicitMode = overrideEnv ? overrideEnv.sky_time : this.currentEnv.sky_time;
@@ -252,11 +255,14 @@ export class SceneLighting {
 
     // Atomic lightning flash applied on top of clean base frame lighting (No whiteout accumulation)
     if (flashIntensity > 0.005) {
-      targetAmbIntensity += flashIntensity * 2.2;
-      targetAmbColor.lerp(new THREE.Color(0xdbeafe), flashIntensity * 0.85);
-      this.hemiLight.intensity = 0.85 + flashIntensity * 1.8;
-      this.hemiLight.color.copy(new THREE.Color(0xffffff).lerp(new THREE.Color(0xb0e0ff), flashIntensity));
-      targetFogColor.lerp(new THREE.Color(0xb0e0ff), flashIntensity * 0.65);
+      // Direct sunlight with shadow map gets the main flash (respects shadows, roofs & walls)
+      targetSunIntensity += flashIntensity * 5.0;
+      targetSunColor.lerp(new THREE.Color(0xdbeafe), flashIntensity * 0.95);
+
+      // Zero ambient flooding so dark interiors beneath ceilings stay 100% dark!
+      targetAmbIntensity += flashIntensity * 0.02;
+      this.hemiLight.intensity = 0.45;
+      targetFogColor.lerp(new THREE.Color(0xb0e0ff), flashIntensity * 0.35);
     } else {
       // Balanced hemisphere sky-to-ground fill keeps all 3D characters, houses, and roofs clearly readable
       this.hemiLight.intensity = 0.45;

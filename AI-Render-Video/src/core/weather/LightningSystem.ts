@@ -83,13 +83,13 @@ export class LightningSystem {
       depthWrite: false,
     });
 
-    // 3. Volumetric Point Lights (Ground impact + Mid-air column)
-    this.impactLight = new THREE.PointLight(0xb0e8ff, 0, 160, 1.2);
+    // 3. Volumetric Point Lights (Local ground spark + High sky glow)
+    this.impactLight = new THREE.PointLight(0xb0e8ff, 0, 35, 2.0);
     this.impactLight.position.set(0, 5, 0);
     this.lightningGroup.add(this.impactLight);
 
-    this.airGlowLight = new THREE.PointLight(0x60a5fa, 0, 180, 1.1);
-    this.airGlowLight.position.set(0, 40, 0);
+    this.airGlowLight = new THREE.PointLight(0x60a5fa, 0, 80, 1.5);
+    this.airGlowLight.position.set(0, 80, 0);
     this.lightningGroup.add(this.airGlowLight);
 
     // 4. Ultra-smooth radial shockwave shader
@@ -271,7 +271,8 @@ export class LightningSystem {
       });
 
       if (targetMeshes.length > 0) {
-        this.raycaster.set(new THREE.Vector3(groundX, 200, groundZ), new THREE.Vector3(0, -1, 0));
+        this.raycaster.far = 400.0;
+        this.raycaster.set(new THREE.Vector3(groundX, 350.0, groundZ), new THREE.Vector3(0, -1, 0));
         const hits = this.raycaster.intersectObjects(targetMeshes, false);
         if (hits && hits.length > 0 && hits[0].point) {
           hitPoint = hits[0].point;

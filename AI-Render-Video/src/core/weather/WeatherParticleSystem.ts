@@ -122,8 +122,8 @@ export class WeatherParticleSystem {
   // ══════════════════════════════════════════════════
 
   /**
-   * Collect ALL mesh colliders from scene for raycasting.
-   * Bounding sphere pre-filter in getSurfaceY ensures only nearby meshes are tested.
+   * Collect mesh colliders from scene.
+   * Zero upfront processing for instant, freeze-free map switching.
    */
   public updateColliders(rootGroup?: THREE.Object3D): void {
     this.candidateMeshes = [];
@@ -136,12 +136,7 @@ export class WeatherParticleSystem {
         && child.name !== 'cloud_shadow_caster_3d') {
         const m = child as THREE.Mesh;
         if (m.geometry && m.geometry.attributes.position) {
-          // Performance guard: Only test terrain & low-poly obstacle colliders (< 10000 verts)
-          // Heavy interior / decorative meshes (> 10k verts) will fall back to fast ground plane level
-          if (m.geometry.attributes.position.count <= 10000) {
-            if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
-            this.candidateMeshes.push(m);
-          }
+          this.candidateMeshes.push(m);
         }
       }
     });
@@ -150,6 +145,8 @@ export class WeatherParticleSystem {
   // ══════════════════════════════════════════════════
   // Spatial Grid Height Cache with Mesh Raycasting
   // ══════════════════════════════════════════════════
+
+  private activeCameraMeshes: THREE.Mesh[] = [];
 
   /** Grid key from world XZ */
   private gridKey(x: number, z: number): string {
@@ -169,62 +166,45 @@ export class WeatherParticleSystem {
     const cached = this.heightCache.get(key);
     if (cached !== undefined) return cached;
 
-    // Budget exhausted this frame → return ground until next frame fills this cell
+    // Budget exhausted this frame → return ground until next frame fills this cell smoothly
     if (this.newRaycastsThisFrame >= this.maxNewRaycasts) {
       return WeatherParticleSystem._defaultSurface;
     }
 
     // No colliders → ground at 0 with straight up normal
-    if (this.candidateMeshes.length === 0) {
+    const testMeshes = this.activeCameraMeshes.length > 0 ? this.activeCameraMeshes : this.candidateMeshes;
+    if (testMeshes.length === 0) {
       this.heightCache.set(key, WeatherParticleSystem._defaultSurface);
       return WeatherParticleSystem._defaultSurface;
     }
 
-    // ── Raycast straight down (same as character ground snap) ──
+    // ── Raycast straight down from high sky (Y = 350m, covering tall roofs, spires & trees) ──
     const cellCenterX = (Math.floor(worldX / WeatherParticleSystem.GRID_CELL) + 0.5)
       * WeatherParticleSystem.GRID_CELL;
     const cellCenterZ = (Math.floor(worldZ / WeatherParticleSystem.GRID_CELL) + 0.5)
       * WeatherParticleSystem.GRID_CELL;
 
-    WeatherParticleSystem._rayOrigin.set(cellCenterX, 60, cellCenterZ);
+    WeatherParticleSystem._rayOrigin.set(cellCenterX, 350.0, cellCenterZ);
+    this.raycaster.far = 400.0;
     this.raycaster.set(WeatherParticleSystem._rayOrigin, WeatherParticleSystem._rayDir);
-
-    // Only test meshes whose bounding sphere is near the ray XZ (skip distant meshes)
-    const nearMeshes: THREE.Mesh[] = [];
-    for (let i = 0; i < this.candidateMeshes.length; i++) {
-      const m = this.candidateMeshes[i];
-      if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
-      const bs = m.geometry.boundingSphere!;
-      // Quick XZ distance check (world space approximation)
-      const wx = m.matrixWorld.elements[12];
-      const wz = m.matrixWorld.elements[14];
-      const dx = cellCenterX - wx;
-      const dz = cellCenterZ - wz;
-      const r = bs.radius + 5;
-      if (dx * dx + dz * dz < r * r) {
-        nearMeshes.push(m);
-      }
-    }
 
     let surfaceY = 0;
     let nx = 0, ny = 1, nz = 0;
-    if (nearMeshes.length > 0) {
-      const hits = this.raycaster.intersectObjects(nearMeshes, false);
-      if (hits.length > 0) {
-        const hit = hits[0];
-        surfaceY = hit.point.y;
-        if (hit.face) {
-          WeatherParticleSystem._tempNormal.copy(hit.face.normal);
-          WeatherParticleSystem._tempNormal.transformDirection(hit.object.matrixWorld).normalize();
-          nx = WeatherParticleSystem._tempNormal.x;
-          ny = WeatherParticleSystem._tempNormal.y;
-          nz = WeatherParticleSystem._tempNormal.z;
-        } else if (hit.normal) {
-          WeatherParticleSystem._tempNormal.copy(hit.normal).normalize();
-          nx = WeatherParticleSystem._tempNormal.x;
-          ny = WeatherParticleSystem._tempNormal.y;
-          nz = WeatherParticleSystem._tempNormal.z;
-        }
+    const hits = this.raycaster.intersectObjects(testMeshes, false);
+    if (hits.length > 0) {
+      const hit = hits[0];
+      surfaceY = hit.point.y;
+      if (hit.face) {
+        WeatherParticleSystem._tempNormal.copy(hit.face.normal);
+        WeatherParticleSystem._tempNormal.transformDirection(hit.object.matrixWorld).normalize();
+        nx = WeatherParticleSystem._tempNormal.x;
+        ny = WeatherParticleSystem._tempNormal.y;
+        nz = WeatherParticleSystem._tempNormal.z;
+      } else if (hit.normal) {
+        WeatherParticleSystem._tempNormal.copy(hit.normal).normalize();
+        nx = WeatherParticleSystem._tempNormal.x;
+        ny = WeatherParticleSystem._tempNormal.y;
+        nz = WeatherParticleSystem._tempNormal.z;
       }
     }
 
@@ -399,16 +379,15 @@ export class WeatherParticleSystem {
         void main() {
           vec2 p = (vUv - vec2(0.5)) * 2.0;
           float r = length(p);
-          if (r > 1.0) discard;
+          if (r > 1.0 || r < 0.15) discard;
           
-          // Ultra-thin, crisp, natural water refraction ring
-          float ring = smoothstep(0.07, 0.0, abs(r - 0.88));
-          float innerMist = smoothstep(0.35, 0.0, r) * 0.10;
-          float alpha = (ring * 0.32 + innerMist) * pow(1.0 - r, 0.5);
+          // Soft, natural, translucent water puddle wave ring
+          float ring = smoothstep(0.09, 0.0, abs(r - 0.82));
+          float alpha = ring * 0.35 * (1.0 - r);
           if (alpha < 0.005) discard;
           
-          vec3 col = vec3(0.80, 0.92, 1.0);
-          gl_FragColor = vec4(col * alpha, alpha);
+          vec3 col = vec3(0.95, 0.98, 1.0);
+          gl_FragColor = vec4(col, alpha);
         }
       `,
       transparent: true,
@@ -501,26 +480,8 @@ export class WeatherParticleSystem {
       sp.active = true;
     }
 
-    // 2. Ripple rings ONLY spawn on horizontal surfaces with active rainfall
-    if (norm.y > 0.75 && rainIntensity > 0.05) {
-      const rp = this.rippleParticles[this.rippleIndex];
-      this.rippleIndex = (this.rippleIndex + 1) % this.maxRippleCount;
-
-      // Offset slightly along normal to avoid Z-fighting
-      rp.pos.set(
-        x + norm.x * 0.008,
-        y + 0.008,
-        z + norm.z * 0.008
-      );
-
-      rp.quaternion.setFromUnitVectors(WeatherParticleSystem._planeDefaultNormal, norm);
-
-      rp.currentScale = 0.02;
-      rp.maxScale = (0.06 + rainIntensity * 0.09) * (0.85 + Math.random() * 0.3);
-      rp.maxLife = 0.16 + rainIntensity * 0.08;
-      rp.life = rp.maxLife;
-      rp.active = true;
-    }
+    // 2. Ripple rings disabled per user preference (only realistic 3D splash impact droplets are shown)
+    // No artificial 2D white/black circles
   }
 
   // ══════════════════════════════════════════════════
@@ -551,9 +512,26 @@ export class WeatherParticleSystem {
     this.boxHeight = 28.0;
 
     const isCollisionEnabled = collisionQuality > 0;
-    // Dynamic raycast budget (0 = disabled, 1 to 10 = 4 to 40 raycasts/frame)
-    this.maxNewRaycasts = isCollisionEnabled ? Math.max(4, Math.round(collisionQuality * 4)) : 0;
+    // Dynamic raycast budget (strictly 2 to 6 raycasts/frame to guarantee 60 FPS without frame drops)
+    this.maxNewRaycasts = isCollisionEnabled ? Math.min(6, Math.max(2, Math.round(collisionQuality * 1.5))) : 0;
     this.newRaycastsThisFrame = 0;
+
+    // Filter candidate meshes only within camera active volume (chỉ tính toán khi camera soi đến)
+    this.activeCameraMeshes = [];
+    if (isCollisionEnabled && this.candidateMeshes.length > 0) {
+      const activeRadius = 35.0;
+      const activeRadiusSq = activeRadius * activeRadius;
+      for (let i = 0; i < this.candidateMeshes.length; i++) {
+        const m = this.candidateMeshes[i];
+        const wx = m.matrixWorld.elements[12];
+        const wz = m.matrixWorld.elements[14];
+        const dx = cameraPos.x - wx;
+        const dz = cameraPos.z - wz;
+        if (dx * dx + dz * dz <= activeRadiusSq) {
+          this.activeCameraMeshes.push(m);
+        }
+      }
+    }
 
     if (this.activeRainIntensity <= 0.01) {
       if (this.instancedRain?.visible) this.instancedRain.visible = false;
@@ -564,7 +542,7 @@ export class WeatherParticleSystem {
 
     if (this.instancedRain && !this.instancedRain.visible) this.instancedRain.visible = true;
     if (this.instancedSplashes) this.instancedSplashes.visible = isCollisionEnabled;
-    if (this.instancedRipples) this.instancedRipples.visible = isCollisionEnabled;
+    if (this.instancedRipples) this.instancedRipples.visible = false; // Always false, no 2D circle hoops
 
     // Dynamically modulate rain streak material opacity for realistic soft drizzle vs heavy downpour
     if (this.rainMaterial) {

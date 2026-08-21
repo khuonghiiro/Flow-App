@@ -338,6 +338,15 @@ export class VRMAvatar {
       this.weaponSocketR.add(staff);
     }
 
+    // Ensure all meshes receive and cast shadow
+    this.rootObject.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const m = child as THREE.Mesh;
+        m.castShadow = true;
+        m.receiveShadow = true;
+      }
+    });
+
     // Automatically trigger modular 3D character loading
     this.loadModularAssembly(config.assembly, config.model);
   }
