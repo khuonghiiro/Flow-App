@@ -9,7 +9,7 @@
  *  - JSON character profile export / import
  *  - AI description field for cross-scene consistency
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Check,
   X,
@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import {
   CHARACTER_CATEGORIES,
+  fetchLiveCharacterCategories,
+  CharacterCategory,
   filterByGender,
   CharacterPartItem,
   FaceSliderConfig,
@@ -119,7 +121,8 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   sliders,
   onSlidersChange,
 }) => {
-  // ─── Local State ────────────────────────────────────
+  // ─── Categories & Items State ─────────────────────────
+  const [categories, setCategories] = useState<CharacterCategory[]>(CHARACTER_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState('body');
   const [genderFilter, setGenderFilter] = useState<'male' | 'female'>('male');
   const [useSharedFaceSliders, setUseSharedFaceSliders] = useState(true);
@@ -131,6 +134,10 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const [jsonImportToast, setJsonImportToast] = useState('');
 
   const jsonImportRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchLiveCharacterCategories().then(setCategories);
+  }, []);
 
   // Presets
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => {
@@ -295,7 +302,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   };
 
   // ─── Filtered items for current tab ────────────────
-  const activeCategory = CHARACTER_CATEGORIES.find((c) => c.id === activeCategoryId);
+  const activeCategory = categories.find((c) => c.id === activeCategoryId);
   const filteredItems = activeCategory
     ? filterByGender(activeCategory.items, genderFilter)
     : [];
@@ -357,20 +364,22 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
               <CheckCircle size={13} /> Đã áp dụng!
             </span>
           )}
+          {presetSavedToast && (
+            <span style={{ fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircle size={13} /> {presetSavedToast}
+            </span>
+          )}
+          {jsonImportToast && (
+            <span style={{ fontSize: 11, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircle size={13} /> {jsonImportToast}
+            </span>
+          )}
         </div>
 
         {/* Right: Preset + JSON buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {presetSavedToast && (
-            <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 600 }}>{presetSavedToast}</span>
-          )}
-          {jsonImportToast && (
-            <span style={{ fontSize: 10, color: jsonImportToast.includes('❌') ? '#f87171' : '#4ade80', fontWeight: 600 }}>
-              {jsonImportToast}
-            </span>
-          )}
-          <button onClick={handleSaveCustomPreset} style={btnStyle('#22c55e', '#4ade80')}>
-            <Plus size={12} /> Lưu Preset
+          <button onClick={handleSaveCustomPreset} style={btnStyle('#10b981', '#34d399')}>
+            <Save size={12} /> Lưu Mẫu
           </button>
           <button onClick={handleExportJSON} style={btnStyle('#0ea5e9', '#38bdf8')}>
             <Download size={12} /> Xuất JSON
@@ -390,16 +399,19 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 
       {/* Main area: Vertical Tabs + Content */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Vertical Tabs Sidebar */}
+        {/* Vertical Tabs Sidebar with DYNAMIC WIDTH */}
         <div style={{
-          width: 72, flexShrink: 0,
+          minWidth: 84,
+          maxWidth: 130,
+          width: 'auto',
+          flexShrink: 0,
           display: 'flex', flexDirection: 'column',
           borderRight: '1px solid rgba(255,255,255,0.06)',
           background: 'rgba(0,0,0,0.2)',
           overflowY: 'auto', overflowX: 'hidden',
-          gap: 1, padding: '4px 0',
+          gap: 2, padding: '6px 4px',
         }}>
-          {CHARACTER_CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isActive = activeCategoryId === cat.id;
             const count = filterByGender(cat.items, genderFilter).length;
             return (
@@ -410,28 +422,31 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
                 style={{
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  gap: 2, padding: '8px 4px',
+                  gap: 3, padding: '8px 6px',
                   border: 'none', cursor: 'pointer',
+                  borderRadius: 6,
                   borderLeft: isActive ? '3px solid #38bdf8' : '3px solid transparent',
-                  background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
+                  background: isActive ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
                   color: isActive ? '#38bdf8' : '#94a3b8',
                   transition: 'all 0.15s',
                   position: 'relative',
+                  textAlign: 'center',
                 }}
               >
                 <span style={{ fontSize: 18, lineHeight: 1 }}>{cat.icon}</span>
                 <span style={{
-                  fontSize: 9, fontWeight: 600,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  maxWidth: 62,
+                  fontSize: 10, fontWeight: 600,
+                  lineHeight: 1.2,
+                  wordBreak: 'break-word',
+                  maxWidth: 110,
                 }}>
                   {cat.label}
                 </span>
                 {/* Badge */}
                 <span style={{
-                  position: 'absolute', top: 3, right: 4,
+                  position: 'absolute', top: 3, right: 3,
                   fontSize: 9, fontWeight: 700,
-                  minWidth: 16, height: 16, lineHeight: '16px',
+                  minWidth: 15, height: 15, lineHeight: '15px',
                   textAlign: 'center', borderRadius: 8,
                   background: count > 0
                     ? (isActive ? '#38bdf8' : 'rgba(148, 163, 184, 0.3)')
@@ -496,6 +511,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
                 selectedPath={getSelectionForCategory(activeCategoryId)}
                 onSelect={(path) => handleSelectItem(activeCategoryId, path)}
                 categoryLabel={activeCategory?.label || ''}
+                categoryIcon={activeCategory?.icon || '🧍'}
               />
             )}
           </div>
@@ -533,12 +549,13 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 // ─── Sub-Components ─────────────────────────────────────
 
 /** Items Grid for a category tab */
-function ItemsGrid({ items, categoryId, selectedPath, onSelect, categoryLabel }: {
+function ItemsGrid({ items, categoryId, selectedPath, onSelect, categoryLabel, categoryIcon = '🧍' }: {
   items: CharacterPartItem[];
   categoryId: string;
   selectedPath: string;
   onSelect: (path: string) => void;
   categoryLabel: string;
+  categoryIcon?: string;
 }) {
   if (items.length === 0) {
     return (
@@ -547,7 +564,7 @@ function ItemsGrid({ items, categoryId, selectedPath, onSelect, categoryLabel }:
         alignItems: 'center', justifyContent: 'center',
         height: '100%', gap: 8, color: '#475569',
       }}>
-        <span style={{ fontSize: 36, opacity: 0.4 }}>📦</span>
+        <span style={{ fontSize: 36, opacity: 0.4 }}>{categoryIcon}</span>
         <span style={{ fontSize: 12, fontWeight: 600 }}>
           Chưa có tài nguyên "{categoryLabel}"
         </span>
@@ -606,19 +623,45 @@ function ItemsGrid({ items, categoryId, selectedPath, onSelect, categoryLabel }:
                   background: '#38bdf8', color: '#000',
                   borderRadius: '50%', width: 16, height: 16,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 2,
                 }}>
                   <Check size={11} strokeWidth={3} />
                 </div>
               )}
-              <img
-                src={item.preview}
-                alt={item.name}
-                style={{ width: '100%', height: 90, objectFit: 'contain', borderRadius: 4 }}
-                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-              />
+              <div
+                style={{
+                  width: '100%',
+                  height: 90,
+                  borderRadius: 4,
+                  overflow: 'hidden',
+                  background: 'rgba(0,0,0,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {item.preview ? (
+                  <img
+                    src={item.preview}
+                    alt={item.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 28 }}>{categoryIcon}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', padding: '1px 6px', borderRadius: 4 }}>
+                      .GLB
+                    </span>
+                  </div>
+                )}
+              </div>
               <span style={{
                 fontSize: 11, fontWeight: 600, textAlign: 'center',
                 color: isSelected ? '#38bdf8' : '#e2e8f0',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%',
               }}>
                 {item.name}
               </span>

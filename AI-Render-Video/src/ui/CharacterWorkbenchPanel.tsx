@@ -21,6 +21,7 @@ import { AutoRigEngine, AutoRigResult } from '../core/actors/AutoRigEngine';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ModularOutfitVerticalTabs } from './ModularOutfitVerticalTabs';
+import { MapDesignerPanel } from './MapDesignerPanel';
 import { FaceSliderConfig, DEFAULT_FACE_SLIDERS } from './CharacterAssetRegistry';
 
 interface CharacterWorkbenchPanelProps {
@@ -538,6 +539,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     <div
       style={{
         display: 'flex',
+        flexDirection: 'column',
         height: '100%',
         background: '#090d16',
         color: '#f1f5f9',
@@ -546,535 +548,449 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         overflow: 'hidden',
       }}
     >
-      {/* 1. LEFT: 3D PREVIEW CANVAS */}
+      {/* ─── TOP WORKBENCH HEADER & TAB NAVIGATION ────────────────────────── */}
       <div
         style={{
-          flex: '0 0 520px',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
           display: 'flex',
-          flexDirection: 'column',
-          background: '#060911',
-          position: 'relative',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(15, 23, 42, 0.95)',
+          zIndex: 10,
+          flexShrink: 0,
         }}
       >
-        <div
-          style={{
-            padding: '8px 12px',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'rgba(255,255,255,0.02)',
-          }}
-        >
-          <span style={{ fontWeight: 600, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={14} /> 3D Workbench Viewport
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>
-              {activeTab === 'rigging' ? 'Auto-Rig Mode' : activeTab === 'modular' ? 'Outfit Assembly' : 'Map Preset'}
-            </span>
-            <button
-              onClick={() => setShowFloorGrid((prev) => !prev)}
-              title={showFloorGrid ? "Ẩn lưới sàn để nhìn chân thực hơn" : "Hiện lưới sàn"}
-              style={{
-                padding: '2px 8px',
-                fontSize: 10,
-                borderRadius: 4,
-                border: showFloorGrid ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                background: showFloorGrid ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.05)',
-                color: showFloorGrid ? '#38bdf8' : '#cbd5e1',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <Grid size={11} /> {showFloorGrid ? 'Ẩn Lưới Sàn' : 'Hiện Lưới Sàn'}
-            </button>
-
-            <button
-              onClick={() => setShowWireframe((prev) => !prev)}
-              title={showWireframe ? "Tắt hiển thị vector tam giác" : "Bật hiển thị vector tam giác của nhân vật"}
-              style={{
-                padding: '2px 8px',
-                fontSize: 10,
-                borderRadius: 4,
-                border: showWireframe ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                background: showWireframe ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.05)',
-                color: showWireframe ? '#c084fc' : '#cbd5e1',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <Box size={11} /> {showWireframe ? 'Ẩn Vector' : 'Hiện Vector'}
-            </button>
-
-            <button
-              onClick={() => {
-                if (previewCameraRef.current && previewControlsRef.current) {
-                  previewCameraRef.current.position.set(0, 1.15, 2.6);
-                  previewControlsRef.current.target.set(0, 0.85, 0);
-                  previewControlsRef.current.update();
-                }
-              }}
-              title="Đặt lại góc nhìn Camera"
-              style={{
-                padding: '2px 6px',
-                fontSize: 10,
-                borderRadius: 4,
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.05)',
-                color: '#cbd5e1',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-              }}
-            >
-              <RotateCcw size={10} /> Đặt lại Camera
-            </button>
-          </div>
-        </div>
-
-        {/* 3D Canvas Container */}
-        <div style={{ flex: 1, position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden' }}>
-          <div ref={canvasContainerRef} style={{ width: '100%', height: '100%' }} />
-
-          {isPreviewLoading && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(10, 15, 29, 0.7)',
-                backdropFilter: 'blur(4px)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                color: '#38bdf8',
-                fontWeight: 600,
-                fontSize: 12,
-              }}
-            >
-              <Loader size={24} className="animate-spin" />
-              <span>Đang tải & khử rỗ da mô hình 3D...</span>
-            </div>
-          )}
-
-          {/* Mouse Orbit Hint */}
-          <div
+        {/* Main Tab Switcher */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => setActiveTab('modular')}
             style={{
-              position: 'absolute',
-              top: 8,
-              left: 8,
-              fontSize: 10,
-              color: 'rgba(255,255,255,0.5)',
-              pointerEvents: 'none',
-              background: 'rgba(0,0,0,0.4)',
-              padding: '3px 8px',
-              borderRadius: 4,
-            }}
-          >
-            🖱️ Chuột trái: Xoay 360° | Cuộn: Zoom
-          </div>
-        </div>
-
-        {/* Floating Viewport Overlays for Auto-Rig */}
-        {activeTab === 'rigging' && isRigged && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              left: 12,
-              right: 12,
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(8px)',
-              padding: '6px 10px',
-              borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.1)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
               gap: 6,
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 700,
+              borderRadius: 6,
+              border: activeTab === 'modular' ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(255,255,255,0.08)',
+              background: activeTab === 'modular' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
+              color: activeTab === 'modular' ? '#38bdf8' : '#94a3b8',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
             }}
           >
-            <button
-              onClick={() => {
-                setShowJoints(!showJoints);
-                if (rigResultRef.current && previewSceneRef.current) {
-                  if (!showJoints) previewSceneRef.current.add(rigResultRef.current.jointVisualizer);
-                  else previewSceneRef.current.remove(rigResultRef.current.jointVisualizer);
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '3px 8px',
-                fontSize: 11,
-                borderRadius: 4,
-                background: showJoints ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                color: showJoints ? '#38bdf8' : '#94a3b8',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {showJoints ? <Eye size={12} /> : <EyeOff size={12} />} Khớp Xương
-            </button>
+            <Shirt size={14} /> 👘 Lắp Ráp Nhân Vật Modular
+          </button>
 
-            <button
-              onClick={() => setIsPosePlaying(!isPosePlaying)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '3px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 4,
-                background: isPosePlaying ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                color: isPosePlaying ? '#f87171' : '#4ade80',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {isPosePlaying ? <Pause size={12} /> : <Play size={12} />}
-              {isPosePlaying ? 'Tạm Dừng' : 'Chạy Thử'}
-            </button>
-          </div>
+          <button
+            onClick={() => setActiveTab('rigging')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 700,
+              borderRadius: 6,
+              border: activeTab === 'rigging' ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid rgba(255,255,255,0.08)',
+              background: activeTab === 'rigging' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.03)',
+              color: activeTab === 'rigging' ? '#c084fc' : '#94a3b8',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            <Wrench size={14} /> 🦴 Auto-Rig Studio
+          </button>
+
+          <button
+            onClick={() => setActiveTab('map')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 700,
+              borderRadius: 6,
+              border: activeTab === 'map' ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(255,255,255,0.08)',
+              background: activeTab === 'map' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.03)',
+              color: activeTab === 'map' ? '#4ade80' : '#94a3b8',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            <MapIcon size={14} /> 🗺️ Thiết Kế Map & Bối Cảnh
+          </button>
+        </div>
+
+        {/* Close Button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            title="Đóng Xưởng 3D"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '5px 12px',
+              fontSize: 11,
+              fontWeight: 600,
+              borderRadius: 6,
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.15)',
+              color: '#f87171',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            <X size={14} /> Đóng Xưởng
+          </button>
         )}
       </div>
 
-      {/* 2. RIGHT: CONFIGURATION & WORKBENCH TABS */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Sub-Tabs Navigation */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 4,
-            padding: '8px 14px',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.015)',
-          }}
-        >
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button
-              onClick={() => setActiveTab('modular')}
+      {/* ─── MAIN CONTENT BODY ───────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+        {/* CASE A: TAB THIẾT KẾ MAP & BỐI CẢNH ───────────────────────────── */}
+        {activeTab === 'map' ? (
+          <MapDesignerPanel
+            scene={scene}
+            onUpdateScene={onUpdateScene}
+            onSelectMap={onSelectMap}
+          />
+        ) : (
+          /* CASE B: TAB MODULAR HOẶC AUTO-RIG ───────────────────────────── */
+          <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
+            {/* 1. LEFT: 3D CHARACTER PREVIEW CANVAS */}
+            <div
               style={{
+                flex: '0 0 520px',
+                borderRight: '1px solid rgba(255,255,255,0.08)',
                 display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: activeTab === 'modular' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
-                background: activeTab === 'modular' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                color: activeTab === 'modular' ? '#38bdf8' : '#94a3b8',
-                cursor: 'pointer',
+                flexDirection: 'column',
+                background: '#060911',
+                position: 'relative',
               }}
             >
-              <Shirt size={14} /> 👘 Phối Đồ & Lắp Ghép Modular
-            </button>
-
-            <button
-              onClick={() => setActiveTab('rigging')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: activeTab === 'rigging' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid transparent',
-                background: activeTab === 'rigging' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
-                color: activeTab === 'rigging' ? '#c084fc' : '#94a3b8',
-                cursor: 'pointer',
-              }}
-            >
-              <Wrench size={14} /> 🦴 Auto-Rig Studio (Gắn Xương 1-Click)
-            </button>
-
-            <button
-              onClick={() => setActiveTab('map')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: activeTab === 'map' ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid transparent',
-                background: activeTab === 'map' ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
-                color: activeTab === 'map' ? '#4ade80' : '#94a3b8',
-                cursor: 'pointer',
-              }}
-            >
-              <MapIcon size={14} /> 🗺️ Thiết Kế Map & Preset
-            </button>
-          </div>
-
-          {onClose && (
-            <button
-              onClick={onClose}
-              title="Đóng Xưởng 3D"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: '#f87171',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <X size={14} /> Đóng Xưởng
-            </button>
-          )}
-        </div>
-
-        {/* Tab Content Container */}
-        <div style={{ flex: 1, padding: activeTab === 'modular' ? 0 : 16, overflowY: activeTab === 'modular' ? 'hidden' : 'auto', overflow: activeTab === 'modular' ? 'hidden' : undefined }}>
-          {/* TAB 1: MODULAR OUTFIT — VERTICAL TABS */}
-          {activeTab === 'modular' && (
-            <ModularOutfitVerticalTabs
-              scene={scene}
-              onUpdateScene={onUpdateScene}
-              baseBody={baseBody}
-              costume={costume}
-              face={face}
-              hairstyle={hairstyle}
-              onBaseBodyChange={setBaseBody}
-              onCostumeChange={setCostume}
-              onFaceChange={(newFace) => handleSelectFace(newFace)}
-              onHairstyleChange={setHairstyle}
-              sliders={faceSliders}
-              onSlidersChange={handleFaceSlidersChange}
-            />
-          )}
-
-          {/* TAB 2: AUTO-RIG STUDIO */}
-          {activeTab === 'rigging' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#c084fc' }}>
-                  Auto-Rigging Studio (Gắn Xương Chuẩn Giải Phẫu 3D)
+              <div
+                style={{
+                  padding: '8px 12px',
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'rgba(255,255,255,0.02)',
+                }}
+              >
+                <span style={{ fontWeight: 600, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={14} /> 3D Character Viewport
                 </span>
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>17 Khớp Xương Tiêu Chuẩn Three.js</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => setShowFloorGrid((prev) => !prev)}
+                    title={showFloorGrid ? "Ẩn lưới sàn" : "Hiện lưới sàn"}
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: 10,
+                      borderRadius: 4,
+                      border: showFloorGrid ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+                      background: showFloorGrid ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.05)',
+                      color: showFloorGrid ? '#38bdf8' : '#cbd5e1',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Grid size={11} /> {showFloorGrid ? 'Ẩn Lưới Sàn' : 'Hiện Lưới Sàn'}
+                  </button>
+
+                  <button
+                    onClick={() => setShowWireframe((prev) => !prev)}
+                    title="Bật/Tắt khung lưới tam giác (Wireframe)"
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: 10,
+                      borderRadius: 4,
+                      border: showWireframe ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+                      background: showWireframe ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255,255,255,0.05)',
+                      color: showWireframe ? '#c084fc' : '#cbd5e1',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Box size={11} /> Wireframe
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (previewCameraRef.current && previewControlsRef.current) {
+                        previewCameraRef.current.position.set(0, 1.15, 2.6);
+                        previewControlsRef.current.target.set(0, 0.85, 0);
+                        previewControlsRef.current.update();
+                      }
+                    }}
+                    title="Đặt lại Camera"
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: 10,
+                      borderRadius: 4,
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: '#cbd5e1',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                    }}
+                  >
+                    <RotateCcw size={10} /> Reset
+                  </button>
+                </div>
               </div>
 
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#e2e8f0' }}>
-                  Chọn Mô Hình 3D Cần Gắn Xương (.glb)
-                </label>
-                <select
-                  value={modelToRig}
-                  onChange={(e) => {
-                    setModelToRig(e.target.value);
-                    setIsRigged(false);
-                  }}
+              {/* 3D Canvas Container */}
+              <div style={{ flex: 1, position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden' }}>
+                <div ref={canvasContainerRef} style={{ width: '100%', height: '100%' }} />
+
+                {isPreviewLoading && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(10, 15, 29, 0.7)',
+                      backdropFilter: 'blur(4px)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      color: '#38bdf8',
+                      fontWeight: 600,
+                      fontSize: 12,
+                    }}
+                  >
+                    <Loader size={24} className="animate-spin" />
+                    <span>Đang tải mô hình 3D...</span>
+                  </div>
+                )}
+
+                {/* Mouse Orbit Hint */}
+                <div
                   style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    background: '#0f172a',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#fff',
-                    outline: 'none',
-                    fontSize: 12,
+                    position: 'absolute',
+                    top: 8,
+                    left: 8,
+                    fontSize: 10,
+                    color: 'rgba(255,255,255,0.5)',
+                    pointerEvents: 'none',
+                    background: 'rgba(0,0,0,0.4)',
+                    padding: '3px 8px',
+                    borderRadius: 4,
                   }}
                 >
-                  <option value="assets/characters/base_bodies/man/body_base_-_manekin.glb">
-                    assets/characters/base_bodies/man/body_base_-_manekin.glb (Nam)
-                  </option>
-                  <option value="assets/characters/base_bodies/male/body_base_-_manekina.glb">
-                    assets/characters/base_bodies/male/body_base_-_manekina.glb (Nữ)
-                  </option>
-                  <option value="assets/characters/costumes/man/amber_nectar_-_manekin.glb">
-                    assets/characters/costumes/man/amber_nectar_-_manekin.glb
-                  </option>
-                  <option value="assets/characters/costumes/male/precision_strike_-_manekina.glb">
-                    assets/characters/costumes/male/precision_strike_-_manekina.glb
-                  </option>
-                </select>
+                  🖱️ Chuột trái: Xoay 360° | Cuộn: Zoom
+                </div>
+              </div>
 
-                <button
-                  onClick={handleRunAutoRig}
-                  disabled={isRiggingLoading}
+              {/* Floating Viewport Overlays for Auto-Rig */}
+              {activeTab === 'rigging' && isRigged && (
+                <div
                   style={{
-                    marginTop: 12,
-                    width: '100%',
+                    position: 'absolute',
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(8px)',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,0.1)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    padding: '11px',
-                    borderRadius: 6,
-                    background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    border: 'none',
-                    cursor: isRiggingLoading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)',
+                    justifyContent: 'space-between',
+                    gap: 6,
                   }}
                 >
-                  <Sparkles size={16} />
-                  {isRiggingLoading ? 'Đang phân tích cấu trúc xương...' : '⚡ Kích Hoạt Auto-Rig 1-Click'}
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      setShowJoints(!showJoints);
+                      if (rigResultRef.current && previewSceneRef.current) {
+                        if (!showJoints) previewSceneRef.current.add(rigResultRef.current.jointVisualizer);
+                        else previewSceneRef.current.remove(rigResultRef.current.jointVisualizer);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      background: showJoints ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+                      color: showJoints ? '#38bdf8' : '#94a3b8',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {showJoints ? <Eye size={12} /> : <EyeOff size={12} />} Khớp Xương
+                  </button>
 
-              {/* Test Animation Poses */}
-              {isRigged && (
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#e2e8f0' }}>
-                    Chạy Thử Nghiệm Hoạt Cảnh (Pose & Motion Test)
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {[
-                      { id: 't_pose', label: 'T-Pose' },
-                      { id: 'walk', label: '🚶 Bước Đi (Walk)' },
-                      { id: 'slash', label: '⚔️ Vung Kiếm (Slash)' },
-                      { id: 'defend', label: '🛡️ Thủ Thế (Defend)' },
-                      { id: 'wave', label: '👋 Vẫy Tay (Wave)' },
-                      { id: 'sit', label: '🪑 Ngồi Nghỉ (Sit)' },
-                    ].map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => handleSelectPose(p.id)}
+                  <button
+                    onClick={() => setIsPosePlaying(!isPosePlaying)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      background: isPosePlaying ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      color: isPosePlaying ? '#f87171' : '#4ade80',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {isPosePlaying ? <Pause size={12} /> : <Play size={12} />}
+                    {isPosePlaying ? 'Tạm Dừng' : 'Chạy Thử'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 2. RIGHT: CONFIGURATION / MODULAR VERTICAL TABS */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {activeTab === 'modular' && (
+                <ModularOutfitVerticalTabs
+                  scene={scene}
+                  onUpdateScene={onUpdateScene}
+                  baseBody={baseBody}
+                  costume={costume}
+                  face={face}
+                  hairstyle={hairstyle}
+                  onBaseBodyChange={setBaseBody}
+                  onCostumeChange={setCostume}
+                  onFaceChange={(newFace) => handleSelectFace(newFace)}
+                  onHairstyleChange={setHairstyle}
+                  sliders={faceSliders}
+                  onSlidersChange={handleFaceSlidersChange}
+                />
+              )}
+
+              {activeTab === 'rigging' && (
+                <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#c084fc' }}>
+                        Auto-Rigging Studio (Gắn Xương Chuẩn Giải Phẫu 3D)
+                      </span>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>17 Khớp Xương Tiêu Chuẩn Three.js</span>
+                    </div>
+
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#e2e8f0' }}>
+                        Chọn Mô Hình 3D Cần Gắn Xương (.glb)
+                      </label>
+                      <select
+                        value={modelToRig}
+                        onChange={(e) => {
+                          setModelToRig(e.target.value);
+                          setIsRigged(false);
+                        }}
                         style={{
-                          padding: '7px 14px',
+                          width: '100%',
+                          padding: '8px 12px',
                           borderRadius: 6,
+                          background: '#0f172a',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          color: '#fff',
+                          outline: 'none',
                           fontSize: 12,
-                          fontWeight: 600,
-                          border: activePose === p.id ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.1)',
-                          background: activePose === p.id ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255,255,255,0.05)',
-                          color: activePose === p.id ? '#c084fc' : '#cbd5e1',
-                          cursor: 'pointer',
                         }}
                       >
-                        {p.label}
+                        <option value="assets/characters/base_bodies/man/body_base_-_manekin.glb">
+                          assets/characters/base_bodies/man/body_base_-_manekin.glb (Nam)
+                        </option>
+                        <option value="assets/characters/base_bodies/male/body_base_-_manekina.glb">
+                          assets/characters/base_bodies/male/body_base_-_manekina.glb (Nữ)
+                        </option>
+                        <option value="assets/characters/costumes/man/amber_nectar_-_manekin.glb">
+                          assets/characters/costumes/man/amber_nectar_-_manekin.glb
+                        </option>
+                        <option value="assets/characters/costumes/male/precision_strike_-_manekina.glb">
+                          assets/characters/costumes/male/precision_strike_-_manekina.glb
+                        </option>
+                      </select>
+
+                      <button
+                        onClick={handleRunAutoRig}
+                        disabled={isRiggingLoading}
+                        style={{
+                          marginTop: 12,
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          padding: '11px',
+                          borderRadius: 6,
+                          background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          border: 'none',
+                          cursor: isRiggingLoading ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)',
+                        }}
+                      >
+                        <Sparkles size={16} />
+                        {isRiggingLoading ? 'Đang phân tích cấu trúc xương...' : '⚡ Kích Hoạt Auto-Rig 1-Click'}
                       </button>
-                    ))}
+                    </div>
+
+                    {/* Test Animation Poses */}
+                    {isRigged && (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#e2e8f0' }}>
+                          Chạy Thử Nghiệm Hoạt Cảnh (Pose & Motion Test)
+                        </label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {[
+                            { id: 't_pose', label: 'T-Pose' },
+                            { id: 'walk', label: '🚶 Bước Đi (Walk)' },
+                            { id: 'slash', label: '⚔️ Vung Kiếm (Slash)' },
+                            { id: 'defend', label: '🛡️ Thủ Thế (Defend)' },
+                            { id: 'wave', label: '👋 Vẫy Tay (Wave)' },
+                            { id: 'sit', label: '🪑 Ngồi Nghỉ (Sit)' },
+                          ].map((p) => (
+                            <button
+                              key={p.id}
+                              onClick={() => handleSelectPose(p.id)}
+                              style={{
+                                padding: '7px 14px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                border: activePose === p.id ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.1)',
+                                background: activePose === p.id ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255,255,255,0.05)',
+                                color: activePose === p.id ? '#c084fc' : '#cbd5e1',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
-          )}
-
-          {/* TAB 3: MAP BUILDER PRESET */}
-          {activeTab === 'map' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#4ade80' }}>
-                  Thiết Kế Map & Bối Cảnh (Map Presets)
-                </span>
-                {isAppliedSuccess && (
-                  <span style={{ fontSize: 12, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <CheckCircle size={14} /> Đã chuyển Map thành công!
-                  </span>
-                )}
-              </div>
-
-              {/* 1. Chọn Map Nền */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#e2e8f0' }}>
-                  1. Chọn Bản Đồ 3D (Map Asset)
-                </label>
-                <select
-                  value={selectedMapPath}
-                  onChange={(e) => setSelectedMapPath(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    background: '#0f172a',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#fff',
-                    outline: 'none',
-                    fontSize: 12,
-                  }}
-                >
-                  <option value="assets/maps/cathedral.glb">
-                    Cathedral (Thánh Đường Tráng Lệ - 8.5M Triangles)
-                  </option>
-                  <option value="assets/maps/game_pirate_adventure_map.glb">
-                    Pirate Adventure Map (Đảo Hải Tặc - Biển Xanh)
-                  </option>
-                  <option value="farming_village">Farming Village (Làng Quê Sakura)</option>
-                  <option value="cyberpunk_city">Cyberpunk City (Thành Phố Tương Lai)</option>
-                </select>
-              </div>
-
-              {/* 2. Bầu Trời & Thời Gian */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#e2e8f0' }}>
-                  2. Khung Giờ Bầu Trời (Skybox Time)
-                </label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {[
-                    { id: 'dawn', label: '🌅 Bình Minh (Dawn)' },
-                    { id: 'noon', label: '☀️ Trưa Nắng (Noon)' },
-                    { id: 'sunset', label: '🌇 Hoàng Hôn (Sunset)' },
-                    { id: 'night', label: '🌙 Ban Đêm (Night)' },
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelectedSkyTime(s.id)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 10px',
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        border: selectedSkyTime === s.id ? '1px solid #4ade80' : '1px solid rgba(255,255,255,0.1)',
-                        background: selectedSkyTime === s.id ? 'rgba(34, 197, 94, 0.25)' : 'rgba(255,255,255,0.05)',
-                        color: selectedSkyTime === s.id ? '#4ade80' : '#cbd5e1',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={handleApplyMapPreset}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  padding: '11px 18px',
-                  borderRadius: 6,
-                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)',
-                }}
-              >
-                <MapIcon size={16} /> 🗺️ Áp Dụng Bản Đồ Này Cho Cảnh
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,8 +2,8 @@
 
 > **FOR AI AGENTS:** This file is the single source of truth for all available scene resources. Read this file carefully before generating JSON `MasterSceneConfig`.
 > **Language Rule:** AI agents must read `ASSET_CATALOG.md` (English). Do not rely on `_VI.md` files which are formatted for human users.
-> **Auto-generated:** 2026-08-20 14:50:50
-> **Total assets:** 43 asset files (229.7 MB), 0 saved map presets
+> **Auto-generated:** 2026-08-21 04:35:13
+> **Total assets:** 29 asset files (47.9 MB), 2 saved map presets
 
 ---
 
@@ -63,7 +63,35 @@ Use exact IDs from the tables below:
 
 ## 2. Saved Map Presets (Configured Environments)
 
-*No saved map presets found.*
+#### Preset ID: `sakura_lake_village` — Làng Hoa Anh Đào Ven Hồ
+- **File**: `maps/presets/sakura_lake_village.json`
+- **Description**: Ngôi làng thanh tịnh ven hồ nước, có 2 hàng cây hoa anh đào lớn, một ghế dài đá ngồi ngắm cảnh hướng ra hồ, và vườn thảo dược phía đông.
+- **Base Map**: `farming_village` | **Default Sky/Weather**: sunset, Fog: 0.012
+- **Named Spawn Points**:
+  - `"lakeside_bench"`: [-3.5, 0, -1.8]
+  - `"village_entrance"`: [0, 0, 4]
+  - `"sakura_tree_north"`: [4, 0, -3]
+  - `"herb_garden"`: [0, 0, -5]
+- **Placed Objects & Interactables**:
+  - `sakura_tree_01` (nature) at [4, 0, -3] — Asset: `props/nature/tree_sakura.glb` (Socket: climb)
+  - `stone_bench_01` (furniture) at [-3.5, 0, -1.8] — Asset: `props/furniture/chair_wooden.glb` (Socket: sit)
+  - `herb_farm_plot` (nature) at [0, 0, -5] — Asset: `props/tools/farm_plot.glb` (Socket: harvest)
+  - `night_lantern_stand` (furniture) at [-2.8, 0, -1.5] — Asset: `props/furniture/lantern_prop.glb`
+
+#### Preset ID: `xianxia_mountain_arena` — Vấn Đỉnh Phong — Đấu Trường Tiên Giới
+- **File**: `maps/presets/xianxia_mountain_arena.json`
+- **Description**: Đỉnh núi mây mù bao phủ, có các cột đá khắc phù văn cổ xưa xung quanh đài tỷ võ, hướng bắc có tảng đá linh khí tọa thiền.
+- **Base Map**: `medieval_fantasy_book` | **Default Sky/Weather**: sunrise, Fog: 0.02
+- **Named Spawn Points**:
+  - `"challenger_1_west"`: [-4, 0, 0]
+  - `"challenger_2_east"`: [4, 0, 0]
+  - `"meditation_stone_north"`: [0, 0, -4.5]
+  - `"arena_center"`: [0, 0, 0]
+- **Placed Objects & Interactables**:
+  - `meditation_stone_01` (nature) at [0, 0, -4.5] — Asset: `props/nature/rock_large.glb` (Socket: stand)
+  - `ancient_pillar_west` (building) at [-5.5, 0, -2] — Asset: `props/buildings/tower_mage.glb`
+  - `ancient_pillar_east` (building) at [5.5, 0, -2] — Asset: `props/buildings/tower_mage.glb`
+
 
 
 ---
@@ -71,36 +99,22 @@ Use exact IDs from the tables below:
 ## 3. Available Raw Asset Catalog
 
 ### Characters — Male (Nam)
-| ID | Path | Format | Size | Ref Image |
-|:---|:---|:---|---:|:---|
-| `precision_strike_manekin` | `characters/man/precision_strike_manekin.glb` | GLB | 1.15 MB | `assets/characters/man/precision_strike_manekin.png` |
-| `sample_avatar` | `characters/male/sample_avatar.vrm` | VRM | 10.28 MB | `assets/characters/male/sample_avatar.png` |
-
+*No male character models found. Add .glb/.vrm with companion .png to characters/male/ or characters/man/*
 
 
 ### Characters — Female (Nữ)
-| ID | Path | Format | Size | Ref Image |
-|:---|:---|:---|---:|:---|
-| `tzitzimitl_female` | `characters/woman/tzitzimitl_female.glb` | GLB | 3.62 MB | `assets/characters/woman/tzitzimitl_female.png` |
-
+*No female character models found. Add .glb/.vrm with companion .png to characters/female/ or characters/woman/*
 
 
 ### Characters — Base Bodies
 | ID | Path | Format | Size | Ref Image |
 |:---|:---|:---|---:|:---|
-| `body_base_-_manekina` | `characters/base_bodies/male/body_base_-_manekina.glb` | GLB | 0.53 MB | `assets/characters/base_bodies/male/body_base_-_manekina.png` |
-| `body_base_-_manekin` | `characters/base_bodies/man/body_base_-_manekin.glb` | GLB | 0.54 MB | `assets/characters/base_bodies/man/body_base_-_manekin.png` |
-| `sample_avatar` | `characters/base_bodies/sample_avatar.vrm` | VRM | 10.28 MB | — |
 | `sample_avatar` | `characters/sample_avatar.vrm` | VRM | 10.28 MB | — |
 
 
 
 ### Characters — Faces
-| ID | Path | Format | Size | Ref Image |
-|:---|:---|:---|---:|:---|
-| `starlight_fragments_-_manekin` | `characters/faces/male/starlight_fragments_-_manekin.glb` | GLB | 0.19 MB | `assets/characters/faces/male/starlight_fragments_-_manekin.png` |
-| `dawnbreaker_-_manekin` | `characters/faces/man/dawnbreaker_-_manekin.glb` | GLB | 0.20 MB | `assets/characters/faces/man/dawnbreaker_-_manekin.png` |
-
+*No face assets found. Add .glb to characters/faces/*
 
 
 ### Characters — Hairstyles
@@ -112,16 +126,7 @@ Use exact IDs from the tables below:
 
 
 ### Characters — Costumes
-| ID | Path | Format | Size | Ref Image |
-|:---|:---|:---|---:|:---|
-| `amber_nectar_-_manekina` | `characters/costumes/male/amber_nectar_-_manekina.glb` | GLB | 3.37 MB | `assets/characters/costumes/male/amber_nectar_-_manekina.png` |
-| `precision_strike_-_manekina` | `characters/costumes/male/precision_strike_-_manekina.glb` | GLB | 0.99 MB | `assets/characters/costumes/male/precision_strike_-_manekina.png` |
-| `scary_cat_-_manekina` | `characters/costumes/male/scary_cat_-_manekina.glb` | GLB | 1.37 MB | — |
-| `amber_nectar_-_manekin` | `characters/costumes/man/amber_nectar_-_manekin.glb` | GLB | 3.43 MB | `assets/characters/costumes/man/amber_nectar_-_manekin.png` |
-| `precision_strike_-_manekin` | `characters/costumes/man/precision_strike_-_manekin.glb` | GLB | 1.15 MB | `assets/characters/costumes/man/precision_strike_-_manekin.png` |
-| `scary_cat_-_manekin` | `characters/costumes/man/scary_cat_-_manekin.glb` | GLB | 0.90 MB | `assets/characters/costumes/man/scary_cat_-_manekin.png` |
-| `sleuths_verdict_-_manekin` | `characters/costumes/man/sleuths_verdict_-_manekin.glb` | GLB | 3.19 MB | — |
-
+*No costume assets found. Add .glb to characters/costumes/*
 
 
 ### Characters — Accessories
@@ -139,6 +144,8 @@ Use exact IDs from the tables below:
 | `buoi_chieu_nhieu_may_1` | `SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png` | PNG | 1.35 MB | `assets/SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png` |
 | `buoi_sang_it_may_1` | `SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png` | PNG | 0.86 MB | `assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png` |
 | `buoi_sang_khong_may_1` | `SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png` | PNG | 1.00 MB | `assets/SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png` |
+| `3` | `SkyBoxs/buoi_sang/nhieu_may/3.png` | PNG | 1.63 MB | `assets/SkyBoxs/buoi_sang/nhieu_may/3.png` |
+| `buoi_sang_2` | `SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png` | PNG | 1.59 MB | `assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png` |
 | `buoi_sang_nhieu_may_1` | `SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png` | PNG | 1.00 MB | `assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png` |
 | `buoi_toi_it_may_1` | `SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png` | PNG | 0.27 MB | `assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png` |
 | `buoi_toi_khong_may_1` | `SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png` | PNG | 1.05 MB | `assets/SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png` |
@@ -195,9 +202,8 @@ Use exact IDs from the tables below:
 ### Maps — Environments
 | ID | Path | Format | Size | Ref Image |
 |:---|:---|:---|---:|:---|
-| `cathedral` | `maps/cathedral.glb` | GLB | 103.80 MB | — |
-| `game_pirate_adventure_map` | `maps/game_pirate_adventure_map.glb` | GLB | 7.48 MB | — |
-| `zone9_real_light` | `maps/zone9_real_light.glb` | GLB | 36.33 MB | — |
+| `scene` | `maps/medieval_fantasy_book/scene.gltf` | GLTF | 0.03 MB | — |
+| `medieval_fantasy_book` | `maps/medieval_fantasy_book.glb` | GLB | 3.70 MB | — |
 
 
 

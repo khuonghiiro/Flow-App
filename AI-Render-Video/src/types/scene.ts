@@ -12,7 +12,7 @@ import {
 } from './interactions';
 
 import { MapPresetConfig, PlacedProp, PropLightConfig } from './map_preset';
-export type { PropLightConfig };
+export type { PropLightConfig, PlacedProp };
 
 export interface Vector3D {
   x: number;

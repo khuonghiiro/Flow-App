@@ -1,193 +1,1532 @@
 {
-  "generated_at": "2026-08-20 14:50:50",
-  "total_files": 43,
-  "total_size_mb": 229.7,
-  "map_presets": [],
+  "version": "2.0.0",
+  "last_scanned": "2026-08-21T05:22:38.056Z",
+  "total_assets": 26,
+  "total_size_mb": 28.06,
+  "structure": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "version": "2.0.0",
+    "description": "Tệp cấu hình duy nhất quản lý toàn bộ danh mục, tên tab Tiếng Việt, Icon và quy tắc lọc giới tính cho FlowMy AI Render Video. Người dùng có thể chỉnh sửa trực tiếp tệp này để đổi tên tab, icon hoặc thêm folder mới.",
+    "settings": {
+      "auto_discover_new_folders": true,
+      "supported_model_formats": [
+        ".glb",
+        ".gltf",
+        ".vrm",
+        ".fbx",
+        ".obj"
+      ],
+      "supported_image_formats": [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp"
+      ]
+    },
+    "gender_rules": {
+      "filter_enabled": true,
+      "options": [
+        {
+          "id": "male",
+          "key": "nam",
+          "label": "Nam",
+          "icon": "♂",
+          "folder_aliases": [
+            "nam",
+            "male",
+            "man"
+          ]
+        },
+        {
+          "id": "female",
+          "key": "nu",
+          "label": "Nữ",
+          "icon": "♀",
+          "folder_aliases": [
+            "nu",
+            "female",
+            "woman"
+          ]
+        },
+        {
+          "id": "unisex",
+          "key": "chung",
+          "label": "Dùng Chung",
+          "icon": "⚧",
+          "folder_aliases": [
+            "chung",
+            "unisex",
+            "all"
+          ]
+        }
+      ]
+    },
+    "character_structure": {
+      "root_folders": [
+        "nhan_vat",
+        "characters"
+      ],
+      "categories": [
+        {
+          "id": "than_co_ban",
+          "folder": "than_co_ban",
+          "folder_aliases": [
+            "than_co_ban",
+            "base_bodies",
+            "body",
+            "than"
+          ],
+          "label": "Thân Cơ Bản",
+          "icon": "🧍",
+          "supports_gender": true,
+          "default_gender": "male"
+        },
+        {
+          "id": "trang_phuc",
+          "folder": "trang_phuc",
+          "folder_aliases": [
+            "trang_phuc",
+            "costumes",
+            "outfits",
+            "quan_ao"
+          ],
+          "label": "Trang Phục",
+          "icon": "👘",
+          "supports_gender": true,
+          "default_gender": "male"
+        },
+        {
+          "id": "khuon_mat",
+          "folder": "khuon_mat",
+          "folder_aliases": [
+            "khuon_mat",
+            "faces",
+            "face",
+            "mat"
+          ],
+          "label": "Khuôn Mặt",
+          "icon": "🎭",
+          "supports_gender": true,
+          "default_gender": "male"
+        },
+        {
+          "id": "kieu_toc",
+          "folder": "kieu_toc",
+          "folder_aliases": [
+            "kieu_toc",
+            "hairstyles",
+            "hair",
+            "toc"
+          ],
+          "label": "Kiểu Tóc",
+          "icon": "💇",
+          "supports_gender": true,
+          "default_gender": "unisex"
+        },
+        {
+          "id": "long_may",
+          "folder": "long_may",
+          "folder_aliases": [
+            "long_may",
+            "eyebrows"
+          ],
+          "label": "Lông Mày",
+          "icon": "🤨",
+          "supports_gender": false
+        },
+        {
+          "id": "mat",
+          "folder": "mat",
+          "folder_aliases": [
+            "mat",
+            "eyes"
+          ],
+          "label": "Mắt",
+          "icon": "👁️",
+          "supports_gender": false
+        },
+        {
+          "id": "mui",
+          "folder": "mui",
+          "folder_aliases": [
+            "mui",
+            "noses",
+            "nose"
+          ],
+          "label": "Mũi",
+          "icon": "👃",
+          "supports_gender": false
+        },
+        {
+          "id": "mieng",
+          "folder": "mieng",
+          "folder_aliases": [
+            "mieng",
+            "mouths",
+            "mouth"
+          ],
+          "label": "Miệng",
+          "icon": "👄",
+          "supports_gender": false
+        },
+        {
+          "id": "mu_non",
+          "folder": "mu_non",
+          "folder_aliases": [
+            "mu_non",
+            "hats",
+            "mu"
+          ],
+          "label": "Mũ & Nón",
+          "icon": "🎩",
+          "supports_gender": true,
+          "default_gender": "unisex"
+        },
+        {
+          "id": "giay_dep",
+          "folder": "giay_dep",
+          "folder_aliases": [
+            "giay_dep",
+            "shoes",
+            "giay"
+          ],
+          "label": "Giày Dép",
+          "icon": "👟",
+          "supports_gender": true,
+          "default_gender": "unisex"
+        },
+        {
+          "id": "phu_kien",
+          "folder": "phu_kien",
+          "folder_aliases": [
+            "phu_kien",
+            "accessories"
+          ],
+          "label": "Phụ Kiện",
+          "icon": "💍",
+          "supports_gender": true,
+          "default_gender": "unisex"
+        },
+        {
+          "id": "kieu_rau",
+          "folder": "kieu_rau",
+          "folder_aliases": [
+            "kieu_rau",
+            "beards",
+            "rau"
+          ],
+          "label": "Râu",
+          "icon": "🧔",
+          "supports_gender": true,
+          "default_gender": "male"
+        },
+        {
+          "id": "canh",
+          "folder": "canh",
+          "folder_aliases": [
+            "canh",
+            "wings",
+            "canh_chim"
+          ],
+          "label": "Đôi Cánh",
+          "icon": "🪶",
+          "supports_gender": true,
+          "default_gender": "unisex"
+        },
+        {
+          "id": "duoi",
+          "folder": "duoi",
+          "folder_aliases": [
+            "duoi",
+            "tails",
+            "duoi_thu"
+          ],
+          "label": "Đuôi Thú",
+          "icon": "🦊",
+          "supports_gender": true,
+          "default_gender": "unisex"
+        }
+      ]
+    },
+    "world_and_props_structure": {
+      "root_folders": [
+        "dao_cu",
+        "props",
+        "ban_do",
+        "maps",
+        "bau_troi",
+        "SkyBoxs",
+        "hieu_ung",
+        "vfx"
+      ],
+      "categories": [
+        {
+          "id": "ban_do",
+          "folder": "ban_do",
+          "folder_aliases": [
+            "ban_do",
+            "maps",
+            "map"
+          ],
+          "label": "Bản Đồ 3D",
+          "icon": "🗺️",
+          "subcategories": []
+        },
+        {
+          "id": "cay_coi",
+          "folder": "cay_coi",
+          "folder_aliases": [
+            "cay_coi",
+            "trees",
+            "nature",
+            "thuc_vat"
+          ],
+          "label": "Cây Cối & Hoa Lá",
+          "icon": "🌳",
+          "subcategories": []
+        },
+        {
+          "id": "da_dia_hinh",
+          "folder": "da_dia_hinh",
+          "folder_aliases": [
+            "da_dia_hinh",
+            "rocks",
+            "terrain",
+            "nui_da"
+          ],
+          "label": "Đá & Địa Hình",
+          "icon": "🪨",
+          "subcategories": []
+        },
+        {
+          "id": "dong_vat",
+          "folder": "dong_vat",
+          "folder_aliases": [
+            "dong_vat",
+            "animals",
+            "creatures",
+            "sinh_vat"
+          ],
+          "label": "Động Vật & Sinh Vật",
+          "icon": "🦁",
+          "subcategories": [
+            {
+              "id": "tren_can",
+              "folder": "tren_can",
+              "folder_aliases": [
+                "tren_can",
+                "land",
+                "terrestrial"
+              ],
+              "label": "Trên Cạn",
+              "icon": "🦁"
+            },
+            {
+              "id": "duoi_nuoc",
+              "folder": "duoi_nuoc",
+              "folder_aliases": [
+                "duoi_nuoc",
+                "water",
+                "aquatic"
+              ],
+              "label": "Dưới Nước",
+              "icon": "🐬"
+            },
+            {
+              "id": "tren_troi",
+              "folder": "tren_troi",
+              "folder_aliases": [
+                "tren_troi",
+                "air",
+                "flying",
+                "birds"
+              ],
+              "label": "Trên Trời",
+              "icon": "🦅"
+            }
+          ]
+        },
+        {
+          "id": "cong_trinh",
+          "folder": "cong_trinh",
+          "folder_aliases": [
+            "cong_trinh",
+            "buildings",
+            "architecture",
+            "nha_cua"
+          ],
+          "label": "Công Trình & Nhà Cửa",
+          "icon": "🏠",
+          "subcategories": []
+        },
+        {
+          "id": "noi_that",
+          "folder": "noi_that",
+          "folder_aliases": [
+            "noi_that",
+            "furniture",
+            "ban_ghe"
+          ],
+          "label": "Nội Thất & Đồ Đạc",
+          "icon": "🪑",
+          "subcategories": []
+        },
+        {
+          "id": "dung_cu",
+          "folder": "dung_cu",
+          "folder_aliases": [
+            "dung_cu",
+            "tools",
+            "do_nghe"
+          ],
+          "label": "Dụng Cụ & Đồ Nghề",
+          "icon": "🔧",
+          "subcategories": []
+        },
+        {
+          "id": "do_tieu_hao",
+          "folder": "do_tieu_hao",
+          "folder_aliases": [
+            "do_tieu_hao",
+            "consumables",
+            "items",
+            "vat_pham"
+          ],
+          "label": "Đồ Tiêu Hao",
+          "icon": "🍵",
+          "subcategories": []
+        },
+        {
+          "id": "vu_khi",
+          "folder": "vu_khi",
+          "folder_aliases": [
+            "vu_khi",
+            "weapons",
+            "kiem",
+            "dao",
+            "cung"
+          ],
+          "label": "Vũ Khí & Khiên Giáp",
+          "icon": "⚔️",
+          "subcategories": []
+        },
+        {
+          "id": "phuong_tien",
+          "folder": "phuong_tien",
+          "folder_aliases": [
+            "phuong_tien",
+            "vehicles",
+            "mounts",
+            "xe_co",
+            "thu_cuoi"
+          ],
+          "label": "Phương Tiện & Thú Cưỡi",
+          "icon": "🐴",
+          "subcategories": []
+        },
+        {
+          "id": "bau_troi",
+          "folder": "bau_troi",
+          "folder_aliases": [
+            "bau_troi",
+            "SkyBoxs",
+            "skyboxes",
+            "sky"
+          ],
+          "label": "Bầu Trời & SkyBox",
+          "icon": "🌌",
+          "subcategories": [
+            {
+              "id": "binh_minh",
+              "folder": "binh_minh",
+              "label": "Bình Minh",
+              "icon": "🌅"
+            },
+            {
+              "id": "buoi_sang",
+              "folder": "buoi_sang",
+              "label": "Buổi Sáng",
+              "icon": "☀️"
+            },
+            {
+              "id": "buoi_trua",
+              "folder": "buoi_trua",
+              "label": "Buổi Trưa",
+              "icon": "🌞"
+            },
+            {
+              "id": "buoi_chieu",
+              "folder": "buoi_chieu",
+              "label": "Buổi Chiều",
+              "icon": "🌇"
+            },
+            {
+              "id": "buoi_toi",
+              "folder": "buoi_toi",
+              "label": "Buổi Tối",
+              "icon": "🌙"
+            },
+            {
+              "id": "giong_bao",
+              "folder": "giong_bao",
+              "label": "Giông Bão",
+              "icon": "⛈️"
+            }
+          ]
+        },
+        {
+          "id": "hieu_ung",
+          "folder": "hieu_ung",
+          "folder_aliases": [
+            "hieu_ung",
+            "vfx",
+            "effects"
+          ],
+          "label": "Hiệu Ứng & VFX",
+          "icon": "✨",
+          "subcategories": [
+            {
+              "id": "cam_xuc",
+              "folder": "cam_xuc",
+              "folder_aliases": [
+                "cam_xuc",
+                "emotes"
+              ],
+              "label": "Biểu Cảm & Emote",
+              "icon": "😃"
+            },
+            {
+              "id": "bao_phu",
+              "folder": "bao_phu",
+              "folder_aliases": [
+                "bao_phu",
+                "overlays"
+              ],
+              "label": "Lớp Phủ Overlay",
+              "icon": "🌫️"
+            }
+          ]
+        }
+      ]
+    },
+    "dictionary": {
+      "thuyen_be": {
+        "label": "Thuyền Bè & Tàu Thủy",
+        "icon": "⛵"
+      },
+      "than_thoai": {
+        "label": "Thần Thoại & Linh Thú",
+        "icon": "🐉"
+      },
+      "quai_vat": {
+        "label": "Quái Vật & Dị Thú",
+        "icon": "👹"
+      },
+      "hoa_co": {
+        "label": "Hoa Cỏ & Thảo Mộc",
+        "icon": "🌸"
+      },
+      "khoang_san": {
+        "label": "Khoáng Sản & Ngọc Quý",
+        "icon": "💎"
+      }
+    },
+    "available_actions": [
+      {
+        "id": "idle",
+        "label": "Đứng Chờ (Idle)",
+        "type": "locomotion"
+      },
+      {
+        "id": "walk",
+        "label": "Bước Đi (Walk)",
+        "type": "locomotion"
+      },
+      {
+        "id": "run",
+        "label": "Chạy Nhanh (Run)",
+        "type": "locomotion"
+      },
+      {
+        "id": "sit",
+        "label": "Ngồi Ghế / Ngồi Đất (Sit)",
+        "type": "interaction"
+      },
+      {
+        "id": "climb",
+        "label": "Leo Trèo (Climb)",
+        "type": "locomotion"
+      },
+      {
+        "id": "fly_to",
+        "label": "Bay Đến (Fly)",
+        "type": "locomotion"
+      },
+      {
+        "id": "dash_to",
+        "label": "Lướt Nhanh (Dash)",
+        "type": "locomotion"
+      },
+      {
+        "id": "teleport",
+        "label": "Dịch Chuyển (Teleport)",
+        "type": "locomotion"
+      },
+      {
+        "id": "kneel",
+        "label": "Quỳ Gối (Kneel)",
+        "type": "interaction"
+      },
+      {
+        "id": "bow",
+        "label": "Cúi Chào (Bow)",
+        "type": "interaction"
+      },
+      {
+        "id": "meditate",
+        "label": "Ngồi Thiền Tĩnh Tọa (Meditate)",
+        "type": "interaction"
+      },
+      {
+        "id": "heavy_slash_combo",
+        "label": "Chém Kiếm Liên Hoàn (Heavy Slash)",
+        "type": "combat"
+      },
+      {
+        "id": "fast_slash",
+        "label": "Kiếm Pháp Nhanh (Fast Slash)",
+        "type": "combat"
+      },
+      {
+        "id": "magic_blast",
+        "label": "Bắn Chưởng / Phép Thuật (Magic Blast)",
+        "type": "combat"
+      },
+      {
+        "id": "punch_kick",
+        "label": "Quyền Cước (Punch Kick)",
+        "type": "combat"
+      },
+      {
+        "id": "fly_back_knockdown",
+        "label": "Bị Đánh Văng (Knockdown)",
+        "type": "combat"
+      },
+      {
+        "id": "stagger_back",
+        "label": "Choáng Váng Lùi Lại (Stagger)",
+        "type": "combat"
+      },
+      {
+        "id": "block_defend",
+        "label": "Thủ Thế / Khiên Đỡ (Block)",
+        "type": "combat"
+      },
+      {
+        "id": "dodge",
+        "label": "Né Đòn (Dodge)",
+        "type": "combat"
+      },
+      {
+        "id": "arms_crossed",
+        "label": "Khoanh Tay (Arms Crossed)",
+        "type": "pose"
+      },
+      {
+        "id": "hands_behind_back",
+        "label": "Chắp Tay Sau Lưng (Hands Behind)",
+        "type": "pose"
+      },
+      {
+        "id": "fist_salute",
+        "label": "Bao Quyền Bái Kiến (Salute)",
+        "type": "pose"
+      },
+      {
+        "id": "finger_spell",
+        "label": "Bấm Kiếm Quyết (Finger Spell)",
+        "type": "pose"
+      },
+      {
+        "id": "power_charge",
+        "label": "Tụ Khí Vận Công (Power Charge)",
+        "type": "pose"
+      },
+      {
+        "id": "flying_stance",
+        "label": "Thế Ngự Kiếm Phi Hành (Flying Stance)",
+        "type": "pose"
+      },
+      {
+        "id": "pickup_right",
+        "label": "Nhặt Đồ Tay Phải (Pick Up)",
+        "type": "interaction"
+      },
+      {
+        "id": "carry_two_hands",
+        "label": "Bê Vác Hai Tay (Carry)",
+        "type": "interaction"
+      },
+      {
+        "id": "drink",
+        "label": "Uống Rượu / Uống Nước (Drink)",
+        "type": "interaction"
+      },
+      {
+        "id": "pour",
+        "label": "Rót Trà / Rót Rượu (Pour)",
+        "type": "interaction"
+      },
+      {
+        "id": "dig",
+        "label": "Đào Đất (Dig)",
+        "type": "interaction"
+      },
+      {
+        "id": "water_plants",
+        "label": "Tưới Nước Cho Cây (Water Plants)",
+        "type": "interaction"
+      },
+      {
+        "id": "plant_seed",
+        "label": "Gieo Hạt Giống (Plant Seed)",
+        "type": "interaction"
+      },
+      {
+        "id": "harvest",
+        "label": "Thu Hoạch Cây Trái (Harvest)",
+        "type": "interaction"
+      },
+      {
+        "id": "wave",
+        "label": "Vẫy Tay (Wave)",
+        "type": "interaction"
+      },
+      {
+        "id": "dance",
+        "label": "Khiêu Vũ / Múa (Dance)",
+        "type": "interaction"
+      },
+      {
+        "id": "throw",
+        "label": "Ném Đồ Vật (Throw)",
+        "type": "interaction"
+      }
+    ],
+    "available_expressions": [
+      {
+        "id": "neutral",
+        "label": "Bình Thường (Neutral)"
+      },
+      {
+        "id": "smile",
+        "label": "Mỉm Cười Thân Thiện (Smile)"
+      },
+      {
+        "id": "angry",
+        "label": "Tức Giận (Angry)"
+      },
+      {
+        "id": "pain",
+        "label": "Đau Đớn (Pain)"
+      },
+      {
+        "id": "smirk",
+        "label": "Cười Nhếch Mép (Smirk)"
+      },
+      {
+        "id": "sad",
+        "label": "Buồn Bã (Sad)"
+      },
+      {
+        "id": "serious",
+        "label": "Nghiêm Túc (Serious)"
+      },
+      {
+        "id": "surprised",
+        "label": "Kinh Ngạc (Surprised)"
+      },
+      {
+        "id": "shock",
+        "label": "Sốc / Hoảng Hốt (Shock)"
+      },
+      {
+        "id": "cold",
+        "label": "Lạnh Lùng (Cold)"
+      },
+      {
+        "id": "arrogant",
+        "label": "Kiêu Ngạo (Arrogant)"
+      },
+      {
+        "id": "contempt",
+        "label": "Khinh Bỉ (Contempt)"
+      },
+      {
+        "id": "wise",
+        "label": "Điềm Đạm Sâu Sắc (Wise)"
+      },
+      {
+        "id": "fierce",
+        "label": "Hung Dữ Uy Nghi (Fierce)"
+      },
+      {
+        "id": "meditative",
+        "label": "Thiền Định Nhập Tâm (Meditative)"
+      },
+      {
+        "id": "menacing",
+        "label": "Hiểm Độc Nguy Hiểm (Menacing)"
+      },
+      {
+        "id": "compassionate",
+        "label": "Từ Bi Nhân Hậu (Compassionate)"
+      },
+      {
+        "id": "determined",
+        "label": "Kiên Định Quyết Tâm (Determined)"
+      }
+    ]
+  },
+  "map_presets": [
+    {
+      "map_id": "sakura_lake_village",
+      "name": "Làng Hoa Anh Đào Ven Hồ",
+      "description": "Ngôi làng thanh tịnh ven hồ nước, có 2 hàng cây hoa anh đào lớn, một ghế dài đá ngồi ngắm cảnh hướng ra hồ, và vườn thảo dược phía đông.",
+      "base_map": "farming_village",
+      "sky_time": "sunset",
+      "weather": {
+        "fog": 0.012,
+        "wind": 0.35,
+        "rain": 0
+      },
+      "default_spawn_points": {
+        "lakeside_bench": [
+          -3.5,
+          0,
+          -1.8
+        ],
+        "village_entrance": [
+          0,
+          0,
+          4
+        ],
+        "sakura_tree_north": [
+          4,
+          0,
+          -3
+        ],
+        "herb_garden": [
+          0,
+          0,
+          -5
+        ]
+      },
+      "placed_props": [
+        {
+          "id": "sakura_tree_01",
+          "asset_path": "props/nature/tree_sakura.glb",
+          "position": [
+            4,
+            0,
+            -3
+          ],
+          "scale": 1.2,
+          "type": "nature",
+          "is_obstacle": true,
+          "obstacle_radius": 0.8,
+          "smart_socket": {
+            "socket_type": "climb",
+            "entry_offset": [
+              0,
+              0,
+              1.2
+            ],
+            "target_offset": [
+              0,
+              2.2,
+              0
+            ],
+            "target_rotation_y": 0
+          }
+        },
+        {
+          "id": "stone_bench_01",
+          "asset_path": "props/furniture/chair_wooden.glb",
+          "position": [
+            -3.5,
+            0,
+            -1.8
+          ],
+          "rotation": [
+            0,
+            0.4,
+            0
+          ],
+          "scale": 1,
+          "type": "furniture",
+          "is_obstacle": true,
+          "obstacle_radius": 0.5,
+          "smart_socket": {
+            "socket_type": "sit",
+            "entry_offset": [
+              0,
+              0,
+              0.9
+            ],
+            "target_offset": [
+              0,
+              0.5,
+              0
+            ],
+            "target_rotation_y": 0.4
+          }
+        },
+        {
+          "id": "herb_farm_plot",
+          "asset_path": "props/tools/farm_plot.glb",
+          "position": [
+            0,
+            0,
+            -5
+          ],
+          "scale": 1,
+          "type": "nature",
+          "smart_socket": {
+            "socket_type": "harvest",
+            "entry_offset": [
+              0,
+              0,
+              1
+            ],
+            "target_offset": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "night_lantern_stand",
+          "asset_path": "props/furniture/lantern_prop.glb",
+          "position": [
+            -2.8,
+            0,
+            -1.5
+          ],
+          "scale": 1,
+          "type": "furniture"
+        }
+      ],
+      "tags": [
+        "village",
+        "peaceful",
+        "sakura",
+        "lake",
+        "xianxia"
+      ],
+      "created_at": "2026-08-19T15:40:00Z",
+      "author": "Studio Director",
+      "relPath": "maps/presets/sakura_lake_village.json"
+    },
+    {
+      "map_id": "xianxia_mountain_arena",
+      "name": "Vấn Đỉnh Phong — Đấu Trường Tiên Giới",
+      "description": "Đỉnh núi mây mù bao phủ, có các cột đá khắc phù văn cổ xưa xung quanh đài tỷ võ, hướng bắc có tảng đá linh khí tọa thiền.",
+      "base_map": "medieval_fantasy_book",
+      "sky_time": "sunrise",
+      "weather": {
+        "fog": 0.02,
+        "wind": 0.6,
+        "rain": 0
+      },
+      "default_spawn_points": {
+        "challenger_1_west": [
+          -4,
+          0,
+          0
+        ],
+        "challenger_2_east": [
+          4,
+          0,
+          0
+        ],
+        "meditation_stone_north": [
+          0,
+          0,
+          -4.5
+        ],
+        "arena_center": [
+          0,
+          0,
+          0
+        ]
+      },
+      "placed_props": [
+        {
+          "id": "meditation_stone_01",
+          "asset_path": "props/nature/rock_large.glb",
+          "position": [
+            0,
+            0,
+            -4.5
+          ],
+          "scale": 1.5,
+          "type": "nature",
+          "is_obstacle": true,
+          "obstacle_radius": 1.2,
+          "smart_socket": {
+            "socket_type": "stand",
+            "entry_offset": [
+              0,
+              0,
+              1.5
+            ],
+            "target_offset": [
+              0,
+              0.8,
+              0
+            ]
+          }
+        },
+        {
+          "id": "ancient_pillar_west",
+          "asset_path": "props/buildings/tower_mage.glb",
+          "position": [
+            -5.5,
+            0,
+            -2
+          ],
+          "scale": 0.8,
+          "type": "building",
+          "is_obstacle": true,
+          "obstacle_radius": 0.9
+        },
+        {
+          "id": "ancient_pillar_east",
+          "asset_path": "props/buildings/tower_mage.glb",
+          "position": [
+            5.5,
+            0,
+            -2
+          ],
+          "scale": 0.8,
+          "type": "building",
+          "is_obstacle": true,
+          "obstacle_radius": 0.9
+        }
+      ],
+      "tags": [
+        "xianxia",
+        "combat",
+        "arena",
+        "mountain",
+        "clouds"
+      ],
+      "created_at": "2026-08-19T15:42:00Z",
+      "author": "Studio Director",
+      "relPath": "maps/presets/xianxia_mountain_arena.json"
+    }
+  ],
   "characters": {
-    "male": [
-      {
-        "id": "precision_strike_manekin",
-        "name": "precision_strike_manekin.glb",
-        "relPath": "characters/man/precision_strike_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "1.15",
-        "previewUrl": "assets/characters/man/precision_strike_manekin.png"
-      },
-      {
-        "id": "sample_avatar",
-        "name": "sample_avatar.vrm",
-        "relPath": "characters/male/sample_avatar.vrm",
-        "format": "VRM",
-        "sizeMB": "10.28",
-        "previewUrl": "assets/characters/male/sample_avatar.png"
-      }
-    ],
-    "female": [
-      {
-        "id": "tzitzimitl_female",
-        "name": "tzitzimitl_female.glb",
-        "relPath": "characters/woman/tzitzimitl_female.glb",
-        "format": "GLB",
-        "sizeMB": "3.62",
-        "previewUrl": "assets/characters/woman/tzitzimitl_female.png"
-      }
-    ],
-    "base_bodies": [
-      {
-        "id": "body_base_-_manekina",
-        "name": "body_base_-_manekina.glb",
-        "relPath": "characters/base_bodies/male/body_base_-_manekina.glb",
-        "format": "GLB",
-        "sizeMB": "0.53",
-        "previewUrl": "assets/characters/base_bodies/male/body_base_-_manekina.png"
-      },
-      {
-        "id": "body_base_-_manekin",
-        "name": "body_base_-_manekin.glb",
-        "relPath": "characters/base_bodies/man/body_base_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "0.54",
-        "previewUrl": "assets/characters/base_bodies/man/body_base_-_manekin.png"
-      },
-      {
-        "id": "sample_avatar",
-        "name": "sample_avatar.vrm",
-        "relPath": "characters/base_bodies/sample_avatar.vrm",
-        "format": "VRM",
-        "sizeMB": "10.28"
-      },
-      {
-        "id": "sample_avatar",
-        "name": "sample_avatar.vrm",
-        "relPath": "characters/sample_avatar.vrm",
-        "format": "VRM",
-        "sizeMB": "10.28"
-      }
-    ],
-    "faces": [
-      {
-        "id": "starlight_fragments_-_manekin",
-        "name": "starlight_fragments_-_manekin.glb",
-        "relPath": "characters/faces/male/starlight_fragments_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "0.19",
-        "previewUrl": "assets/characters/faces/male/starlight_fragments_-_manekin.png"
-      },
-      {
-        "id": "dawnbreaker_-_manekin",
-        "name": "dawnbreaker_-_manekin.glb",
-        "relPath": "characters/faces/man/dawnbreaker_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "0.20",
-        "previewUrl": "assets/characters/faces/man/dawnbreaker_-_manekin.png"
-      }
-    ],
+    "male": [],
+    "female": [],
+    "base_bodies": [],
+    "faces": [],
     "hairstyles": [],
     "beards": [],
-    "costumes": [
-      {
-        "id": "amber_nectar_-_manekina",
-        "name": "amber_nectar_-_manekina.glb",
-        "relPath": "characters/costumes/male/amber_nectar_-_manekina.glb",
-        "format": "GLB",
-        "sizeMB": "3.37",
-        "previewUrl": "assets/characters/costumes/male/amber_nectar_-_manekina.png"
-      },
-      {
-        "id": "precision_strike_-_manekina",
-        "name": "precision_strike_-_manekina.glb",
-        "relPath": "characters/costumes/male/precision_strike_-_manekina.glb",
-        "format": "GLB",
-        "sizeMB": "0.99",
-        "previewUrl": "assets/characters/costumes/male/precision_strike_-_manekina.png"
-      },
-      {
-        "id": "scary_cat_-_manekina",
-        "name": "scary_cat_-_manekina.glb",
-        "relPath": "characters/costumes/male/scary_cat_-_manekina.glb",
-        "format": "GLB",
-        "sizeMB": "1.37"
-      },
-      {
-        "id": "amber_nectar_-_manekin",
-        "name": "amber_nectar_-_manekin.glb",
-        "relPath": "characters/costumes/man/amber_nectar_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "3.43",
-        "previewUrl": "assets/characters/costumes/man/amber_nectar_-_manekin.png"
-      },
-      {
-        "id": "precision_strike_-_manekin",
-        "name": "precision_strike_-_manekin.glb",
-        "relPath": "characters/costumes/man/precision_strike_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "1.15",
-        "previewUrl": "assets/characters/costumes/man/precision_strike_-_manekin.png"
-      },
-      {
-        "id": "scary_cat_-_manekin",
-        "name": "scary_cat_-_manekin.glb",
-        "relPath": "characters/costumes/man/scary_cat_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "0.90",
-        "previewUrl": "assets/characters/costumes/man/scary_cat_-_manekin.png"
-      },
-      {
-        "id": "sleuths_verdict_-_manekin",
-        "name": "sleuths_verdict_-_manekin.glb",
-        "relPath": "characters/costumes/man/sleuths_verdict_-_manekin.glb",
-        "format": "GLB",
-        "sizeMB": "3.19"
-      }
-    ],
-    "accessories": []
+    "costumes": [],
+    "accessories": [],
+    "eyebrows": [],
+    "eyes": [],
+    "noses": [],
+    "mouths": [],
+    "hats": [],
+    "shoes": [],
+    "wings": [],
+    "tails": []
   },
   "props": {
+    "trees": [],
+    "rocks": [],
+    "animals": {
+      "all": [],
+      "terrestrial": [],
+      "aquatic": [],
+      "aerial": []
+    },
     "weapons": [],
     "tools": [],
     "consumables": [],
     "furniture": [],
     "buildings": [],
-    "nature": [],
     "vehicles": [],
-    "legacy": [
+    "vfx": []
+  },
+  "skyboxes": {
+    "all": [
       {
-        "id": "duck_prop",
-        "name": "duck_prop.glb",
-        "relPath": "props/duck_prop.glb",
-        "format": "GLB",
-        "sizeMB": "0.11"
+        "id": "binh_minh_it_may_1",
+        "name": "Binh Minh It May 1",
+        "filename": "binh_minh_it_may_1.png",
+        "relPath": "SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png"
       },
       {
-        "id": "lantern_prop",
-        "name": "lantern_prop.glb",
-        "relPath": "props/lantern_prop.glb",
-        "format": "GLB",
-        "sizeMB": "9.42"
+        "id": "binh_minh_khong_may_1",
+        "name": "Binh Minh Khong May 1",
+        "filename": "binh_minh_khong_may_1.png",
+        "relPath": "SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png"
+      },
+      {
+        "id": "binh_minh_nhieu_may_1",
+        "name": "Binh Minh Nhieu May 1",
+        "filename": "binh_minh_nhieu_may_1.png",
+        "relPath": "SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png"
+      },
+      {
+        "id": "buoi_chieu_it_may_1",
+        "name": "Buoi Chieu It May 1",
+        "filename": "buoi_chieu_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png"
+      },
+      {
+        "id": "buoi_chieu_khong_may_1",
+        "name": "Buoi Chieu Khong May 1",
+        "filename": "buoi_chieu_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png"
+      },
+      {
+        "id": "buoi_chieu_nhieu_may_1",
+        "name": "Buoi Chieu Nhieu May 1",
+        "filename": "buoi_chieu_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png"
+      },
+      {
+        "id": "buoi_sang_it_may_1",
+        "name": "Buoi Sang It May 1",
+        "filename": "buoi_sang_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png"
+      },
+      {
+        "id": "buoi_sang_khong_may_1",
+        "name": "Buoi Sang Khong May 1",
+        "filename": "buoi_sang_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png"
+      },
+      {
+        "id": "3",
+        "name": "3",
+        "filename": "3.png",
+        "relPath": "SkyBoxs/buoi_sang/nhieu_may/3.png",
+        "format": "PNG",
+        "sizeMB": "1.63",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/3.png"
+      },
+      {
+        "id": "buoi_sang_2",
+        "name": "Buoi Sang 2",
+        "filename": "buoi_sang_2.png",
+        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "format": "PNG",
+        "sizeMB": "1.59",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png"
+      },
+      {
+        "id": "buoi_sang_nhieu_may_1",
+        "name": "Buoi Sang Nhieu May 1",
+        "filename": "buoi_sang_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png"
+      },
+      {
+        "id": "buoi_toi_it_may_1",
+        "name": "Buoi Toi It May 1",
+        "filename": "buoi_toi_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.27",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png"
+      },
+      {
+        "id": "buoi_toi_khong_may_1",
+        "name": "Buoi Toi Khong May 1",
+        "filename": "buoi_toi_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png"
+      },
+      {
+        "id": "buoi_toi_nhieu_may_1",
+        "name": "Buoi Toi Nhieu May 1",
+        "filename": "buoi_toi_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png"
+      },
+      {
+        "id": "buoi_trua_it_may_1",
+        "name": "Buoi Trua It May 1",
+        "filename": "buoi_trua_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png"
+      },
+      {
+        "id": "buoi_trua_khong_may_1",
+        "name": "Buoi Trua Khong May 1",
+        "filename": "buoi_trua_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png"
+      },
+      {
+        "id": "buoi_trua_nhieu_may_1",
+        "name": "Buoi Trua Nhieu May 1",
+        "filename": "buoi_trua_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png"
+      },
+      {
+        "id": "giong_bao_it_may_1",
+        "name": "Giong Bao It May 1",
+        "filename": "giong_bao_it_may_1.png",
+        "relPath": "SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png"
+      },
+      {
+        "id": "giong_bao_nhieu_may_1",
+        "name": "Giong Bao Nhieu May 1",
+        "filename": "giong_bao_nhieu_may_1.png",
+        "relPath": "SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png"
+      },
+      {
+        "id": "skybox-alien",
+        "name": "Skybox Alien",
+        "filename": "skybox-alien.png",
+        "relPath": "SkyBoxs/skybox-alien.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/skybox-alien.png"
+      },
+      {
+        "id": "skybox-day",
+        "name": "Skybox Day",
+        "filename": "skybox-day.png",
+        "relPath": "SkyBoxs/skybox-day.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/skybox-day.png"
+      },
+      {
+        "id": "skybox-morning",
+        "name": "Skybox Morning",
+        "filename": "skybox-morning.png",
+        "relPath": "SkyBoxs/skybox-morning.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/skybox-morning.png"
+      },
+      {
+        "id": "skybox-night",
+        "name": "Skybox Night",
+        "filename": "skybox-night.png",
+        "relPath": "SkyBoxs/skybox-night.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/skybox-night.png"
+      },
+      {
+        "id": "skybox-space",
+        "name": "Skybox Space",
+        "filename": "skybox-space.png",
+        "relPath": "SkyBoxs/skybox-space.png",
+        "format": "PNG",
+        "sizeMB": "0.27",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/skybox-space.png"
+      }
+    ],
+    "binh_minh": [
+      {
+        "id": "binh_minh_it_may_1",
+        "name": "Binh Minh It May 1",
+        "filename": "binh_minh_it_may_1.png",
+        "relPath": "SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/binh_minh/it_may/binh_minh_it_may_1.png"
+      },
+      {
+        "id": "binh_minh_khong_may_1",
+        "name": "Binh Minh Khong May 1",
+        "filename": "binh_minh_khong_may_1.png",
+        "relPath": "SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/binh_minh/khong_may/binh_minh_khong_may_1.png"
+      },
+      {
+        "id": "binh_minh_nhieu_may_1",
+        "name": "Binh Minh Nhieu May 1",
+        "filename": "binh_minh_nhieu_may_1.png",
+        "relPath": "SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/binh_minh/nhieu_may/binh_minh_nhieu_may_1.png"
+      }
+    ],
+    "buoi_sang": [
+      {
+        "id": "buoi_sang_it_may_1",
+        "name": "Buoi Sang It May 1",
+        "filename": "buoi_sang_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/it_may/buoi_sang_it_may_1.png"
+      },
+      {
+        "id": "buoi_sang_khong_may_1",
+        "name": "Buoi Sang Khong May 1",
+        "filename": "buoi_sang_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/khong_may/buoi_sang_khong_may_1.png"
+      },
+      {
+        "id": "3",
+        "name": "3",
+        "filename": "3.png",
+        "relPath": "SkyBoxs/buoi_sang/nhieu_may/3.png",
+        "format": "PNG",
+        "sizeMB": "1.63",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/3.png"
+      },
+      {
+        "id": "buoi_sang_2",
+        "name": "Buoi Sang 2",
+        "filename": "buoi_sang_2.png",
+        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png",
+        "format": "PNG",
+        "sizeMB": "1.59",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_2.png"
+      },
+      {
+        "id": "buoi_sang_nhieu_may_1",
+        "name": "Buoi Sang Nhieu May 1",
+        "filename": "buoi_sang_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_sang/nhieu_may/buoi_sang_nhieu_may_1.png"
+      }
+    ],
+    "buoi_trua": [
+      {
+        "id": "buoi_trua_it_may_1",
+        "name": "Buoi Trua It May 1",
+        "filename": "buoi_trua_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_trua/it_may/buoi_trua_it_may_1.png"
+      },
+      {
+        "id": "buoi_trua_khong_may_1",
+        "name": "Buoi Trua Khong May 1",
+        "filename": "buoi_trua_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_trua/khong_may/buoi_trua_khong_may_1.png"
+      },
+      {
+        "id": "buoi_trua_nhieu_may_1",
+        "name": "Buoi Trua Nhieu May 1",
+        "filename": "buoi_trua_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.00",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_trua/nhieu_may/buoi_trua_nhieu_may_1.png"
+      }
+    ],
+    "buoi_chieu": [
+      {
+        "id": "buoi_chieu_it_may_1",
+        "name": "Buoi Chieu It May 1",
+        "filename": "buoi_chieu_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/it_may/buoi_chieu_it_may_1.png"
+      },
+      {
+        "id": "buoi_chieu_khong_may_1",
+        "name": "Buoi Chieu Khong May 1",
+        "filename": "buoi_chieu_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.86",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/khong_may/buoi_chieu_khong_may_1.png"
+      },
+      {
+        "id": "buoi_chieu_nhieu_may_1",
+        "name": "Buoi Chieu Nhieu May 1",
+        "filename": "buoi_chieu_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_chieu/nhieu_may/buoi_chieu_nhieu_may_1.png"
+      }
+    ],
+    "buoi_toi": [
+      {
+        "id": "buoi_toi_it_may_1",
+        "name": "Buoi Toi It May 1",
+        "filename": "buoi_toi_it_may_1.png",
+        "relPath": "SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "0.27",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_toi/it_may/buoi_toi_it_may_1.png"
+      },
+      {
+        "id": "buoi_toi_khong_may_1",
+        "name": "Buoi Toi Khong May 1",
+        "filename": "buoi_toi_khong_may_1.png",
+        "relPath": "SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_toi/khong_may/buoi_toi_khong_may_1.png"
+      },
+      {
+        "id": "buoi_toi_nhieu_may_1",
+        "name": "Buoi Toi Nhieu May 1",
+        "filename": "buoi_toi_nhieu_may_1.png",
+        "relPath": "SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.05",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/buoi_toi/nhieu_may/buoi_toi_nhieu_may_1.png"
+      }
+    ],
+    "giong_bao": [
+      {
+        "id": "giong_bao_it_may_1",
+        "name": "Giong Bao It May 1",
+        "filename": "giong_bao_it_may_1.png",
+        "relPath": "SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/giong_bao/it_may/giong_bao_it_may_1.png"
+      },
+      {
+        "id": "giong_bao_nhieu_may_1",
+        "name": "Giong Bao Nhieu May 1",
+        "filename": "giong_bao_nhieu_may_1.png",
+        "relPath": "SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png",
+        "format": "PNG",
+        "sizeMB": "1.35",
+        "gender": "unisex",
+        "previewUrl": "assets/SkyBoxs/giong_bao/nhieu_may/giong_bao_nhieu_may_1.png"
       }
     ]
   },
   "maps": [
     {
-      "id": "cathedral",
-      "name": "cathedral.glb",
-      "relPath": "maps/cathedral.glb",
-      "format": "GLB",
-      "sizeMB": "103.80"
+      "id": "scene",
+      "name": "Scene",
+      "filename": "scene.gltf",
+      "relPath": "maps/medieval_fantasy_book/scene.gltf",
+      "format": "GLTF",
+      "sizeMB": "0.03",
+      "gender": "unisex"
     },
     {
-      "id": "game_pirate_adventure_map",
-      "name": "game_pirate_adventure_map.glb",
-      "relPath": "maps/game_pirate_adventure_map.glb",
+      "id": "medieval_fantasy_book",
+      "name": "Medieval Fantasy Book",
+      "filename": "medieval_fantasy_book.glb",
+      "relPath": "maps/medieval_fantasy_book.glb",
       "format": "GLB",
-      "sizeMB": "7.48"
-    },
-    {
-      "id": "zone9_real_light",
-      "name": "zone9_real_light.glb",
-      "relPath": "maps/zone9_real_light.glb",
-      "format": "GLB",
-      "sizeMB": "36.33"
+      "sizeMB": "3.70",
+      "gender": "unisex"
     }
   ],
   "audio": {
@@ -204,61 +1543,259 @@
   },
   "vfx": [],
   "available_actions": [
-    "idle",
-    "walk",
-    "run",
-    "sit",
-    "climb",
-    "fly_to",
-    "dash_to",
-    "teleport",
-    "kneel",
-    "bow",
-    "meditate",
-    "heavy_slash_combo",
-    "fast_slash",
-    "magic_blast",
-    "punch_kick",
-    "fly_back_knockdown",
-    "stagger_back",
-    "block_defend",
-    "dodge",
-    "arms_crossed",
-    "hands_behind_back",
-    "fist_salute",
-    "finger_spell",
-    "power_charge",
-    "flying_stance",
-    "pickup_right",
-    "carry_two_hands",
-    "drink",
-    "pour",
-    "dig",
-    "water_plants",
-    "plant_seed",
-    "harvest",
-    "wave",
-    "dance",
-    "throw"
+    {
+      "id": "idle",
+      "label": "Đứng Chờ (Idle)",
+      "type": "locomotion"
+    },
+    {
+      "id": "walk",
+      "label": "Bước Đi (Walk)",
+      "type": "locomotion"
+    },
+    {
+      "id": "run",
+      "label": "Chạy Nhanh (Run)",
+      "type": "locomotion"
+    },
+    {
+      "id": "sit",
+      "label": "Ngồi Ghế / Ngồi Đất (Sit)",
+      "type": "interaction"
+    },
+    {
+      "id": "climb",
+      "label": "Leo Trèo (Climb)",
+      "type": "locomotion"
+    },
+    {
+      "id": "fly_to",
+      "label": "Bay Đến (Fly)",
+      "type": "locomotion"
+    },
+    {
+      "id": "dash_to",
+      "label": "Lướt Nhanh (Dash)",
+      "type": "locomotion"
+    },
+    {
+      "id": "teleport",
+      "label": "Dịch Chuyển (Teleport)",
+      "type": "locomotion"
+    },
+    {
+      "id": "kneel",
+      "label": "Quỳ Gối (Kneel)",
+      "type": "interaction"
+    },
+    {
+      "id": "bow",
+      "label": "Cúi Chào (Bow)",
+      "type": "interaction"
+    },
+    {
+      "id": "meditate",
+      "label": "Ngồi Thiền Tĩnh Tọa (Meditate)",
+      "type": "interaction"
+    },
+    {
+      "id": "heavy_slash_combo",
+      "label": "Chém Kiếm Liên Hoàn (Heavy Slash)",
+      "type": "combat"
+    },
+    {
+      "id": "fast_slash",
+      "label": "Kiếm Pháp Nhanh (Fast Slash)",
+      "type": "combat"
+    },
+    {
+      "id": "magic_blast",
+      "label": "Bắn Chưởng / Phép Thuật (Magic Blast)",
+      "type": "combat"
+    },
+    {
+      "id": "punch_kick",
+      "label": "Quyền Cước (Punch Kick)",
+      "type": "combat"
+    },
+    {
+      "id": "fly_back_knockdown",
+      "label": "Bị Đánh Văng (Knockdown)",
+      "type": "combat"
+    },
+    {
+      "id": "stagger_back",
+      "label": "Choáng Váng Lùi Lại (Stagger)",
+      "type": "combat"
+    },
+    {
+      "id": "block_defend",
+      "label": "Thủ Thế / Khiên Đỡ (Block)",
+      "type": "combat"
+    },
+    {
+      "id": "dodge",
+      "label": "Né Đòn (Dodge)",
+      "type": "combat"
+    },
+    {
+      "id": "arms_crossed",
+      "label": "Khoanh Tay (Arms Crossed)",
+      "type": "pose"
+    },
+    {
+      "id": "hands_behind_back",
+      "label": "Chắp Tay Sau Lưng (Hands Behind)",
+      "type": "pose"
+    },
+    {
+      "id": "fist_salute",
+      "label": "Bao Quyền Bái Kiến (Salute)",
+      "type": "pose"
+    },
+    {
+      "id": "finger_spell",
+      "label": "Bấm Kiếm Quyết (Finger Spell)",
+      "type": "pose"
+    },
+    {
+      "id": "power_charge",
+      "label": "Tụ Khí Vận Công (Power Charge)",
+      "type": "pose"
+    },
+    {
+      "id": "flying_stance",
+      "label": "Thế Ngự Kiếm Phi Hành (Flying Stance)",
+      "type": "pose"
+    },
+    {
+      "id": "pickup_right",
+      "label": "Nhặt Đồ Tay Phải (Pick Up)",
+      "type": "interaction"
+    },
+    {
+      "id": "carry_two_hands",
+      "label": "Bê Vác Hai Tay (Carry)",
+      "type": "interaction"
+    },
+    {
+      "id": "drink",
+      "label": "Uống Rượu / Uống Nước (Drink)",
+      "type": "interaction"
+    },
+    {
+      "id": "pour",
+      "label": "Rót Trà / Rót Rượu (Pour)",
+      "type": "interaction"
+    },
+    {
+      "id": "dig",
+      "label": "Đào Đất (Dig)",
+      "type": "interaction"
+    },
+    {
+      "id": "water_plants",
+      "label": "Tưới Nước Cho Cây (Water Plants)",
+      "type": "interaction"
+    },
+    {
+      "id": "plant_seed",
+      "label": "Gieo Hạt Giống (Plant Seed)",
+      "type": "interaction"
+    },
+    {
+      "id": "harvest",
+      "label": "Thu Hoạch Cây Trái (Harvest)",
+      "type": "interaction"
+    },
+    {
+      "id": "wave",
+      "label": "Vẫy Tay (Wave)",
+      "type": "interaction"
+    },
+    {
+      "id": "dance",
+      "label": "Khiêu Vũ / Múa (Dance)",
+      "type": "interaction"
+    },
+    {
+      "id": "throw",
+      "label": "Ném Đồ Vật (Throw)",
+      "type": "interaction"
+    }
   ],
   "available_expressions": [
-    "neutral",
-    "angry",
-    "pain",
-    "smile",
-    "smirk",
-    "sad",
-    "serious",
-    "surprised",
-    "shock",
-    "cold",
-    "arrogant",
-    "contempt",
-    "wise",
-    "fierce",
-    "meditative",
-    "menacing",
-    "compassionate",
-    "determined"
+    {
+      "id": "neutral",
+      "label": "Bình Thường (Neutral)"
+    },
+    {
+      "id": "smile",
+      "label": "Mỉm Cười Thân Thiện (Smile)"
+    },
+    {
+      "id": "angry",
+      "label": "Tức Giận (Angry)"
+    },
+    {
+      "id": "pain",
+      "label": "Đau Đớn (Pain)"
+    },
+    {
+      "id": "smirk",
+      "label": "Cười Nhếch Mép (Smirk)"
+    },
+    {
+      "id": "sad",
+      "label": "Buồn Bã (Sad)"
+    },
+    {
+      "id": "serious",
+      "label": "Nghiêm Túc (Serious)"
+    },
+    {
+      "id": "surprised",
+      "label": "Kinh Ngạc (Surprised)"
+    },
+    {
+      "id": "shock",
+      "label": "Sốc / Hoảng Hốt (Shock)"
+    },
+    {
+      "id": "cold",
+      "label": "Lạnh Lùng (Cold)"
+    },
+    {
+      "id": "arrogant",
+      "label": "Kiêu Ngạo (Arrogant)"
+    },
+    {
+      "id": "contempt",
+      "label": "Khinh Bỉ (Contempt)"
+    },
+    {
+      "id": "wise",
+      "label": "Điềm Đạm Sâu Sắc (Wise)"
+    },
+    {
+      "id": "fierce",
+      "label": "Hung Dữ Uy Nghi (Fierce)"
+    },
+    {
+      "id": "meditative",
+      "label": "Thiền Định Nhập Tâm (Meditative)"
+    },
+    {
+      "id": "menacing",
+      "label": "Hiểm Độc Nguy Hiểm (Menacing)"
+    },
+    {
+      "id": "compassionate",
+      "label": "Từ Bi Nhân Hậu (Compassionate)"
+    },
+    {
+      "id": "determined",
+      "label": "Kiên Định Quyết Tâm (Determined)"
+    }
   ]
 }
