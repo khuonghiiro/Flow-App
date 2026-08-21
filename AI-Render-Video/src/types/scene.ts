@@ -256,6 +256,30 @@ export interface CharacterAssembly {
   eye_color?: string;          // "#4a90d9"
 }
 
+export interface CharacterSkillItem {
+  id?: string;
+  name: string;
+  level?: number;
+  type?: string;          // "Chủ Động" | "Bị Động" | "Kiếm Pháp" | "Thần Thông" | "Phép Thuật" | "Nội Công"
+  description?: string;
+}
+
+export interface CharacterProfileData {
+  age?: number;
+  gender?: 'male' | 'female' | 'unisex';
+  height_cm?: number;          // Chiều cao (cm)
+  education_level?: string;    // Trình độ học vấn / Tu vi / Cấp bậc
+  occupation?: string;         // Nghề nghiệp / Thân phận
+  faction?: string;            // Môn phái / Phe phái
+  personality?: string;        // Tính cách & Khí chất
+  biography?: string;          // Tiểu sử / Bối cảnh xuất thân
+  voice_style?: string;        // Phong cách thoại / Giọng nói
+  power_level?: number;        // Cấp độ sức mạnh / Chiến lực
+  element?: string;            // Nguyên tố / Hệ (Hỏa, Băng, Lôi, Phong...)
+  skills?: CharacterSkillItem[]; // Danh sách kỹ năng & cấp độ
+  custom_attributes?: Record<string, any>; // Các thuộc tính tùy biến mở rộng tự do
+}
+
 export interface ActorConfig {
   id: string;
   name: string;
@@ -265,6 +289,7 @@ export interface ActorConfig {
   spawn_point: Vec3Tuple;
   rotation_y?: number;
   tracks: ActorTracks;
+  profile?: CharacterProfileData;     // Hồ sơ thông tin nhân vật chi tiết cho AI
   // Hệ thống mới
   inventory?: ActorInventory;
   can_fly?: boolean;            // Nhân vật có thể bay

@@ -269,14 +269,35 @@ export const DEFAULT_FACE_SLIDERS: FaceSliderConfig = {
   costumeOpacity: 1.0,
 };
 
-export interface CharacterProfileJSON {
-  version: '1.0';
+export interface CharacterSkillItem {
+  id?: string;
   name: string;
+  level?: number;
+  type?: string;
+  description?: string;
+}
+
+export interface CharacterProfileJSON {
+  version: '2.0' | '1.0';
+  name: string;
+  age?: number;
+  gender: 'male' | 'female' | 'unisex';
+  height_cm?: number;
+  education_level?: string;
+  occupation?: string;
+  faction?: string;
+  personality?: string;
+  biography?: string;
+  voice_style?: string;
+  power_level?: number;
+  element?: string;
+  skills?: CharacterSkillItem[];
+  custom_attributes?: Record<string, any>;
+
   base_body: string;
   costume: string;
   face: string;
   hairstyle: string;
-  gender: 'male' | 'female';
   face_sliders: FaceSliderConfig;
   ai_description: string;
   preview_image?: string;
@@ -290,18 +311,46 @@ export function buildCharacterProfile(
   face: string,
   hairstyle: string,
   sliders: FaceSliderConfig,
-  aiDescription: string
+  aiDescription: string,
+  extraProfile?: {
+    age?: number;
+    gender?: 'male' | 'female' | 'unisex';
+    height_cm?: number;
+    education_level?: string;
+    occupation?: string;
+    faction?: string;
+    personality?: string;
+    biography?: string;
+    voice_style?: string;
+    power_level?: number;
+    element?: string;
+    skills?: CharacterSkillItem[];
+    custom_attributes?: Record<string, any>;
+  }
 ): CharacterProfileJSON {
+  const gender = extraProfile?.gender || (baseBody.includes('manekina') || baseBody.includes('/nu/') ? 'female' : 'male');
   return {
-    version: '1.0',
+    version: '2.0',
     name,
+    age: extraProfile?.age,
+    gender,
+    height_cm: extraProfile?.height_cm || (gender === 'male' ? 178 : 165),
+    education_level: extraProfile?.education_level,
+    occupation: extraProfile?.occupation,
+    faction: extraProfile?.faction,
+    personality: extraProfile?.personality,
+    biography: extraProfile?.biography,
+    voice_style: extraProfile?.voice_style,
+    power_level: extraProfile?.power_level,
+    element: extraProfile?.element,
+    skills: extraProfile?.skills || [],
+    custom_attributes: extraProfile?.custom_attributes || {},
     base_body: baseBody,
     costume,
     face,
     hairstyle,
-    gender: baseBody.includes('manekina') || baseBody.includes('/nu/') ? 'female' : 'male',
     face_sliders: { ...sliders },
-    ai_description: aiDescription,
+    ai_description: aiDescription || extraProfile?.biography || '',
     created_at: new Date().toISOString(),
   };
 }

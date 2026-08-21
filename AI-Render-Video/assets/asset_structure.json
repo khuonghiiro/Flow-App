@@ -425,5 +425,57 @@
     { "id": "menacing", "label": "Hiểm Độc Nguy Hiểm (Menacing)" },
     { "id": "compassionate", "label": "Từ Bi Nhân Hậu (Compassionate)" },
     { "id": "determined", "label": "Kiên Định Quyết Tâm (Determined)" }
-  ]
+  ],
+  "character_profile_schema": {
+    "version": "1.0",
+    "groups": [
+      {
+        "id": "basic",
+        "label": "Thông Tin Cơ Bản",
+        "icon": "👤",
+        "fields": [
+          { "id": "name", "label": "Tên Nhân Vật", "type": "text", "required": true, "placeholder": "Ví dụ: Lý Tiên Sinh, Tiêu Viêm..." },
+          { "id": "age", "label": "Số Tuổi", "type": "number", "required": true, "placeholder": "Ví dụ: 18, 24, 100...", "min": 1, "max": 9999 },
+          { "id": "gender", "label": "Giới Tính", "type": "gender_toggle" },
+          { "id": "height_cm", "label": "Chiều Cao (cm)", "type": "number", "has_auto_measure": true, "placeholder": "178" },
+          { "id": "education_level", "label": "Trình Độ / Học Vấn / Tu Vi", "type": "select_or_text", "options": [
+            "Không có trình độ", "Cấp 1 (Tiểu Học)", "Cấp 2 (THCS)", "Cấp 3 (THPT)", "Đại Học", "Thạc Sĩ", "Tiến Sĩ",
+            "Luyện Khí Kỳ", "Trúc Cơ Kỳ", "Kim Đan Kỳ", "Nguyên Anh Kỳ", "Hóa Thần Kỳ", "Kiếm Tông Đệ Tử", "Chưởng Môn Tiên Phái"
+          ]}
+        ]
+      },
+      {
+        "id": "role",
+        "label": "Thân Phận & Khí Chất",
+        "icon": "💼",
+        "fields": [
+          { "id": "occupation", "label": "Nghề Nghiệp / Thân Phận", "type": "text", "placeholder": "Kiếm khách, Đạo sĩ, Học sinh, Bác sĩ, Tổng tài..." },
+          { "id": "faction", "label": "Môn Phái / Phe Phái", "type": "text", "placeholder": "Thục Sơn Kiếm Tông, Võ Đang, Học Viện..." },
+          { "id": "personality", "label": "Tính Cách & Khí Chất", "type": "text", "placeholder": "Lạnh lùng, điềm đạm, quyết đoán, trọng tình cảm..." },
+          { "id": "voice_style", "label": "Giọng Nói & Âm Điệu", "type": "text", "placeholder": "Trầm ấm, uy nghiêm, hào sảng, dịu dàng..." }
+        ]
+      },
+      {
+        "id": "skills_and_combat",
+        "label": "Kỹ Năng & Chiến Đấu",
+        "icon": "⚡",
+        "fields": [
+          { "id": "power_level", "label": "Cấp Độ Sức Mạnh / Chiến Lực", "type": "number", "placeholder": "100" },
+          { "id": "element", "label": "Nguyên Tố / Hệ", "type": "select_or_text", "options": [
+            "Không", "Hỏa (Lửa)", "Băng (Hàn)", "Lôi (Sấm Sét)", "Phong (Gió)", "Thủy (Nước)", "Thổ (Đất)", "Kim (Kim Loại)", "Mộc (Cây)", "Quang (Ánh Sáng)", "Ám (Bóng Tối)"
+          ]},
+          { "id": "skills", "label": "Danh Sách Kỹ Năng & Cấp Độ", "type": "skill_list" }
+        ]
+      },
+      {
+        "id": "lore",
+        "label": "Tiểu Sử & Thuộc Tính Tùy Biến (Cho AI)",
+        "icon": "📜",
+        "fields": [
+          { "id": "biography", "label": "Tiểu Sử & Bối Cảnh Xuất Thân", "type": "textarea", "placeholder": "Mô tả hoàn cảnh, xuất thân, động lực và sở trường của nhân vật để AI sinh kịch bản chân thực nhất..." },
+          { "id": "custom_attributes", "label": "Thuộc Tính Mở Rộng Tùy Biến", "type": "key_value_list" }
+        ]
+      }
+    ]
+  }
 }
