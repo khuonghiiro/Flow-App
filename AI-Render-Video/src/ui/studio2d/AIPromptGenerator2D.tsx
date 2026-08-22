@@ -18,7 +18,7 @@ import { buildAIPromptForPart, AIPromptResult } from '../../core/assets/Asset2DR
 
 export const AIPromptGenerator2D: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<'parts' | 'actions'>('parts');
-  const [displayLangTab, setDisplayLangTab] = useState<'vietnamese' | 'english' | 'both'>('both');
+  const [displayLangTab, setDisplayLangTab] = useState<'vietnamese' | 'english' | 'json' | 'both'>('both');
 
   // Part Prompt State
   const [partConfig, setPartConfig] = useState<AIPartPromptConfig>({
@@ -199,7 +199,17 @@ export const AIPromptGenerator2D: React.FC = () => {
                       <option value="long_waist">Dài ngang lưng</option>
                       <option value="very_long_flowing">Dài chấm gót tiên hiệp</option>
                       <option value="top_knot_daoist">Búi tóc cao đạo sĩ</option>
+                      <option value="custom">✍️ Tự nhập thủ công...</option>
                     </select>
+                    {partConfig.hair_length === 'custom' && (
+                      <input
+                        type="text"
+                        placeholder="VD: tóc đuôi ngựa cột cao..."
+                        value={partConfig.custom_hair_length || ''}
+                        onChange={(e) => setPartConfig((p) => ({ ...p, custom_hair_length: e.target.value }))}
+                        style={{ width: '100%', marginTop: 3, padding: '3px 5px', fontSize: 9.5, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 4 }}
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -213,7 +223,17 @@ export const AIPromptGenerator2D: React.FC = () => {
                       <option value="wavy_curls">Xoăn sóng bồng bềnh</option>
                       <option value="wild_spiky">Đánh rối hoang dã</option>
                       <option value="braided_traditional">Tết bím cổ trang</option>
+                      <option value="custom">✍️ Tự nhập thủ công...</option>
                     </select>
+                    {partConfig.hair_texture === 'custom' && (
+                      <input
+                        type="text"
+                        placeholder="VD: uốn lọn xoăn tít lãng tử..."
+                        value={partConfig.custom_hair_texture || ''}
+                        onChange={(e) => setPartConfig((p) => ({ ...p, custom_hair_texture: e.target.value }))}
+                        style={{ width: '100%', marginTop: 3, padding: '3px 5px', fontSize: 9.5, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 4 }}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -232,7 +252,17 @@ export const AIPromptGenerator2D: React.FC = () => {
                       <option value="chestnut_brown">Nâu hạt dẻ</option>
                       <option value="golden_blonde">Vàng kim rực rỡ</option>
                       <option value="mystic_purple">Tím huyền bí</option>
+                      <option value="custom">✍️ Tự nhập màu khác...</option>
                     </select>
+                    {partConfig.hair_color === 'custom' && (
+                      <input
+                        type="text"
+                        placeholder="VD: màu hồng đào phớt bạc..."
+                        value={partConfig.custom_hair_color || ''}
+                        onChange={(e) => setPartConfig((p) => ({ ...p, custom_hair_color: e.target.value }))}
+                        style={{ width: '100%', marginTop: 3, padding: '3px 5px', fontSize: 9.5, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 4 }}
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -244,9 +274,61 @@ export const AIPromptGenerator2D: React.FC = () => {
                     >
                       <option value="none">Không có</option>
                       <option value="flowing_ribbons">Dải lụa bay bồng bềnh</option>
-                      <option value="jade_hairpin">Trâm cài ngọc bích</option>
+                      <option value="jade_hairpin">Trâm cài ngọc / Bạc</option>
                       <option value="golden_crown">Vương miện vàng kim</option>
+                      <option value="custom">✍️ Tự nhập phụ kiện...</option>
                     </select>
+                    {partConfig.hair_accessories === 'custom' && (
+                      <input
+                        type="text"
+                        placeholder="VD: hoa sen vàng đính ngọc..."
+                        value={partConfig.custom_hair_accessories || ''}
+                        onChange={(e) => setPartConfig((p) => ({ ...p, custom_hair_accessories: e.target.value }))}
+                        style={{ width: '100%', marginTop: 3, padding: '3px 5px', fontSize: 9.5, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 4 }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Aspect Ratio Selector */}
+                <div>
+                  <label style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, display: 'block', marginBottom: 3 }}>
+                    📐 Tỷ lệ ảnh & Logic cắt ô (Aspect Ratio):
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                    {[
+                      { id: '1:1', label: '1:1', desc: '🌟 Chuẩn 4x5' },
+                      { id: '3:4', label: '3:4', desc: 'Tóc siêu dài' },
+                      { id: '16:9', label: '16:9', desc: 'Tóc ngắn' },
+                      { id: '9:16', label: '9:16', desc: 'Khung dọc' },
+                    ].map((ar) => (
+                      <button
+                        key={ar.id}
+                        onClick={() => setPartConfig((p) => ({ ...p, aspect_ratio: ar.id as any }))}
+                        style={{
+                          padding: '4px 2px',
+                          borderRadius: 4,
+                          border: (partConfig.aspect_ratio || '1:1') === ar.id ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                          background: (partConfig.aspect_ratio || '1:1') === ar.id ? '#0284c7' : 'rgba(0,0,0,0.3)',
+                          color: (partConfig.aspect_ratio || '1:1') === ar.id ? '#fff' : '#94a3b8',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 1,
+                        }}
+                      >
+                        <span style={{ fontSize: 10, fontWeight: 700 }}>{ar.label}</span>
+                        <span style={{ fontSize: 8, opacity: 0.85 }}>{ar.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>
+                    {(partConfig.aspect_ratio || '1:1') === '1:1'
+                      ? '💡 Tỷ lệ 1:1 tạo các ô đứng tỷ lệ 4:5, có lề trên dưới rộng rãi, không bao giờ bị cắt cụt ngọn tóc!'
+                      : (partConfig.aspect_ratio || '1:1') === '3:4'
+                      ? '💡 Tỷ lệ 3:4 cho chiều cao mỗi ô cực lớn, chuyên dùng cho tóc tiên hiệp chạm gót chân!'
+                      : '💡 Tỷ lệ ngang 16:9 phù hợp với tóc ngắn ngang vai.'}
                   </div>
                 </div>
               </div>
@@ -503,16 +585,22 @@ export const AIPromptGenerator2D: React.FC = () => {
               Song Ngữ
             </button>
             <button
-              onClick={() => setDisplayLangTab('vietnamese')}
-              style={{ padding: '3px 8px', fontSize: 10, borderRadius: 4, border: 'none', background: displayLangTab === 'vietnamese' ? '#0284c7' : 'transparent', color: displayLangTab === 'vietnamese' ? '#fff' : '#94a3b8', cursor: 'pointer' }}
+              onClick={() => setDisplayLangTab('json')}
+              style={{ padding: '3px 8px', fontSize: 10, borderRadius: 4, border: 'none', background: displayLangTab === 'json' ? '#8b5cf6' : 'transparent', color: displayLangTab === 'json' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
             >
-              Tiếng Việt
+              📄 JSON (AI Chuẩn)
             </button>
             <button
               onClick={() => setDisplayLangTab('english')}
               style={{ padding: '3px 8px', fontSize: 10, borderRadius: 4, border: 'none', background: displayLangTab === 'english' ? '#0284c7' : 'transparent', color: displayLangTab === 'english' ? '#fff' : '#94a3b8', cursor: 'pointer' }}
             >
               Tiếng Anh
+            </button>
+            <button
+              onClick={() => setDisplayLangTab('vietnamese')}
+              style={{ padding: '3px 8px', fontSize: 10, borderRadius: 4, border: 'none', background: displayLangTab === 'vietnamese' ? '#0284c7' : 'transparent', color: displayLangTab === 'vietnamese' ? '#fff' : '#94a3b8', cursor: 'pointer' }}
+            >
+              Tiếng Việt
             </button>
           </div>
         </div>
@@ -522,8 +610,31 @@ export const AIPromptGenerator2D: React.FC = () => {
           <span>💡 <b>Quy trình Tách Nền Trong Suốt cho Banana Pro / AI:</b> Các AI tạo ảnh luôn xuất định dạng RGB (không có kênh Alpha trong suốt trực tiếp). Bạn chỉ cần tạo ảnh trên <b>Nền Xanh Chroma</b> hoặc <b>Nền Trắng</b> $\rightarrow$ nạp ảnh vào tab <b>✂️ Tách Nền & Cắt Khung</b> trong app, hệ thống sẽ tự động bóc tách thành PNG trong suốt 100% không tì vết!</span>
         </div>
 
-        {/* Quick Copy Main English Prompt with Negative & 4K 16:9 */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        {/* Quick Copy Buttons */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => handleCopy(activeCategory === 'parts' ? promptResult.promptJSON : JSON.stringify(currentAction, null, 2), 'json_copy')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              fontSize: 11,
+              fontWeight: 700,
+              borderRadius: 6,
+              background: copiedPrompt === 'json_copy' ? '#22c55e' : 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+            }}
+          >
+            {copiedPrompt === 'json_copy' ? <Check size={13} /> : <Copy size={13} />}
+            {copiedPrompt === 'json_copy' ? 'Đã Sao Chép JSON (AI-Ready)!' : '📋 Sao Chép JSON (Cấu Trúc Chuẩn Cho AI)'}
+          </button>
+
           <button
             onClick={() => handleCopy(activeCategory === 'parts' ? promptResult.fullCopyText : `${currentAction.promptEn}\n\nNegative prompt:\n${currentAction.neg}`, 'full_en')}
             style={{
@@ -544,7 +655,7 @@ export const AIPromptGenerator2D: React.FC = () => {
             }}
           >
             {copiedPrompt === 'full_en' ? <Check size={13} /> : <Copy size={13} />}
-            {copiedPrompt === 'full_en' ? 'Đã Sao Chép Tiếng Anh (Kèm Khử Lỗi)!' : '📋 Sao Chép Prompt Tiếng Anh (Kèm Khử Lỗi & 4K)'}
+            {copiedPrompt === 'full_en' ? 'Đã Sao Chép Text!' : '📋 Sao Chép Text Tiếng Anh'}
           </button>
 
           <button
@@ -567,6 +678,26 @@ export const AIPromptGenerator2D: React.FC = () => {
             {copiedPrompt === 'vi' ? 'Đã Chép!' : 'Chép Tiếng Việt'}
           </button>
         </div>
+
+        {/* JSON Structured Prompt Box (AI-Ready) */}
+        {(displayLangTab === 'json' || displayLangTab === 'both') && (
+          <div style={{ background: '#070b14', padding: 12, borderRadius: 6, border: '1px solid #8b5cf6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Sparkles size={12} /> Cấu Trúc JSON Chuẩn Cho AI (LLM / Midjourney / FLUX Prompting):
+              </span>
+              <button
+                onClick={() => handleCopy(activeCategory === 'parts' ? promptResult.promptJSON : JSON.stringify(currentAction, null, 2), 'json_box')}
+                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: 'rgba(139, 92, 246, 0.2)', color: '#c084fc', border: '1px solid #8b5cf6', cursor: 'pointer' }}
+              >
+                {copiedPrompt === 'json_box' ? 'Đã Chép JSON!' : 'Chép JSON'}
+              </button>
+            </div>
+            <pre style={{ fontSize: 10.5, color: '#a5f3fc', lineHeight: 1.5, margin: 0, overflowX: 'auto', background: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 4, fontFamily: 'monospace' }}>
+              {activeCategory === 'parts' ? promptResult.promptJSON : JSON.stringify(currentAction, null, 2)}
+            </pre>
+          </div>
+        )}
 
         {/* Vietnamese Translation / Structure Breakdown */}
         {(displayLangTab === 'vietnamese' || displayLangTab === 'both') && (

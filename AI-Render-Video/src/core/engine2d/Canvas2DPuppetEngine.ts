@@ -115,6 +115,93 @@ export class Canvas2DPuppetEngine {
       .filter(([_, config]) => Boolean(config?.path))
       .sort((a, b) => (a[1].z_index || 0) - (b[1].z_index || 0));
 
+    if (sortedEntries.length === 0) {
+      // Draw sleek, crisp anatomical mannequin guide with proportion axes
+      ctx.save();
+      const s = renderScale * (assembly.base_scale || 1.0);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+      ctx.fillStyle = 'rgba(14, 165, 233, 0.08)';
+      ctx.lineWidth = 2.0;
+      ctx.setLineDash([5, 4]);
+
+      // Head Oval (Standard 1:1.3 ratio)
+      ctx.beginPath();
+      ctx.ellipse(0, -115 * s, 34 * s, 42 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Facial Crosshair Guide (Eye level & Center axis)
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      // Center vertical axis
+      ctx.moveTo(0, -155 * s);
+      ctx.lineTo(0, -75 * s);
+      // Eye horizontal line (-120px)
+      ctx.moveTo(-25 * s, -120 * s);
+      ctx.lineTo(25 * s, -120 * s);
+      // Nose point (-110px)
+      ctx.moveTo(-10 * s, -108 * s);
+      ctx.lineTo(10 * s, -108 * s);
+      // Mouth line (-98px)
+      ctx.moveTo(-15 * s, -96 * s);
+      ctx.lineTo(15 * s, -96 * s);
+      ctx.stroke();
+
+      // Neck
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+      ctx.lineWidth = 2.0;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(-10 * s, -73 * s);
+      ctx.lineTo(-10 * s, -55 * s);
+      ctx.moveTo(10 * s, -73 * s);
+      ctx.lineTo(10 * s, -55 * s);
+      ctx.stroke();
+
+      // Torso / Chest & Hips
+      ctx.beginPath();
+      ctx.roundRect(-36 * s, -55 * s, 72 * s, 95 * s, 8 * s);
+      ctx.fill();
+      ctx.stroke();
+
+      // Arms guide with shoulder joints
+      ctx.beginPath();
+      // Left Arm
+      ctx.arc(-42 * s, -48 * s, 5 * s, 0, Math.PI * 2);
+      ctx.moveTo(-42 * s, -45 * s);
+      ctx.lineTo(-65 * s, 30 * s);
+      // Right Arm
+      ctx.arc(42 * s, -48 * s, 5 * s, 0, Math.PI * 2);
+      ctx.moveTo(42 * s, -45 * s);
+      ctx.lineTo(65 * s, 30 * s);
+      ctx.stroke();
+
+      // Legs guide
+      ctx.beginPath();
+      // Left Leg
+      ctx.moveTo(-18 * s, 40 * s);
+      ctx.lineTo(-20 * s, 140 * s);
+      // Right Leg
+      ctx.moveTo(18 * s, 40 * s);
+      ctx.lineTo(20 * s, 140 * s);
+      ctx.stroke();
+
+      // Text Hint (Crisp & High Contrast)
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('✨ Khung Dáng Người Mẫu Chuẩn (Mannequin Guide)', 0, 168 * s);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '10.5px sans-serif';
+      ctx.fillText('Hãy sang Tab 1 [Cắt Lưới] để bóc tách từ ảnh và ráp vào đây', 0, 186 * s);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
     for (const [slot, part] of sortedEntries) {
       this.drawSinglePart(
         ctx,

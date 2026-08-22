@@ -361,227 +361,19 @@ export const generateDemoPartSvg = (
 };
 
 // ─── Default Sample 2D Characters with Multi-Angle Presets ───────
+export const EMPTY_CHARACTER_ASSEMBLY: Character2DAssembly = {
+  id: 'char_custom_canvas',
+  name: 'Nhân Vật Tự Lắp Ráp',
+  gender: 'chung',
+  style: 'tu_tien',
+  base_scale: 1.0,
+  layer_depth_spacing: 1.0,
+  parts: {},
+  created_at: new Date().toISOString(),
+};
+
 export const DEFAULT_SAMPLE_CHARACTERS_2D: Character2DAssembly[] = [
-  {
-    id: 'char_kiem_khach_tieu_dao',
-    name: 'Kiếm Khách Tiêu Dao',
-    gender: 'nam',
-    style: 'tu_tien_manhua',
-    base_scale: 1.0,
-    layer_depth_spacing: 1.0,
-    parts: {
-      toc_sau: {
-        path: generateDemoPartSvg('toc_sau', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('toc_sau', 'nam', 'front'),
-          three_quarter_left: generateDemoPartSvg('toc_sau', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('toc_sau', 'nam', 'profile'),
-          back: generateDemoPartSvg('toc_sau', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('toc_sau', 'nam', 'profile'),
-          three_quarter_right: generateDemoPartSvg('toc_sau', 'nam', 'front'),
-        },
-        offset: [0, -165],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.15],
-        flipX: false,
-        flipY: false,
-        z_index: 1,
-        z_depth_3d: -0.06,
-        opacity: 1,
-      },
-      than_co_ban: {
-        path: generateDemoPartSvg('than_co_ban', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('than_co_ban', 'nam', 'front'),
-          three_quarter_left: generateDemoPartSvg('than_co_ban', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('than_co_ban', 'nam', 'profile'),
-          back: generateDemoPartSvg('than_co_ban', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('than_co_ban', 'nam', 'profile'),
-          three_quarter_right: generateDemoPartSvg('than_co_ban', 'nam', 'front'),
-        },
-        offset: [0, 0],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.5],
-        flipX: false,
-        flipY: false,
-        z_index: 2,
-        z_depth_3d: 0.0,
-        opacity: 1,
-      },
-      cang_chan_trai: {
-        path: generateDemoPartSvg('cang_chan_trai', 'nam', 'front'),
-        offset: [-22, 75],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.1],
-        flipX: false,
-        flipY: false,
-        z_index: 2,
-        z_depth_3d: -0.01,
-        opacity: 1,
-      },
-      cang_chan_phai: {
-        path: generateDemoPartSvg('cang_chan_phai', 'nam', 'front'),
-        offset: [22, 75],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.1],
-        flipX: false,
-        flipY: false,
-        z_index: 2,
-        z_depth_3d: -0.01,
-        opacity: 1,
-      },
-      trang_phuc: {
-        path: generateDemoPartSvg('trang_phuc', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('trang_phuc', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('trang_phuc', 'nam', 'profile'),
-          back: generateDemoPartSvg('trang_phuc', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('trang_phuc', 'nam', 'profile'),
-        },
-        offset: [0, 5],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.5],
-        flipX: false,
-        flipY: false,
-        z_index: 4,
-        z_depth_3d: 0.02,
-        opacity: 1,
-      },
-      canh_tay_trai: {
-        path: generateDemoPartSvg('canh_tay_trai', 'nam', 'front'),
-        offset: [-55, -60],
-        scale: [1, 1],
-        rotation: 12,
-        pivot: [0.8, 0.15],
-        flipX: false,
-        flipY: false,
-        z_index: 5,
-        z_depth_3d: 0.03,
-        opacity: 1,
-      },
-      dau: {
-        path: generateDemoPartSvg('dau', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('dau', 'nam', 'front'),
-          three_quarter_left: generateDemoPartSvg('dau', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('dau', 'nam', 'profile'),
-          back: generateDemoPartSvg('dau', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('dau', 'nam', 'profile'),
-          three_quarter_right: generateDemoPartSvg('dau', 'nam', 'front'),
-        },
-        offset: [0, -100],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.85],
-        flipX: false,
-        flipY: false,
-        z_index: 6,
-        z_depth_3d: 0.045,
-        opacity: 1,
-      },
-      mat: {
-        path: generateDemoPartSvg('mat', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('mat', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('mat', 'nam', 'profile'),
-          back: generateDemoPartSvg('mat', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('mat', 'nam', 'profile'),
-        },
-        offset: [0, -140],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.5],
-        flipX: false,
-        flipY: false,
-        z_index: 8,
-        z_depth_3d: 0.052,
-        opacity: 1,
-      },
-      mui: {
-        path: generateDemoPartSvg('mui', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('mui', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('mui', 'nam', 'profile'),
-          back: generateDemoPartSvg('mui', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('mui', 'nam', 'profile'),
-        },
-        offset: [0, -125],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.5],
-        flipX: false,
-        flipY: false,
-        z_index: 8,
-        z_depth_3d: 0.055,
-        opacity: 1,
-      },
-      mieng: {
-        path: generateDemoPartSvg('mieng', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('mieng', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('mieng', 'nam', 'profile'),
-          back: generateDemoPartSvg('mieng', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('mieng', 'nam', 'profile'),
-        },
-        offset: [0, -110],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.5],
-        flipX: false,
-        flipY: false,
-        z_index: 8,
-        z_depth_3d: 0.052,
-        opacity: 1,
-      },
-      toc_truoc: {
-        path: generateDemoPartSvg('toc_truoc', 'nam', 'front'),
-        angles: {
-          front: generateDemoPartSvg('toc_truoc', 'nam', 'front'),
-          profile_left: generateDemoPartSvg('toc_truoc', 'nam', 'profile'),
-          back: generateDemoPartSvg('toc_truoc', 'nam', 'back'),
-          profile_right: generateDemoPartSvg('toc_truoc', 'nam', 'profile'),
-        },
-        offset: [0, -170],
-        scale: [1, 1],
-        rotation: 0,
-        pivot: [0.5, 0.1],
-        flipX: false,
-        flipY: false,
-        z_index: 9,
-        z_depth_3d: 0.07,
-        opacity: 1,
-      },
-      canh_tay_phai: {
-        path: generateDemoPartSvg('canh_tay_phai', 'nam', 'front'),
-        offset: [55, -60],
-        scale: [1, 1],
-        rotation: -18,
-        pivot: [0.2, 0.15],
-        flipX: false,
-        flipY: false,
-        z_index: 10,
-        z_depth_3d: 0.03,
-        opacity: 1,
-      },
-      vu_khi: {
-        path: generateDemoPartSvg('vu_khi', 'nam', 'front'),
-        offset: [72, 35],
-        scale: [1, 1],
-        rotation: -15,
-        pivot: [0.5, 0.2],
-        flipX: false,
-        flipY: false,
-        z_index: 11,
-        z_depth_3d: 0.09,
-        opacity: 1,
-      },
-    },
-  },
+  EMPTY_CHARACTER_ASSEMBLY,
 ];
 
 // ─── Default Sample 2D Parallax Maps ─────────────────────────────
@@ -646,10 +438,11 @@ export const DEFAULT_SAMPLE_MAPS_2D: Map2DPreset[] = [
   },
 ];
 
-// ─── AI Prompt Templates Builder Helper with Dual English/Vietnamese & 16:9 Multi-Angle Grid ──
+// ─── AI Prompt Templates Builder Helper with Dual English/Vietnamese, JSON Format & Multi-Angle Grid ──
 export interface AIPromptResult {
   promptEnglish: string;
   promptVietnamese: string;
+  promptJSON: string;
   negativePrompt: string;
   gridStructureGuide: string;
   fullCopyText: string;
@@ -681,23 +474,29 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
 
   let promptEnglish = '';
   let promptVietnamese = '';
+  let promptJSON = '';
   let gridStructureGuide = '';
 
   // 1. HAIR MULTI-ANGLE GRID (4 DÃY TÓC TÁCH LỚP KHÔNG CÓ TAI / KHÔNG CÓ DA MẶT)
   if (sheet === 'hair_multi_angle_grid') {
+    const ar = config.aspect_ratio || '1:1';
     const hairLenEn =
-      config.hair_length === 'short'
+      config.hair_length === 'custom' && config.custom_hair_length
+        ? config.custom_hair_length
+        : config.hair_length === 'short'
         ? 'stylish short spiky anime hair'
         : config.hair_length === 'medium_shoulder'
         ? 'shoulder-length medium layered hair'
         : config.hair_length === 'very_long_flowing'
         ? 'celestial floor-length flowing hair cascading down'
         : config.hair_length === 'top_knot_daoist'
-        ? 'traditional xianxia daoist high top-knot bun with flowing tail'
-        : 'long waist-length flowing hair';
+        ? 'traditional xianxia daoist high top-knot bun with silver hairpin'
+        : 'long waist-length flowing hair with silver hairpin';
 
     const hairTexEn =
-      config.hair_texture === 'wavy_curls'
+      config.hair_texture === 'custom' && config.custom_hair_texture
+        ? config.custom_hair_texture
+        : config.hair_texture === 'wavy_curls'
         ? 'wavy curls'
         : config.hair_texture === 'wild_spiky'
         ? 'action spiky locks'
@@ -706,7 +505,9 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
         : 'straight silky hair';
 
     const hairColEn =
-      config.hair_color === 'silver_white'
+      config.hair_color === 'custom' && config.custom_hair_color
+        ? config.custom_hair_color
+        : config.hair_color === 'silver_white'
         ? 'silver white'
         : config.hair_color === 'crimson_red'
         ? 'fiery crimson red'
@@ -718,44 +519,120 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
         ? 'mystic violet purple'
         : 'jet black';
 
+    const hairAccessoryEn =
+      config.hair_accessories === 'custom' && config.custom_hair_accessories
+        ? config.custom_hair_accessories
+        : config.hair_accessories === 'jade_hairpin'
+        ? 'carved jade and silver hairpin'
+        : config.hair_accessories === 'golden_crown'
+        ? 'ornate golden hair crown'
+        : config.hair_accessories === 'flowing_ribbons'
+        ? 'silk ribbons'
+        : 'none';
+
     promptEnglish = [
-      `masterpiece, ultra high quality, 4k resolution, 16:9 aspect ratio sprite sheet layout`,
-      `headless, no head silhouette, no human face, no human ears, no skin, isolated floating hair asset pieces only`,
+      `masterpiece, ultra high quality, 4k resolution, ${ar} aspect ratio character turnaround sprite sheet layout`,
+      `strictly pure hair asset only, headless, no head silhouette, no human face, no human ears, no human neck, no skin`,
+      `ample padding and solid green margins around each sprite so NO hair tips or head crowns are cut off at cell boundaries`,
       `ONE SINGLE unified character hairstyle broken into 4 separate modular depth layers across 5 camera rotation angles (0° front, 45° 3/4 view, 90° profile, 135° back 3/4, 180° back view)`,
-      `${hairColEn} hair, ${hairLenEn}, ${hairTexEn}`,
-      `organized in a clean 4-row by 5-column grid with visible spacing:`,
-      `[ROW 1 - ONLY FRONT BANGS FRINGE]: 5 isolated floating front fringe pieces, hollow underside, NO top bun, NO back hair, NO ears -> Col 1: 0° front bangs; Col 2: 45° angled bangs; Col 3: 90° side profile contour bangs; Col 4: 135° back diagonal bangs curve; Col 5: 180° back view showing ONLY the peeking bottom tips of front bangs visible from behind the head silhouette`,
-      `[ROW 2 - ONLY TOP CROWN DOME & BUN]: 5 top crown assets, hollow bottom, NO face -> Col 1: 0° crown dome; Col 2: 45° angled crown; Col 3: 90° profile crown; Col 4: 135° back bun; Col 5: 180° back crown with hair ribbon tie`,
-      `[ROW 3 - ONLY BACK HAIR LAYER]: 5 long back hair layers, front is hollow, NO bangs -> Col 1: 0° hair peeking behind shoulders; Col 2: 45° flowing side-back; Col 3: 90° profile long tail; Col 4: 135° back angle hair; Col 5: 180° full back waterfall cascade with ribbons`,
-      `[ROW 4 - ONLY SIDEBURNS LOCKS (NO EARS, NO SKIN)]: 5 floating sideburn tufts, strictly NO human ears drawn, NO skin, pure hair strands only -> Col 1: 0° two cheek strands; Col 2: 45° single sideburn; Col 3: 90° profile curved lock; Col 4: 135° behind-ear lock; Col 5: 180° nape wisps`,
+      `${hairColEn} hair, ${hairLenEn}, ${hairTexEn}, accessory: ${hairAccessoryEn}`,
+      `strictly organized in a clean 4-row by 5-column grid (20 cells):`,
+      `[ROW 1 - FRONT BANGS FRINGE]: 5 isolated floating front fringe pieces, hollow face area underside -> Col 1: 0° front symmetrical; Col 2: 45° angled bangs; Col 3: 90° side profile contour bangs; Col 4: 135° back diagonal bangs curve; Col 5: 180° rear fringe tips`,
+      `[ROW 2 - TOP-DOWN BIRD'S EYE CROWN VIEW]: 5 top crown views looking straight down from above skull top with hairpin -> Col 1: 0° horizontal hairpin (9 to 3 o'clock); Col 2: 45° diagonal hairpin (7 to 1 o'clock); Col 3: 90° vertical hairpin (12 to 6 o'clock); Col 4: 135° rear diagonal hairpin; Col 5: 180° rear horizontal hairpin`,
+      `[ROW 3 - COMPLETE BACK HEAD & FLOWING HAIR]: 5 complete back-of-head skull silhouettes seamlessly connected down to the long flowing hair -> Col 1: 0° front view two shoulder drapes with center hollow; Col 2: 45° three-quarter drape; Col 3: 90° side profile flowing S-curve drape; Col 4: 135° rear-quarter mantle; Col 5: 180° full wide symmetrical back hair mantle`,
+      `[ROW 4 - SIDEBURNS & NAPE WHISPS]: 5 floating sideburn tufts and nape wisps, strictly NO ears, NO skin -> Col 1: 0° two cheek strands; Col 2: 45° angled strand; Col 3: 90° single lateral sideburn; Col 4: 135° behind-ear lock; Col 5: 180° central nape wisps`,
       noTextEn,
       styleTextEn,
       bgTextEn,
-      `flat clean cutout sticker asset, crisp borders, zero shadows, modular puppet assembly ready, --ar 16:9`,
+      `flat clean cutout sticker asset, crisp borders, zero shadows, modular puppet assembly ready, --ar ${ar}`,
     ].join(', ');
 
-    promptVietnamese = `【 BẢNG SPRITE LINH KIỆN TÓC 4 LỚP CÙNG 1 KIỂU TÓC (4K - 16:9) 】
-• Quy tắc quan trọng: KHÔNG VẼ TAI, KHÔNG VẼ DA MẶT, KHÔNG CÓ CHỮ. Cả 4 hàng đều là 4 tầng tách rời của CÙNG 1 BỘ TÓC để xếp chồng lên nhau.
+    const jsonSpec = {
+      project: 'Flow-App 2D Motion Comic Engine',
+      asset_type: 'hair_multi_angle_turnaround_sheet',
+      aspect_ratio: ar,
+      resolution: '4K_UHD',
+      art_style: config.character_style || 'tu_tien_manhua',
+      palette: {
+        hair_color: hairColEn,
+        background: isChroma ? '#00FF00_chroma_green' : '#FFFFFF_pure_white',
+      },
+      attributes: {
+        length: hairLenEn,
+        texture: hairTexEn,
+        accessories: hairAccessoryEn,
+      },
+      strict_constraints: {
+        headless_pure_hair_only: true,
+        no_face_skin_or_ears: true,
+        no_text_or_watermark: true,
+        ample_green_padding_margins: true,
+      },
+      grid_layout: {
+        rows: 4,
+        columns: 5,
+        angles: ['0_deg_front', '45_deg_three_quarter', '90_deg_profile', '135_deg_back_three_quarter', '180_deg_back'],
+        rows_definition: [
+          {
+            row: 1,
+            layer: 'front_bangs_fringe',
+            description: '5 isolated floating front fringe pieces, hollow face area underside',
+            columns: ['0_front_symmetrical', '45_angled_bangs', '90_profile_contour_bangs', '135_back_diagonal_curve', '180_rear_fringe_tips'],
+          },
+          {
+            row: 2,
+            layer: 'top_crown_birds_eye_view',
+            description: '5 camera top-down views looking directly straight down at head crown with hairpin',
+            columns: ['0_horizontal_hairpin', '45_diagonal_hairpin', '90_vertical_hairpin', '135_rear_diagonal_hairpin', '180_rear_horizontal_hairpin'],
+          },
+          {
+            row: 3,
+            layer: 'back_head_and_flowing_hair',
+            description: '5 complete back-of-head skull silhouettes seamlessly connected down to the long flowing hair',
+            columns: ['0_front_view_two_shoulder_drapes', '45_three_quarter_drape', '90_profile_flowing_s_curve', '135_rear_quarter_mantle', '180_full_wide_back_mantle'],
+          },
+          {
+            row: 4,
+            layer: 'sideburns_and_nape_whisps',
+            description: '5 floating sideburn tufts and nape wisps, strictly NO ears, NO skin',
+            columns: ['0_two_cheek_strands', '45_angled_strand', '90_single_lateral_sideburn', '135_behind_ear_lock', '180_central_nape_wisps'],
+          },
+        ],
+      },
+      negative_prompt: 'human face, eyes, mouth, nose, human ears, skin, neck, body, text, watermark, blurry, 3D render',
+    };
+    promptJSON = JSON.stringify(jsonSpec, null, 2);
+
+    promptVietnamese = `【 BẢNG SPRITE LINH KIỆN TÓC 4 DÃY × 5 CỘT (TỶ LỆ ${ar}) 】
+• Quy tắc bắt buộc: TÁCH SẠCH $100\\%$ DA MẶT, TAI VÀ CỔ. Mỗi ô có lề xanh rộng rãi để không bị cụt ngọn tóc.
 • Nền: ${bgTextVi}.
 
-【 CHI TIẾT 4 DÃY × 5 CỘT TRÊN KHUNG 16:9 】:
-🔹 DÃY 1 (Hàng 1): CHỈ VẼ TÓC MÁI TRƯỚC (Phía dưới rỗng, không dính chóp đầu hay tóc sau)
-   - Cột 1: Góc 0° Mái thẳng
-   - Cột 2: Góc 45° Mái nghiêng
-   - Cột 3: Góc 90° Mái nhìn ngang ôm trán
-   - Cột 4: Góc 135° Viền mái nhìn từ sau chéo
-   - Cột 5: Góc 180° GÓC KHUẤT: Chỉ vẽ ngọn tóc mái ló ra khi nhìn từ sau gáy!
+【 CHI TIẾT 4 HÀNG × 5 GÓC XOAY THEO TỶ LỆ ${ar} 】:
+🔹 HÀNG 1: TÓC MÁI TRƯỚC (Rỗng ruột vùng mặt để ghép khuôn mặt vào)
+   - Cột 1: 0° Mái chẻ đôi chính diện
+   - Cột 2: 45° Mái nghiêng 3/4
+   - Cột 3: 90° Mái nhìn ngang ôm trán
+   - Cột 4: 135° Mái nhìn từ sau chéo
+   - Cột 5: 180° Mép mái nhìn từ sau lưng
 
-🔹 DÃY 2 (Hàng 2): CHỈ VẼ ĐỈNH ĐẦU & BÚI TÓC CAO (Phía dưới rỗng, không dính tóc mái)
-   - 5 góc quay tương ứng từ 0° đến 180°.
+🔹 HÀNG 2: ĐỈNH ĐẦU SOI THẲNG TỪ TRÊN XUỐNG (Camera Top-Down Bird's Eye View)
+   - Cột 1: 0° Trâm cài nằm ngang (9h - 3h)
+   - Cột 2: 45° Trâm cài xiên chéo (7h - 1h)
+   - Cột 3: 90° Trâm cài thẳng đứng (12h - 6h)
+   - Cột 4: 135° Trâm cài xiên sau
+   - Cột 5: 180° Trâm cài sau đối xứng
 
-🔹 DÃY 3 (Hàng 3): CHỈ VẼ LỚP TÓC DÀI PHÍA SAU LƯNG (Phần trước mặt rỗng)
-   - 5 góc từ sau vai (0°), bay chéo (45°), nhìn ngang (90°) đến suối tóc trực diện sau lưng kèm dải lụa (180°).
+🔹 HÀNG 3: TRỌN VẸN VÒM ĐẦU SAU NỐI LIỀN SUỐI TÓC DÀI (Không bị cụt đầu)
+   - Cột 1: 0° Vòm đầu trên + 2 suối tóc rủ vai (rỗng giữa cho mặt/thân)
+   - Cột 2: 45° Vòm đầu sau nghiêng 45° + suối tóc đổ dài chéo
+   - Cột 3: 90° Nửa sau sọ đầu + suối tóc cong chữ S sau gáy
+   - Cột 4: 135° Mặt sau vòm đầu + suối tóc sau chéo
+   - Cột 5: 180° Trọn vẹn vòm đầu sau + suối tóc phủ rộng kín lưng
 
-🔹 DÃY 4 (Hàng 4): CHỈ VẼ 2 LỌN TÓC MAI ÔM MÁ (TUYỆT ĐỐI KHÔNG VẼ TAI, KHÔNG VẼ DA MẶT)
-   - 5 góc lọn tóc mai lơ lửng độc lập để ghép vào cạnh tai trên nhân vật.`;
+🔹 HÀNG 4: LỌN TÓC MAI 2 BÊN & CHÂN TÓC TƠ GÁY (Thuần túy tóc, không dính tai)
+   - 5 góc lọn tóc mai buông lơi tự nhiên và chùm tóc tơ sau gáy.`;
 
-    gridStructureGuide = `📐 Khung Cắt 16:9: Lưới 4 Dãy x 5 Cột chuẩn 4K, tự động tách 20 ô linh kiện tóc độc lập.`;
+    gridStructureGuide = `📐 Khung Cắt ${ar}: Lưới 4 Hàng × 5 Cột, mỗi ô cao thoáng ${ar === '1:1' ? 'chuẩn tỷ lệ 4:5 chân dung' : ar === '3:4' ? 'chuyên dùng cho tóc siêu dài' : 'chuẩn tỷ lệ ' + ar}, tự động khớp 20 ô linh kiện vào Tab 1 Cắt Lưới.`;
   } else if (sheet === 'eyes_grid') {
     // 2. EYES GRID (CHỈ MẮT & LÔNG MÀY - KHÔNG CÓ DA MẶT / MŨI)
     const eyeCol =
@@ -971,11 +848,28 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
   const negativePrompt =
     'text, letters, words, writing, captions, labels, watermark, signature, numbers, alphabet, font, human ear, ear, skin, face, eyes, nose, mannequin head, full wig, different hairstyles on rows, complex background, gradient background, drop shadow on background, anti-aliased green halo, perspective distortion, blurry textures, 3D photorealistic render, low quality, noise, messy borders, cropped off frame';
 
+  if (!promptJSON) {
+    promptJSON = JSON.stringify(
+      {
+        project: 'Flow-App 2D Motion Comic Engine',
+        part_type: config.part_type,
+        sheet_type: sheet,
+        style: config.character_style,
+        gender: config.gender,
+        prompt: promptEnglish,
+        negative_prompt: negativePrompt,
+      },
+      null,
+      2
+    );
+  }
+
   const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
   return {
     promptEnglish,
     promptVietnamese,
+    promptJSON,
     negativePrompt,
     gridStructureGuide,
     fullCopyText,

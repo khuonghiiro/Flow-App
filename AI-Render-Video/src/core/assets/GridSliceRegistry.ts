@@ -1,4 +1,5 @@
 import { Character2DAngle, Character2DPartType } from '../../types/scene2d';
+import demoHairMultiAngleSheet from '../../assets/demo_hair_multi_angle_sheet.jpg';
 
 export interface GridCellDefinition {
   row: number;
@@ -38,12 +39,12 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
       { row: 0, col: 3, label: 'Mái Trước 135° (Nghiêng Sau)', partSlot: 'toc_truoc', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Mái trước nhìn từ sau chéo' },
       { row: 0, col: 4, label: 'Mái Trước 180° (Góc Khuất)', partSlot: 'toc_truoc', angle: 'back', description: 'Ngọn tóc mái trước ló ra sau sọ đầu' },
 
-      // Row 1: Crown & Bun
-      { row: 1, col: 0, label: 'Đỉnh Đầu 0°', partSlot: 'toc_truoc', angle: 'front', description: 'Đỉnh đầu và ngôi tóc chính diện' },
-      { row: 1, col: 1, label: 'Đỉnh Đầu 45°', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Đỉnh đầu góc nghiêng' },
-      { row: 1, col: 2, label: 'Đỉnh Đầu 90°', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Đỉnh đầu nhìn ngang' },
-      { row: 1, col: 3, label: 'Búi Tóc 135°', partSlot: 'toc_truoc', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Búi tóc sau chéo' },
-      { row: 1, col: 4, label: 'Búi Tóc 180°', partSlot: 'toc_truoc', angle: 'back', description: 'Búi tóc và dây buộc nhìn từ sau' },
+      // Row 1: Crown & Top-Down Bird's Eye View (Camera soi từ trên đỉnh sọ xuống)
+      { row: 1, col: 0, label: 'Đỉnh Đầu Soi Xuống 0°', partSlot: 'dau', angle: 'top_down', description: 'Camera từ trên cao soi xuống đỉnh đầu & búi tóc chính diện (0°)' },
+      { row: 1, col: 1, label: 'Đỉnh Đầu Soi Xuống 45°', partSlot: 'dau', angle: 'top_down_three_quarter_left', mirrorAngle: 'top_down_three_quarter_right', description: 'Camera soi đỉnh đầu góc nghiêng 45°' },
+      { row: 1, col: 2, label: 'Đỉnh Đầu Soi Xuống 90°', partSlot: 'dau', angle: 'top_down_profile_left', mirrorAngle: 'top_down_profile_right', description: 'Camera soi đỉnh đầu góc nhìn ngang 90° (Ngang tai)' },
+      { row: 1, col: 3, label: 'Đỉnh Đầu Soi Xuống 135°', partSlot: 'dau', angle: 'top_down_back_three_quarter_left', mirrorAngle: 'top_down_back_three_quarter_right', description: 'Camera soi đỉnh đầu góc sau chéo 135°' },
+      { row: 1, col: 4, label: 'Đỉnh Đầu Soi Xuống 180°', partSlot: 'dau', angle: 'top_down_back', description: 'Camera soi đỉnh đầu & trâm cài từ sau 180°' },
 
       // Row 2: Back Hair
       { row: 2, col: 0, label: 'Tóc Sau 0° (Sau Vai)', partSlot: 'toc_sau', angle: 'front', description: 'Tóc xõa hai bên vai nhìn từ trước' },
@@ -53,11 +54,11 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
       { row: 2, col: 4, label: 'Tóc Sau 180° (Toàn Cảnh)', partSlot: 'toc_sau', angle: 'back', description: 'Suối tóc hùng vĩ trực diện sau lưng' },
 
       // Row 3: Sideburns (No ears)
-      { row: 3, col: 0, label: 'Tóc Mai 0° (2 Bên Má)', partSlot: 'toc_truoc', angle: 'front', description: '2 lọn tóc mai ôm má nhìn thẳng' },
-      { row: 3, col: 1, label: 'Tóc Mai 45°', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Lọn tóc mai bên má nghiêng' },
-      { row: 3, col: 2, label: 'Tóc Mai 90° (Vành Tai)', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai cong quanh tai' },
-      { row: 3, col: 3, label: 'Tóc Mai 135°', partSlot: 'toc_truoc', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Lọn tóc sau tai' },
-      { row: 3, col: 4, label: 'Tóc Gáy 180°', partSlot: 'toc_truoc', angle: 'back', description: 'Tóc tơ chân gáy sau lưng' },
+      { row: 3, col: 0, label: 'Tóc Mai 0° (2 Bên Má)', partSlot: 'khuon_mat', angle: 'front', description: '2 lọn tóc mai ôm má nhìn thẳng' },
+      { row: 3, col: 1, label: 'Tóc Mai 45°', partSlot: 'khuon_mat', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Lọn tóc mai bên má nghiêng' },
+      { row: 3, col: 2, label: 'Tóc Mai 90° (Vành Tai)', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai cong quanh tai' },
+      { row: 3, col: 3, label: 'Tóc Mai 135°', partSlot: 'khuon_mat', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Lọn tóc sau tai' },
+      { row: 3, col: 4, label: 'Tóc Gáy 180°', partSlot: 'khuon_mat', angle: 'back', description: 'Tóc tơ chân gáy sau lưng' },
     ],
   },
   {
@@ -230,11 +231,15 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
 
 /**
  * Generates a clean Chroma-Green or White sample SVG grid sheet for instant user testing
+ * Specially rendered with intuitive multi-angle anime hair sprites and clear angle badges
  */
 export const generateDemoGridSpriteSheet = (catId: string, bg: 'chroma_green' | 'pure_white' = 'chroma_green'): string => {
+  if (catId === 'hair_multi_angle_grid' && bg === 'chroma_green') {
+    return demoHairMultiAngleSheet;
+  }
+
   const cat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === catId) || GRID_CATEGORY_DEFINITIONS[0];
   const bgColor = bg === 'chroma_green' ? '#00ff00' : '#ffffff';
-  const strokeCol = bg === 'chroma_green' ? '#000000' : '#1e293b';
 
   const cellW = 384;
   const cellH = 270;
@@ -243,15 +248,80 @@ export const generateDemoGridSpriteSheet = (catId: string, bg: 'chroma_green' | 
 
   const svgCells = cat.cells
     .map((c) => {
-      const cx = c.col * cellW + cellW / 2;
-      const cy = c.row * cellH + cellH / 2;
+      const cx = cellW / 2;
+      const cy = cellH / 2;
+      const col = c.col;
+      const row = c.row;
+
+      // Render distinct stylized hair shapes depending on row & angle
+      let hairShape = '';
+      if (row === 0) {
+        // Front Bangs at various angles (0°, 45°, 90°, 135°, 180°)
+        if (col === 0) {
+          // Front 0°: Symmetric bangs
+          hairShape = `
+            <path d="M ${cx - 70} ${cy - 40} Q ${cx} ${cy - 65} ${cx + 70} ${cy - 40} Q ${cx + 60} ${cy + 15} ${cx + 40} ${cy + 45} Q ${cx + 10} ${cy + 10} ${cx} ${cy + 35} Q ${cx - 10} ${cy + 10} ${cx - 40} ${cy + 45} Q ${cx - 60} ${cy + 15} ${cx - 70} ${cy - 40} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+            <path d="M ${cx - 30} ${cy - 25} Q ${cx} ${cy - 45} ${cx + 30} ${cy - 25} Q ${cx + 10} ${cy + 5} ${cx} ${cy + 25} Z" fill="#4338ca" opacity="0.6"/>
+            <path d="M ${cx - 50} ${cy - 30} Q ${cx} ${cy - 50} ${cx + 50} ${cy - 30}" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" fill="none"/>
+          `;
+        } else if (col === 1) {
+          // 45° 3/4 View: Shifted bangs
+          hairShape = `
+            <path d="M ${cx - 60} ${cy - 40} Q ${cx - 10} ${cy - 65} ${cx + 65} ${cy - 35} Q ${cx + 70} ${cy + 20} ${cx + 50} ${cy + 50} Q ${cx + 20} ${cy + 15} ${cx + 5} ${cy + 38} Q ${cx - 15} ${cy + 15} ${cx - 45} ${cy + 30} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+            <path d="M ${cx - 30} ${cy - 25} Q ${cx + 5} ${cy - 45} ${cx + 45} ${cy - 20}" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" fill="none"/>
+          `;
+        } else if (col === 2) {
+          // 90° Profile: Side view of bangs
+          hairShape = `
+            <path d="M ${cx - 30} ${cy - 45} Q ${cx + 20} ${cy - 60} ${cx + 45} ${cy - 35} Q ${cx + 65} ${cy + 10} ${cx + 55} ${cy + 50} Q ${cx + 30} ${cy + 25} ${cx + 20} ${cy + 40} Q ${cx + 5} ${cy + 15} ${cx - 20} ${cy + 5} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+            <path d="M ${cx - 10} ${cy - 30} Q ${cx + 25} ${cy - 45} ${cx + 40} ${cy - 25}" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" fill="none"/>
+          `;
+        } else if (col === 3) {
+          // 135° Back 3/4
+          hairShape = `
+            <path d="M ${cx - 50} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 40} Q ${cx + 45} ${cy + 10} ${cx + 25} ${cy + 35} Q ${cx - 10} ${cy + 5} ${cx - 45} ${cy + 15} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+          `;
+        } else {
+          // 180° Full Back
+          hairShape = `
+            <path d="M ${cx - 55} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 45} Q ${cx + 45} ${cy + 5} ${cx + 20} ${cy + 25} Q ${cx} ${cy + 10} ${cx - 20} ${cy + 25} Q ${cx - 45} ${cy + 5} ${cx - 55} ${cy - 45} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+          `;
+        }
+      } else if (row === 1) {
+        // Crown / Top Bun
+        hairShape = `
+          <ellipse cx="${cx}" cy="${cy - 20}" rx="38" ry="30" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+          <path d="M ${cx - 25} ${cy - 20} Q ${cx} ${cy - 35} ${cx + 25} ${cy - 20}" stroke="#a5b4fc" stroke-width="3" fill="none"/>
+          <rect x="${cx - 12}" y="${cy + 5}" width="24" height="12" rx="4" fill="#d97706"/>
+          <path d="M ${cx - 40} ${cy + 10} L ${cx + 40} ${cy + 10}" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+        `;
+      } else if (row === 2) {
+        // Back Long Flowing Hair
+        hairShape = `
+          <path d="M ${cx - 65} ${cy - 50} Q ${cx} ${cy - 40} ${cx + 65} ${cy - 50} Q ${cx + 75} ${cy + 20} ${cx + 50} ${cy + 85} Q ${cx} ${cy + 95} ${cx - 50} ${cy + 85} Q ${cx - 75} ${cy + 20} ${cx - 65} ${cy - 50} Z" fill="#0f172a" stroke="#1e293b" stroke-width="3"/>
+          <path d="M ${cx - 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx - 15} ${cy + 80}" stroke="#64748b" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M ${cx + 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx + 15} ${cy + 80}" stroke="#64748b" stroke-width="3" stroke-linecap="round" fill="none"/>
+        `;
+      } else {
+        // Sideburns
+        hairShape = `
+          <path d="M ${cx - 40} ${cy - 40} Q ${cx - 50} ${cy} ${cx - 35} ${cy + 45} Q ${cx - 30} ${cy + 10} ${cx - 32} ${cy - 30} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="2"/>
+          <path d="M ${cx + 40} ${cy - 40} Q ${cx + 50} ${cy} ${cx + 35} ${cy + 45} Q ${cx + 30} ${cy + 10} ${cx + 32} ${cy - 30} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="2"/>
+        `;
+      }
+
       return `
-        <!-- Cell [${c.row}, ${c.col}]: ${c.label} -->
-        <g transform="translate(${c.col * cellW}, ${c.row * cellH})">
-          <!-- Inner content silhouette -->
-          <ellipse cx="${cellW / 2}" cy="${cellH / 2}" rx="${cellW * 0.35}" ry="${cellH * 0.35}" fill="#18181b" stroke="${strokeCol}" stroke-width="3"/>
-          <circle cx="${cellW / 2}" cy="${cellH / 2 - 15}" r="${cellW * 0.18}" fill="#09090b"/>
-          <path d="M ${cellW / 2 - 40} ${cellH / 2 + 30} Q ${cellW / 2} ${cellH / 2 + 70} ${cellW / 2 + 40} ${cellH / 2 + 30}" stroke="#38bdf8" stroke-width="4" fill="none"/>
+        <!-- Cell [${row}, ${col}]: ${c.label} -->
+        <g transform="translate(${col * cellW}, ${row * cellH})">
+          <!-- Cell Border Grid (Faint) -->
+          <rect x="2" y="2" width="${cellW - 4}" height="${cellH - 4}" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="1.5" stroke-dasharray="6,4"/>
+          
+          <!-- Rendered Hair Part Sprite -->
+          ${hairShape}
+
+          <!-- Crisp Angle Badge -->
+          <rect x="8" y="8" width="110" height="22" rx="4" fill="rgba(15, 23, 42, 0.85)"/>
+          <text x="14" y="23" font-family="sans-serif" font-size="10.5" font-weight="bold" fill="#38bdf8">${c.label.split('(')[0]}</text>
         </g>
       `;
     })

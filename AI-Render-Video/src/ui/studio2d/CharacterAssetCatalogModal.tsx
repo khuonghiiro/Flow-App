@@ -10,7 +10,7 @@ import {
   deleteCustomResourceKit,
   applyKitToAssembly,
 } from '../../core/assets/CharacterKitStorage';
-import { CharacterEquipSlotHUD } from './catalog/CharacterEquipSlotHUD';
+import { CharacterEquipWing } from './catalog/CharacterEquipSlotHUD';
 import { CharacterViewport3DCanvas } from './catalog/CharacterViewport3DCanvas';
 import { CharacterMaterialCatalogShelf } from './catalog/CharacterMaterialCatalogShelf';
 import { CharacterStructureTunerPanel } from './catalog/CharacterStructureTunerPanel';
@@ -32,19 +32,14 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
   const [selectedSlot, setSelectedSlot] = useState<Character2DPartType>('toc_truoc');
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Load kits from persistent storage
   useEffect(() => {
     if (isOpen) {
-      const loaded = loadAllResourceKits();
-      setAllKits(loaded);
+      setAllKits(loadAllResourceKits());
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  /**
-   * Applies / mixes a specific slot part from a kit into current assembly
-   */
   const handleMixPartFromKit = (kit: CharacterResourceKit, slot: Character2DPartType) => {
     const sourcePart = kit.parts[slot];
     if (!sourcePart) {
@@ -80,7 +75,6 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
       },
     };
 
-    // If equipping front hair, also equip back hair from the same kit if available
     if (slot === 'toc_truoc' && kit.parts.toc_sau) {
       updatedParts.toc_sau = {
         ...(currentAssembly.parts.toc_sau || {
@@ -108,9 +102,6 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
     setTimeout(() => setNotification(null), 3000);
   };
 
-  /**
-   * Delete a custom kit
-   */
   const handleDeleteCustomKit = (kitId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Bạn có chắc muốn xóa bộ linh kiện này khỏi kho tài nguyên?')) {
@@ -147,7 +138,7 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
           overflow: 'hidden',
         }}
       >
-        {/* Modal Header */}
+        {/* Header */}
         <div
           style={{
             padding: '10px 18px',
@@ -179,7 +170,7 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
                 XƯỞNG LẮP RÁP & TRANG BỊ NHÂN VẬT 3D (CHARACTER CUSTOMIZER & MIXER)
               </h2>
               <p style={{ fontSize: 10.5, color: '#94a3b8', margin: 0 }}>
-                Chọn ô trang bị ở Cột 1 để xem và lắp các mẫu vật liệu từ Cột 2, xoay 3D 360° để kiểm tra độ khớp
+                Chọn ô trang bị ở Cánh Trái / Cánh Phải để duyệt kho vật liệu và thay đồ cho nhân vật
               </p>
             </div>
           </div>
@@ -200,7 +191,7 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
           </button>
         </div>
 
-        {/* Notification Toast */}
+        {/* Toast */}
         {notification && (
           <div
             style={{
@@ -225,41 +216,34 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
             flex: 1,
             display: 'grid',
             gridTemplateColumns: '58% 42%',
-            gap: 12,
-            padding: 12,
+            gap: 10,
+            padding: 10,
             overflow: 'hidden',
           }}
         >
-          {/* ─── CỘT 1: Không gian 3D / Canvas & Các Ô Vuông Trang Bị ── */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              overflow: 'hidden',
-            }}
-          >
-            {/* Viewport 3D / Canvas */}
-            <CharacterViewport3DCanvas assembly={currentAssembly} />
+          {/* CỘT 1: Cánh Trái (Đầu/Mặt) - Viewport Giữa - Cánh Phải (Thân/Vũ khí) */}
+          <div style={{ display: 'flex', gap: 6, height: '100%', overflow: 'hidden' }}>
+            <CharacterEquipWing
+              side="left"
+              assembly={currentAssembly}
+              selectedSlot={selectedSlot}
+              onSelectSlot={setSelectedSlot}
+            />
 
-            {/* Các ô vuông trang bị nhân vật RPG */}
-            <CharacterEquipSlotHUD
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+              <CharacterViewport3DCanvas assembly={currentAssembly} />
+            </div>
+
+            <CharacterEquipWing
+              side="right"
               assembly={currentAssembly}
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
             />
           </div>
 
-          {/* ─── CỘT 2: Danh Mục Vật Liệu & Bảng Tinh Chỉnh Cấu Trúc ─── */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              overflow: 'hidden',
-            }}
-          >
-            {/* Danh mục vật liệu cho ô trang bị đang chọn */}
+          {/* CỘT 2: Danh Mục Vật Liệu + Bảng Tinh Chỉnh Cấu Trúc */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%', overflow: 'hidden' }}>
             <CharacterMaterialCatalogShelf
               selectedSlot={selectedSlot}
               allKits={allKits}
@@ -267,7 +251,6 @@ export const CharacterAssetCatalogModal: React.FC<CharacterAssetCatalogModalProp
               onDeleteCustomKit={handleDeleteCustomKit}
             />
 
-            {/* Bảng tinh chỉnh cấu trúc cho ô trang bị đang chọn */}
             <CharacterStructureTunerPanel
               selectedSlot={selectedSlot}
               assembly={currentAssembly}

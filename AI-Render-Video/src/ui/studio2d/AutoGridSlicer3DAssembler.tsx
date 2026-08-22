@@ -1,25 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Scissors,
-  Sparkles,
-  Upload,
-  Layers,
-  Check,
-  RotateCcw,
-  Sliders,
-  Download,
-  Eye,
-  Compass,
-  ArrowRight,
-  RefreshCw,
-  Eraser,
-  FolderOpen,
-  BookmarkPlus,
-  Save,
-  Box,
-  X,
-} from 'lucide-react';
-import {
   Character2DAssembly,
   Character2DAngle,
   Character2DPartType,
@@ -32,13 +12,23 @@ import {
   GridCellDefinition,
   generateDemoGridSpriteSheet,
 } from '../../core/assets/GridSliceRegistry';
+import demoHairMultiAngleSheet from '../../assets/demo_hair_multi_angle_sheet.jpg';
 import {
   ThreeMultiAngleBillboardEngine,
   AngleDetectionResult,
 } from '../../core/engine2d/ThreeMultiAngleBillboardEngine';
 import { CellPixelEraserModal } from './CellPixelEraserModal';
 import { CharacterAssetCatalogModal } from './CharacterAssetCatalogModal';
+import { MultiAngleTunerModal } from './MultiAngleTunerModal';
 import { saveCustomResourceKit } from '../../core/assets/CharacterKitStorage';
+import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
+import { PART_HIERARCHY_CONFIG } from '../../core/assets/Asset2DRegistry';
+
+// Subcomponents
+import { SlicerSidebarControls } from './slicer/SlicerSidebarControls';
+import { SlicerCellAdjustmentBar } from './slicer/SlicerCellAdjustmentBar';
+import { SlicerInteractiveCanvas } from './slicer/SlicerInteractiveCanvas';
+import { Slicer3DTurntablePreview } from './slicer/Slicer3DTurntablePreview';
 
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
@@ -51,31 +41,22 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   onApplyAssembly,
   onSwitchToAssemblyTab,
 }) => {
+  // Slicing & Category Configuration
   const [selectedCatId, setSelectedCatId] = useState<string>('hair_multi_angle_grid');
-  const [sourceImage, setSourceImage] = useState<string | null>(null);
-  const [userUploadedImageUrl, setUserUploadedImageUrl] = useState<string | null>(null);
-
-  // Background removal parameters
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
-  const [tolerance, setTolerance] = useState<number>(45);
-  const [feather, setFeather] = useState<number>(2);
-
-  // Despeckle & Isolated Stray Noise Cleanup filter
+  const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('outer_only');
+  const [tolerance, setTolerance] = useState<number>(38);
+  const [feather, setFeather] = useState<number>(1);
   const [bgCleanupSubTab, setBgCleanupSubTab] = useState<'chroma' | 'despeckle'>('chroma');
-  const [despeckleSize, setDespeckleSize] = useState<number>(30); // Max isolated component area in pixels to erase (0-250px)
-  const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(50); // Sensitivity for isolated white dots (0-100%)
+  const [despeckleSize, setDespeckleSize] = useState<number>(18);
+  const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(45);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
 
-  // Grid adjustment offsets (px)
-  const [gridMarginX, setGridMarginX] = useState<number>(0);
-  const [gridMarginY, setGridMarginY] = useState<number>(0);
-  const [gridGapX, setGridGapX] = useState<number>(0);
-  const [gridGapY, setGridGapY] = useState<number>(0);
-
-  // Sliced state
-  const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
+  // User upload & Slicing state
+  const [userUploadedImageUrl, setUserUploadedImageUrl] = useState<string | null>(null);
   const [slicedResults, setSlicedResults] = useState<Map<string, string>>(new Map());
+  const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [assemblySuccess, setAssemblySuccess] = useState<boolean>(false);
 
@@ -87,6 +68,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     compassDirection: 'S',
   });
   const [turntableAngle, setTurntableAngle] = useState<number>(0);
+  const [timeOfDay, setTimeOfDay] = useState<number>(0);
 
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
   const threeContainerRef = useRef<HTMLDivElement>(null);
@@ -100,212 +82,57 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   const [previewDisplayMode, setPreviewDisplayMode] = useState<'transparent' | 'original'>('original');
   const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
-  const slicedImgElementsRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
+  const slicedCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
-  // Interactive Grid Dividers: X coordinates for columns [X0..X_cols] & Y coordinates for rows [Y0..Y_rows]
+  // Interactive Grid Dividers: X coords for cols & Y coords for rows
   const [colDividers, setColDividers] = useState<number[]>([]);
   const [rowDividers, setRowDividers] = useState<number[]>([]);
-  const [hoveredDivider, setHoveredDivider] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
-  const [activeDividerDrag, setActiveDividerDrag] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
+  const draggingDividerRef = useRef<{ type: 'col' | 'row'; index: number } | null>(null);
 
-  // Pixel Eraser & Cleanup Modal for individual slice
-  const [editingCellData, setEditingCellData] = useState<{ cell: GridCellDefinition; dataUrl: string } | null>(null);
+  // Pixel Eraser Modal state
+  const [isEraserOpen, setIsEraserOpen] = useState<boolean>(false);
+  const [editingCellDef, setEditingCellDef] = useState<GridCellDefinition | null>(null);
+  const [editingCellOriginalDataUrl, setEditingCellOriginalDataUrl] = useState<string>('');
 
-  // Asset Catalog & Kit Storage State
-  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
+  // Catalog, Save Kit & Multi-Angle Tuner Modal state
+  const [isTunerOpen, setIsTunerOpen] = useState<boolean>(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
   const [isSaveKitModalOpen, setIsSaveKitModalOpen] = useState<boolean>(false);
   const [saveKitName, setSaveKitName] = useState<string>('');
   const [saveKitCategory, setSaveKitCategory] = useState<CharacterResourceCategory>('toc');
-  const [saveKitToast, setSaveKitToast] = useState<string | null>(null);
+  const [saveKitAuthor, setSaveKitAuthor] = useState<string>('AI Master');
+  const [saveKitDescription, setSaveKitDescription] = useState<string>('');
 
-  const handleOpenSaveKitModal = () => {
-    const cat = selectedCatId.includes('hair')
-      ? 'toc'
-      : selectedCatId.includes('eye')
-      ? 'mat'
-      : selectedCatId.includes('mouth')
-      ? 'mieng'
-      : selectedCatId.includes('costume')
-      ? 'trang_phuc'
-      : selectedCatId.includes('weapon')
-      ? 'vu_khi'
-      : selectedCatId.includes('chin')
-      ? 'khuon_mat'
-      : 'custom_slices';
-
-    setSaveKitCategory(cat);
-    setSaveKitName(`Bộ ${currentCategory.label} (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
-    setIsSaveKitModalOpen(true);
-  };
-
-  const handleConfirmSaveKit = () => {
-    if (!saveKitName.trim()) return;
-
-    // Get first available sliced png as thumbnail
-    let firstPng: string | undefined = undefined;
-    for (const [, val] of slicedResults.entries()) {
-      if (val) {
-        firstPng = val;
-        break;
-      }
+  // Initialize Default Uniform Dividers
+  const initUniformDividers = useCallback((width: number, height: number, cols: number, rows: number) => {
+    const colStep = width / cols;
+    const rowStep = height / rows;
+    const colsArr: number[] = [];
+    for (let c = 0; c <= cols; c++) {
+      colsArr.push(Math.round(c * colStep));
     }
-
-    const newKit: CharacterResourceKit = {
-      id: `custom_${Date.now()}`,
-      name: saveKitName.trim(),
-      category: saveKitCategory,
-      categoryLabel: saveKitCategory === 'toc' ? 'Bộ Tóc 3D' : saveKitCategory === 'mat' ? 'Mắt & Biểu Cảm' : saveKitCategory === 'mieng' ? 'Khẩu Hình Miệng' : saveKitCategory === 'trang_phuc' ? 'Trang Phục' : saveKitCategory === 'vu_khi' ? 'Vũ Khí' : 'Linh Kiện Tự Lưu',
-      angleCount: slicedResults.size > 0 ? slicedResults.size : currentCategory.cells.length,
-      parts: JSON.parse(JSON.stringify(currentAssembly.parts)),
-      previewImage: firstPng || currentAssembly.parts.toc_truoc?.path || currentAssembly.parts.dau?.path,
-      description: `Bộ linh kiện gồm ${slicedResults.size} ô đã cắt từ bảng ${currentCategory.label}`,
-      createdAt: new Date().toISOString(),
-    };
-
-    saveCustomResourceKit(newKit);
-    setIsSaveKitModalOpen(false);
-    setSaveKitToast(`Đã lưu "${saveKitName}" vào kho tài nguyên thành công!`);
-    setTimeout(() => setSaveKitToast(null), 3500);
-  };
-
-  /**
-   * Initializes standard uniform grid dividers based on category rows/cols and margins
-   */
-  const initDividers = useCallback(
-    (img: HTMLImageElement) => {
-      const rows = currentCategory.rows;
-      const cols = currentCategory.cols;
-      const marginX = gridMarginX;
-      const marginY = gridMarginY;
-      const usableW = img.width - marginX * 2;
-      const usableH = img.height - marginY * 2;
-      const cellW = usableW / cols;
-      const cellH = usableH / rows;
-
-      const colsArr: number[] = [];
-      for (let c = 0; c <= cols; c++) {
-        colsArr.push(Math.round(marginX + c * cellW));
-      }
-
-      const rowsArr: number[] = [];
-      for (let r = 0; r <= rows; r++) {
-        rowsArr.push(Math.round(marginY + r * cellH));
-      }
-
-      setColDividers(colsArr);
-      setRowDividers(rowsArr);
-    },
-    [currentCategory, gridMarginX, gridMarginY]
-  );
-
-  /**
-   * Helper to retrieve bounding box of cell [r, c] strictly from the Divider Lines
-   */
-  const getCellRect = useCallback(
-    (r: number, c: number, img: HTMLImageElement): { x: number; y: number; w: number; h: number } => {
-      const cols = currentCategory.cols;
-      const rows = currentCategory.rows;
-
-      if (colDividers.length === cols + 1 && rowDividers.length === rows + 1) {
-        const x = colDividers[c];
-        const nextX = colDividers[c + 1];
-        const y = rowDividers[r];
-        const nextY = rowDividers[r + 1];
-        return {
-          x: Math.round(x),
-          y: Math.round(y),
-          w: Math.max(10, Math.round(nextX - x)),
-          h: Math.max(10, Math.round(nextY - y)),
-        };
-      }
-
-      // Default uniform formula fallback
-      const cellW = (img.width - gridMarginX * 2) / cols;
-      const cellH = (img.height - gridMarginY * 2) / rows;
-      return {
-        x: Math.round(gridMarginX + c * cellW),
-        y: Math.round(gridMarginY + r * cellH),
-        w: Math.round(cellW),
-        h: Math.round(cellH),
-      };
-    },
-    [colDividers, rowDividers, currentCategory, gridMarginX, gridMarginY]
-  );
-
-  /**
-   * Samples pixel at top-left corner (4, 4) to auto-detect background color
-   */
-  const autoDetectBackgroundColor = (img: HTMLImageElement): string => {
-    try {
-      const c = document.createElement('canvas');
-      c.width = img.width;
-      c.height = img.height;
-      const ctx = c.getContext('2d');
-      if (!ctx) return '#00ff00';
-      ctx.drawImage(img, 0, 0);
-      const pixel = ctx.getImageData(4, 4, 1, 1).data;
-      const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1)}`;
-      return hex;
-    } catch {
-      return '#00ff00';
+    const rowsArr: number[] = [];
+    for (let r = 0; r <= rows; r++) {
+      rowsArr.push(Math.round(r * rowStep));
     }
-  };
+    setColDividers(colsArr);
+    setRowDividers(rowsArr);
+  }, []);
 
-  const loadImage = (url: string, isUserUpload = false) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      loadedImageRef.current = img;
-      setSourceImage(url);
-      setHasExplicitlySliced(false);
-      setPreviewDisplayMode('original');
-      initDividers(img);
-
-      if (isUserUpload) {
-        // Auto detect background color of uploaded image
-        const detectedColor = autoDetectBackgroundColor(img);
-        setKeyColorHex(detectedColor);
-
-        // Check if detected color is green or white
-        const rgb = hexToRgb(detectedColor);
-        if (rgb.g > rgb.r + 30 && rgb.g > rgb.b + 30) {
-          setKeyColorType('chroma_green');
-        } else if (rgb.r > 200 && rgb.g > 200 && rgb.b > 200) {
-          setKeyColorType('pure_white');
-        } else {
-          setKeyColorType('custom');
-        }
-      }
-
-      drawGridOverlay();
-    };
-    img.src = url;
-  };
-
-  // Initialize or handle category change
-  useEffect(() => {
-    if (!userUploadedImageUrl) {
-      const demoUrl = generateDemoGridSpriteSheet(
-        selectedCatId,
-        keyColorType === 'chroma_green' ? 'chroma_green' : 'pure_white'
-      );
-      loadImage(demoUrl, false);
-    } else {
-      if (loadedImageRef.current) {
-        initDividers(loadedImageRef.current);
-      }
-      drawGridOverlay();
-    }
-  }, [selectedCatId]);
-
-  // Sync 3D engine container
+  // Initialize 3D Engine
   useEffect(() => {
     if (threeContainerRef.current && !threeEngineRef.current) {
       threeEngineRef.current = new ThreeMultiAngleBillboardEngine(
         threeContainerRef.current,
-        (res) => setActiveAngleInfo(res)
+        (res: AngleDetectionResult) => {
+          setActiveAngleInfo(res);
+          setTurntableAngle(res.angleDeg);
+        }
       );
-      threeEngineRef.current.setAssembly(currentAssembly);
+      if (currentAssembly) {
+        threeEngineRef.current.setAssembly(currentAssembly);
+      }
     }
 
     return () => {
@@ -316,1913 +143,553 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     };
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          const dataUrl = ev.target.result as string;
-          setUserUploadedImageUrl(dataUrl);
-          loadImage(dataUrl, true);
-        }
-      };
-      reader.readAsDataURL(file);
-      e.target.value = ''; // Reset input to allow re-uploading same file
+  // Sync 3D engine with currentAssembly updates
+  useEffect(() => {
+    if (threeEngineRef.current && currentAssembly) {
+      threeEngineRef.current.setAssembly(currentAssembly);
     }
-  };
+  }, [currentAssembly]);
 
-  /**
-   * Draws a dark checkerboard background pattern for transparent alpha verification
-   */
-  const drawCheckerboard = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    size = 14
-  ) => {
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#1e293b';
-    for (let cy = y; cy < y + h; cy += size) {
-      for (let cx = x; cx < x + w; cx += size) {
-        const sw = Math.min(size, x + w - cx);
-        const sh = Math.min(size, y + h - cy);
-        if ((Math.floor((cx - x) / size) + Math.floor((cy - y) / size)) % 2 === 0) {
-          ctx.fillRect(cx, cy, sw, sh);
-        }
-      }
+  // Load Sprite Sheet Image
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      loadedImageRef.current = img;
+      setLoadedImage(img);
+      initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
+      setPreviewDisplayMode('original');
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+    };
+
+    if (userUploadedImageUrl) {
+      img.src = userUploadedImageUrl;
+    } else {
+      img.src = currentCategory.id === 'hair_multi_angle_grid' ? demoHairMultiAngleSheet : generateDemoGridSpriteSheet(currentCategory.id);
     }
-  };
+  }, [userUploadedImageUrl, selectedCatId, currentCategory, initUniformDividers]);
 
-  /**
-   * Draws the imported image with glowing bounding grid lines, divider splitters, and cell badges.
-   * NEVER stretches or distorts the underlying sprite sheet image!
-   */
-  const drawGridOverlay = useCallback(() => {
+  // Redraw Canvas & Grid Dividers
+  const redrawCanvas = useCallback(() => {
     const canvas = imageCanvasRef.current;
-    const img = loadedImageRef.current;
+    const img = loadedImage || loadedImageRef.current;
     if (!canvas || !img) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = img.width;
-    canvas.height = img.height;
+    if (canvas.width !== img.width || canvas.height !== img.height) {
+      canvas.width = img.width;
+      canvas.height = img.height;
+    }
 
-    const rows = currentCategory.rows;
-    const cols = currentCategory.cols;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const isTransMode = previewDisplayMode === 'transparent' && hasExplicitlySliced && slicedResults.size > 0;
+    if (previewDisplayMode === 'transparent' && hasExplicitlySliced) {
+      // Checkerboard transparency pattern
+      const size = 16;
+      for (let x = 0; x < canvas.width; x += size) {
+        for (let y = 0; y < canvas.height; y += size) {
+          ctx.fillStyle = (Math.floor(x / size) + Math.floor(y / size)) % 2 === 0 ? '#182030' : '#0c1220';
+          ctx.fillRect(x, y, size, size);
+        }
+      }
 
-    // 1. Draw background or source image
-    if (isTransMode) {
-      drawCheckerboard(ctx, 0, 0, canvas.width, canvas.height, 16);
+      currentCategory.cells.forEach((cell) => {
+        const key = `${cell.row}_${cell.col}`;
+        const cellCanvas = slicedCanvasesRef.current.get(key);
+        if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+          const x0 = colDividers[cell.col];
+          const y0 = rowDividers[cell.row];
+          const w = colDividers[cell.col + 1] - x0;
+          const h = rowDividers[cell.row + 1] - y0;
+          ctx.drawImage(cellCanvas, x0, y0, w, h);
+        }
+      });
     } else {
-      // Draw static full sprite sheet 1:1 scale
       ctx.drawImage(img, 0, 0);
     }
 
-    // 2. Draw each cell (either transparent PNG or original crop without distortion)
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const rect = getCellRect(r, c, img);
-        const { x, y, w: cellW, h: cellH } = rect;
+    // Draw Grid Lines
+    ctx.lineWidth = 1.5;
+    colDividers.forEach((x, c) => {
+      ctx.strokeStyle = c === 0 || c === colDividers.length - 1 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(56, 189, 248, 0.6)';
+      ctx.setLineDash(c === 0 || c === colDividers.length - 1 ? [] : [4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    });
 
-        const key = `${r}_${c}`;
-        const cellDef = currentCategory.cells.find((cell) => cell.row === r && cell.col === c);
-        const isSelected = selectedCell?.row === r && selectedCell?.col === c;
+    rowDividers.forEach((y, r) => {
+      ctx.strokeStyle = r === 0 || r === rowDividers.length - 1 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(56, 189, 248, 0.6)';
+      ctx.setLineDash(r === 0 || r === rowDividers.length - 1 ? [] : [4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
 
-        if (isTransMode) {
-          // Draw individual cell checkerboard
-          drawCheckerboard(ctx, x, y, cellW, cellH, 12);
+    // Highlight Selected Cell
+    if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
+      const x0 = colDividers[selectedCell.col];
+      const y0 = rowDividers[selectedCell.row];
+      const w = colDividers[selectedCell.col + 1] - x0;
+      const h = rowDividers[selectedCell.row + 1] - y0;
 
-          const cellImg = slicedImgElementsRef.current.get(key);
-          if (cellImg && cellImg.complete && cellImg.width === cellW && cellImg.height === cellH) {
-            ctx.drawImage(cellImg, x, y, cellW, cellH);
-          } else {
-            // Draw exact region from underlying static source image without squishing
-            ctx.drawImage(img, x, y, cellW, cellH, x, y, cellW, cellH);
-          }
-        }
-
-        // Fill background highlight if selected
-        if (isSelected) {
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
-          ctx.fillRect(x, y, cellW, cellH);
-        }
-
-        // Cell badge header
-        ctx.fillStyle = isSelected ? '#0284c7' : 'rgba(15, 23, 42, 0.88)';
-        ctx.fillRect(x + 2, y + 2, Math.min(cellW - 4, 180), 22);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Inter, sans-serif';
-        ctx.fillText(cellDef ? cellDef.label : `[R${r + 1} C${c + 1}]`, x + 6, y + 17);
-      }
-    }
-
-    // 3. Draw Grid Lines & Interactive Splitters
-    if (colDividers.length === cols + 1 && rowDividers.length === rows + 1) {
-      const x0 = colDividers[0];
-      const xLast = colDividers[cols];
-      const y0 = rowDividers[0];
-      const yLast = rowDividers[rows];
-
-      // A. Outer Border Box (Fixed / Non-resizable outer edges)
-      ctx.strokeStyle = '#0284c7';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.fillRect(x0, y0, w, h);
+      ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2.5;
-      ctx.setLineDash([]);
-      ctx.strokeRect(x0, y0, xLast - x0, yLast - y0);
-
-      // B. Internal Vertical Dividers [1 .. cols-1]
-      for (let c = 1; c < cols; c++) {
-        const x = colDividers[c];
-        const isHovered = (hoveredDivider?.type === 'col' && hoveredDivider.index === c) || (activeDividerDrag?.type === 'col' && activeDividerDrag.index === c);
-
-        if (isHovered) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 4;
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.moveTo(x, y0);
-          ctx.lineTo(x, yLast);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-
-          // Center Handle Pill with ↔ symbol
-          const midY = (y0 + yLast) / 2;
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(x - 6, midY - 14, 12, 28);
-          ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 11px sans-serif';
-          ctx.fillText('↔', x - 5, midY + 4);
-        } else {
-          ctx.strokeStyle = isTransMode ? 'rgba(56, 189, 248, 0.6)' : 'rgba(56, 189, 248, 0.45)';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([6, 4]);
-          ctx.beginPath();
-          ctx.moveTo(x, y0);
-          ctx.lineTo(x, yLast);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      }
-
-      // C. Internal Horizontal Dividers [1 .. rows-1]
-      for (let r = 1; r < rows; r++) {
-        const y = rowDividers[r];
-        const isHovered = (hoveredDivider?.type === 'row' && hoveredDivider.index === r) || (activeDividerDrag?.type === 'row' && activeDividerDrag.index === r);
-
-        if (isHovered) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 4;
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.moveTo(x0, y);
-          ctx.lineTo(xLast, y);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-
-          // Center Handle Pill with ↕ symbol
-          const midX = (x0 + xLast) / 2;
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(midX - 14, y - 6, 28, 12);
-          ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 11px sans-serif';
-          ctx.fillText('↕', midX - 3, y + 4);
-        } else {
-          ctx.strokeStyle = isTransMode ? 'rgba(56, 189, 248, 0.6)' : 'rgba(56, 189, 248, 0.45)';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([6, 4]);
-          ctx.beginPath();
-          ctx.moveTo(x0, y);
-          ctx.lineTo(xLast, y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      }
+      ctx.strokeRect(x0, y0, w, h);
     }
-  }, [currentCategory, getCellRect, selectedCell, previewDisplayMode, hasExplicitlySliced, slicedResults, colDividers, rowDividers, hoveredDivider, activeDividerDrag]);
+  }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults]);
 
   useEffect(() => {
-    drawGridOverlay();
-  }, [drawGridOverlay]);
+    redrawCanvas();
+  }, [redrawCanvas]);
 
-  const [maskMode, setMaskMode] = useState<'flood_fill_outer' | 'global_color'>('flood_fill_outer');
-  const [enableDeSpill, setEnableDeSpill] = useState<boolean>(true);
-
-  /**
-   * Helper: Parses hex color to RGB
-   */
-  const hexToRgb = (hex: string) => {
-    const clean = hex.replace('#', '');
-    const num = parseInt(clean, 16);
-    return {
-      r: (num >> 16) & 255,
-      g: (num >> 8) & 255,
-      b: num & 255,
-    };
-  };
-
-  /**
-   * Performs pixel-level Chroma Key / Transparency Removal on an image cell
-   * Uses Flood-Fill Connected Masking from outer borders to PROTECT internal hair strands and details
-   */
-  const sliceAndRemoveBgCell = (
-    img: HTMLImageElement,
-    x: number,
-    y: number,
-    w: number,
-    h: number
-  ): string => {
-    const intW = Math.max(1, Math.round(w));
-    const intH = Math.max(1, Math.round(h));
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = intW;
-    offCanvas.height = intH;
-    const offCtx = offCanvas.getContext('2d');
-    if (!offCtx) return '';
-
-    offCtx.drawImage(img, x, y, w, h, 0, 0, intW, intH);
-    const imgData = offCtx.getImageData(0, 0, intW, intH);
-    const data = imgData.data;
-
-    const targetRgb = hexToRgb(keyColorHex);
-    const tolThreshold = (tolerance / 100) * 441.67;
-    const isGreenKey = targetRgb.g > targetRgb.r + 20 && targetRgb.g > targetRgb.b + 20;
-
-    const totalPixels = intW * intH;
-    const isCandidateBg = new Uint8Array(totalPixels);
-
-    // Step 1: Mark all candidate background pixels based on color distance
-    for (let i = 0; i < totalPixels; i++) {
-      const idx = i * 4;
-      const r = data[idx];
-      const g = data[idx + 1];
-      const b = data[idx + 2];
-
-      const dist = Math.sqrt(
-        (r - targetRgb.r) ** 2 +
-        (g - targetRgb.g) ** 2 +
-        (b - targetRgb.b) ** 2
-      );
-
-      if (dist < tolThreshold + feather * 8) {
-        isCandidateBg[i] = dist < tolThreshold ? 1 : 2; // 1 = solid bg, 2 = feather edge
-      }
-    }
-
-    // Step 2: Flood-fill from outer borders to protect enclosed interior regions
-    const isConnectedBg = new Uint8Array(totalPixels);
-
-    if (maskMode === 'flood_fill_outer') {
-      const queue = new Int32Array(totalPixels);
-      let head = 0;
-      let tail = 0;
-
-      // Seed from all 4 outer boundaries
-      // Top & Bottom edges
-      for (let cx = 0; cx < intW; cx++) {
-        const topIdx = cx;
-        if (isCandidateBg[topIdx] > 0 && !isConnectedBg[topIdx]) {
-          isConnectedBg[topIdx] = isCandidateBg[topIdx];
-          queue[tail++] = topIdx;
-        }
-        const btmIdx = (intH - 1) * intW + cx;
-        if (isCandidateBg[btmIdx] > 0 && !isConnectedBg[btmIdx]) {
-          isConnectedBg[btmIdx] = isCandidateBg[btmIdx];
-          queue[tail++] = btmIdx;
-        }
-      }
-      // Left & Right edges
-      for (let cy = 0; cy < intH; cy++) {
-        const leftIdx = cy * intW;
-        if (isCandidateBg[leftIdx] > 0 && !isConnectedBg[leftIdx]) {
-          isConnectedBg[leftIdx] = isCandidateBg[leftIdx];
-          queue[tail++] = leftIdx;
-        }
-        const rightIdx = cy * intW + (intW - 1);
-        if (isCandidateBg[rightIdx] > 0 && !isConnectedBg[rightIdx]) {
-          isConnectedBg[rightIdx] = isCandidateBg[rightIdx];
-          queue[tail++] = rightIdx;
-        }
-      }
-
-      // 4-way BFS flood fill traversal
-      while (head < tail) {
-        const curr = queue[head++];
-        const cx = curr % intW;
-        const cy = Math.floor(curr / intW);
-
-        const neighbors = [
-          cx > 0 ? curr - 1 : -1,
-          cx < intW - 1 ? curr + 1 : -1,
-          cy > 0 ? curr - intW : -1,
-          cy < intH - 1 ? curr + intW : -1,
-        ];
-
-        for (let n = 0; n < 4; n++) {
-          const nIdx = neighbors[n];
-          if (nIdx >= 0 && !isConnectedBg[nIdx] && isCandidateBg[nIdx] > 0) {
-            isConnectedBg[nIdx] = isCandidateBg[nIdx];
-            queue[tail++] = nIdx;
-          }
-        }
-      }
-    }
-
-    // Step 3: Apply alpha and optional De-Spill
-    for (let i = 0; i < totalPixels; i++) {
-      const idx = i * 4;
-      const bgStatus = maskMode === 'flood_fill_outer' ? isConnectedBg[i] : isCandidateBg[i];
-
-      if (bgStatus === 1) {
-        data[idx + 3] = 0; // 100% transparent
-      } else if (bgStatus === 2) {
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
-        const dist = Math.sqrt(
-          (r - targetRgb.r) ** 2 +
-          (g - targetRgb.g) ** 2 +
-          (b - targetRgb.b) ** 2
-        );
-        const alphaFactor = Math.max(0, Math.min(1, (dist - tolThreshold) / (feather * 8)));
-        data[idx + 3] = Math.round(data[idx + 3] * alphaFactor);
-      }
-
-      // De-Spill green bounce on non-transparent hair edges
-      if (enableDeSpill && isGreenKey && data[idx + 3] > 0) {
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
-        const maxOther = Math.max(r, b);
-        if (g > maxOther) {
-          data[idx + 1] = Math.round(maxOther * 0.85 + g * 0.15); // Suppress green spill
-        }
-      }
-    }
-
-    // Step 4: Despeckle / Isolated Island Removal (Xóa các đốm trắng/hạt rác rải rác không liền mạch)
-    if (despeckleSize > 0 || keepLargestIslandOnly || whiteSpeckleSensitivity > 0) {
-      const visited = new Uint8Array(totalPixels);
-      const compQueue = new Int32Array(totalPixels);
-      const allComponents: { pixels: number[]; isWhiteDominated: boolean }[] = [];
-      let maxComponentSize = 0;
-
-      for (let i = 0; i < totalPixels; i++) {
-        if (data[i * 4 + 3] > 10 && !visited[i]) {
-          let qHead = 0;
-          let qTail = 0;
-          compQueue[qTail++] = i;
-          visited[i] = 1;
-
-          const currentPixels: number[] = [];
-          let whiteCount = 0;
-
-          while (qHead < qTail) {
-            const curr = compQueue[qHead++];
-            currentPixels.push(curr);
-
-            const pIdx = curr * 4;
-            const r = data[pIdx];
-            const g = data[pIdx + 1];
-            const b = data[pIdx + 2];
-            if (r > 195 && g > 195 && b > 195) {
-              whiteCount++;
-            }
-
-            const cx = curr % intW;
-            const cy = Math.floor(curr / intW);
-
-            // 8-way connectivity
-            const neighbors = [
-              cx > 0 ? curr - 1 : -1,
-              cx < intW - 1 ? curr + 1 : -1,
-              cy > 0 ? curr - intW : -1,
-              cy < intH - 1 ? curr + intW : -1,
-              cx > 0 && cy > 0 ? curr - intW - 1 : -1,
-              cx < intW - 1 && cy > 0 ? curr - intW + 1 : -1,
-              cx > 0 && cy < intH - 1 ? curr + intW - 1 : -1,
-              cx < intW - 1 && cy < intH - 1 ? curr + intW + 1 : -1,
-            ];
-
-            for (let n = 0; n < 8; n++) {
-              const nIdx = neighbors[n];
-              if (nIdx >= 0 && !visited[nIdx] && data[nIdx * 4 + 3] > 10) {
-                visited[nIdx] = 1;
-                compQueue[qTail++] = nIdx;
-              }
-            }
-          }
-
-          if (currentPixels.length > maxComponentSize) {
-            maxComponentSize = currentPixels.length;
-          }
-
-          allComponents.push({
-            pixels: currentPixels,
-            isWhiteDominated: whiteCount / currentPixels.length > 0.5,
-          });
-        }
-      }
-
-      // Erase small or isolated stray components
-      for (const comp of allComponents) {
-        const isSmallSpeckle = despeckleSize > 0 && comp.pixels.length <= despeckleSize;
-        const isStrayWhite = whiteSpeckleSensitivity > 0 && comp.isWhiteDominated && comp.pixels.length <= despeckleSize * 2.5;
-        const isNotMainObject = keepLargestIslandOnly && comp.pixels.length < maxComponentSize * 0.35;
-
-        if (isSmallSpeckle || isStrayWhite || isNotMainObject) {
-          for (let p = 0; p < comp.pixels.length; p++) {
-            data[comp.pixels[p] * 4 + 3] = 0; // Erase stray speckle to 100% transparent!
-          }
-        }
-      }
-    }
-
-    offCtx.putImageData(imgData, 0, 0);
-    return offCanvas.toDataURL('image/png');
-  };
-
-  /**
-   * Main Action: Slices all cells in the grid, cleans background, and auto-assembles into 3D Multi-Angle structure
-   */
-  const handleAutoSliceAndAssemble3D = () => {
-    const img = loadedImageRef.current;
-    if (!img) return;
-
-    setIsProcessing(true);
-
-    setTimeout(() => {
-      const rows = currentCategory.rows;
-      const cols = currentCategory.cols;
-
-      const usableW = img.width - gridMarginX * 2 - (cols - 1) * gridGapX;
-      const usableH = img.height - gridMarginY * 2 - (rows - 1) * gridGapY;
-      const cellW = usableW / cols;
-      const cellH = usableH / rows;
-
-      const newResults = new Map<string, string>();
-      const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-
-      // Slice each cell
-      currentCategory.cells.forEach((cell) => {
-        const rect = getCellRect(cell.row, cell.col, img);
-        const slicedPng = sliceAndRemoveBgCell(img, rect.x, rect.y, rect.w, rect.h);
-        const key = `${cell.row}_${cell.col}`;
-        newResults.set(key, slicedPng);
-
-        // Preload Image object for canvas transparent grid rendering
-        const cellImg = new Image();
-        cellImg.onload = () => {
-          drawGridOverlay();
-        };
-        cellImg.src = slicedPng;
-        slicedImgElementsRef.current.set(key, cellImg);
-
-        // Assign to Character Assembly if angle and slot are defined
-        if (cell.angle && cell.partSlot) {
-          const slot = cell.partSlot;
-          const existingPart = updatedAssembly.parts[slot];
-          if (!existingPart) {
-            updatedAssembly.parts[slot] = {
-              path: slicedPng,
-              offset: [0, 0],
-              scale: [1, 1],
-              rotation: 0,
-              pivot: [0.5, 0.5],
-              flipX: false,
-              flipY: false,
-              z_index: 5,
-              opacity: 1,
-              angles: {},
-            };
-          }
-
-          const targetPart = updatedAssembly.parts[slot]!;
-          if (!targetPart.angles) {
-            targetPart.angles = {};
-          }
-
-          targetPart.angles[cell.angle] = slicedPng;
-
-          // If front angle, set as base path too
-          if (cell.angle === 'front') {
-            targetPart.path = slicedPng;
-          }
-
-          // If mirror angle is defined, assign to opposite side
-          if (cell.mirrorAngle) {
-            targetPart.angles[cell.mirrorAngle] = slicedPng;
-          }
-        }
-      });
-
-      setSlicedResults(newResults);
-      onApplyAssembly(updatedAssembly);
-
-      // Update 3D WebGL Engine
-      if (threeEngineRef.current) {
-        threeEngineRef.current.setAssembly(updatedAssembly);
-      }
-
-      setHasExplicitlySliced(true);
-      setPreviewDisplayMode('transparent');
-      setIsProcessing(false);
-      setAssemblySuccess(true);
-      setTimeout(() => setAssemblySuccess(false), 3000);
-    }, 100);
-  };
-
-  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = imageCanvasRef.current;
-    const img = loadedImageRef.current;
-    if (!canvas || !img) return null;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = img.width / rect.width;
-    const scaleY = img.height / rect.height;
-
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    };
-  };
-
+  // Mouse drag & drop dividers handler
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoords(e);
-    const img = loadedImageRef.current;
-    if (!coords || !img) return;
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
 
-    // 1. If mouse is on a grid divider line, start dragging that divider
-    if (hoveredDivider) {
-      setActiveDividerDrag({
-        type: hoveredDivider.type,
-        index: hoveredDivider.index,
-      });
-      return;
-    }
-
-    // 2. Otherwise, check if user clicked on any cell to select it
-    const rows = currentCategory.rows;
-    const cols = currentCategory.cols;
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const rect = getCellRect(r, c, img);
-        if (coords.x >= rect.x && coords.x <= rect.x + rect.w && coords.y >= rect.y && coords.y <= rect.y + rect.h) {
-          const found = currentCategory.cells.find((cell) => cell.row === r && cell.col === c);
-          if (found) {
-            setSelectedCell(found);
-          }
-          return;
-        }
+    // Check Col dividers
+    for (let c = 1; c < colDividers.length - 1; c++) {
+      if (Math.abs(colDividers[c] - mouseX) <= 12) {
+        draggingDividerRef.current = { type: 'col', index: c };
+        return;
       }
     }
-  };
 
-  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoords(e);
-    const img = loadedImageRef.current;
-    if (!coords || !img) return;
+    // Check Row dividers
+    for (let r = 1; r < rowDividers.length - 1; r++) {
+      if (Math.abs(rowDividers[r] - mouseY) <= 12) {
+        draggingDividerRef.current = { type: 'row', index: r };
+        return;
+      }
+    }
 
-    const rows = currentCategory.rows;
-    const cols = currentCategory.cols;
+    // Select Cell clicked
+    let clickedCol = -1;
+    for (let c = 0; c < colDividers.length - 1; c++) {
+      if (mouseX >= colDividers[c] && mouseX <= colDividers[c + 1]) {
+        clickedCol = c;
+        break;
+      }
+    }
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const rect = getCellRect(r, c, img);
-        if (coords.x >= rect.x && coords.x <= rect.x + rect.w && coords.y >= rect.y && coords.y <= rect.y + rect.h) {
-          const found = currentCategory.cells.find((cell) => cell.row === r && cell.col === c);
-          if (found) {
-            setSelectedCell(found);
-            handleOpenCellPixelEditor(found);
-          }
-          return;
-        }
+    let clickedRow = -1;
+    for (let r = 0; r < rowDividers.length - 1; r++) {
+      if (mouseY >= rowDividers[r] && mouseY <= rowDividers[r + 1]) {
+        clickedRow = r;
+        break;
+      }
+    }
+
+    if (clickedCol !== -1 && clickedRow !== -1) {
+      const found = currentCategory.cells.find((cell) => cell.row === clickedRow && cell.col === clickedCol);
+      if (found) {
+        setSelectedCell(found);
       }
     }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoords(e);
-    const img = loadedImageRef.current;
     const canvas = imageCanvasRef.current;
-    if (!coords || !img || !canvas) return;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
 
-    const rows = currentCategory.rows;
-    const cols = currentCategory.cols;
-
-    // A. If currently dragging a grid divider line
-    if (activeDividerDrag) {
-      if (activeDividerDrag.type === 'col') {
-        const k = activeDividerDrag.index;
-        if (k >= 1 && k < cols && colDividers.length === cols + 1) {
-          const minX = colDividers[k - 1] + 25;
-          const maxX = colDividers[k + 1] - 25;
-          const clampedX = Math.max(minX, Math.min(maxX, coords.x));
-
-          setColDividers((prev) => {
-            const next = [...prev];
-            next[k] = Math.round(clampedX);
-            return next;
-          });
-        }
-      } else if (activeDividerDrag.type === 'row') {
-        const k = activeDividerDrag.index;
-        if (k >= 1 && k < rows && rowDividers.length === rows + 1) {
-          const minY = rowDividers[k - 1] + 25;
-          const maxY = rowDividers[k + 1] - 25;
-          const clampedY = Math.max(minY, Math.min(maxY, coords.y));
-
-          setRowDividers((prev) => {
-            const next = [...prev];
-            next[k] = Math.round(clampedY);
-            return next;
-          });
-        }
+    if (draggingDividerRef.current) {
+      if (draggingDividerRef.current.type === 'col') {
+        const idx = draggingDividerRef.current.index;
+        const min = colDividers[idx - 1] + 15;
+        const max = colDividers[idx + 1] - 15;
+        const newX = Math.max(min, Math.min(max, Math.round(mouseX)));
+        setColDividers((prev) => {
+          const next = [...prev];
+          next[idx] = newX;
+          return next;
+        });
+      } else {
+        const idx = draggingDividerRef.current.index;
+        const min = rowDividers[idx - 1] + 15;
+        const max = rowDividers[idx + 1] - 15;
+        const newY = Math.max(min, Math.min(max, Math.round(mouseY)));
+        setRowDividers((prev) => {
+          const next = [...prev];
+          next[idx] = newY;
+          return next;
+        });
       }
       return;
     }
 
-    // B. Detect hover near internal divider lines (within 10px)
-    if (colDividers.length === cols + 1 && rowDividers.length === rows + 1) {
-      const x0 = colDividers[0];
-      const xLast = colDividers[cols];
-      const y0 = rowDividers[0];
-      const yLast = rowDividers[rows];
-
-      // 1. Check internal vertical lines (X1 .. X_cols-1)
-      for (let c = 1; c < cols; c++) {
-        const lineX = colDividers[c];
-        if (Math.abs(coords.x - lineX) <= 10 && coords.y >= y0 - 10 && coords.y <= yLast + 10) {
-          canvas.style.cursor = 'col-resize';
-          setHoveredDivider({ type: 'col', index: c });
-          return;
-        }
-      }
-
-      // 2. Check internal horizontal lines (Y1 .. Y_rows-1)
-      for (let r = 1; r < rows; r++) {
-        const lineY = rowDividers[r];
-        if (Math.abs(coords.y - lineY) <= 10 && coords.x >= x0 - 10 && coords.x <= xLast + 10) {
-          canvas.style.cursor = 'row-resize';
-          setHoveredDivider({ type: 'row', index: r });
-          return;
-        }
+    // Change Cursor when hovering dividers
+    for (let c = 1; c < colDividers.length - 1; c++) {
+      if (Math.abs(colDividers[c] - mouseX) <= 8) {
+        canvas.style.cursor = 'col-resize';
+        return;
       }
     }
-
-    // Default pointer cursor
+    for (let r = 1; r < rowDividers.length - 1; r++) {
+      if (Math.abs(rowDividers[r] - mouseY) <= 8) {
+        canvas.style.cursor = 'row-resize';
+        return;
+      }
+    }
     canvas.style.cursor = 'pointer';
-    if (hoveredDivider) {
-      setHoveredDivider(null);
-    }
   };
 
   const handleCanvasMouseUp = () => {
-    if (activeDividerDrag) {
-      setActiveDividerDrag(null);
+    draggingDividerRef.current = null;
+  };
+
+  // Open Pixel Eraser Modal on Double Click
+  const handleCanvasDoubleClick = () => {
+    if (selectedCell) {
+      openCellPixelEditor(selectedCell);
     }
   };
 
-  /**
-   * Helper to manually adjust divider of selected cell's row or column
-   */
-  const handleAdjustRowHeight = (deltaH: number) => {
-    if (!selectedCell || rowDividers.length === 0) return;
-    const r = selectedCell.row;
-    const rows = currentCategory.rows;
-
-    // Adjust bottom divider of this row
-    if (r + 1 < rows) {
-      const k = r + 1;
-      const minY = rowDividers[k - 1] + 25;
-      const maxY = rowDividers[k + 1] - 25;
-      const nextY = Math.max(minY, Math.min(maxY, rowDividers[k] + deltaH));
-      setRowDividers((prev) => {
-        const next = [...prev];
-        next[k] = Math.round(nextY);
-        return next;
-      });
-    } else if (r > 0) {
-      // If it's the last row (e.g. Row 3 long hair), move the upper divider upwards to make row 3 taller!
-      const k = r;
-      const minY = rowDividers[k - 1] + 25;
-      const maxY = rowDividers[k + 1] - 25;
-      const nextY = Math.max(minY, Math.min(maxY, rowDividers[k] - deltaH));
-      setRowDividers((prev) => {
-        const next = [...prev];
-        next[k] = Math.round(nextY);
-        return next;
-      });
-    }
-  };
-
-  const handleAdjustColWidth = (deltaW: number) => {
-    if (!selectedCell || colDividers.length === 0) return;
-    const c = selectedCell.col;
-    const cols = currentCategory.cols;
-
-    if (c + 1 < cols) {
-      const k = c + 1;
-      const minX = colDividers[k - 1] + 25;
-      const maxX = colDividers[k + 1] - 25;
-      const nextX = Math.max(minX, Math.min(maxX, colDividers[k] + deltaW));
-      setColDividers((prev) => {
-        const next = [...prev];
-        next[k] = Math.round(nextX);
-        return next;
-      });
-    }
-  };
-
-  const handleResetAllDividers = () => {
-    if (loadedImageRef.current) {
-      initDividers(loadedImageRef.current);
-    }
-  };
-
-  /**
-   * Opens the full Pixel Eraser & Zoom Cleanup Modal for a specific cell
-   */
-  const handleOpenCellPixelEditor = (cell: GridCellDefinition) => {
-    const cellKey = `${cell.row}_${cell.col}`;
-    let dataUrl = slicedResults.get(cellKey);
-
+  const openCellPixelEditor = (cell: GridCellDefinition) => {
+    const key = `${cell.row}_${cell.col}`;
+    const dataUrl = slicedResults.get(key);
     if (!dataUrl && loadedImageRef.current) {
-      const rect = getCellRect(cell.row, cell.col, loadedImageRef.current);
-      dataUrl = sliceAndRemoveBgCell(loadedImageRef.current, rect.x, rect.y, rect.w, rect.h);
+      // Create quick slice for this cell
+      const x0 = colDividers[cell.col];
+      const y0 = rowDividers[cell.row];
+      const w = colDividers[cell.col + 1] - x0;
+      const h = rowDividers[cell.row + 1] - y0;
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        tempCtx.drawImage(loadedImageRef.current, x0, y0, w, h, 0, 0, w, h);
+        setEditingCellOriginalDataUrl(tempCanvas.toDataURL());
+      }
+    } else if (dataUrl) {
+      setEditingCellOriginalDataUrl(dataUrl);
     }
-
-    if (dataUrl) {
-      setEditingCellData({ cell, dataUrl });
-    }
+    setEditingCellDef(cell);
+    setIsEraserOpen(true);
   };
 
-  /**
-   * Saves updated sliced PNG from Pixel Eraser Modal and syncs directly with 3D Billboard Turntable Engine
-   */
-  const handleSaveCellPixelEdit = (newDataUrl: string) => {
-    if (!editingCellData) return;
-    const { cell } = editingCellData;
-    const cellKey = `${cell.row}_${cell.col}`;
+  // Auto Slice & Assemble Algorithm using High-Performance Chroma & Despeckle Processor
+  const handleAutoSliceAndAssemble = useCallback((overrides?: Partial<Parameters<typeof processCellChromaAndDespeckle>[3]>) => {
+    const img = loadedImageRef.current;
+    if (!img) return;
 
-    // 1. Update slicedResults Map
-    setSlicedResults((prev) => {
-      const next = new Map(prev);
-      next.set(cellKey, newDataUrl);
-      return next;
-    });
+    const effTol = overrides?.tolerance !== undefined ? overrides.tolerance : tolerance;
+    const effFeather = overrides?.feather !== undefined ? overrides.feather : feather;
+    const effKeyType = overrides?.keyColorType !== undefined ? overrides.keyColorType : keyColorType;
+    const effKeyHex = overrides?.keyColorHex !== undefined ? overrides.keyColorHex : keyColorHex;
+    const effIsoMode = overrides?.isolationMode !== undefined ? overrides.isolationMode : isolationMode;
+    const effDespeckle = overrides?.despeckleSize !== undefined ? overrides.despeckleSize : despeckleSize;
+    const effWhiteSens = overrides?.whiteSpeckleSensitivity !== undefined ? overrides.whiteSpeckleSensitivity : whiteSpeckleSensitivity;
+    const effKeepLargest = overrides?.keepLargestIslandOnly !== undefined ? overrides.keepLargestIslandOnly : keepLargestIslandOnly;
 
-    // 2. Update 3D Character Assembly & Three Engine
-    if (cell.partSlot) {
+    setIsProcessing(true);
+    setTimeout(() => {
+      const results = new Map<string, string>();
       const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-      const slot = cell.partSlot;
-      if (!updatedAssembly.parts[slot]) {
-        updatedAssembly.parts[slot] = {
-          path: newDataUrl,
-          offset: [0, 0],
-          scale: [1, 1],
-          rotation: 0,
-          pivot: [0.5, 0.5],
-          flipX: false,
-          flipY: false,
-          z_index: 5,
-          opacity: 1,
-          angles: {},
-        };
-      }
 
-      const targetPart = updatedAssembly.parts[slot]!;
-      if (!targetPart.angles) targetPart.angles = {};
-      if (cell.angle) {
-        targetPart.angles[cell.angle] = newDataUrl;
+      currentCategory.cells.forEach((cell) => {
+        if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) return;
 
-        if (cell.angle === 'front') {
-          targetPart.path = newDataUrl;
+        const x0 = colDividers[cell.col];
+        const y0 = rowDividers[cell.row];
+        const w = colDividers[cell.col + 1] - x0;
+        const h = rowDividers[cell.row + 1] - y0;
+
+        const cellCanvas = document.createElement('canvas');
+        cellCanvas.width = w;
+        cellCanvas.height = h;
+        const ctx = cellCanvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
+
+        // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with latest effective values
+        processCellChromaAndDespeckle(ctx, w, h, {
+          keyColorType: effKeyType,
+          keyColorHex: effKeyHex,
+          isolationMode: effIsoMode,
+          tolerance: effTol,
+          feather: effFeather,
+          despeckleSize: effDespeckle,
+          whiteSpeckleSensitivity: effWhiteSens,
+          keepLargestIslandOnly: effKeepLargest,
+        });
+
+        const dataUrl = cellCanvas.toDataURL('image/png');
+        const key = `${cell.row}_${cell.col}`;
+        results.set(key, dataUrl);
+        slicedCanvasesRef.current.set(key, cellCanvas);
+
+        // Map to 3D Assembly part (ensure part exists in assembly)
+        if (cell.partSlot) {
+          if (!updatedAssembly.parts[cell.partSlot]) {
+            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
+            updatedAssembly.parts[cell.partSlot] = {
+              path: dataUrl,
+              offset: hierarchy?.defaultOffset ?? [0, 0],
+              scale: [1, 1],
+              rotation: 0,
+              pivot: hierarchy?.defaultPivot ?? [0.5, 0.5],
+              flipX: false,
+              flipY: false,
+              z_index: hierarchy?.defaultZ ?? 1,
+              z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
+              opacity: 1,
+              angles: {},
+            };
+          }
+          const part = updatedAssembly.parts[cell.partSlot]!;
+          if (!part.path || cell.angle === 'front' || cell.row === 0 || cell.row === 2) {
+            part.path = dataUrl;
+          }
+          if (cell.angle) {
+            if (!part.angles) part.angles = {};
+            part.angles[cell.angle] = dataUrl;
+            if (cell.mirrorAngle) {
+              part.angles[cell.mirrorAngle] = dataUrl;
+            }
+          }
         }
-      }
-      if (cell.mirrorAngle) {
-        targetPart.angles[cell.mirrorAngle] = newDataUrl;
-      }
+      });
+
+      setSlicedResults(results);
+      setHasExplicitlySliced(true);
+      setPreviewDisplayMode('transparent');
+      setAssemblySuccess(true);
+      setIsProcessing(false);
 
       onApplyAssembly(updatedAssembly);
-
       if (threeEngineRef.current) {
         threeEngineRef.current.setAssembly(updatedAssembly);
       }
+      redrawCanvas();
+    }, 20);
+  }, [
+    currentAssembly,
+    currentCategory,
+    colDividers,
+    rowDividers,
+    keyColorType,
+    keyColorHex,
+    isolationMode,
+    tolerance,
+    feather,
+    despeckleSize,
+    whiteSpeckleSensitivity,
+    keepLargestIslandOnly,
+    onApplyAssembly,
+    redrawCanvas,
+  ]);
+
+  // Adjust Column Width
+  const adjustColWidth = (deltaPx: number) => {
+    if (!selectedCell) return;
+    const c = selectedCell.col;
+    setColDividers((prev) => {
+      const next = [...prev];
+      if (c + 1 < next.length) {
+        next[c + 1] = Math.max(next[c] + 15, next[c + 1] + deltaPx);
+      }
+      return next;
+    });
+    if (hasExplicitlySliced) {
+      handleAutoSliceAndAssemble();
     }
+  };
 
-    // 3. Update cached Image element for grid canvas
-    const imgEl = new Image();
-    imgEl.onload = () => {
-      slicedImgElementsRef.current.set(cellKey, imgEl);
-      drawGridOverlay();
-    };
-    imgEl.src = newDataUrl;
-
-    setEditingCellData(null);
+  // Reset All Dividers
+  const resetAllDividers = () => {
+    const img = loadedImageRef.current;
+    if (img) {
+      initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
+      if (hasExplicitlySliced) {
+        handleAutoSliceAndAssemble();
+      }
+    }
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr 420px', gap: 14, height: '100%', overflow: 'hidden' }}>
-      {/* ─── LEFT COLUMN: Category Selector & Slicing Controls ─────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', paddingRight: 4 }}>
-        {/* Category Selector */}
-        <div>
-          <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4, fontWeight: 700 }}>
-            1. Chọn Loại Bảng Cần Cắt Ghép:
-          </label>
-          <select
-            value={selectedCatId}
-            onChange={(e) => {
-              setSelectedCatId(e.target.value);
-              setSelectedCell(null);
-            }}
-            style={{
-              width: '100%',
-              padding: '7px 8px',
-              fontSize: 11,
-              background: '#0f172a',
-              color: '#38bdf8',
-              border: '1px solid #0284c7',
-              borderRadius: 6,
-              fontWeight: 700,
-            }}
-          >
-            {GRID_CATEGORY_DEFINITIONS.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
-          <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-            {currentCategory.description}
-          </div>
-        </div>
-
-        {/* Upload or Load Demo */}
-        <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: 10, borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Upload size={13} /> 2. Nhập Ảnh Sprite Sheet AI:
-            </span>
-            {userUploadedImageUrl && (
-              <span style={{ fontSize: 9, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '2px 5px', borderRadius: 3 }}>
-                ✓ Đã tải ảnh riêng
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                flex: 1,
-                padding: '7px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 5,
-                background: userUploadedImageUrl ? '#0284c7' : '#0284c7',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5,
-              }}
-            >
-              <Upload size={12} /> {userUploadedImageUrl ? 'Tải Ảnh Khác' : 'Tải Ảnh Lên'}
-            </button>
-
-            <button
-              onClick={() => {
-                setUserUploadedImageUrl(null);
-                const demoUrl = generateDemoGridSpriteSheet(selectedCatId, keyColorType === 'chroma_green' ? 'chroma_green' : 'pure_white');
-                loadImage(demoUrl, false);
-              }}
-              style={{
-                padding: '7px 10px',
-                fontSize: 11,
-                borderRadius: 5,
-                background: 'rgba(255,255,255,0.06)',
-                color: '#94a3b8',
-                border: '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer',
-              }}
-              title="Dùng lại ảnh mẫu sprite sheet"
-            >
-              Ảnh Mẫu
-            </button>
-          </div>
-        </div>
-
-        {/* Chroma Key & Despeckle Cleanup Section */}
-        <div style={{ background: 'rgba(34, 197, 94, 0.06)', padding: 10, borderRadius: 6, border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Scissors size={13} /> 3. Xử Lý Tách Nền & Khử Đốm Rác:
-            </span>
-          </div>
-
-          {/* Sub-tab Switcher */}
-          <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.35)', padding: 3, borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
-            <button
-              onClick={() => setBgCleanupSubTab('chroma')}
-              style={{
-                flex: 1,
-                padding: '5px 4px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 4,
-                border: 'none',
-                background: bgCleanupSubTab === 'chroma' ? '#0284c7' : 'transparent',
-                color: bgCleanupSubTab === 'chroma' ? '#ffffff' : '#94a3b8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
-            >
-              <Scissors size={11} /> 1. Tách Nền Màu
-            </button>
-
-            <button
-              onClick={() => setBgCleanupSubTab('despeckle')}
-              style={{
-                flex: 1,
-                padding: '5px 4px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 4,
-                border: 'none',
-                background: bgCleanupSubTab === 'despeckle' ? '#0284c7' : 'transparent',
-                color: bgCleanupSubTab === 'despeckle' ? '#ffffff' : '#94a3b8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
-            >
-              <Sparkles size={11} /> 2. 🧹 Khử Đốm Trắng/Rác
-            </button>
-          </div>
-
-          {bgCleanupSubTab === 'chroma' ? (
-            /* Sub-tab 1: Chroma Key controls */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                <button
-                  onClick={() => {
-                    setKeyColorType('chroma_green');
-                    setKeyColorHex('#00ff00');
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '5px',
-                    fontSize: 10,
-                    fontWeight: 600,
-                    borderRadius: 4,
-                    border: keyColorType === 'chroma_green' ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
-                    background: keyColorType === 'chroma_green' ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-                    color: keyColorType === 'chroma_green' ? '#4ade80' : '#94a3b8',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🟢 Xanh Chroma
-                </button>
-
-                <button
-                  onClick={() => {
-                    setKeyColorType('pure_white');
-                    setKeyColorHex('#ffffff');
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '5px',
-                    fontSize: 10,
-                    fontWeight: 600,
-                    borderRadius: 4,
-                    border: keyColorType === 'pure_white' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                    background: keyColorType === 'pure_white' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                    color: keyColorType === 'pure_white' ? '#38bdf8' : '#94a3b8',
-                    cursor: 'pointer',
-                  }}
-                >
-                  ⚪ Nền Trắng
-                </button>
-
-                {/* Custom Color Eyedropper */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: 'rgba(0,0,0,0.4)',
-                    padding: '3px 6px',
-                    borderRadius: 4,
-                    border: keyColorType === 'custom' ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
-                  }}
-                  title="Chọn màu nền tùy chỉnh"
-                >
-                  <input
-                    type="color"
-                    value={keyColorHex}
-                    onChange={(e) => {
-                      setKeyColorHex(e.target.value);
-                      setKeyColorType('custom');
-                      if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                    }}
-                    style={{ width: 20, height: 20, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
-                  />
-                </div>
-              </div>
-
-              {/* Mask Mode Selector */}
-              <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 3, borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <button
-                  onClick={() => {
-                    setMaskMode('flood_fill_outer');
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '5px 6px',
-                    fontSize: 9.5,
-                    fontWeight: 700,
-                    borderRadius: 4,
-                    border: 'none',
-                    background: maskMode === 'flood_fill_outer' ? '#0284c7' : 'transparent',
-                    color: maskMode === 'flood_fill_outer' ? '#ffffff' : '#94a3b8',
-                    cursor: 'pointer',
-                  }}
-                  title="Chỉ xóa nền từ mép viền ngoài vào, chống thủng lỗ bên trong tóc/cơ thể"
-                >
-                  🛡️ Loang Viền (Chống Thủng Lõi)
-                </button>
-                <button
-                  onClick={() => {
-                    setMaskMode('global_color');
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '5px 6px',
-                    fontSize: 9.5,
-                    fontWeight: 600,
-                    borderRadius: 4,
-                    border: 'none',
-                    background: maskMode === 'global_color' ? '#0284c7' : 'transparent',
-                    color: maskMode === 'global_color' ? '#ffffff' : '#94a3b8',
-                    cursor: 'pointer',
-                  }}
-                  title="Xóa mọi pixel trùng màu trên toàn bộ ảnh"
-                >
-                  🌐 Toàn Cục
-                </button>
-              </div>
-
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <span>Độ nhạy tách nền:</span>
-                  <span style={{ color: '#4ade80', fontWeight: 700 }}>{tolerance}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="5"
-                  max="95"
-                  value={tolerance}
-                  onChange={(e) => setTolerance(parseInt(e.target.value))}
-                  onMouseUp={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  onTouchEnd={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  style={{ width: '100%', cursor: 'pointer' }}
-                />
-              </div>
-
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <span>Làm mềm viền (Feather):</span>
-                  <span style={{ color: '#4ade80', fontWeight: 700 }}>{feather}px</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="20"
-                  value={feather}
-                  onChange={(e) => setFeather(parseInt(e.target.value))}
-                  onMouseUp={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  onTouchEnd={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  style={{ width: '100%', cursor: 'pointer' }}
-                />
-              </div>
-
-              {/* De-Spill Green Suppression Toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#94a3b8', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={enableDeSpill}
-                  onChange={(e) => {
-                    setEnableDeSpill(e.target.checked);
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span>Khử ánh phản quang viền tóc (De-Spill)</span>
-              </label>
-            </div>
-          ) : (
-            /* Sub-tab 2: Despeckle / Isolated Speckle Filter */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <span>🧹 Kích thước đốm rác cần xóa:</span>
-                  <span style={{ color: '#38bdf8', fontWeight: 700 }}>{despeckleSize} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="150"
-                  value={despeckleSize}
-                  onChange={(e) => setDespeckleSize(parseInt(e.target.value))}
-                  onMouseUp={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  onTouchEnd={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  style={{ width: '100%', cursor: 'pointer' }}
-                />
-                <div style={{ fontSize: 9, color: '#64748b', marginTop: 1 }}>
-                  Tự động xóa mọi đốm rác/hạt cô lập có diện tích ≤ {despeckleSize}px không nối liền thân tóc.
-                </div>
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <button
-                  onClick={() => {
-                    setDespeckleSize(0);
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{ flex: 1, padding: '4px', fontSize: 9, borderRadius: 3, background: despeckleSize === 0 ? '#0284c7' : 'rgba(255,255,255,0.06)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Tắt (0)
-                </button>
-                <button
-                  onClick={() => {
-                    setDespeckleSize(15);
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{ flex: 1, padding: '4px', fontSize: 9, borderRadius: 3, background: despeckleSize === 15 ? '#0284c7' : 'rgba(255,255,255,0.06)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Nhẹ (15)
-                </button>
-                <button
-                  onClick={() => {
-                    setDespeckleSize(40);
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{ flex: 1, padding: '4px', fontSize: 9, borderRadius: 3, background: despeckleSize === 40 ? '#0284c7' : 'rgba(255,255,255,0.06)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Vừa (40)
-                </button>
-                <button
-                  onClick={() => {
-                    setDespeckleSize(80);
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{ flex: 1, padding: '4px', fontSize: 9, borderRadius: 3, background: despeckleSize === 80 ? '#0284c7' : 'rgba(255,255,255,0.06)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Mạnh (80)
-                </button>
-              </div>
-
-              {/* White Speckle Sensitivity Slider */}
-              <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <span>⚪ Độ nhạy khử đốm trắng rải rác:</span>
-                  <span style={{ color: '#38bdf8', fontWeight: 700 }}>{whiteSpeckleSensitivity}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={whiteSpeckleSensitivity}
-                  onChange={(e) => setWhiteSpeckleSensitivity(parseInt(e.target.value))}
-                  onMouseUp={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  onTouchEnd={() => {
-                    if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                  }}
-                  style={{ width: '100%', cursor: 'pointer' }}
-                />
-              </div>
-
-              {/* Keep Largest Island Only Toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#94a3b8', cursor: 'pointer', marginTop: 2 }}>
-                <input
-                  type="checkbox"
-                  checked={keepLargestIslandOnly}
-                  onChange={(e) => {
-                    setKeepLargestIslandOnly(e.target.checked);
-                    if (hasExplicitlySliced) setTimeout(() => handleAutoSliceAndAssemble3D(), 50);
-                  }}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span>🛡️ Chỉ giữ lại cụm tóc chính (Xóa 100% đốm bụi bay)</span>
-              </label>
-            </div>
-          )}
-        </div>
-
-        {/* Fine-tune Grid Sliders */}
-        <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: 10, borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <Sliders size={12} /> Căn Chỉnh Khung Lưới (Margin / Gap):
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <div>
-              <label style={{ fontSize: 9, color: '#64748b' }}>Lề X (Margin): {gridMarginX}px</label>
-              <input
-                type="range"
-                min="0"
-                max="40"
-                value={gridMarginX}
-                onChange={(e) => setGridMarginX(parseInt(e.target.value))}
-                onMouseUp={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                onTouchEnd={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 9, color: '#64748b' }}>Lề Y (Margin): {gridMarginY}px</label>
-              <input
-                type="range"
-                min="0"
-                max="40"
-                value={gridMarginY}
-                onChange={(e) => setGridMarginY(parseInt(e.target.value))}
-                onMouseUp={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                onTouchEnd={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <div>
-              <label style={{ fontSize: 9, color: '#64748b' }}>Khoảng cách X (Gap): {gridGapX}px</label>
-              <input
-                type="range"
-                min="0"
-                max="30"
-                value={gridGapX}
-                onChange={(e) => setGridGapX(parseInt(e.target.value))}
-                onMouseUp={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                onTouchEnd={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 9, color: '#64748b' }}>Khoảng cách Y (Gap): {gridGapY}px</label>
-              <input
-                type="range"
-                min="0"
-                max="30"
-                value={gridGapY}
-                onChange={(e) => setGridGapY(parseInt(e.target.value))}
-                onMouseUp={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                onTouchEnd={() => {
-                  if (hasExplicitlySliced) handleAutoSliceAndAssemble3D();
-                }}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Big Action Button */}
-        <button
-          onClick={handleAutoSliceAndAssemble3D}
-          disabled={isProcessing}
-          style={{
-            marginTop: 'auto',
-            padding: '12px 14px',
-            fontSize: 12,
-            fontWeight: 800,
-            borderRadius: 8,
-            background: assemblySuccess ? '#22c55e' : 'linear-gradient(135deg, #0284c7, #0369a1, #38bdf8)',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            boxShadow: '0 6px 20px rgba(2, 132, 199, 0.4)',
-            transition: 'all 0.2s',
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
+      {/* Main 3-Column Studio Grid: 260px Sidebar, 1fr Interactive Canvas, 400px 3D Preview */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '260px 1fr 400px', gap: 8, minHeight: 0 }}>
+        {/* Left Column: Slicer Controls & Filters */}
+        <SlicerSidebarControls
+          selectedCatId={selectedCatId}
+          onSelectCatId={setSelectedCatId}
+          userUploadedImageUrl={userUploadedImageUrl}
+          onFileUpload={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const url = URL.createObjectURL(file);
+              setUserUploadedImageUrl(url);
+              setHasExplicitlySliced(false);
+              setSlicedResults(new Map());
+              setPreviewDisplayMode('original');
+              setAssemblySuccess(false);
+            }
           }}
-        >
-          {isProcessing ? <RefreshCw size={15} className="animate-spin" /> : assemblySuccess ? <Check size={15} /> : <Sparkles size={15} />}
-          {isProcessing ? 'Đang Tách Nền & Lắp Ghép...' : assemblySuccess ? 'Đã Ghép Xong Bộ Linh Kiện 3D!' : '⚡ TÁCH NỀN & GHÉP BỘ LINH KIỆN 3D'}
-        </button>
-      </div>
-
-      {/* ─── MIDDLE COLUMN: Visual Grid Overlay Canvas ──────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(15, 23, 42, 0.7)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Layers size={14} /> KHUNG LƯỚI CẮT ({currentCategory.rows} DÃY × {currentCategory.cols} CỘT)
-          </div>
-
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button
-              onClick={() => {
-                setPreviewDisplayMode('transparent');
-              }}
-              style={{
-                padding: '4px 9px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 5,
-                background: previewDisplayMode === 'transparent' ? '#0284c7' : 'rgba(255,255,255,0.05)',
-                color: previewDisplayMode === 'transparent' ? '#ffffff' : '#94a3b8',
-                border: previewDisplayMode === 'transparent' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: previewDisplayMode === 'transparent' ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
-              }}
-            >
-              <Sparkles size={11} /> ✨ Đã Tách Nền (Caro)
-            </button>
-
-            <button
-              onClick={() => {
-                setPreviewDisplayMode('original');
-              }}
-              style={{
-                padding: '4px 9px',
-                fontSize: 10,
-                fontWeight: 600,
-                borderRadius: 5,
-                background: previewDisplayMode === 'original' ? '#0284c7' : 'rgba(255,255,255,0.05)',
-                color: previewDisplayMode === 'original' ? '#ffffff' : '#94a3b8',
-                border: previewDisplayMode === 'original' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: previewDisplayMode === 'original' ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
-              }}
-            >
-              <Eye size={11} /> 👁️ Ảnh Gốc
-            </button>
-          </div>
-        </div>
-
-        {/* Canvas Display */}
-        <div
-          style={{
-            flex: 1,
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'auto',
-            background: '#090d16',
-            borderRadius: 6,
-            border: '1px solid rgba(255,255,255,0.1)',
-            padding: 8,
+          onResetToDemoImage={() => {
+            setUserUploadedImageUrl(null);
+            setHasExplicitlySliced(false);
+            setSlicedResults(new Map());
+            setPreviewDisplayMode('original');
+            setAssemblySuccess(false);
           }}
-        >
-          <canvas
-            ref={imageCanvasRef}
+          fileInputRef={fileInputRef}
+          keyColorType={keyColorType}
+          setKeyColorType={setKeyColorType}
+          keyColorHex={keyColorHex}
+          setKeyColorHex={setKeyColorHex}
+          isolationMode={isolationMode}
+          setIsolationMode={setIsolationMode}
+          tolerance={tolerance}
+          setTolerance={setTolerance}
+          feather={feather}
+          setFeather={setFeather}
+          bgCleanupSubTab={bgCleanupSubTab}
+          setBgCleanupSubTab={setBgCleanupSubTab}
+          despeckleSize={despeckleSize}
+          setDespeckleSize={setDespeckleSize}
+          whiteSpeckleSensitivity={whiteSpeckleSensitivity}
+          setWhiteSpeckleSensitivity={setWhiteSpeckleSensitivity}
+          keepLargestIslandOnly={keepLargestIslandOnly}
+          setKeepLargestIslandOnly={setKeepLargestIslandOnly}
+          isProcessing={isProcessing}
+          assemblySuccess={assemblySuccess}
+          onAutoSliceAndAssemble={handleAutoSliceAndAssemble}
+          onCommitSliderChange={(overrides) => {
+            if (hasExplicitlySliced) {
+              handleAutoSliceAndAssemble(overrides);
+            }
+          }}
+          slicedCount={slicedResults.size}
+          totalCellCount={currentCategory.cells.length}
+          onOpenSaveKitModal={() => {
+            setSaveKitName(currentCategory.label);
+            setIsSaveKitModalOpen(true);
+          }}
+          onOpenCatalogModal={() => setIsCatalogOpen(true)}
+        />
+
+        {/* Center Column: Interactive Canvas Slicer & Adjuster */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflow: 'hidden' }}>
+          <SlicerCellAdjustmentBar
+            selectedCell={selectedCell}
+            slicedCellDataUrl={selectedCell ? slicedResults.get(`${selectedCell.row}_${selectedCell.col}`) : undefined}
+            onOpenCellPixelEditor={openCellPixelEditor}
+            onAdjustColWidth={adjustColWidth}
+            onResetAllDividers={resetAllDividers}
+          />
+
+          <SlicerInteractiveCanvas
+            imageCanvasRef={imageCanvasRef}
+            previewDisplayMode={previewDisplayMode}
+            setPreviewDisplayMode={setPreviewDisplayMode}
+            hasExplicitlySliced={hasExplicitlySliced}
+            currentCategory={currentCategory}
             onMouseDown={handleCanvasMouseDown}
             onDoubleClick={handleCanvasDoubleClick}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
-            style={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              objectFit: 'contain',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-            }}
           />
         </div>
 
-        {/* Selected Cell Custom Sizing & Adjustment Banner */}
-        {selectedCell ? (
-          <div style={{ background: '#0b1329', padding: '8px 12px', borderRadius: 6, border: '1px solid #0284c7', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>
-                  Đang chọn: [{selectedCell.row + 1}, {selectedCell.col + 1}] - {selectedCell.label}
-                  <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 8, fontWeight: 400 }}>
-                    (Nhấp đúp vào ô trên ảnh để mở cọ tẩy xóa pixel thừa)
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>
-                  Vị trí Slot: <b>{selectedCell.partSlot}</b> • Góc Camera: <b>{selectedCell.angle || '0°'}</b>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {slicedResults.get(`${selectedCell.row}_${selectedCell.col}`) && (
-                  <img
-                    src={slicedResults.get(`${selectedCell.row}_${selectedCell.col}`)}
-                    alt="Cell preview"
-                    style={{ width: 36, height: 36, objectFit: 'contain', background: '#000', borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)' }}
-                  />
-                )}
-
-                {/* Open Pixel Eraser Modal Button */}
-                <button
-                  onClick={() => handleOpenCellPixelEditor(selectedCell)}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    borderRadius: 5,
-                    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                    color: '#fff',
-                    border: '1px solid #38bdf8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
-                  }}
-                  title="Mở hộp thoại phóng to ô này để dùng cọ tẩy xóa thủ công từng pixel hoặc đốm trắng thừa"
-                >
-                  <Eraser size={14} /> 🎨 Tẩy / Xóa Chi Tiết Ô Này
-                </button>
-
-                <button
-                  onClick={handleResetAllDividers}
-                  style={{
-                    padding: '5px 8px',
-                    fontSize: 10,
-                    borderRadius: 4,
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#94a3b8',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    cursor: 'pointer',
-                  }}
-                  title="Đặt lại toàn bộ đường kẻ về mặc định đều nhau"
-                >
-                  🔄 Reset Lưới
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Extension Buttons for Long Hair / Row & Column Adjustments */}
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#e2e8f0' }}>🔽 Kéo dài hàng này (Cao):</span>
-              <button
-                onClick={() => handleAdjustRowHeight(15)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-              >
-                +15px
-              </button>
-              <button
-                onClick={() => handleAdjustRowHeight(30)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-              >
-                +30px
-              </button>
-              <button
-                onClick={() => handleAdjustRowHeight(60)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-              >
-                +60px
-              </button>
-              <button
-                onClick={() => handleAdjustRowHeight(-15)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-              >
-                -15px
-              </button>
-
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#e2e8f0', marginLeft: 8 }}>↔️ Chiều rộng cột:</span>
-              <button
-                onClick={() => handleAdjustColWidth(15)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: '#0369a1', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-              >
-                +15px
-              </button>
-              <button
-                onClick={() => handleAdjustColWidth(30)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: '#0369a1', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-              >
-                +30px
-              </button>
-              <button
-                onClick={() => handleAdjustColWidth(-15)}
-                style={{ padding: '3px 7px', fontSize: 10, borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-              >
-                -15px
-              </button>
-
-              <button
-                onClick={handleResetAllDividers}
-                style={{
-                  marginLeft: 'auto',
-                  padding: '3px 8px',
-                  fontSize: 10,
-                  borderRadius: 4,
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  color: '#f87171',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  cursor: 'pointer',
-                }}
-              >
-                Reset Toàn Bộ Lưới
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ background: '#0b1329', padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', fontSize: 10, color: '#94a3b8' }}>
-            💡 <i>Mẹo: Rê chuột vào các đường kẻ nét đứt bên trong khung ảnh (sẽ hiện con trỏ ↔ hoặc ↕), bấm giữ và kéo để co giãn kích thước các hàng/cột tự do mà không làm dịch chuyển ảnh.</i>
-          </div>
-        )}
+        {/* Right Column: 3D Turntable Preview, 360° & 2D Backgrounds (Spacious 400px) */}
+        <Slicer3DTurntablePreview
+          threeContainerRef={threeContainerRef}
+          threeEngineRef={threeEngineRef}
+          activeAngleInfo={activeAngleInfo}
+          turntableAngle={turntableAngle}
+          setTurntableAngle={setTurntableAngle}
+          timeOfDay={timeOfDay}
+          setTimeOfDay={setTimeOfDay}
+          slicedResults={slicedResults}
+          currentCategory={currentCategory}
+          selectedCell={selectedCell}
+          onSelectCell={setSelectedCell}
+          onOpenSaveKitModal={() => {
+            setSaveKitName(currentCategory.label);
+            setIsSaveKitModalOpen(true);
+          }}
+          onOpenCatalogModal={() => setIsCatalogOpen(true)}
+          onOpenTunerModal={() => setIsTunerOpen(true)}
+        />
       </div>
 
-      {/* ─── RIGHT COLUMN: Live 3D Multi-Angle Turntable Preview ────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(15, 23, 42, 0.7)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', fontSize: 12, fontWeight: 700, color: '#38bdf8', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Compass size={14} /> XEM TRƯỚC 3D ĐA GÓC
-          </span>
-          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
-            {activeAngleInfo.compassDirection} • {activeAngleInfo.angleDeg}°
-          </span>
-        </div>
+      {/* Pixel Eraser Modal */}
+      {isEraserOpen && editingCellDef && (
+        <CellPixelEraserModal
+          isOpen={isEraserOpen}
+          cellTitle={`${editingCellDef.label} [${editingCellDef.row + 1}, ${editingCellDef.col + 1}]`}
+          initialImageDataUrl={editingCellOriginalDataUrl}
+          onClose={() => setIsEraserOpen(false)}
+          onSave={(editedDataUrl: string) => {
+            if (!editingCellDef) return;
+            const key = `${editingCellDef.row}_${editingCellDef.col}`;
+            setSlicedResults((prev) => {
+              const next = new Map(prev);
+              next.set(key, editedDataUrl);
+              return next;
+            });
+            const pImg = new Image();
+            pImg.onload = () => {
+              const c = document.createElement('canvas');
+              c.width = pImg.width;
+              c.height = pImg.height;
+              const ctx = c.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(pImg, 0, 0);
+                slicedCanvasesRef.current.set(key, c);
+                redrawCanvas();
+              }
+            };
+            pImg.src = editedDataUrl;
 
-        {/* 3D WebGL Container */}
-        <div
-          ref={threeContainerRef}
-          style={{
-            width: '100%',
-            height: 250,
-            flexShrink: 0,
-            borderRadius: 6,
-            overflow: 'hidden',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            background: '#090d16',
+            // Update 3D Assembly immediately
+            const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
+            if (editingCellDef.partSlot && updatedAssembly.parts[editingCellDef.partSlot]) {
+              const part = updatedAssembly.parts[editingCellDef.partSlot]!;
+              part.path = editedDataUrl;
+              if (editingCellDef.angle) {
+                if (!part.angles) part.angles = {};
+                part.angles[editingCellDef.angle] = editedDataUrl;
+              }
+            }
+            onApplyAssembly(updatedAssembly);
+            if (threeEngineRef.current) {
+              threeEngineRef.current.setAssembly(updatedAssembly);
+            }
+            setIsEraserOpen(false);
           }}
         />
-
-        {/* Angle Turntable Slider */}
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>
-            <span>Xoay Camera 360°:</span>
-            <span style={{ color: '#38bdf8', fontWeight: 600 }}>{activeAngleInfo.angleLabel}</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="360"
-            value={turntableAngle}
-            onChange={(e) => {
-              const val = parseInt(e.target.value);
-              setTurntableAngle(val);
-              if (threeEngineRef.current) {
-                threeEngineRef.current.jumpToAngle(val);
-              }
-            }}
-            style={{ width: '100%' }}
-          />
-        </div>
-
-        {/* Sliced Thumbnails Strip - Stretches all the way to bottom */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Linh kiện đã bóc tách ({slicedResults.size}/{currentCategory.cells.length} ô):</span>
-            {slicedResults.size > 0 && (
-              <span style={{ fontSize: 9, color: '#4ade80', fontWeight: 600 }}>✓ Đã tách nền 100%</span>
-            )}
-          </div>
-          <div
-            style={{
-              flex: 1,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(5, 1fr)',
-              gap: 6,
-              overflowY: 'auto',
-              padding: 6,
-              background: 'rgba(0,0,0,0.3)',
-              borderRadius: 6,
-              border: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            {currentCategory.cells.map((c) => {
-              const key = `${c.row}_${c.col}`;
-              const png = slicedResults.get(key);
-              return (
-                <div
-                  key={key}
-                  onClick={() => setSelectedCell(c)}
-                  title={c.label}
-                  style={{
-                    height: 56,
-                    borderRadius: 4,
-                    background: selectedCell?.row === c.row && selectedCell?.col === c.col ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0,0,0,0.5)',
-                    border: selectedCell?.row === c.row && selectedCell?.col === c.col ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    overflow: 'hidden',
-                    padding: 2,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {png ? (
-                    <img src={png} alt={c.label} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    <span style={{ fontSize: 9, color: '#475569', fontWeight: 600 }}>R{c.row + 1}C{c.col + 1}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Toast Notification for Kit Saving */}
-        {saveKitToast && (
-          <div
-            style={{
-              padding: '6px 10px',
-              borderRadius: 6,
-              background: 'linear-gradient(90deg, #059669, #10b981)',
-              color: '#fff',
-              fontSize: 10.5,
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)',
-            }}
-          >
-            <Check size={13} /> {saveKitToast}
-          </div>
-        )}
-
-        {/* Action Buttons Row */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {/* Save Current Slices as Kit Button */}
-            <button
-              onClick={handleOpenSaveKitModal}
-              style={{
-                padding: '9px 8px',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 6,
-                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                color: '#fff',
-                border: '1px solid #38bdf8',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5,
-                boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)',
-              }}
-              title="Lưu toàn bộ linh kiện đã cắt thành 1 bộ tài nguyên để tái sử dụng hoặc lắp ráp nhân vật"
-            >
-              <Save size={13} /> 💾 Lưu Bộ Linh Kiện
-            </button>
-
-            {/* Open Resource Catalog Button */}
-            <button
-              onClick={() => setIsCatalogModalOpen(true)}
-              style={{
-                padding: '9px 8px',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 6,
-                background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                color: '#fff',
-                border: '1px solid #c084fc',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5,
-                boxShadow: '0 0 12px rgba(168, 85, 247, 0.3)',
-              }}
-              title="Mở kho tài nguyên linh kiện đa góc và tinh chỉnh cấu trúc hiển thị bộ tóc"
-            >
-              <FolderOpen size={13} /> 🛍️ Kho Tài Nguyên 3D
-            </button>
-          </div>
-
-          {/* Switch to Character Assembly Tab Button */}
-          {onSwitchToAssemblyTab && (
-            <button
-              onClick={onSwitchToAssemblyTab}
-              style={{
-                padding: '9px 12px',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 6,
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-              }}
-            >
-              <ArrowRight size={14} /> Chuyển Sang Bàn Lắp Ráp 2D/3D
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Save Kit Popup Dialog */}
-      {isSaveKitModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10005,
-            background: 'rgba(3, 7, 18, 0.85)',
-            backdropFilter: 'blur(12px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 480,
-              background: '#0b1120',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              borderRadius: 10,
-              padding: 18,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-              boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(56, 189, 248, 0.2)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <BookmarkPlus size={16} color="#38bdf8" /> LƯU BỘ LINH KIỆN VÀO KHO TÀI NGUYÊN
-              </div>
-              <button
-                onClick={() => setIsSaveKitModalOpen(false)}
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>
-                  Tên Bộ Linh Kiện:
-                </label>
-                <input
-                  type="text"
-                  value={saveKitName}
-                  onChange={(e) => setSaveKitName(e.target.value)}
-                  placeholder="Ví dụ: Tóc Nữ Cổ Trang 8 Góc"
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    background: 'rgba(0,0,0,0.4)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    color: '#fff',
-                    fontSize: 12,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>
-                  Phân Loại Danh Mục:
-                </label>
-                <select
-                  value={saveKitCategory}
-                  onChange={(e) => setSaveKitCategory(e.target.value as CharacterResourceCategory)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    background: 'rgba(0,0,0,0.4)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    fontSize: 11.5,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <option value="toc">💇 Bộ Tóc 3D (Tóc trước, Tóc sau, Tóc mái)</option>
-                  <option value="mat">👀 Mắt & Biểu Cảm (Chớp mắt, tức giận)</option>
-                  <option value="mieng">👄 Khẩu Hình Miệng (Nói chuyện, cười)</option>
-                  <option value="khuon_mat">👤 Khuôn Mặt & Đầu (Khung sọ, cằm nhọn 90°)</option>
-                  <option value="trang_phuc">👕 Trang Phục & Đạo Bào (Áo, giáp, tà váy)</option>
-                  <option value="vu_khi">⚔️ Vũ Khí & Đạo Cụ (Phi kiếm, quạt, trượng)</option>
-                  <option value="custom_slices">💾 Linh Kiện Của Tôi (Tự Cắt)</option>
-                </select>
-              </div>
-
-              <div style={{ fontSize: 10, color: '#64748b' }}>
-                💡 <i>Bộ linh kiện sau khi lưu sẽ xuất hiện trong Kho Tài Nguyên và có thể lắp ráp hoặc điều chỉnh cấu trúc bất kỳ lúc nào.</i>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-              <button
-                onClick={() => setIsSaveKitModalOpen(false)}
-                style={{
-                  padding: '7px 12px',
-                  fontSize: 11,
-                  borderRadius: 6,
-                  background: 'rgba(255,255,255,0.06)',
-                  color: '#94a3b8',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  cursor: 'pointer',
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleConfirmSaveKit}
-                style={{
-                  padding: '7px 16px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  borderRadius: 6,
-                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                  color: '#fff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
-                }}
-              >
-                💾 Xác Nhận Lưu
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
-      {/* Character Asset Catalog & 3D Structure Tuner Modal */}
-      {isCatalogModalOpen && (
+      {/* Resource Catalog Modal */}
+      {isCatalogOpen && (
         <CharacterAssetCatalogModal
-          isOpen={isCatalogModalOpen}
-          onClose={() => setIsCatalogModalOpen(false)}
+          isOpen={isCatalogOpen}
+          onClose={() => setIsCatalogOpen(false)}
           currentAssembly={currentAssembly}
           onApplyAssembly={(updated) => {
             onApplyAssembly(updated);
@@ -2233,15 +700,75 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         />
       )}
 
-      {/* Manual Pixel Eraser & Zoom Cleanup Modal */}
-      {editingCellData && (
-        <CellPixelEraserModal
-          isOpen={Boolean(editingCellData)}
-          onClose={() => setEditingCellData(null)}
-          cellTitle={`Ô [Hàng ${editingCellData.cell.row + 1}, Cột ${editingCellData.cell.col + 1}]: ${editingCellData.cell.label} (${editingCellData.cell.partSlot})`}
-          initialImageDataUrl={editingCellData.dataUrl}
-          onSave={handleSaveCellPixelEdit}
+      {/* Multi-Angle Part & Hair Layer Tuner Modal */}
+      {isTunerOpen && (
+        <MultiAngleTunerModal
+          isOpen={isTunerOpen}
+          onClose={() => setIsTunerOpen(false)}
+          currentAssembly={currentAssembly}
+          activeCameraAngle={activeAngleInfo.discreteAngle}
+          onApplyAssembly={(updated) => {
+            onApplyAssembly(updated);
+            if (threeEngineRef.current) {
+              threeEngineRef.current.setAssembly(updated);
+            }
+          }}
+          onJumpToAngle={(deg, isTop) => {
+            setTurntableAngle(deg);
+            if (threeEngineRef.current) {
+              threeEngineRef.current.jumpToAngle(deg, isTop);
+            }
+          }}
         />
+      )}
+
+      {/* Save Kit Modal */}
+      {isSaveKitModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#0b1329', padding: 18, borderRadius: 10, border: '1px solid #38bdf8', width: 380, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#38bdf8' }}>💾 Lưu Bộ Linh Kiện Mới Vào Kho:</div>
+            <div>
+              <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Tên bộ:</label>
+              <input
+                type="text"
+                value={saveKitName}
+                onChange={(e) => setSaveKitName(e.target.value)}
+                style={{ width: '100%', padding: '7px 10px', fontSize: 11.5, background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+              <button
+                onClick={() => setIsSaveKitModalOpen(false)}
+                style={{ padding: '7px 14px', fontSize: 11, borderRadius: 5, background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', border: 'none', cursor: 'pointer' }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  const partsMap: Record<string, string> = {};
+                  slicedResults.forEach((val, key) => {
+                    partsMap[key] = val;
+                  });
+                  saveCustomResourceKit({
+                    id: `kit_${Date.now()}`,
+                    name: saveKitName || 'Bộ Linh Kiện Mới',
+                    category: saveKitCategory,
+                    categoryLabel: currentCategory.label,
+                    previewImage: slicedResults.get('0_0') || '',
+                    description: saveKitDescription,
+                    parts: partsMap as any,
+                    createdAt: new Date().toISOString(),
+                  });
+                  setIsSaveKitModalOpen(false);
+                  alert('✓ Đã lưu bộ linh kiện vào kho thành công!');
+                }}
+                style={{ padding: '7px 16px', fontSize: 11.5, fontWeight: 700, borderRadius: 5, background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 2px 10px rgba(2, 132, 199, 0.4)' }}
+              >
+                Lưu Vào Kho
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

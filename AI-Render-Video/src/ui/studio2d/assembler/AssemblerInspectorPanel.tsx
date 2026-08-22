@@ -1,19 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sliders,
   RotateCcw,
   Play,
   Pause,
-  Sparkles,
   Save,
-  Compass,
-  Check,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   Character2DAssembly,
   Character2DPartType,
   Character2DPartConfig,
-  Character2DAngle,
 } from '../../../types/scene2d';
 import { PART_HIERARCHY_CONFIG, generateDemoPartSvg } from '../../../core/assets/Asset2DRegistry';
 
@@ -41,13 +39,11 @@ export const AssemblerInspectorPanel: React.FC<AssemblerInspectorPanelProps> = (
   setAnimMode,
   isPlaying,
   setIsPlaying,
-  isBlinking,
-  setIsBlinking,
-  isTalking,
-  setIsTalking,
   isSaving,
   onSaveCharacter,
 }) => {
+  const [isStructureOpen, setIsStructureOpen] = useState<boolean>(true);
+
   const selectedPart = assembly.parts[selectedSlot] || {
     path: '',
     offset: PART_HIERARCHY_CONFIG[selectedSlot]?.defaultOffset || [0, 0],
@@ -91,32 +87,31 @@ export const AssemblerInspectorPanel: React.FC<AssemblerInspectorPanelProps> = (
   return (
     <div
       style={{
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: 6,
         background: '#0a0f1d',
-        padding: 10,
+        padding: 8,
         borderRadius: 8,
         border: '1px solid rgba(255, 255, 255, 0.08)',
-        overflowY: 'auto',
+        flexShrink: 0,
       }}
     >
-      {/* 1. Animation Player Toolbar */}
-      <div style={{ background: 'rgba(0,0,0,0.35)', padding: 8, borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {/* 1. Diễn Hoạt & Thử Nghiệm (Compact Auto-fit Height) */}
+      <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8' }}>
             🎬 DIỄN HOẠT & THỬ NGHIỆM ĐỘNG HỌC
-          </div>
+          </span>
 
           <button
             onClick={() => setIsPlaying((p) => !p)}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
-              padding: '3px 8px',
-              fontSize: 10,
+              gap: 3,
+              padding: '2px 7px',
+              fontSize: 9.5,
               fontWeight: 700,
               borderRadius: 4,
               background: isPlaying ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
@@ -125,24 +120,24 @@ export const AssemblerInspectorPanel: React.FC<AssemblerInspectorPanelProps> = (
               cursor: 'pointer',
             }}
           >
-            {isPlaying ? <Pause size={10} /> : <Play size={10} />}
+            {isPlaying ? <Pause size={9} /> : <Play size={9} />}
             {isPlaying ? 'Tạm Dừng' : 'Chạy Diễn Hoạt'}
           </button>
         </div>
 
-        {/* Animation Mode Pills */}
+        {/* Animation Mode Buttons in 1 compact row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
           {[
-            { id: 'breathe' as const, label: 'Thở / Nhịp' },
-            { id: 'talk' as const, label: 'Nói Thoại' },
-            { id: 'combat_slash' as const, label: 'Chém Kiếm' },
-            { id: 'idle' as const, label: 'Đứng Yên' },
+            { id: 'breathe' as const, label: 'Thở' },
+            { id: 'talk' as const, label: 'Thoại' },
+            { id: 'combat_slash' as const, label: 'Chém' },
+            { id: 'idle' as const, label: 'Tĩnh' },
           ].map((mode) => (
             <button
               key={mode.id}
               onClick={() => setAnimMode(mode.id)}
               style={{
-                padding: '4px',
+                padding: '3px',
                 fontSize: 9.5,
                 fontWeight: animMode === mode.id ? 700 : 500,
                 borderRadius: 4,
@@ -158,135 +153,149 @@ export const AssemblerInspectorPanel: React.FC<AssemblerInspectorPanelProps> = (
         </div>
       </div>
 
-      {/* 2. Sliders Grid for Active Slot */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8' }}>
-            TINH CHỈNH CẤU TRÚC: [{selectedSlot.toUpperCase()}]
-          </span>
-          <button
-            onClick={handleResetSlot}
-            style={{
-              padding: '2px 6px',
-              fontSize: 9,
-              borderRadius: 3,
-              background: 'rgba(255,255,255,0.05)',
-              color: '#94a3b8',
-              border: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer',
-            }}
-          >
-            <RotateCcw size={9} /> Khôi phục
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {/* Offset Y */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#e2e8f0', marginBottom: 2 }}>
-              <span>Độ Cao (Offset Y):</span>
-              <span style={{ color: '#38bdf8', fontWeight: 700 }}>{selectedPart.offset[1]}px</span>
-            </div>
-            <input
-              type="range"
-              min="-250"
-              max="250"
-              value={selectedPart.offset[1]}
-              onChange={(e) => updatePartConfig({ offset: [selectedPart.offset[0], parseInt(e.target.value)] })}
-              style={{ width: '100%' }}
-            />
+      {/* 2. Tinh Chỉnh Cấu Trúc (Compact Toggle Section) */}
+      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 6, borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div
+          onClick={() => setIsStructureOpen((o) => !o)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Sliders size={11} color="#38bdf8" />
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#e2e8f0' }}>
+              CẤU TRÚC: [{selectedSlot.toUpperCase()}]
+            </span>
           </div>
 
-          {/* Offset X */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#e2e8f0', marginBottom: 2 }}>
-              <span>Lệch Ngang (Offset X):</span>
-              <span style={{ color: '#38bdf8', fontWeight: 700 }}>{selectedPart.offset[0]}px</span>
-            </div>
-            <input
-              type="range"
-              min="-150"
-              max="150"
-              value={selectedPart.offset[0]}
-              onChange={(e) => updatePartConfig({ offset: [parseInt(e.target.value), selectedPart.offset[1]] })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* Scale X */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#e2e8f0', marginBottom: 2 }}>
-              <span>Phồng Ngang (Scale X):</span>
-              <span style={{ color: '#4ade80', fontWeight: 700 }}>{Math.round(selectedPart.scale[0] * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="50"
-              max="180"
-              value={Math.round(selectedPart.scale[0] * 100)}
-              onChange={(e) => updatePartConfig({ scale: [parseInt(e.target.value) / 100, selectedPart.scale[1]] })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* Scale Y */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#e2e8f0', marginBottom: 2 }}>
-              <span>Độ Dài (Scale Y):</span>
-              <span style={{ color: '#4ade80', fontWeight: 700 }}>{Math.round(selectedPart.scale[1] * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="50"
-              max="180"
-              value={Math.round(selectedPart.scale[1] * 100)}
-              onChange={(e) => updatePartConfig({ scale: [selectedPart.scale[0], parseInt(e.target.value) / 100] })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* Z-Index */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#e2e8f0', marginBottom: 2 }}>
-              <span>Thứ Tự Lớp 2D (Z-Index):</span>
-              <span style={{ color: '#f59e0b', fontWeight: 700 }}>Lớp {selectedPart.z_index}</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={selectedPart.z_index}
-              onChange={(e) => updatePartConfig({ z_index: parseInt(e.target.value) })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* Z-Depth 3D */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#e2e8f0', marginBottom: 2 }}>
-              <span>Độ Sâu 3D (Z-Depth):</span>
-              <span style={{ color: '#ec4899', fontWeight: 700 }}>{(selectedPart.z_depth_3d || 0).toFixed(3)}m</span>
-            </div>
-            <input
-              type="range"
-              min="-80"
-              max="80"
-              value={Math.round((selectedPart.z_depth_3d || 0) * 1000)}
-              onChange={(e) => updatePartConfig({ z_depth_3d: parseInt(e.target.value) / 1000 })}
-              style={{ width: '100%' }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResetSlot();
+              }}
+              style={{
+                padding: '1px 5px',
+                fontSize: 8.5,
+                borderRadius: 3,
+                background: 'rgba(255,255,255,0.05)',
+                color: '#94a3b8',
+                border: '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer',
+              }}
+            >
+              <RotateCcw size={8} /> Đặt lại
+            </button>
+            {isStructureOpen ? <ChevronUp size={12} color="#94a3b8" /> : <ChevronDown size={12} color="#94a3b8" />}
           </div>
         </div>
+
+        {isStructureOpen && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginTop: 2 }}>
+            {/* Offset Y */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
+                <span>Dọc (Y):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{selectedPart.offset[1]}px</span>
+              </div>
+              <input
+                type="range"
+                min="-200"
+                max="200"
+                value={selectedPart.offset[1]}
+                onChange={(e) => updatePartConfig({ offset: [selectedPart.offset[0], parseInt(e.target.value)] })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Offset X */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
+                <span>Ngang (X):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{selectedPart.offset[0]}px</span>
+              </div>
+              <input
+                type="range"
+                min="-150"
+                max="150"
+                value={selectedPart.offset[0]}
+                onChange={(e) => updatePartConfig({ offset: [parseInt(e.target.value), selectedPart.offset[1]] })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Scale X */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
+                <span>Phồng:</span>
+                <span style={{ color: '#4ade80', fontWeight: 700 }}>{Math.round(selectedPart.scale[0] * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="180"
+                value={Math.round(selectedPart.scale[0] * 100)}
+                onChange={(e) => updatePartConfig({ scale: [parseInt(e.target.value) / 100, selectedPart.scale[1]] })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Scale Y */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
+                <span>Dài:</span>
+                <span style={{ color: '#4ade80', fontWeight: 700 }}>{Math.round(selectedPart.scale[1] * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="180"
+                value={Math.round(selectedPart.scale[1] * 100)}
+                onChange={(e) => updatePartConfig({ scale: [selectedPart.scale[0], parseInt(e.target.value) / 100] })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Z-Index */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
+                <span>Lớp Z:</span>
+                <span style={{ color: '#f59e0b', fontWeight: 700 }}>Lớp {selectedPart.z_index}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={selectedPart.z_index}
+                onChange={(e) => updatePartConfig({ z_index: parseInt(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Z-Depth 3D */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
+                <span>Sâu 3D:</span>
+                <span style={{ color: '#ec4899', fontWeight: 700 }}>{(selectedPart.z_depth_3d || 0).toFixed(2)}m</span>
+              </div>
+              <input
+                type="range"
+                min="-60"
+                max="60"
+                value={Math.round((selectedPart.z_depth_3d || 0) * 1000)}
+                onChange={(e) => updatePartConfig({ z_depth_3d: parseInt(e.target.value) / 1000 })}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Save Button */}
+      {/* 3. Action Save Button */}
       <button
         onClick={onSaveCharacter}
         disabled={isSaving}
         style={{
-          marginTop: 'auto',
-          padding: '8px 12px',
-          fontSize: 11,
+          padding: '6px 10px',
+          fontSize: 10.5,
           fontWeight: 700,
           borderRadius: 6,
           background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -296,11 +305,11 @@ export const AssemblerInspectorPanel: React.FC<AssemblerInspectorPanelProps> = (
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 6,
-          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+          gap: 5,
+          boxShadow: '0 3px 10px rgba(16, 185, 129, 0.3)',
         }}
       >
-        <Save size={13} /> {isSaving ? 'Đang lưu...' : 'LƯU NHÂN VẬT VÀO DỰ ÁN'}
+        <Save size={12} /> {isSaving ? 'Đang lưu...' : 'LƯU NHÂN VẬT VÀO DỰ ÁN'}
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, FolderOpen, Trash2 } from 'lucide-react';
+import { Sparkles, FolderOpen, Trash2, Box, Layers, Image as ImageIcon } from 'lucide-react';
 import {
   Character2DAssembly,
   Character2DPartType,
@@ -25,7 +25,7 @@ export const AssemblerMaterialDrawer: React.FC<AssemblerMaterialDrawerProps> = (
 }) => {
   const [allKits, setAllKits] = useState<CharacterResourceKit[]>([]);
 
-  // Slot to default category
+  // Slot to default category mapping
   const getSlotDefaultCategory = (slot: Character2DPartType): CharacterResourceCategory => {
     if (slot === 'toc_truoc' || slot === 'toc_sau') return 'toc';
     if (slot === 'mat') return 'mat';
@@ -69,9 +69,9 @@ export const AssemblerMaterialDrawer: React.FC<AssemblerMaterialDrawerProps> = (
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: 6,
         background: '#0a0f1d',
-        padding: 10,
+        padding: 8,
         borderRadius: 8,
         border: '1px solid rgba(255, 255, 255, 0.08)',
         minHeight: 0,
@@ -79,10 +79,10 @@ export const AssemblerMaterialDrawer: React.FC<AssemblerMaterialDrawerProps> = (
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <FolderOpen size={14} color="#38bdf8" />
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#f8fafc' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#f8fafc' }}>
             DANH MỤC VẬT LIỆU CHO Ô: <span style={{ color: '#38bdf8' }}>[{selectedSlot.toUpperCase()}]</span>
           </span>
         </div>
@@ -90,8 +90,8 @@ export const AssemblerMaterialDrawer: React.FC<AssemblerMaterialDrawerProps> = (
         <button
           onClick={onOpenFullCatalog}
           style={{
-            padding: '3px 9px',
-            fontSize: 10,
+            padding: '2px 8px',
+            fontSize: 9.5,
             fontWeight: 700,
             borderRadius: 4,
             background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
@@ -105,169 +105,227 @@ export const AssemblerMaterialDrawer: React.FC<AssemblerMaterialDrawerProps> = (
         </button>
       </div>
 
-      {/* Category Pills */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 4,
-          overflowX: 'auto',
-          paddingBottom: 2,
-        }}
-      >
-        <button
-          onClick={() => setFilterCat('all')}
+      {/* 2-SubColumn Layout: Vertical Category Tab Sidebar (Left) + Material Cards Grid (Right) */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '142px 1fr', gap: 6, minHeight: 0, overflow: 'hidden' }}>
+        {/* 1. Cột Danh Mục Tab Dọc (Vertical Tab Sidebar giống Xưởng 3D) */}
+        <div
           style={{
-            padding: '3px 8px',
-            fontSize: 9.5,
-            fontWeight: filterCat === 'all' ? 700 : 500,
-            borderRadius: 4,
-            border: filterCat === 'all' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.06)',
-            background: filterCat === 'all' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
-            color: filterCat === 'all' ? '#38bdf8' : '#94a3b8',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            background: 'rgba(0, 0, 0, 0.35)',
+            padding: 5,
+            borderRadius: 6,
+            overflowY: 'auto',
+            border: '1px solid rgba(255, 255, 255, 0.04)',
           }}
         >
-          Tất cả ({allKits.length})
-        </button>
+          <button
+            onClick={() => setFilterCat('all')}
+            style={{
+              padding: '6px 8px',
+              fontSize: 11,
+              fontWeight: filterCat === 'all' ? 700 : 600,
+              borderRadius: 5,
+              border: filterCat === 'all' ? '1px solid #38bdf8' : '1px solid transparent',
+              background: filterCat === 'all' ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
+              color: filterCat === 'all' ? '#38bdf8' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              transition: 'all 0.12s',
+            }}
+          >
+            <span>🌟 Tất cả</span>
+            <span style={{ fontSize: 9.5, opacity: 0.85, fontWeight: 700 }}>({allKits.length})</span>
+          </button>
 
-        {RESOURCE_CATEGORIES.map((cat) => {
-          const isActive = filterCat === cat.id;
-          const count = allKits.filter((k) => (cat.id === 'custom_slices' ? k.category === 'custom_slices' || k.id.startsWith('custom_') : k.category === cat.id)).length;
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setFilterCat(cat.id)}
-              style={{
-                padding: '3px 8px',
-                fontSize: 9.5,
-                fontWeight: isActive ? 700 : 500,
-                borderRadius: 4,
-                border: isActive ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.06)',
-                background: isActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
-                color: isActive ? '#38bdf8' : '#94a3b8',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <span>{cat.icon}</span>
-              <span>{cat.label}</span>
-              <span style={{ fontSize: 8.5, opacity: 0.8 }}>({count})</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Cards Grid - Expands to fill available width and height */}
-      <div
-        style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-          gap: 8,
-          overflowY: 'auto',
-          padding: 2,
-        }}
-      >
-        {filteredKits.map((kit) => {
-          const isCustom = kit.id.startsWith('custom_') || kit.category === 'custom_slices';
-
-          return (
-            <div
-              key={kit.id}
-              onClick={() => onApplyKitToSlot(kit, selectedSlot)}
-              style={{
-                background: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.22)',
-                borderRadius: 6,
-                padding: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                transition: 'all 0.15s ease',
-              }}
-              title={`Trang bị ${kit.name} vào ô ${selectedSlot}`}
-            >
-              <div
+          {RESOURCE_CATEGORIES.map((cat) => {
+            const isActive = filterCat === cat.id;
+            const count = allKits.filter((k) => (cat.id === 'custom_slices' ? k.category === 'custom_slices' || k.id.startsWith('custom_') : k.category === cat.id)).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setFilterCat(cat.id)}
                 style={{
-                  height: 75,
-                  borderRadius: 4,
-                  background: '#040711',
+                  padding: '6px 8px',
+                  fontSize: 11,
+                  fontWeight: isActive ? 700 : 500,
+                  borderRadius: 5,
+                  border: isActive ? '1px solid #38bdf8' : '1px solid transparent',
+                  background: isActive ? 'rgba(56, 189, 248, 0.22)' : 'transparent',
+                  color: isActive ? '#38bdf8' : '#94a3b8',
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  position: 'relative',
+                  justifyContent: 'space-between',
+                  textAlign: 'left',
+                  lineHeight: 1.25,
+                  transition: 'all 0.12s',
                 }}
               >
-                {kit.previewImage ? (
-                  <img src={kit.previewImage} alt={kit.name} style={{ maxWidth: '85%', maxHeight: '85%', objectFit: 'contain' }} />
-                ) : (
-                  <span style={{ fontSize: 22 }}>🎨</span>
-                )}
-                {kit.angleCount && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 2,
-                      right: 2,
-                      fontSize: 7.5,
-                      fontWeight: 700,
-                      padding: '1px 4px',
-                      borderRadius: 3,
-                      background: 'rgba(2, 132, 199, 0.85)',
-                      color: '#fff',
-                    }}
-                  >
-                    {kit.angleCount} Góc 3D
-                  </span>
-                )}
-              </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 14 }}>{cat.icon}</span>
+                  <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }}>{cat.label}</span>
+                </div>
+                <span style={{ fontSize: 9.5, opacity: 0.85, fontWeight: 700, marginLeft: 4 }}>({count})</span>
+              </button>
+            );
+          })}
+        </div>
 
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {kit.name}
+        {/* 2. Lưới Card Vật Liệu (Fixed Height, không bị kéo dãn height) */}
+        <div
+          style={{
+            flex: 1,
+            background: 'rgba(0, 0, 0, 0.25)',
+            borderRadius: 6,
+            padding: 6,
+            overflowY: 'auto',
+            border: '1px solid rgba(255, 255, 255, 0.04)',
+            minHeight: 0,
+          }}
+        >
+          {filteredKits.length === 0 ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                color: '#64748b',
+                gap: 6,
+                padding: 16,
+                textAlign: 'center',
+              }}
+            >
+              <FolderOpen size={24} color="#475569" />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>
+                Chưa có linh kiện nào trong mục này
               </div>
-
-              <div style={{ display: 'flex', gap: 4, marginTop: 'auto' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onApplyKitToSlot(kit, selectedSlot);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '3px 4px',
-                    fontSize: 9.5,
-                    fontWeight: 700,
-                    borderRadius: 3,
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 3,
-                  }}
-                >
-                  <Sparkles size={10} /> Ráp Vào
-                </button>
-                {isCustom && (
-                  <button
-                    onClick={(e) => handleDeleteKit(kit.id, e)}
-                    style={{ padding: '2px 5px', fontSize: 9, borderRadius: 3, background: 'rgba(239,68,68,0.15)', color: '#f87171', border: 'none', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                )}
+              <div style={{ fontSize: 9.5, color: '#64748b', maxWidth: 220 }}>
+                Hãy sang <b>Tab 1 [Cắt Lưới & Lắp Ráp 3D]</b> để bóc tách từ ảnh Sprite Sheet và lưu vào kho nhé!
               </div>
             </div>
-          );
-        })}
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                gridAutoRows: 'max-content',
+                alignContent: 'start',
+                gap: 6,
+              }}
+            >
+              {filteredKits.map((kit) => {
+                const isCustom = kit.id.startsWith('custom_') || kit.category === 'custom_slices';
+
+                return (
+                  <div
+                    key={kit.id}
+                    onClick={() => onApplyKitToSlot(kit, selectedSlot)}
+                    style={{
+                      height: 124,
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      border: '1px solid rgba(56, 189, 248, 0.22)',
+                      borderRadius: 6,
+                      padding: 5,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      boxSizing: 'border-box',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title={`Trang bị ${kit.name} vào ô ${selectedSlot}`}
+                  >
+                    {/* Thumbnail */}
+                    <div
+                      style={{
+                        height: 62,
+                        borderRadius: 4,
+                        background: '#040711',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {kit.previewImage ? (
+                        <img src={kit.previewImage} alt={kit.name} style={{ maxWidth: '88%', maxHeight: '88%', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: 20 }}>🎨</span>
+                      )}
+                      {kit.angleCount && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 2,
+                            right: 2,
+                            fontSize: 7,
+                            fontWeight: 700,
+                            padding: '1px 3px',
+                            borderRadius: 2,
+                            background: 'rgba(2, 132, 199, 0.85)',
+                            color: '#fff',
+                          }}
+                        >
+                          {kit.angleCount}G
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {kit.name}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: 3, marginTop: 'auto' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onApplyKitToSlot(kit, selectedSlot);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '3px 4px',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          borderRadius: 3,
+                          border: 'none',
+                          background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 2,
+                        }}
+                      >
+                        <Sparkles size={9} /> Ráp
+                      </button>
+                      {isCustom && (
+                        <button
+                          onClick={(e) => handleDeleteKit(kit.id, e)}
+                          style={{ padding: '2px 4px', fontSize: 8.5, borderRadius: 3, background: 'rgba(239,68,68,0.15)', color: '#f87171', border: 'none', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={9} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

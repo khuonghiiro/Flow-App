@@ -25,12 +25,20 @@ export type Character2DPartType =
 export type Character2DAngle =
   | 'front'                   // 0 deg
   | 'three_quarter_left'     // 45 deg
-  | 'profile_left'           // 90 deg (Góc nghiêng ngang - rõ cằm, mũi, tai)
+  | 'profile_left'           // 90 deg (Nhìn thẳng tai trái / Profile)
   | 'back_three_quarter_left'// 135 deg
   | 'back'                   // 180 deg (Sau lưng)
   | 'back_three_quarter_right'// 225 deg
-  | 'profile_right'          // 270 deg
-  | 'three_quarter_right';    // 315 deg
+  | 'profile_right'          // 270 deg (Nhìn thẳng tai phải)
+  | 'three_quarter_right'    // 315 deg
+  | 'top_down'                // Đỉnh đầu 0°
+  | 'top_down_three_quarter_left' // Đỉnh đầu 45°
+  | 'top_down_profile_left'       // Đỉnh đầu 90° (Ngang tai)
+  | 'top_down_back_three_quarter_left' // Đỉnh đầu 135°
+  | 'top_down_back'               // Đỉnh đầu 180°
+  | 'top_down_back_three_quarter_right' // Đỉnh đầu 225°
+  | 'top_down_profile_right'      // Đỉnh đầu 270°
+  | 'top_down_three_quarter_right'; // Đỉnh đầu 315°
 
 export type Character2DAngleSet = Partial<Record<Character2DAngle, string>>;
 
@@ -46,11 +54,24 @@ export interface PartTransform {
   opacity: number;
 }
 
+export interface PartAngleOverride {
+  offset?: [number, number];
+  scale?: [number, number];
+  rotation?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  z_index?: number;
+  z_depth_3d?: number;
+  visible?: boolean;
+}
+
 export interface Character2DPartConfig extends PartTransform {
   path: string;
   name?: string;
   // Multi-angle images for 3D camera auto-switching
   angles?: Character2DAngleSet;
+  // Per-angle transform & visibility fine-tuning overrides
+  angle_overrides?: Partial<Record<Character2DAngle, PartAngleOverride>>;
   // Multi-state sprite paths for dynamic switching (e.g. eyes blink, mouth talk)
   states?: {
     idle?: string;
@@ -214,11 +235,17 @@ export interface AIPartPromptConfig {
   color_theme: string;
   special_features: string;
   clean_background: boolean;
+  aspect_ratio?: '1:1' | '3:4' | '16:9' | '9:16';
+  bg_type?: 'chroma_green' | 'pure_white';
   // Hair specific
-  hair_length?: 'short' | 'medium_shoulder' | 'long_waist' | 'very_long_flowing' | 'top_knot_daoist';
-  hair_texture?: 'straight_silky' | 'wavy_curls' | 'wild_spiky' | 'braided_traditional';
-  hair_color?: 'jet_black' | 'silver_white' | 'crimson_red' | 'azure_blue' | 'chestnut_brown' | 'golden_blonde' | 'mystic_purple';
-  hair_accessories?: 'none' | 'jade_hairpin' | 'flowing_ribbons' | 'golden_crown';
+  hair_length?: 'short' | 'medium_shoulder' | 'long_waist' | 'very_long_flowing' | 'top_knot_daoist' | 'custom';
+  custom_hair_length?: string;
+  hair_texture?: 'straight_silky' | 'wavy_curls' | 'wild_spiky' | 'braided_traditional' | 'custom';
+  custom_hair_texture?: string;
+  hair_color?: 'jet_black' | 'silver_white' | 'crimson_red' | 'azure_blue' | 'chestnut_brown' | 'golden_blonde' | 'mystic_purple' | 'custom';
+  custom_hair_color?: string;
+  hair_accessories?: 'none' | 'jade_hairpin' | 'flowing_ribbons' | 'golden_crown' | 'custom';
+  custom_hair_accessories?: string;
   // Eyes specific
   eye_color?: 'azure_blue' | 'emerald_green' | 'crimson_red' | 'golden_amber' | 'mystic_purple' | 'obsidian_black';
   eye_shape?: 'sharp_phoenix' | 'large_clear' | 'fox_alluring' | 'cold_swordsman';
@@ -227,8 +254,6 @@ export interface AIPartPromptConfig {
   // Weapon specific
   weapon_type?: 'flying_sword' | 'broadsword' | 'staff' | 'feather_fan' | 'celestial_bow';
   weapon_element?: 'azure_lightning' | 'crimson_flame' | 'frost_ice' | 'golden_radiance';
-  // Background option
-  bg_type?: 'chroma_green' | 'pure_white';
 }
 
 

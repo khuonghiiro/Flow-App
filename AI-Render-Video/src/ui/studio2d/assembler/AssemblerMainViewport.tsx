@@ -58,6 +58,7 @@ export const AssemblerMainViewport: React.FC<AssemblerMainViewportProps> = ({
   const [panOffset, setPanOffset] = useState<[number, number]>([0, 10]);
   const [isDraggingPart, setIsDraggingPart] = useState<boolean>(false);
   const [isPanningCanvas, setIsPanningCanvas] = useState<boolean>(false);
+  const [timeOfDay, setTimeOfDay] = useState<number>(0);
 
   const dragStartRef = useRef<{
     mouseX: number;
@@ -135,43 +136,60 @@ export const AssemblerMainViewport: React.FC<AssemblerMainViewportProps> = ({
       zoomFactor: 1.0,
     };
 
+    const dpr = window.devicePixelRatio || 2;
+    const rect = canvas.getBoundingClientRect();
+    const targetW = Math.max(100, Math.round(rect.width * dpr));
+    const targetH = Math.max(100, Math.round(rect.height * dpr));
+
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const cssW = rect.width;
+    const cssH = rect.height;
+
     // Canvas Background
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, cssW, cssH);
     ctx.fillStyle = '#080c14';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, cssW, cssH);
 
     // Faint grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
     ctx.lineWidth = 1;
     const gridSize = 40;
-    for (let x = 0; x < canvas.width; x += gridSize) {
+    for (let x = 0; x < cssW; x += gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(x, cssH);
       ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += gridSize) {
+    for (let y = 0; y < cssH; y += gridSize) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
+      ctx.lineTo(cssW, y);
       ctx.stroke();
     }
 
     // Ground stage line
-    const groundY = canvas.height * 0.52 + panOffset[1] + 150 * zoomLevel * (assembly.base_scale || 1);
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+    const groundY = cssH * 0.52 + panOffset[1] + 150 * zoomLevel * (assembly.base_scale || 1);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.moveTo(canvas.width * 0.15, groundY);
-    ctx.lineTo(canvas.width * 0.85, groundY);
+    ctx.moveTo(cssW * 0.1, groundY);
+    ctx.lineTo(cssW * 0.9, groundY);
     ctx.stroke();
     ctx.setLineDash([]);
 
     // Draw Character
-    ctx.save();
-    const centerX = canvas.width / 2 + panOffset[0];
-    const centerY = canvas.height * 0.5 + panOffset[1];
+    const centerX = cssW / 2 + panOffset[0];
+    const centerY = cssH * 0.5 + panOffset[1];
 
     canvasEngineRef.current.renderCharacter(
       ctx,
@@ -249,10 +267,10 @@ export const AssemblerMainViewport: React.FC<AssemblerMainViewportProps> = ({
     setIsPanningCanvas(false);
   };
 
-  const handleAngleJump = (deg: number) => {
+  const handleAngleJump = (deg: number, isTopDown = false) => {
     setTurntableAngle(deg);
     if (threeEngineRef.current) {
-      threeEngineRef.current.jumpToAngle(deg);
+      threeEngineRef.current.jumpToAngle(deg, isTopDown);
     }
   };
 
@@ -359,30 +377,70 @@ export const AssemblerMainViewport: React.FC<AssemblerMainViewportProps> = ({
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Góc nhanh:</span>
-            {[
-              { label: '0° Thẳng', deg: 0 },
-              { label: '45° 3/4', deg: 45 },
-              { label: '90° Ngang', deg: 90 },
-              { label: '180° Sau', deg: 180 },
-            ].map((btn) => (
-              <button
-                key={btn.deg}
-                onClick={() => handleAngleJump(btn.deg)}
-                style={{
-                  padding: '2px 6px',
-                  fontSize: 9.5,
-                  borderRadius: 4,
-                  background: 'rgba(255,255,255,0.06)',
-                  color: '#e2e8f0',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  cursor: 'pointer',
-                }}
-              >
-                {btn.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Góc:</span>
+              {[
+                { label: '0°', deg: 0, isTop: false },
+                { label: '45°', deg: 45, isTop: false },
+                { label: '👂 90°', deg: 90, isTop: false },
+                { label: '180°', deg: 180, isTop: false },
+                { label: '👂 270°', deg: 270, isTop: false },
+                { label: '👑 Đỉnh Đầu', deg: 0, isTop: true },
+              ].map((btn) => (
+                <button
+                  key={btn.label}
+                  onClick={() => handleAngleJump(btn.deg, btn.isTop)}
+                  style={{
+                    padding: '2px 5px',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    background: 'rgba(255,255,255,0.06)',
+                    color: '#e2e8f0',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)' }} />
+
+            {/* Sky Environment Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Bầu trời:</span>
+              {[
+                { label: '🌅 6h', hour: 6 },
+                { label: '☀️ 12h', hour: 12 },
+                { label: '🌇 18h', hour: 18 },
+                { label: '🌙 0h', hour: 0 },
+              ].map((sky) => (
+                <button
+                  key={sky.label}
+                  onClick={() => {
+                    setTimeOfDay(sky.hour);
+                    if (threeEngineRef.current) {
+                      threeEngineRef.current.setTimeOfDay(sky.hour);
+                    }
+                  }}
+                  style={{
+                    padding: '2px 5px',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    background: timeOfDay === sky.hour ? '#0284c7' : 'rgba(255,255,255,0.06)',
+                    color: timeOfDay === sky.hour ? '#ffffff' : '#cbd5e1',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {sky.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -404,8 +462,6 @@ export const AssemblerMainViewport: React.FC<AssemblerMainViewportProps> = ({
         {viewportMode === '2d_canvas' ? (
           <canvas
             ref={canvas2dRef}
-            width={600}
-            height={480}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

@@ -8,6 +8,8 @@ import {
 import { PART_HIERARCHY_CONFIG } from '../assets/Asset2DRegistry';
 import { PuppetAnimationState } from './Canvas2DPuppetEngine';
 
+export type Background2DMode = 'checkerboard' | 'dark' | 'slate' | 'white' | 'chroma';
+
 export interface AngleDetectionResult {
   angleDeg: number;             // 0 to 360
   discreteAngle: Character2DAngle;
@@ -30,6 +32,11 @@ export class ThreeMultiAngleBillboardEngine {
   private currentDiscreteAngle: Character2DAngle = 'front';
   private onAngleChangeCallback?: (result: AngleDetectionResult) => void;
   private animFrameId: number | null = null;
+  private gridHelper!: THREE.GridHelper;
+  private checkerboardTexture: THREE.CanvasTexture | null = null;
+
+  public currentBgMode: Background2DMode = 'checkerboard';
+  public currentTimeOfDay: number = 0; // for backwards-compatibility
 
   constructor(container: HTMLElement, onAngleChange?: (res: AngleDetectionResult) => void) {
     this.container = container;
@@ -40,17 +47,15 @@ export class ThreeMultiAngleBillboardEngine {
 
     // 1. Scene & Camera Setup
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x090d16);
 
     this.camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
     this.camera.position.set(0, 0.2, 3.2);
 
-    // 2. WebGL Renderer
+    // 2. WebGL Renderer (True 2D flat color rendering)
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMapping = THREE.NoToneMapping; // Preserve 100% 2D flat vibrancy
     this.container.appendChild(this.renderer.domElement);
 
     // 3. OrbitControls
@@ -62,46 +67,106 @@ export class ThreeMultiAngleBillboardEngine {
     this.controls.minDistance = 1.0;
     this.controls.maxDistance = 8.0;
 
-    // 4. Character Group & Lighting
+    // 4. Character Group & 2D Background
     this.characterGroup = new THREE.Group();
     this.scene.add(this.characterGroup);
-    this.setupLightingAndEnvironment();
 
-    // 5. Start Render Loop
-    this.startLoop();
-  }
+    // Ground Grid Helper
+    this.gridHelper = new THREE.GridHelper(6, 12, 0x38bdf8, 0x334155);
+    this.gridHelper.position.y = -1.1;
+    this.scene.add(this.gridHelper);
 
-  private setupLightingAndEnvironment(): void {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-    this.scene.add(ambientLight);
-
-    // Key Directional Light
-    const keyLight = new THREE.DirectionalLight(0xe0f2fe, 1.5);
-    keyLight.position.set(3, 5, 4);
-    this.scene.add(keyLight);
-
-    // Back rim light
-    const rimLight = new THREE.DirectionalLight(0xa855f7, 0.8);
-    rimLight.position.set(-3, 3, -4);
-    this.scene.add(rimLight);
-
-    // Subtle Ground Grid & Pedestal
-    const grid = new THREE.GridHelper(6, 12, 0x38bdf8, 0x1e293b);
-    grid.position.y = -1.1;
-    this.scene.add(grid);
-
-    // Circular shadow base
+    // Shadow plane
     const shadowGeo = new THREE.CircleGeometry(0.8, 32);
     const shadowMat = new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.25,
     });
     const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     shadowMesh.rotation.x = -Math.PI / 2;
     shadowMesh.position.y = -1.09;
     this.scene.add(shadowMesh);
+
+    // Initialize 2D Background
+    this.setBackgroundMode('checkerboard');
+
+    // 5. Start Render Loop
+    this.startLoop();
+  }
+
+  /**
+   * Generates a repeating checkered canvas texture for transparency inspection
+   */
+  private getOrCreateCheckerboardTexture(): THREE.CanvasTexture {
+    if (this.checkerboardTexture) return this.checkerboardTexture;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+
+    // 2D Studio dark checker squares
+    ctx.fillStyle = '#0b0f19';
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = '#162032';
+    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillRect(32, 32, 32, 32);
+
+    this.checkerboardTexture = new THREE.CanvasTexture(canvas);
+    this.checkerboardTexture.wrapS = THREE.RepeatWrapping;
+    this.checkerboardTexture.wrapT = THREE.RepeatWrapping;
+    this.checkerboardTexture.repeat.set(16, 16);
+    return this.checkerboardTexture;
+  }
+
+  /**
+   * Sets pure 2D Background Mode (Industrial 2D Studio Standard)
+   */
+  public setBackgroundMode(mode: Background2DMode): void {
+    this.currentBgMode = mode;
+
+    switch (mode) {
+      case 'checkerboard':
+        this.scene.background = this.getOrCreateCheckerboardTexture();
+        this.gridHelper.visible = false;
+        break;
+      case 'dark':
+        this.scene.background = new THREE.Color(0x090d16);
+        this.gridHelper.visible = true;
+        (this.gridHelper.material as THREE.LineBasicMaterial).color.setHex(0x38bdf8);
+        break;
+      case 'slate':
+        this.scene.background = new THREE.Color(0x1e293b);
+        this.gridHelper.visible = true;
+        (this.gridHelper.material as THREE.LineBasicMaterial).color.setHex(0x64748b);
+        break;
+      case 'white':
+        this.scene.background = new THREE.Color(0xffffff);
+        this.gridHelper.visible = true;
+        (this.gridHelper.material as THREE.LineBasicMaterial).color.setHex(0xcccccc);
+        break;
+      case 'chroma':
+        this.scene.background = new THREE.Color(0x00ff00);
+        this.gridHelper.visible = false;
+        break;
+    }
+  }
+
+  /**
+   * Backwards compatible bridge for time of day
+   */
+  public setTimeOfDay(hour: number): void {
+    this.currentTimeOfDay = hour;
+    if (hour === 0 || hour === 24) {
+      this.setBackgroundMode('dark');
+    } else if (hour === 6) {
+      this.setBackgroundMode('slate');
+    } else if (hour === 12) {
+      this.setBackgroundMode('checkerboard');
+    } else {
+      this.setBackgroundMode('dark');
+    }
   }
 
   /**
@@ -121,7 +186,7 @@ export class ThreeMultiAngleBillboardEngine {
   }
 
   /**
-   * Rebuilds all 3D mesh planes from Character2DAssembly
+   * Rebuilds all 2D mesh planes from Character2DAssembly with flat MeshBasicMaterial
    */
   public setAssembly(assembly: Character2DAssembly): void {
     this.currentAssembly = assembly;
@@ -135,7 +200,6 @@ export class ThreeMultiAngleBillboardEngine {
     this.partMeshes.clear();
 
     const layerSpacing = assembly.layer_depth_spacing ?? 1.0;
-    const baseScale = assembly.base_scale || 1.0;
 
     // Create a Plane Mesh for each part
     for (const [slotKey, part] of Object.entries(assembly.parts)) {
@@ -149,7 +213,6 @@ export class ThreeMultiAngleBillboardEngine {
       const activeUrl = this.getTextureForAngle(part, this.currentDiscreteAngle);
       const texture = this.loadTexture(activeUrl);
 
-      // Plane aspect ratio ~ based on standard dimensions
       const planeW = 1.0;
       const planeH = 1.0;
       const geo = new THREE.PlaneGeometry(planeW, planeH);
@@ -158,29 +221,90 @@ export class ThreeMultiAngleBillboardEngine {
       const pivot = part.pivot || hierarchy?.defaultPivot || [0.5, 0.5];
       geo.translate((0.5 - pivot[0]) * planeW, (pivot[1] - 0.5) * planeH, 0);
 
-      const mat = new THREE.MeshStandardMaterial({
+      // Pure flat 2D Basic Material - zero muddy shading or artificial gloss
+      const mat = new THREE.MeshBasicMaterial({
         map: texture,
         transparent: true,
-        alphaTest: 0.05,
+        alphaTest: 0.01,
         side: THREE.DoubleSide,
-        roughness: 0.6,
+        depthWrite: true,
       });
 
       const mesh = new THREE.Mesh(geo, mat);
-
-      // Position in 3D: Convert 2D pixel offset to 3D units
-      const posX = (part.offset?.[0] || 0) * 0.005 * baseScale;
-      const posY = (part.offset?.[1] || 0) * -0.005 * baseScale;
-      mesh.position.set(posX, posY, zDepth);
-
-      // Rotation & Scale
-      mesh.rotation.z = -(part.rotation || 0) * (Math.PI / 180);
-      const sx = (part.scale?.[0] ?? 1) * (part.flipX ? -1 : 1) * baseScale;
-      const sy = (part.scale?.[1] ?? 1) * (part.flipY ? -1 : 1) * baseScale;
-      mesh.scale.set(sx, sy, 1);
+      mesh.position.set(0, 0, zDepth);
 
       this.characterGroup.add(mesh);
       this.partMeshes.set(slot, mesh);
+    }
+
+    // Apply per-angle transform overrides immediately
+    this.applyTransformsForAngle(this.currentDiscreteAngle);
+  }
+
+  /**
+   * Applies transforms, per-angle offsets, scales, rotations & textures for the active angle
+   */
+  public applyTransformsForAngle(angle: Character2DAngle): void {
+    if (!this.currentAssembly) return;
+    const baseScale = this.currentAssembly.base_scale || 1.0;
+    const layerSpacing = this.currentAssembly.layer_depth_spacing ?? 1.0;
+
+    const isRightSymmetryAngle =
+      angle === 'three_quarter_right' ||
+      angle === 'profile_right' ||
+      angle === 'back_three_quarter_right' ||
+      angle === 'top_down_three_quarter_right' ||
+      angle === 'top_down_profile_right' ||
+      angle === 'top_down_back_three_quarter_right';
+
+    for (const [slotKey, mesh] of this.partMeshes.entries()) {
+      const part = this.currentAssembly.parts[slotKey];
+      if (!part) continue;
+
+      const override = part.angle_overrides?.[angle];
+
+      // 1. Visibility Check
+      if (override?.visible === false) {
+        mesh.visible = false;
+        continue;
+      }
+      mesh.visible = true;
+
+      // 2. Texture Swap
+      const targetUrl = this.getTextureForAngle(part, angle);
+      if (targetUrl) {
+        const tex = this.loadTexture(targetUrl);
+        const mat = mesh.material as THREE.MeshBasicMaterial;
+        mat.map = tex;
+        mat.needsUpdate = true;
+      }
+
+      // 3. Offset Position
+      const offsetX = override?.offset?.[0] ?? part.offset?.[0] ?? 0;
+      const offsetY = override?.offset?.[1] ?? part.offset?.[1] ?? 0;
+      const posX = offsetX * 0.005 * baseScale;
+      const posY = offsetY * -0.005 * baseScale;
+
+      const hierarchy = PART_HIERARCHY_CONFIG[slotKey];
+      const zDepth = (override?.z_depth_3d ?? part.z_depth_3d ?? hierarchy?.defaultZDepth3D ?? 0) * layerSpacing;
+      mesh.position.set(posX, posY, zDepth);
+
+      // 4. Rotation
+      const rot = override?.rotation ?? part.rotation ?? 0;
+      mesh.rotation.z = -rot * (Math.PI / 180);
+
+      // 5. Scale & Flip
+      const sxBase = (override?.scale?.[0] ?? part.scale?.[0] ?? 1) * baseScale;
+      const syBase = (override?.scale?.[1] ?? part.scale?.[1] ?? 1) * baseScale;
+      const flipX = override?.flipX ?? part.flipX ?? false;
+      const flipY = override?.flipY ?? part.flipY ?? false;
+
+      const hasExplicitRight = Boolean(part.angles?.[angle]);
+      const shouldMirror = isRightSymmetryAngle && !hasExplicitRight;
+      const finalSx = (shouldMirror !== flipX) ? -Math.abs(sxBase) : Math.abs(sxBase);
+      const finalSy = flipY ? -Math.abs(syBase) : Math.abs(syBase);
+
+      mesh.scale.set(finalSx, finalSy, 1);
     }
   }
 
@@ -189,14 +313,29 @@ export class ThreeMultiAngleBillboardEngine {
    */
   private getTextureForAngle(part: any, angle: Character2DAngle): string {
     if (part.angles?.[angle]) return part.angles[angle];
-    // Fallbacks
+
+    // Top-down multi-angle fallbacks
+    if (angle.startsWith('top_down')) {
+      if (angle === 'top_down_three_quarter_right' && (part.angles?.top_down_three_quarter_right || part.angles?.top_down_three_quarter_left)) {
+        return part.angles.top_down_three_quarter_right || part.angles.top_down_three_quarter_left;
+      }
+      if (angle === 'top_down_profile_right' && (part.angles?.top_down_profile_right || part.angles?.top_down_profile_left)) {
+        return part.angles.top_down_profile_right || part.angles.top_down_profile_left;
+      }
+      if (angle === 'top_down_back_three_quarter_right' && (part.angles?.top_down_back_three_quarter_right || part.angles?.top_down_back_three_quarter_left)) {
+        return part.angles.top_down_back_three_quarter_right || part.angles.top_down_back_three_quarter_left;
+      }
+      if (part.angles?.top_down) return part.angles.top_down;
+    }
+
+    // Standard horizontal fallbacks
     if (angle === 'three_quarter_left' && part.angles?.three_quarter_left) return part.angles.three_quarter_left;
     if (angle === 'three_quarter_right' && (part.angles?.three_quarter_right || part.angles?.three_quarter_left)) {
       return part.angles.three_quarter_right || part.angles.three_quarter_left;
     }
     if (angle === 'profile_left' && part.angles?.profile_left) return part.angles.profile_left;
-    if (angle === 'profile_right' && (part.angles?.profile_right || part.angles?.profile_left)) {
-      return part.angles.profile_right || part.angles.profile_left;
+    if (angle === 'profile_right') {
+      return part.angles?.profile_right || part.angles?.profile_left || part.angles?.front;
     }
     if (angle === 'back' && part.angles?.back) return part.angles.back;
     if (part.angles?.front) return part.angles.front;
@@ -204,62 +343,108 @@ export class ThreeMultiAngleBillboardEngine {
   }
 
   /**
-   * Calculates Camera Azimuth Angle & classifies into 8 directions
+   * Calculates Camera Azimuth & Elevation Angles and classifies into distinct 3D directions
    */
   public updateCameraAngleDetection(): AngleDetectionResult {
     const camPos = this.camera.position;
     const target = this.controls.target;
 
+    // Check Polar Angle (Elevation / Pitch)
+    const polarAngle = this.controls.getPolarAngle();
+    const isTopDown = polarAngle < 0.65;
+
     // Azimuth angle in radians in XZ plane
     const dx = camPos.x - target.x;
     const dz = camPos.z - target.z;
-    let rad = Math.atan2(dx, dz); // 0 facing front (+Z), PI/2 at +X (right), PI facing back (-Z), -PI/2 at -X (left)
+    let rad = Math.atan2(dx, dz);
     if (rad < 0) rad += Math.PI * 2;
-
     const angleDeg = (rad * 180) / Math.PI;
 
     let discreteAngle: Character2DAngle = 'front';
     let angleLabel = 'Chính Diện (0°)';
     let compass = 'N';
 
-    if (angleDeg >= 337.5 || angleDeg < 22.5) {
-      discreteAngle = 'front';
-      angleLabel = 'Chính Diện (0°)';
-      compass = 'N';
-    } else if (angleDeg >= 22.5 && angleDeg < 67.5) {
-      discreteAngle = 'three_quarter_left';
-      angleLabel = 'Nghiêng 3/4 Trái (45°)';
-      compass = 'NE';
-    } else if (angleDeg >= 67.5 && angleDeg < 112.5) {
-      discreteAngle = 'profile_left';
-      angleLabel = 'Nghiêng Ngang 90° (Cằm/Mũi/Tai)';
-      compass = 'E';
-    } else if (angleDeg >= 112.5 && angleDeg < 157.5) {
-      discreteAngle = 'back_three_quarter_left';
-      angleLabel = 'Nghiêng Sau Trái (135°)';
-      compass = 'SE';
-    } else if (angleDeg >= 157.5 && angleDeg < 202.5) {
-      discreteAngle = 'back';
-      angleLabel = 'Sau Lưng (180°)';
-      compass = 'S';
-    } else if (angleDeg >= 202.5 && angleDeg < 247.5) {
-      discreteAngle = 'back_three_quarter_right';
-      angleLabel = 'Nghiêng Sau Phải (225°)';
-      compass = 'SW';
-    } else if (angleDeg >= 247.5 && angleDeg < 292.5) {
-      discreteAngle = 'profile_right';
-      angleLabel = 'Nghiêng Ngang Phải (270°)';
-      compass = 'W';
+    if (isTopDown) {
+      const tiltRad = -(Math.PI / 2 - polarAngle);
+      this.characterGroup.rotation.x = tiltRad;
+      this.characterGroup.rotation.y = rad;
+
+      if (angleDeg >= 337.5 || angleDeg < 22.5) {
+        discreteAngle = 'top_down';
+        angleLabel = '👑 Đỉnh Đầu (0° Chính Diện)';
+        compass = 'TOP-N';
+      } else if (angleDeg >= 22.5 && angleDeg < 67.5) {
+        discreteAngle = 'top_down_three_quarter_left';
+        angleLabel = '👑 Đỉnh Đầu (45° Nghiêng Trái)';
+        compass = 'TOP-NE';
+      } else if (angleDeg >= 67.5 && angleDeg < 112.5) {
+        discreteAngle = 'top_down_profile_left';
+        angleLabel = '👑 Đỉnh Đầu (90° Ngang Tai Trái)';
+        compass = 'TOP-E';
+      } else if (angleDeg >= 112.5 && angleDeg < 157.5) {
+        discreteAngle = 'top_down_back_three_quarter_left';
+        angleLabel = '👑 Đỉnh Đầu (135° Sau Chéo Trái)';
+        compass = 'TOP-SE';
+      } else if (angleDeg >= 157.5 && angleDeg < 202.5) {
+        discreteAngle = 'top_down_back';
+        angleLabel = '👑 Đỉnh Đầu (180° Sau Gáy)';
+        compass = 'TOP-S';
+      } else if (angleDeg >= 202.5 && angleDeg < 247.5) {
+        discreteAngle = 'top_down_back_three_quarter_right';
+        angleLabel = '👑 Đỉnh Đầu (225° Sau Chéo Phải)';
+        compass = 'TOP-SW';
+      } else if (angleDeg >= 247.5 && angleDeg < 292.5) {
+        discreteAngle = 'top_down_profile_right';
+        angleLabel = '👑 Đỉnh Đầu (270° Ngang Tai Phải)';
+        compass = 'TOP-W';
+      } else {
+        discreteAngle = 'top_down_three_quarter_right';
+        angleLabel = '👑 Đỉnh Đầu (315° Nghiêng Phải)';
+        compass = 'TOP-NW';
+      }
     } else {
-      discreteAngle = 'three_quarter_right';
-      angleLabel = 'Nghiêng 3/4 Phải (315°)';
-      compass = 'NW';
+      this.characterGroup.rotation.x = 0;
+      this.characterGroup.rotation.y = 0;
+
+      if (angleDeg >= 337.5 || angleDeg < 22.5) {
+        discreteAngle = 'front';
+        angleLabel = 'Chính Diện (0°)';
+        compass = 'N';
+      } else if (angleDeg >= 22.5 && angleDeg < 67.5) {
+        discreteAngle = 'three_quarter_left';
+        angleLabel = 'Nghiêng 3/4 Trái (45°)';
+        compass = 'NE';
+      } else if (angleDeg >= 67.5 && angleDeg < 112.5) {
+        discreteAngle = 'profile_left';
+        angleLabel = '👂 Nhìn Thẳng Tai Trái (90° Profile)';
+        compass = 'E';
+      } else if (angleDeg >= 112.5 && angleDeg < 157.5) {
+        discreteAngle = 'back_three_quarter_left';
+        angleLabel = 'Nghiêng Sau Trái (135°)';
+        compass = 'SE';
+      } else if (angleDeg >= 157.5 && angleDeg < 202.5) {
+        discreteAngle = 'back';
+        angleLabel = 'Sau Lưng (180°)';
+        compass = 'S';
+      } else if (angleDeg >= 202.5 && angleDeg < 247.5) {
+        discreteAngle = 'back_three_quarter_right';
+        angleLabel = 'Nghiêng Sau Phải (225°)';
+        compass = 'SW';
+      } else if (angleDeg >= 247.5 && angleDeg < 292.5) {
+        discreteAngle = 'profile_right';
+        angleLabel = '👂 Nhìn Thẳng Tai Phải (270° Profile)';
+        compass = 'W';
+      } else {
+        discreteAngle = 'three_quarter_right';
+        angleLabel = 'Nghiêng 3/4 Phải (315°)';
+        compass = 'NW';
+      }
     }
 
-    // If angle changed, swap textures across all parts
+    // If angle changed, apply transforms & swap textures for all parts
     if (discreteAngle !== this.currentDiscreteAngle && this.currentAssembly) {
       this.currentDiscreteAngle = discreteAngle;
-      this.swapTexturesForAngle(discreteAngle);
+      this.applyTransformsForAngle(discreteAngle);
     }
 
     const result: AngleDetectionResult = {
@@ -276,35 +461,26 @@ export class ThreeMultiAngleBillboardEngine {
     return result;
   }
 
-  /**
-   * Swaps mesh materials to the texture of the newly active angle
-   */
-  private swapTexturesForAngle(angle: Character2DAngle): void {
-    if (!this.currentAssembly) return;
-
-    for (const [slotKey, mesh] of this.partMeshes.entries()) {
-      const part = this.currentAssembly.parts[slotKey];
-      if (!part) continue;
-
-      const targetUrl = this.getTextureForAngle(part, angle);
-      if (targetUrl) {
-        const tex = this.loadTexture(targetUrl);
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        mat.map = tex;
-        mat.needsUpdate = true;
-      }
-    }
+  public getCurrentDiscreteAngle(): Character2DAngle {
+    return this.currentDiscreteAngle;
   }
 
   /**
-   * Smoothly / directly jumps camera to target azimuth angle (degrees)
+   * Smoothly / directly jumps camera to target azimuth angle (degrees) or top-down view
    */
-  public jumpToAngle(targetDeg: number): void {
+  public jumpToAngle(targetDeg: number, isTopDown = false): void {
     const radius = 3.2;
-    const rad = (targetDeg * Math.PI) / 180;
-    const x = Math.sin(rad) * radius;
-    const z = Math.cos(rad) * radius;
-    this.camera.position.set(x, 0.2, z);
+    if (isTopDown) {
+      const rad = (targetDeg * Math.PI) / 180;
+      const x = Math.sin(rad) * 0.35;
+      const z = Math.cos(rad) * 0.35;
+      this.camera.position.set(x, radius, z);
+    } else {
+      const rad = (targetDeg * Math.PI) / 180;
+      const x = Math.sin(rad) * radius;
+      const z = Math.cos(rad) * radius;
+      this.camera.position.set(x, 0.2, z);
+    }
     this.controls.update();
   }
 
@@ -317,7 +493,8 @@ export class ThreeMultiAngleBillboardEngine {
 
     for (const [slot, mesh] of this.partMeshes.entries()) {
       if (slot === 'dau' || slot === 'mat' || slot === 'mui' || slot === 'mieng' || slot === 'toc_truoc') {
-        mesh.position.y = ((this.currentAssembly?.parts[slot]?.offset?.[1] || 0) * -0.005) + breatheY;
+        const baseOffsetY = this.currentAssembly?.parts[slot]?.offset?.[1] || 0;
+        mesh.position.y = (baseOffsetY * -0.005) + breatheY;
       }
     }
   }

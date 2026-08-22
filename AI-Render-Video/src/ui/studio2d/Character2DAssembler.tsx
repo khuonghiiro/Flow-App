@@ -7,7 +7,7 @@ import {
 import { PART_HIERARCHY_CONFIG } from '../../core/assets/Asset2DRegistry';
 import { applyKitToAssembly } from '../../core/assets/CharacterKitStorage';
 import { AssemblerMainViewport } from './assembler/AssemblerMainViewport';
-import { AssemblerEquipHUD } from './assembler/AssemblerEquipHUD';
+import { AssemblerEquipWing } from './assembler/AssemblerEquipHUD';
 import { AssemblerMaterialDrawer } from './assembler/AssemblerMaterialDrawer';
 import { AssemblerInspectorPanel } from './assembler/AssemblerInspectorPanel';
 import { CharacterAssetCatalogModal } from './CharacterAssetCatalogModal';
@@ -137,30 +137,42 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '58% 42%', gap: 12, height: '100%', overflow: 'hidden' }}>
-      {/* ─── CỘT 1: Không gian 3D / Canvas & Các Ô Vuông Trang Bị ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
-        <AssemblerMainViewport
+    <div style={{ display: 'grid', gridTemplateColumns: '46% 54%', gap: 10, height: '100%', overflow: 'hidden' }}>
+      {/* ─── CỘT 1: Viewport Trung Tâm Kẹp Giữa 2 Cánh Ô Trang Bị (Trái & Phải) ── */}
+      <div style={{ display: 'flex', gap: 6, height: '100%', overflow: 'hidden' }}>
+        {/* Cánh Trái: Đầu & Mặt (4 ô vuông) */}
+        <AssemblerEquipWing
+          side="left"
           assembly={assembly}
           selectedSlot={selectedSlot}
-          onChangeAssembly={onChangeAssembly}
-          animMode={animMode}
-          isPlaying={isPlaying}
-          isBlinking={isBlinking}
-          isTalking={isTalking}
-          onAutoAlignAnatomy={handleAutoAlignAnatomy}
+          onSelectSlot={setSelectedSlot}
         />
 
-        {/* Các ô vuông trang bị nhân vật RPG */}
-        <AssemblerEquipHUD
+        {/* Viewport Ở Giữa (Canvas 2D / Không gian 3D) */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+          <AssemblerMainViewport
+            assembly={assembly}
+            selectedSlot={selectedSlot}
+            onChangeAssembly={onChangeAssembly}
+            animMode={animMode}
+            isPlaying={isPlaying}
+            isBlinking={isBlinking}
+            isTalking={isTalking}
+            onAutoAlignAnatomy={handleAutoAlignAnatomy}
+          />
+        </div>
+
+        {/* Cánh Phải: Thân, Áo, Tóc Sau, Vũ Khí (4 ô vuông) */}
+        <AssemblerEquipWing
+          side="right"
           assembly={assembly}
           selectedSlot={selectedSlot}
           onSelectSlot={setSelectedSlot}
         />
       </div>
 
-      {/* ─── CỘT 2: Danh Mục Vật Liệu & Bảng Tinh Chỉnh Cấu Trúc ─── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
+      {/* ─── CỘT 2: Danh Mục Vật Liệu (Chiếm toàn bộ không gian) + Bảng Điều Khiển Co Dãn Gọn Gàng ─── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%', overflow: 'hidden' }}>
         {/* Toast */}
         {saveSuccessMsg && (
           <div
@@ -178,14 +190,14 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
           </div>
         )}
 
-        {/* Material Catalog Drawer for selected slot */}
+        {/* Danh Mục Vật Liệu (Chiếm toàn bộ width & height còn lại) */}
         <AssemblerMaterialDrawer
           selectedSlot={selectedSlot}
           onApplyKitToSlot={handleApplyKitToSlot}
           onOpenFullCatalog={() => setIsCatalogOpen(true)}
         />
 
-        {/* Structure & Animation Inspector */}
+        {/* Diễn Hoạt & Tinh Chỉnh Cấu Trúc (Co dãn gọn gàng) */}
         <AssemblerInspectorPanel
           assembly={assembly}
           selectedSlot={selectedSlot}
