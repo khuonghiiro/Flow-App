@@ -118,7 +118,12 @@ class UniRigAutoRigger:
             if not mesh_path.exists():
                 raise FileNotFoundError(f"Mesh file not found: {obj_mesh_path}")
             loaded = trimesh.load(str(mesh_path), process=False)
-            mesh = loaded if isinstance(loaded, trimesh.Trimesh) else loaded.dump().sum()
+            if isinstance(loaded, trimesh.Trimesh):
+                mesh = loaded
+            elif isinstance(loaded, trimesh.Scene):
+                mesh = trimesh.util.concatenate(list(loaded.geometry.values()))
+            else:
+                mesh = trimesh.util.concatenate(list(loaded))
 
         # Step 2.1: Validate Mesh Symmetry
         self.logger.info("Validating mesh bilateral symmetry...")

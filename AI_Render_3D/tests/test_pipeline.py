@@ -67,22 +67,16 @@ def test_full_pipeline_execution_hunyuan3d(temp_pipeline, tmp_path):
     assert result.face_scaffold is not None
 
 
-def test_full_pipeline_execution_triposr(temp_pipeline, tmp_path):
-    # Create test input image
-    img_path = tmp_path / "hero_triposr.png"
+def test_stage1_image_to_mesh_standalone(temp_pipeline, tmp_path):
+    img_path = tmp_path / "stage1_standalone.png"
     img = Image.new("RGBA", (512, 512), color=(180, 180, 180, 255))
     img.save(img_path)
 
-    result = temp_pipeline.run_pipeline(
-        image_path=str(img_path),
-        extract_face_scaffold=False,
-        engine="triposr",
-    )
-
-    assert result.success is True
-    assert result.glb_path is not None
-    assert Path(result.glb_path).exists()
-    assert result.stage1_result.engine_used == "triposr"
+    res = temp_pipeline.run_image_to_mesh(str(img_path), engine="trellis", ss_steps=20, slat_steps=20)
+    assert res.mesh_path.endswith(".glb")
+    assert Path(res.mesh_path).exists()
+    assert res.vertex_count > 0
+    assert res.triangle_count > 0
 
 
 

@@ -49,15 +49,18 @@ class Pipeline:
 
     @property
     def device(self) -> torch.device:
+        if hasattr(self, '_device') and self._device is not None:
+            return self._device
         for model in self.models.values():
             if hasattr(model, 'device'):
                 return model.device
         for model in self.models.values():
             if hasattr(model, 'parameters'):
                 return next(model.parameters()).device
-        raise RuntimeError("No device found.")
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def to(self, device: torch.device) -> None:
+    def to(self, device: Union[torch.device, str]) -> None:
+        self._device = torch.device(device) if isinstance(device, str) else device
         for model in self.models.values():
             model.to(device)
 

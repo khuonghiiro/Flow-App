@@ -84,6 +84,8 @@ class GLBExporter:
         rig_result: Stage2RigResult,
         output_glb_path: str,
         texture_path: Optional[str] = None,
+        normal_map_path: Optional[str] = None,
+        metallic_roughness_path: Optional[str] = None,
         total_pipeline_time: float = 0.0,
     ) -> Stage3ExportResult:
         """
@@ -193,17 +195,22 @@ class GLBExporter:
         # 5. Vertex Colors (COLOR_0)
         col_acc = None
         if hasattr(mesh.visual, "vertex_colors") and mesh.visual.vertex_colors is not None and len(mesh.visual.vertex_colors) == len(vertices):
-            vcols = np.array(mesh.visual.vertex_colors, dtype=np.float32)
-            if vcols.max() > 1.0:
-                vcols = vcols / 255.0
+            vcols = np.array(mesh.visual.vertex_colors)
+            if vcols.dtype != np.uint8:
+                if vcols.max() <= 1.0:
+                    vcols = (vcols * 255.0).astype(np.uint8)
+                else:
+                    vcols = vcols.astype(np.uint8)
             if vcols.shape[1] == 3:
-                vcols = np.column_stack([vcols, np.ones(len(vcols), dtype=np.float32)])
-            col_bv = add_buffer_data(vcols.astype(np.float32).tobytes(), target=34962)
+                vcols = np.column_stack([vcols, np.full((len(vcols), 1), 255, dtype=np.uint8)])
+            
+            col_bv = add_buffer_data(vcols.tobytes(), target=34962)
             col_acc = len(gltf.accessors)
             gltf.accessors.append(
                 pygltflib.Accessor(
                     bufferView=col_bv,
-                    componentType=pygltflib.FLOAT,
+                    componentType=pygltflib.UNSIGNED_BYTE,
+                    normalized=True,
                     count=len(vcols),
                     type=pygltflib.VEC4,
                 )
@@ -272,15 +279,16 @@ class GLBExporter:
                 child_node_idx = joint_nodes_indices[i]
                 gltf.nodes[parent_node_idx].children.append(child_node_idx)
 
-        # 9. Embedded Texture and Material definition
-        tex_info = None
-        if texture_path and Path(texture_path).exists():
+        # 9. Embedded PBR Textures (Albedo 2K, Normal Map 2K, Metallic-Roughness 2K)
+        def _embed_texture_asset(path_str: Optional[str]) -> Optional[int]:
+            if not path_str or not Path(path_str).exists():
+                return None
             try:
-                with open(texture_path, "rb") as f:
+                with open(path_str, "rb") as f:
                     img_data = f.read()
                 img_bv = add_buffer_data(img_data)
                 img_idx = len(gltf.images)
-                mime = "image/png" if str(texture_path).lower().endswith(".png") else "image/jpeg"
+                mime = "image/png" if str(path_str).lower().endswith(".png") else "image/jpeg"
                 gltf.images.append(pygltflib.Image(bufferView=img_bv, mimeType=mime))
 
                 sampler_idx = len(gltf.samplers)
@@ -288,33 +296,41 @@ class GLBExporter:
                     pygltflib.Sampler(
                         magFilter=pygltflib.LINEAR,
                         minFilter=pygltflib.LINEAR_MIPMAP_LINEAR,
-                        wrapS=pygltflib.CLAMP_TO_EDGE,
-                        wrapT=pygltflib.CLAMP_TO_EDGE,
+                        wrapS=pygltflib.REPEAT,
+                        wrapT=pygltflib.REPEAT,
                     )
                 )
 
                 tex_idx = len(gltf.textures)
                 gltf.textures.append(pygltflib.Texture(sampler=sampler_idx, source=img_idx))
-                tex_info = pygltflib.TextureInfo(index=tex_idx)
+                return tex_idx
             except Exception as tex_err:
-                self.logger.warning(f"Texture embedding notice: {tex_err}")
+                self.logger.warning(f"PBR Texture embedding notice ('{path_str}'): {tex_err}")
+                return None
 
-        # Material with texture and PBR attributes
-        pbr_dict: Dict[str, Any] = {
-            "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
-            "roughnessFactor": 0.5,
-            "metallicFactor": 0.05,
-        }
-        if tex_info is not None:
-            pbr_dict["baseColorTexture"] = tex_info
+        albedo_tex_idx = _embed_texture_asset(texture_path)
+        normal_tex_idx = _embed_texture_asset(normal_map_path)
+        mr_tex_idx = _embed_texture_asset(metallic_roughness_path)
 
-        gltf.materials.append(
-            pygltflib.Material(
-                name="CharacterMaterial",
-                pbrMetallicRoughness=pygltflib.PbrMetallicRoughness(**pbr_dict),
-                doubleSided=True,
-            )
+        pbr_mr = pygltflib.PbrMetallicRoughness(
+            baseColorFactor=[1.0, 1.0, 1.0, 1.0],
+            roughnessFactor=0.85,
+            metallicFactor=0.02,
         )
+        if albedo_tex_idx is not None:
+            pbr_mr.baseColorTexture = pygltflib.TextureInfo(index=albedo_tex_idx)
+        if mr_tex_idx is not None:
+            pbr_mr.metallicRoughnessTexture = pygltflib.TextureInfo(index=mr_tex_idx)
+
+        mat_dict: Dict[str, Any] = {
+            "name": "CharacterMaterial",
+            "pbrMetallicRoughness": pbr_mr,
+            "doubleSided": True,
+        }
+        if normal_tex_idx is not None:
+            mat_dict["normalTexture"] = pygltflib.NormalMaterialTexture(index=normal_tex_idx, scale=1.0)
+
+        gltf.materials.append(pygltflib.Material(**mat_dict))
 
         # Primitive Attributes
         prim_attrs_dict = {
@@ -324,7 +340,7 @@ class GLBExporter:
             "JOINTS_0": joints_acc,
             "WEIGHTS_0": weights_acc,
         }
-        if col_acc is not None and tex_info is None:
+        if col_acc is not None and albedo_tex_idx is None:
             prim_attrs_dict["COLOR_0"] = col_acc
 
         gltf.meshes.append(

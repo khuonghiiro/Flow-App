@@ -28,7 +28,13 @@ class Stage1MeshResult:
     vertex_count: int
     triangle_count: int
     duration_seconds: float
-    engine_used: str = "triposr"
+    is_watertight: bool = True
+    volume: float = 0.0
+    normal_path: Optional[str] = None
+    metallic_roughness_path: Optional[str] = None
+    hole_count: int = 0
+    non_manifold_edges: int = 0
+    engine_used: str = "trellis"
     is_mock: bool = False
 
 
@@ -231,7 +237,8 @@ class TripoSRMeshGenerator:
                 mesh.apply_scale(scale_factor)
 
             mesh.fix_normals()
-            mesh.export(str(out_obj), include_color=True)
+            out_glb = out_obj.with_suffix(".glb")
+            mesh.export(str(out_glb), file_type="glb")
 
             GPUManager.cleanup_memory()
             duration = self.logger.end_stage("Stage 1: TripoSR Image-to-Mesh")
@@ -242,7 +249,7 @@ class TripoSRMeshGenerator:
             )
 
             return Stage1MeshResult(
-                mesh_path=str(out_obj),
+                mesh_path=str(out_glb),
                 texture_path=None,
                 vertex_count=len(mesh.vertices),
                 triangle_count=len(mesh.faces),
@@ -281,29 +288,69 @@ class Stage1MeshRouter:
         input_image_path: str,
         output_obj_path: str,
         engine: Literal["hunyuan3d", "trellis", "triposr"] = "hunyuan3d",
+        side_image_path: Optional[str] = None,
+        back_image_path: Optional[str] = None,
+        persp_image_path: Optional[str] = None,
+        ss_steps: Optional[int] = None,
+        ss_cfg_strength: Optional[float] = None,
+        slat_steps: Optional[int] = None,
+        slat_cfg_strength: Optional[float] = None,
+        seed: Optional[int] = None,
+        subdivide_high_poly: Optional[bool] = None,
     ) -> Stage1MeshResult:
-        """Route generation request to the selected 3D AI engine."""
+        """Route generation request to the selected 3D AI engine with customizable precision."""
         if engine == "hunyuan3d":
-            self.logger.info("Executing Stage 1 with Hunyuan3D-2GP SOTA Engine (Meshy-Grade)...")
-            res = self.hunyuan3d_engine.generate(input_image_path, output_obj_path)
+            self.logger.info("Executing Stage 1 with Hunyuan3D-2GP SOTA Multi-View Engine (Meshy-Grade)...")
+            res = self.hunyuan3d_engine.generate(
+                input_image_path=input_image_path,
+                output_obj_path=output_obj_path,
+                side_image_path=side_image_path,
+                back_image_path=back_image_path,
+                persp_image_path=persp_image_path,
+                ss_steps=ss_steps,
+                ss_cfg_strength=ss_cfg_strength,
+                slat_steps=slat_steps,
+                slat_cfg_strength=slat_cfg_strength,
+                seed=seed,
+                subdivide_high_poly=subdivide_high_poly,
+            )
             return Stage1MeshResult(
                 mesh_path=res.mesh_path,
                 texture_path=res.texture_path,
+                normal_path=getattr(res, "normal_path", None),
+                metallic_roughness_path=getattr(res, "metallic_roughness_path", None),
                 vertex_count=res.vertex_count,
                 triangle_count=res.triangle_count,
                 duration_seconds=res.duration_seconds,
+                is_watertight=res.is_watertight,
+                volume=res.volume,
+                hole_count=res.hole_count,
+                non_manifold_edges=res.non_manifold_edges,
                 engine_used="hunyuan3d",
                 is_mock=res.is_mock,
             )
         elif engine == "trellis":
-            self.logger.info("Executing Stage 1 with SOTA TRELLIS Engine...")
-            res = self.trellis_engine.generate(input_image_path, output_obj_path)
+            self.logger.info("Executing Stage 1 with SOTA TRELLIS Engine (High Precision Flow-Matching)...")
+            res = self.trellis_engine.generate(
+                input_image_path,
+                output_obj_path,
+                ss_steps=ss_steps,
+                ss_cfg_strength=ss_cfg_strength,
+                slat_steps=slat_steps,
+                slat_cfg_strength=slat_cfg_strength,
+                seed=seed,
+                subdivide_high_poly=subdivide_high_poly,
+            )
             return Stage1MeshResult(
                 mesh_path=res.mesh_path,
                 texture_path=res.texture_path,
                 vertex_count=res.vertex_count,
                 triangle_count=res.triangle_count,
                 duration_seconds=res.duration_seconds,
+                is_watertight=res.is_watertight,
+                volume=res.volume,
+                hole_count=res.hole_count,
+                non_manifold_edges=res.non_manifold_edges,
                 engine_used="trellis",
                 is_mock=res.is_mock,
             )

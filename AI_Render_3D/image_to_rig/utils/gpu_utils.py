@@ -53,6 +53,11 @@ class GPUManager:
         }
 
     @classmethod
+    def get_free_vram_mb(cls) -> float:
+        """Return available free VRAM in MB."""
+        return cls.get_vram_status_mb()["free_mb"]
+
+    @classmethod
     def cleanup_memory(cls) -> Tuple[float, float]:
         """
         Trigger garbage collection and empty CUDA cache.

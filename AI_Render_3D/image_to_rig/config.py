@@ -27,11 +27,15 @@ class TrellisConfig:
     model_id: str = "microsoft/TRELLIS-image-large"
     local_model_dir: str = "models/trellis"
     sparse_structure_resolution: int = 512
-    ss_steps: int = 12
-    slat_steps: int = 12
-    simplify_target_faces: int = 50000  # Optimized for real-time Three.js & rigging
+    ss_steps: int = 35          # Golden sweet spot: 35 steps for complete geometric fidelity
+    ss_cfg_strength: float = 5.8 # Golden ratio: 5.8 prevents protruding stalks & excessive distortion
+    slat_steps: int = 35        # Golden sweet spot: 35 steps for rich organic textures
+    slat_cfg_strength: float = 5.8 # High color detail without noise
+    seed: int = 42
+    simplify_target_faces: int = 100000  # Polygon budget for animation mode
+    subdivide_high_poly: bool = False    # FlexiCubes native ~300k-400k triangles preserves exact details without RAM overflow
     texture_size: int = 2048  # High resolution PBR texture atlas
-    foreground_ratio: float = 0.88
+    foreground_ratio: float = 0.90
     remove_background: bool = True
     device: str = "cuda"
 

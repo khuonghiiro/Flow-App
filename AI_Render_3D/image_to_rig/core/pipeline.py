@@ -62,8 +62,17 @@ class ImageToRigPipeline:
         image_path: str,
         output_obj_path: Optional[str] = None,
         engine: Optional[str] = None,
+        side_image_path: Optional[str] = None,
+        back_image_path: Optional[str] = None,
+        persp_image_path: Optional[str] = None,
+        ss_steps: Optional[int] = None,
+        ss_cfg_strength: Optional[float] = None,
+        slat_steps: Optional[int] = None,
+        slat_cfg_strength: Optional[float] = None,
+        seed: Optional[int] = None,
+        subdivide_high_poly: Optional[bool] = None,
     ) -> Stage1MeshResult:
-        """Execute Stage 1 alone (Image -> Mesh OBJ)."""
+        """Execute Stage 1 alone (Image -> Mesh OBJ/PLY/GLB)."""
         val = self.validate_input(image_path)
         if not val.is_valid:
             raise ValueError(f"Input validation error: {'; '.join(val.errors)}")
@@ -73,7 +82,20 @@ class ImageToRigPipeline:
             output_obj_path = str(Path(self.config.temp_dir) / f"{stem}_raw_mesh.obj")
 
         active_engine = engine or self.config.default_engine
-        return self.stage1_mesh.generate(image_path, output_obj_path, engine=active_engine)
+        return self.stage1_mesh.generate(
+            input_image_path=image_path,
+            output_obj_path=output_obj_path,
+            engine=active_engine,
+            side_image_path=side_image_path,
+            back_image_path=back_image_path,
+            persp_image_path=persp_image_path,
+            ss_steps=ss_steps,
+            ss_cfg_strength=ss_cfg_strength,
+            slat_steps=slat_steps,
+            slat_cfg_strength=slat_cfg_strength,
+            seed=seed,
+            subdivide_high_poly=subdivide_high_poly,
+        )
 
     def run_auto_rig(self, obj_mesh_path: str) -> Stage2RigResult:
         """Execute Stage 2 alone (Mesh OBJ -> Rigging)."""
@@ -96,9 +118,18 @@ class ImageToRigPipeline:
         self,
         image_path: str,
         output_glb_path: Optional[str] = None,
+        side_image_path: Optional[str] = None,
+        back_image_path: Optional[str] = None,
+        persp_image_path: Optional[str] = None,
         progress_cb: Optional[Callable[[float, str], None]] = None,
         extract_face_scaffold: bool = True,
         engine: Optional[str] = None,
+        ss_steps: Optional[int] = None,
+        ss_cfg_strength: Optional[float] = None,
+        slat_steps: Optional[int] = None,
+        slat_cfg_strength: Optional[float] = None,
+        seed: Optional[int] = None,
+        subdivide_high_poly: Optional[bool] = None,
     ) -> PipelineExecutionResult:
         """
         Execute full end-to-end pipeline:
@@ -125,13 +156,26 @@ class ImageToRigPipeline:
             # 2. Stage 1: SOTA 3D Mesh (10% - 50%)
             if progress_cb:
                 if active_engine == "hunyuan3d":
-                    engine_label = "Hunyuan3D-2GP SOTA"
+                    engine_label = "Hunyuan3D-2GP SOTA Multi-View"
                 elif active_engine == "trellis":
-                    engine_label = "TRELLIS SOTA"
+                    engine_label = "TRELLIS SOTA (High Precision)"
                 else:
                     engine_label = "TripoSR Fast"
                 progress_cb(0.15, f"Generating 3D mesh via {engine_label}...")
-            s1_res = self.stage1_mesh.generate(image_path, temp_obj, engine=active_engine)
+            s1_res = self.stage1_mesh.generate(
+                input_image_path=image_path,
+                output_obj_path=temp_obj,
+                engine=active_engine,
+                side_image_path=side_image_path,
+                back_image_path=back_image_path,
+                persp_image_path=persp_image_path,
+                ss_steps=ss_steps,
+                ss_cfg_strength=ss_cfg_strength,
+                slat_steps=slat_steps,
+                slat_cfg_strength=slat_cfg_strength,
+                seed=seed,
+                subdivide_high_poly=subdivide_high_poly,
+            )
 
             # 3. Stage 2: UniRig (50% - 80%)
             if progress_cb:
@@ -140,11 +184,13 @@ class ImageToRigPipeline:
 
             # 4. Stage 3: GLB Export (80% - 95%)
             if progress_cb:
-                progress_cb(0.85, "Assembling glTF 2.0 binary asset...")
+                progress_cb(0.85, "Assembling glTF 2.0 binary asset with 2K PBR Textures & Normal Maps...")
             s3_res = self.stage3_export.export_rigged_glb(
                 rig_result=s2_res,
                 output_glb_path=final_glb,
                 texture_path=s1_res.texture_path,
+                normal_map_path=getattr(s1_res, "normal_path", None),
+                metallic_roughness_path=getattr(s1_res, "metallic_roughness_path", None),
                 total_pipeline_time=(time.time() - start_time),
             )
 

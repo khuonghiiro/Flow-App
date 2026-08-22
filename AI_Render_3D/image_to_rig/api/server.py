@@ -61,6 +61,12 @@ def create_api_app() -> FastAPI:
         def task_fn():
             return pipeline.run_pipeline(
                 image_path=req.image_path,
+                engine=req.engine,
+                ss_steps=req.ss_steps,
+                ss_cfg_strength=req.ss_cfg_strength,
+                slat_steps=req.slat_steps,
+                slat_cfg_strength=req.slat_cfg_strength,
+                seed=req.seed,
                 extract_face_scaffold=req.extract_face_scaffold,
                 progress_cb=lambda p, s: queue.update_job_progress(job.job_id, p, s),
             )
