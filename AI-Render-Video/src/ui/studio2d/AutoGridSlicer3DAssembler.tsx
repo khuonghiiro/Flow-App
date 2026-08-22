@@ -12,6 +12,7 @@ import {
   Compass,
   ArrowRight,
   RefreshCw,
+  Eraser,
 } from 'lucide-react';
 import {
   Character2DAssembly,
@@ -28,6 +29,7 @@ import {
   ThreeMultiAngleBillboardEngine,
   AngleDetectionResult,
 } from '../../core/engine2d/ThreeMultiAngleBillboardEngine';
+import { CellPixelEraserModal } from './CellPixelEraserModal';
 
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
@@ -96,6 +98,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [rowDividers, setRowDividers] = useState<number[]>([]);
   const [hoveredDivider, setHoveredDivider] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
   const [activeDividerDrag, setActiveDividerDrag] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
+
+  // Pixel Eraser & Cleanup Modal for individual slice
+  const [editingCellData, setEditingCellData] = useState<{ cell: GridCellDefinition; dataUrl: string } | null>(null);
 
   /**
    * Initializes standard uniform grid dividers based on category rows/cols and margins
@@ -816,6 +821,29 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     }
   };
 
+  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoords(e);
+    const img = loadedImageRef.current;
+    if (!coords || !img) return;
+
+    const rows = currentCategory.rows;
+    const cols = currentCategory.cols;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const rect = getCellRect(r, c, img);
+        if (coords.x >= rect.x && coords.x <= rect.x + rect.w && coords.y >= rect.y && coords.y <= rect.y + rect.h) {
+          const found = currentCategory.cells.find((cell) => cell.row === r && cell.col === c);
+          if (found) {
+            setSelectedCell(found);
+            handleOpenCellPixelEditor(found);
+          }
+          return;
+        }
+      }
+    }
+  };
+
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoords(e);
     const img = loadedImageRef.current;
@@ -953,6 +981,88 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     if (loadedImageRef.current) {
       initDividers(loadedImageRef.current);
     }
+  };
+
+  /**
+   * Opens the full Pixel Eraser & Zoom Cleanup Modal for a specific cell
+   */
+  const handleOpenCellPixelEditor = (cell: GridCellDefinition) => {
+    const cellKey = `${cell.row}_${cell.col}`;
+    let dataUrl = slicedResults.get(cellKey);
+
+    if (!dataUrl && loadedImageRef.current) {
+      const rect = getCellRect(cell.row, cell.col, loadedImageRef.current);
+      dataUrl = sliceAndRemoveBgCell(loadedImageRef.current, rect.x, rect.y, rect.w, rect.h);
+    }
+
+    if (dataUrl) {
+      setEditingCellData({ cell, dataUrl });
+    }
+  };
+
+  /**
+   * Saves updated sliced PNG from Pixel Eraser Modal and syncs directly with 3D Billboard Turntable Engine
+   */
+  const handleSaveCellPixelEdit = (newDataUrl: string) => {
+    if (!editingCellData) return;
+    const { cell } = editingCellData;
+    const cellKey = `${cell.row}_${cell.col}`;
+
+    // 1. Update slicedResults Map
+    setSlicedResults((prev) => {
+      const next = new Map(prev);
+      next.set(cellKey, newDataUrl);
+      return next;
+    });
+
+    // 2. Update 3D Character Assembly & Three Engine
+    if (cell.partSlot) {
+      const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
+      const slot = cell.partSlot;
+      if (!updatedAssembly.parts[slot]) {
+        updatedAssembly.parts[slot] = {
+          path: newDataUrl,
+          offset: [0, 0],
+          scale: [1, 1],
+          rotation: 0,
+          pivot: [0.5, 0.5],
+          flipX: false,
+          flipY: false,
+          z_index: 5,
+          opacity: 1,
+          angles: {},
+        };
+      }
+
+      const targetPart = updatedAssembly.parts[slot]!;
+      if (!targetPart.angles) targetPart.angles = {};
+      if (cell.angle) {
+        targetPart.angles[cell.angle] = newDataUrl;
+
+        if (cell.angle === 'front') {
+          targetPart.path = newDataUrl;
+        }
+      }
+      if (cell.mirrorAngle) {
+        targetPart.angles[cell.mirrorAngle] = newDataUrl;
+      }
+
+      onApplyAssembly(updatedAssembly);
+
+      if (threeEngineRef.current) {
+        threeEngineRef.current.setAssembly(updatedAssembly);
+      }
+    }
+
+    // 3. Update cached Image element for grid canvas
+    const imgEl = new Image();
+    imgEl.onload = () => {
+      slicedImgElementsRef.current.set(cellKey, imgEl);
+      drawGridOverlay();
+    };
+    imgEl.src = newDataUrl;
+
+    setEditingCellData(null);
   };
 
   return (
@@ -1248,7 +1358,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
                 <input
                   type="range"
                   min="0"
-                  max="8"
+                  max="20"
                   value={feather}
                   onChange={(e) => setFeather(parseInt(e.target.value))}
                   onMouseUp={() => {
@@ -1560,6 +1670,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           <canvas
             ref={imageCanvasRef}
             onMouseDown={handleCanvasMouseDown}
+            onDoubleClick={handleCanvasDoubleClick}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
@@ -1575,12 +1686,12 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         {/* Selected Cell Custom Sizing & Adjustment Banner */}
         {selectedCell ? (
           <div style={{ background: '#0b1329', padding: '8px 12px', borderRadius: 6, border: '1px solid #0284c7', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>
                   Đang chọn: [{selectedCell.row + 1}, {selectedCell.col + 1}] - {selectedCell.label}
                   <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 8, fontWeight: 400 }}>
-                    (Rê chuột vào các đường kẻ bên trong khung ảnh để kéo co giãn hàng/cột tự do)
+                    (Nhấp đúp vào ô trên ảnh để mở cọ tẩy xóa pixel thừa)
                   </span>
                 </div>
                 <div style={{ fontSize: 10, color: '#94a3b8' }}>
@@ -1588,7 +1699,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {slicedResults.get(`${selectedCell.row}_${selectedCell.col}`) && (
                   <img
                     src={slicedResults.get(`${selectedCell.row}_${selectedCell.col}`)}
@@ -1596,10 +1707,33 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
                     style={{ width: 36, height: 36, objectFit: 'contain', background: '#000', borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)' }}
                   />
                 )}
+
+                {/* Open Pixel Eraser Modal Button */}
+                <button
+                  onClick={() => handleOpenCellPixelEditor(selectedCell)}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: 5,
+                    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                    color: '#fff',
+                    border: '1px solid #38bdf8',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+                  }}
+                  title="Mở hộp thoại phóng to ô này để dùng cọ tẩy xóa thủ công từng pixel hoặc đốm trắng thừa"
+                >
+                  <Eraser size={14} /> 🎨 Tẩy / Xóa Chi Tiết Ô Này
+                </button>
+
                 <button
                   onClick={handleResetAllDividers}
                   style={{
-                    padding: '4px 8px',
+                    padding: '5px 8px',
                     fontSize: 10,
                     borderRadius: 4,
                     background: 'rgba(255,255,255,0.06)',
@@ -1813,6 +1947,17 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           </button>
         )}
       </div>
+
+      {/* Manual Pixel Eraser & Zoom Cleanup Modal */}
+      {editingCellData && (
+        <CellPixelEraserModal
+          isOpen={Boolean(editingCellData)}
+          onClose={() => setEditingCellData(null)}
+          cellTitle={`Ô [Hàng ${editingCellData.cell.row + 1}, Cột ${editingCellData.cell.col + 1}]: ${editingCellData.cell.label} (${editingCellData.cell.partSlot})`}
+          initialImageDataUrl={editingCellData.dataUrl}
+          onSave={handleSaveCellPixelEdit}
+        />
+      )}
     </div>
   );
 };

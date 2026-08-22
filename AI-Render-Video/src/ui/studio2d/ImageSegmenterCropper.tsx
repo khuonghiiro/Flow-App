@@ -321,7 +321,7 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
                 <input
                   type="range"
                   min="0"
-                  max="10"
+                  max="20"
                   value={feather}
                   onChange={(e) => setFeather(parseInt(e.target.value))}
                   onMouseUp={processImageAndCrop}
