@@ -347,6 +347,36 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
     }
   }, [selectedSkyTime]);
 
+  // ─── Calculate Natural Real-World Target Size (in meters) ────
+  const getNaturalTargetSize = (category: string, isBaseMap: boolean): number => {
+    if (isBaseMap) return 60.0;
+    if (category === 'ban_do' || category === 'maps' || category === '_custom_ban_do') return 40.0;
+    if (category === 'cong_trinh' || category === 'buildings') return 8.0;
+    if (category === 'cay_coi' || category === 'trees') return 4.5;
+    if (category === 'da_dia_hinh' || category === 'rocks') return 3.0;
+    if (category === 'phuong_tien' || category === 'vehicles') return 3.5;
+    if (category === 'dong_vat' || category === 'animals') return 2.0;
+    if (category === 'noi_that' || category === 'furniture') return 1.5;
+    if (
+      category === 'than_co_ban' ||
+      category === 'characters' ||
+      category === '_lap_rap' ||
+      category === 'nhan_vat_da_rap'
+    )
+      return 1.75;
+    if (
+      category === 'vu_khi' ||
+      category === 'dung_cu' ||
+      category === 'do_tieu_hao' ||
+      category === 'phu_kien' ||
+      category === 'accessories' ||
+      category === 'weapons' ||
+      category === 'tools'
+    )
+      return 1.0;
+    return 2.5; // General props
+  };
+
   // ─── 3. Sync 3D Models in Scene with placedObjects State ──────
   useEffect(() => {
     if (!objectsGroupRef.current) return;
@@ -367,9 +397,11 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
 
       if (existingMesh) {
         // Update transforms
+        const baseScale = (existingMesh as any).userData?.baseScale || 1.0;
+        const totalScale = obj.scale * baseScale;
         existingMesh.position.set(obj.position[0], obj.position[1], obj.position[2]);
         existingMesh.rotation.y = (obj.rotationY * Math.PI) / 180;
-        existingMesh.scale.set(obj.scale, obj.scale, obj.scale);
+        existingMesh.scale.set(totalScale, totalScale, totalScale);
         existingMesh.visible = obj.visible;
       } else {
         // Load new 3D model
@@ -397,13 +429,38 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
               }
             });
 
-            model.position.set(obj.position[0], obj.position[1], obj.position[2]);
-            model.rotation.y = (obj.rotationY * Math.PI) / 180;
-            model.scale.set(obj.scale, obj.scale, obj.scale);
-            model.visible = obj.visible;
+            // 1. Calculate natural bounding box dimensions
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
 
-            group.add(model);
-            loadedMeshesMapRef.current.set(obj.instanceId, model);
+            const isBaseMap = obj.instanceId === 'layer_base_map';
+            const targetSize = getNaturalTargetSize(obj.category, isBaseMap);
+            let baseScale = 1.0;
+            if (maxDim > 0) {
+              baseScale = targetSize / maxDim;
+            }
+
+            // 2. Align bottom center to origin (0, 0, 0) so object rests nicely on the floor grid
+            const center = box.getCenter(new THREE.Vector3());
+            model.position.x = -center.x;
+            model.position.z = -center.z;
+            model.position.y = -box.min.y;
+
+            // 3. Put in wrapper group with baseScale metadata
+            const wrapper = new THREE.Group();
+            wrapper.name = `wrapper_${obj.instanceId}`;
+            wrapper.add(model);
+            (wrapper as any).userData = { baseScale };
+
+            const totalScale = obj.scale * baseScale;
+            wrapper.position.set(obj.position[0], obj.position[1], obj.position[2]);
+            wrapper.rotation.y = (obj.rotationY * Math.PI) / 180;
+            wrapper.scale.set(totalScale, totalScale, totalScale);
+            wrapper.visible = obj.visible;
+
+            group.add(wrapper);
+            loadedMeshesMapRef.current.set(obj.instanceId, wrapper);
           })
           .catch((err) => {
             console.warn(`Lỗi tải model 3D cho ${obj.name}:`, err);
@@ -422,7 +479,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       category: item.category,
       position: dropPos,
       rotationY: 0,
-      scale: item.category === 'ban_do' || item.category === 'maps' ? 1.0 : 1.0,
+      scale: 1.0,
       visible: true,
     };
 
@@ -473,6 +530,12 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   const updateSelectedObject = (updates: Partial<PlacedObject>) => {
     setPlacedObjects((prev) =>
       prev.map((o) => (o.instanceId === selectedInstanceId ? { ...o, ...updates } : o))
+    );
+  };
+
+  const toggleObjectVisibility = (instanceId: string) => {
+    setPlacedObjects((prev) =>
+      prev.map((o) => (o.instanceId === instanceId ? { ...o, visible: !o.visible } : o))
     );
   };
 
@@ -1081,11 +1144,20 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          updateSelectedObject({ visible: !obj.visible });
+                          toggleObjectVisibility(obj.instanceId);
                         }}
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                        title={obj.visible ? 'Ẩn vật thể' : 'Hiện vật thể'}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: obj.visible ? '#38bdf8' : '#64748b',
+                          cursor: 'pointer',
+                          padding: '2px 4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
                       >
-                        {obj.visible ? <Eye size={12} /> : <EyeOff size={12} color="#64748b" />}
+                        {obj.visible ? <Eye size={13} /> : <EyeOff size={13} />}
                       </button>
                     </div>
                   );
@@ -1129,7 +1201,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* Rotation Y & Scale */}
+                  {/* Rotation Y */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 10, color: '#94a3b8', width: 45 }}>Góc Xoay:</span>
                     <input
@@ -1145,20 +1217,68 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: '#94a3b8', width: 45 }}>Tỉ Lệ:</span>
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="5"
-                      step="0.1"
-                      value={selectedObject.scale}
-                      onChange={(e) => updateSelectedObject({ scale: parseFloat(e.target.value) })}
-                      style={{ flex: 1, accentColor: '#4ade80' }}
-                    />
-                    <span style={{ fontSize: 10, color: '#4ade80', width: 35, textAlign: 'right' }}>
-                      {selectedObject.scale.toFixed(1)}x
-                    </span>
+                  {/* Scale with Slider, Number Input, and Quick Presets */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8', width: 45 }}>Tỉ Lệ:</span>
+                      <input
+                        type="range"
+                        min="0.05"
+                        max="5.0"
+                        step="0.05"
+                        value={selectedObject.scale}
+                        onChange={(e) => updateSelectedObject({ scale: parseFloat(e.target.value) || 0.05 })}
+                        style={{ flex: 1, accentColor: '#4ade80' }}
+                      />
+                      <input
+                        type="number"
+                        min="0.01"
+                        max="50"
+                        step="0.1"
+                        value={selectedObject.scale}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val > 0) updateSelectedObject({ scale: val });
+                        }}
+                        style={{
+                          width: 48,
+                          padding: '2px 4px',
+                          background: '#090d16',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          color: '#4ade80',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          textAlign: 'right',
+                        }}
+                      />
+                      <span style={{ fontSize: 10, color: '#4ade80' }}>x</span>
+                    </div>
+                    {/* Quick Scale Presets */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 53 }}>
+                      {[0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 3.0].map((sVal) => (
+                        <button
+                          key={sVal}
+                          onClick={() => updateSelectedObject({ scale: sVal })}
+                          style={{
+                            padding: '1px 5px',
+                            borderRadius: 3,
+                            fontSize: 9,
+                            cursor: 'pointer',
+                            background:
+                              Math.abs(selectedObject.scale - sVal) < 0.01
+                                ? 'rgba(74, 222, 128, 0.25)'
+                                : 'rgba(255,255,255,0.05)',
+                            border:
+                              Math.abs(selectedObject.scale - sVal) < 0.01
+                                ? '1px solid #4ade80'
+                                : '1px solid rgba(255,255,255,0.1)',
+                            color: Math.abs(selectedObject.scale - sVal) < 0.01 ? '#4ade80' : '#94a3b8',
+                          }}
+                        >
+                          {sVal === 1.0 ? '1.0x (Chuẩn)' : `${sVal}x`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
