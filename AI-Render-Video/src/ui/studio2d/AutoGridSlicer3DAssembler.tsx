@@ -13,11 +13,18 @@ import {
   ArrowRight,
   RefreshCw,
   Eraser,
+  FolderOpen,
+  BookmarkPlus,
+  Save,
+  Box,
+  X,
 } from 'lucide-react';
 import {
   Character2DAssembly,
   Character2DAngle,
   Character2DPartType,
+  CharacterResourceCategory,
+  CharacterResourceKit,
 } from '../../types/scene2d';
 import {
   GRID_CATEGORY_DEFINITIONS,
@@ -30,6 +37,8 @@ import {
   AngleDetectionResult,
 } from '../../core/engine2d/ThreeMultiAngleBillboardEngine';
 import { CellPixelEraserModal } from './CellPixelEraserModal';
+import { CharacterAssetCatalogModal } from './CharacterAssetCatalogModal';
+import { saveCustomResourceKit } from '../../core/assets/CharacterKitStorage';
 
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
@@ -101,6 +110,63 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   // Pixel Eraser & Cleanup Modal for individual slice
   const [editingCellData, setEditingCellData] = useState<{ cell: GridCellDefinition; dataUrl: string } | null>(null);
+
+  // Asset Catalog & Kit Storage State
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
+  const [isSaveKitModalOpen, setIsSaveKitModalOpen] = useState<boolean>(false);
+  const [saveKitName, setSaveKitName] = useState<string>('');
+  const [saveKitCategory, setSaveKitCategory] = useState<CharacterResourceCategory>('toc');
+  const [saveKitToast, setSaveKitToast] = useState<string | null>(null);
+
+  const handleOpenSaveKitModal = () => {
+    const cat = selectedCatId.includes('hair')
+      ? 'toc'
+      : selectedCatId.includes('eye')
+      ? 'mat'
+      : selectedCatId.includes('mouth')
+      ? 'mieng'
+      : selectedCatId.includes('costume')
+      ? 'trang_phuc'
+      : selectedCatId.includes('weapon')
+      ? 'vu_khi'
+      : selectedCatId.includes('chin')
+      ? 'khuon_mat'
+      : 'custom_slices';
+
+    setSaveKitCategory(cat);
+    setSaveKitName(`Bộ ${currentCategory.label} (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+    setIsSaveKitModalOpen(true);
+  };
+
+  const handleConfirmSaveKit = () => {
+    if (!saveKitName.trim()) return;
+
+    // Get first available sliced png as thumbnail
+    let firstPng: string | undefined = undefined;
+    for (const [, val] of slicedResults.entries()) {
+      if (val) {
+        firstPng = val;
+        break;
+      }
+    }
+
+    const newKit: CharacterResourceKit = {
+      id: `custom_${Date.now()}`,
+      name: saveKitName.trim(),
+      category: saveKitCategory,
+      categoryLabel: saveKitCategory === 'toc' ? 'Bộ Tóc 3D' : saveKitCategory === 'mat' ? 'Mắt & Biểu Cảm' : saveKitCategory === 'mieng' ? 'Khẩu Hình Miệng' : saveKitCategory === 'trang_phuc' ? 'Trang Phục' : saveKitCategory === 'vu_khi' ? 'Vũ Khí' : 'Linh Kiện Tự Lưu',
+      angleCount: slicedResults.size > 0 ? slicedResults.size : currentCategory.cells.length,
+      parts: JSON.parse(JSON.stringify(currentAssembly.parts)),
+      previewImage: firstPng || currentAssembly.parts.toc_truoc?.path || currentAssembly.parts.dau?.path,
+      description: `Bộ linh kiện gồm ${slicedResults.size} ô đã cắt từ bảng ${currentCategory.label}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    saveCustomResourceKit(newKit);
+    setIsSaveKitModalOpen(false);
+    setSaveKitToast(`Đã lưu "${saveKitName}" vào kho tài nguyên thành công!`);
+    setTimeout(() => setSaveKitToast(null), 3500);
+  };
 
   /**
    * Initializes standard uniform grid dividers based on category rows/cols and margins
@@ -1922,31 +1988,250 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           </div>
         </div>
 
-        {/* Switch to Character Assembly Tab Button */}
-        {onSwitchToAssemblyTab && (
-          <button
-            onClick={onSwitchToAssemblyTab}
+        {/* Toast Notification for Kit Saving */}
+        {saveKitToast && (
+          <div
             style={{
-              flexShrink: 0,
-              padding: '10px 12px',
-              fontSize: 11,
-              fontWeight: 700,
+              padding: '6px 10px',
               borderRadius: 6,
-              background: 'linear-gradient(135deg, #10b981, #059669)',
+              background: 'linear-gradient(90deg, #059669, #10b981)',
               color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
+              fontSize: 10.5,
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)',
             }}
           >
-            <ArrowRight size={14} /> Chuyển Sang Bàn Lắp Ráp 2D/3D
-          </button>
+            <Check size={13} /> {saveKitToast}
+          </div>
         )}
+
+        {/* Action Buttons Row */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {/* Save Current Slices as Kit Button */}
+            <button
+              onClick={handleOpenSaveKitModal}
+              style={{
+                padding: '9px 8px',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 6,
+                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                color: '#fff',
+                border: '1px solid #38bdf8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)',
+              }}
+              title="Lưu toàn bộ linh kiện đã cắt thành 1 bộ tài nguyên để tái sử dụng hoặc lắp ráp nhân vật"
+            >
+              <Save size={13} /> 💾 Lưu Bộ Linh Kiện
+            </button>
+
+            {/* Open Resource Catalog Button */}
+            <button
+              onClick={() => setIsCatalogModalOpen(true)}
+              style={{
+                padding: '9px 8px',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 6,
+                background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                color: '#fff',
+                border: '1px solid #c084fc',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: '0 0 12px rgba(168, 85, 247, 0.3)',
+              }}
+              title="Mở kho tài nguyên linh kiện đa góc và tinh chỉnh cấu trúc hiển thị bộ tóc"
+            >
+              <FolderOpen size={13} /> 🛍️ Kho Tài Nguyên 3D
+            </button>
+          </div>
+
+          {/* Switch to Character Assembly Tab Button */}
+          {onSwitchToAssemblyTab && (
+            <button
+              onClick={onSwitchToAssemblyTab}
+              style={{
+                padding: '9px 12px',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 6,
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              }}
+            >
+              <ArrowRight size={14} /> Chuyển Sang Bàn Lắp Ráp 2D/3D
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Save Kit Popup Dialog */}
+      {isSaveKitModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10005,
+            background: 'rgba(3, 7, 18, 0.85)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              background: '#0b1120',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              borderRadius: 10,
+              padding: 18,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(56, 189, 248, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <BookmarkPlus size={16} color="#38bdf8" /> LƯU BỘ LINH KIỆN VÀO KHO TÀI NGUYÊN
+              </div>
+              <button
+                onClick={() => setIsSaveKitModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>
+                  Tên Bộ Linh Kiện:
+                </label>
+                <input
+                  type="text"
+                  value={saveKitName}
+                  onChange={(e) => setSaveKitName(e.target.value)}
+                  placeholder="Ví dụ: Tóc Nữ Cổ Trang 8 Góc"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    color: '#fff',
+                    fontSize: 12,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>
+                  Phân Loại Danh Mục:
+                </label>
+                <select
+                  value={saveKitCategory}
+                  onChange={(e) => setSaveKitCategory(e.target.value as CharacterResourceCategory)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontSize: 11.5,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="toc">💇 Bộ Tóc 3D (Tóc trước, Tóc sau, Tóc mái)</option>
+                  <option value="mat">👀 Mắt & Biểu Cảm (Chớp mắt, tức giận)</option>
+                  <option value="mieng">👄 Khẩu Hình Miệng (Nói chuyện, cười)</option>
+                  <option value="khuon_mat">👤 Khuôn Mặt & Đầu (Khung sọ, cằm nhọn 90°)</option>
+                  <option value="trang_phuc">👕 Trang Phục & Đạo Bào (Áo, giáp, tà váy)</option>
+                  <option value="vu_khi">⚔️ Vũ Khí & Đạo Cụ (Phi kiếm, quạt, trượng)</option>
+                  <option value="custom_slices">💾 Linh Kiện Của Tôi (Tự Cắt)</option>
+                </select>
+              </div>
+
+              <div style={{ fontSize: 10, color: '#64748b' }}>
+                💡 <i>Bộ linh kiện sau khi lưu sẽ xuất hiện trong Kho Tài Nguyên và có thể lắp ráp hoặc điều chỉnh cấu trúc bất kỳ lúc nào.</i>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+              <button
+                onClick={() => setIsSaveKitModalOpen(false)}
+                style={{
+                  padding: '7px 12px',
+                  fontSize: 11,
+                  borderRadius: 6,
+                  background: 'rgba(255,255,255,0.06)',
+                  color: '#94a3b8',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  cursor: 'pointer',
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmSaveKit}
+                style={{
+                  padding: '7px 16px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+                }}
+              >
+                💾 Xác Nhận Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Character Asset Catalog & 3D Structure Tuner Modal */}
+      {isCatalogModalOpen && (
+        <CharacterAssetCatalogModal
+          isOpen={isCatalogModalOpen}
+          onClose={() => setIsCatalogModalOpen(false)}
+          currentAssembly={currentAssembly}
+          onApplyAssembly={(updated) => {
+            onApplyAssembly(updated);
+            if (threeEngineRef.current) {
+              threeEngineRef.current.setAssembly(updated);
+            }
+          }}
+        />
+      )}
 
       {/* Manual Pixel Eraser & Zoom Cleanup Modal */}
       {editingCellData && (

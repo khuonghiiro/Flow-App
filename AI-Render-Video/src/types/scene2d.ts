@@ -79,6 +79,31 @@ export interface Character2DAssembly {
   updated_at?: string;
 }
 
+export type CharacterResourceCategory =
+  | 'toc'
+  | 'mat'
+  | 'mieng'
+  | 'khuon_mat'
+  | 'trang_phuc'
+  | 'vu_khi'
+  | 'custom_slices'
+  | 'combo_nhan_vat';
+
+export interface CharacterResourceKit {
+  id: string;
+  name: string;
+  category: CharacterResourceCategory;
+  categoryLabel: string;
+  previewImage?: string;
+  angleCount?: number;
+  tags?: string[];
+  gender?: 'nam' | 'nu' | 'chung';
+  style?: string;
+  description?: string;
+  parts: Partial<Record<Character2DPartType, Character2DPartConfig>>;
+  createdAt: string;
+}
+
 export type Map2DLayerType = 'sky' | 'background' | 'midground' | 'floor' | 'foreground' | 'prop' | 'vfx';
 
 export interface Map2DLayerConfig {
