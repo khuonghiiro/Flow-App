@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench, Scissors } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride, CharacterAssembly } from '../types/scene';
 import { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -16,6 +16,7 @@ import { WeatherControlPanel } from './WeatherControlPanel';
 import { AssetBrowserPanel } from './AssetBrowserPanel';
 import { LightingStudioPanel } from './LightingStudioPanel';
 import { CharacterWorkbenchPanel } from './CharacterWorkbenchPanel';
+import { Studio2DWorkbenchModal } from './studio2d/Studio2DWorkbenchModal';
 import { TransformInspector, SelectedSceneObject } from './TransformInspector';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
 import { InspectCameraAngle } from '../core/camera/CameraFraming';
@@ -115,6 +116,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [showCC, setShowCC] = useState(() => getSavedViewportSettings().showCC);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [showWorkbenchModal, setShowWorkbenchModal] = useState(false);
+  const [showStudio2DModal, setShowStudio2DModal] = useState(false);
   const [exportFps, setExportFps] = useState<number>(120);
   const [gizmoMode, setGizmoMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   const [gizmoSpace, setGizmoSpace] = useState<'world' | 'local'>('world');
@@ -315,6 +317,27 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               }}
             >
               <Layers size={12} /> GLB
+            </button>
+            <button
+              onClick={() => setShowStudio2DModal(true)}
+              title="Mở Xưởng Lắp Ghép Nhân Vật, Tách Nền & Map 2D (Cutout & Parallax Motion Comic)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 6,
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(168, 85, 247, 0.2))',
+                color: '#38bdf8',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(56, 189, 248, 0.25)',
+              }}
+            >
+              <Scissors size={12} /> Xưởng 2D & Cắt Ghép
             </button>
             <button
               onClick={() => setShowWorkbenchModal(true)}
@@ -706,6 +729,12 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           </div>
         </div>
       )}
+
+      {/* 2D Cutout & Motion Comic Studio Modal */}
+      <Studio2DWorkbenchModal
+        isOpen={showStudio2DModal}
+        onClose={() => setShowStudio2DModal(false)}
+      />
     </div>
   );
 };

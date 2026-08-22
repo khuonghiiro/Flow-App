@@ -1,0 +1,359 @@
+{
+  "id": "char_kiem_khach_tieu_dao",
+  "name": "Kiếm Khách Tiêu Dao",
+  "gender": "nam",
+  "style": "tu_tien_manhua",
+  "base_scale": 1,
+  "layer_depth_spacing": 1,
+  "parts": {
+    "toc_sau": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2040%20Q120%20-10%20210%2040%20Q230%20180%20180%20290%20Q120%20270%2060%20290%20Q10%20180%2030%2040%20Z%22%20fill%3D%22%231e293b%22%20opacity%3D%220.95%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2040%20Q120%20-10%20210%2040%20Q230%20180%20180%20290%20Q120%20270%2060%20290%20Q10%20180%2030%2040%20Z%22%20fill%3D%22%231e293b%22%20opacity%3D%220.95%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "three_quarter_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2040%20Q120%20-10%20210%2040%20Q230%20180%20180%20290%20Q120%20270%2060%20290%20Q10%20180%2030%2040%20Z%22%20fill%3D%22%231e293b%22%20opacity%3D%220.95%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M90%2040%20Q150%2010%20180%2050%20Q200%20180%20140%20290%20Q90%20270%2090%2040%20Z%22%20fill%3D%22%231e293b%22%20opacity%3D%220.95%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20320%22%20width%3D%22240%22%20height%3D%22320%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2030%20Q120%20-15%20210%2030%20Q230%20180%20190%20310%20Q120%20280%2050%20310%20Q10%20180%2030%2030%20Z%22%20fill%3D%22%231e293b%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M90%2040%20Q150%2010%20180%2050%20Q200%20180%20140%20290%20Q90%20270%2090%2040%20Z%22%20fill%3D%22%231e293b%22%20opacity%3D%220.95%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "three_quarter_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2040%20Q120%20-10%20210%2040%20Q230%20180%20180%20290%20Q120%20270%2060%20290%20Q10%20180%2030%2040%20Z%22%20fill%3D%22%231e293b%22%20opacity%3D%220.95%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        -5,
+        -292
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.2
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 1,
+      "z_depth_3d": -0.06,
+      "opacity": 1
+    },
+    "than_co_ban": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20260%22%20width%3D%22200%22%20height%3D%22260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M45%2020%20L155%2020%20L140%20220%20L60%20220%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M60%2020%20Q100%2040%20140%2020%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20260%22%20width%3D%22200%22%20height%3D%22260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M45%2020%20L155%2020%20L140%20220%20L60%20220%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M60%2020%20Q100%2040%20140%2020%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "three_quarter_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20260%22%20width%3D%22200%22%20height%3D%22260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M45%2020%20L155%2020%20L140%20220%20L60%20220%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M60%2020%20Q100%2040%20140%2020%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20280%22%20width%3D%22200%22%20height%3D%22280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M50%2020%20L130%2020%20L115%20260%20L65%20260%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2255%22%20y%3D%22130%22%20width%3D%2270%22%20height%3D%2220%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2020%20L205%2020%20L220%20280%20L20%20280%20Z%22%20fill%3D%22%230284c7%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2250%22%20y%3D%22140%22%20width%3D%22140%22%20height%3D%2224%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Back%20robe%20center%20seam%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M120%2020%20L120%20280%22%20stroke%3D%22%230284c7%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20280%22%20width%3D%22200%22%20height%3D%22280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M50%2020%20L130%2020%20L115%20260%20L65%20260%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2255%22%20y%3D%22130%22%20width%3D%2270%22%20height%3D%2220%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "three_quarter_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20260%22%20width%3D%22200%22%20height%3D%22260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M45%2020%20L155%2020%20L140%20220%20L60%20220%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M60%2020%20Q100%2040%20140%2020%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.7
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 2,
+      "z_depth_3d": 0,
+      "opacity": 1
+    },
+    "cang_chan_trai": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2090%20220%22%20width%3D%2290%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2225%22%20y%3D%2210%22%20width%3D%2240%22%20height%3D%22180%22%20rx%3D%2215%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2218%22%20y%3D%22160%22%20width%3D%2254%22%20height%3D%2245%22%20rx%3D%228%22%20fill%3D%22%231e293b%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "offset": [
+        -30,
+        130
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.1
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 2,
+      "z_depth_3d": -0.01,
+      "opacity": 1
+    },
+    "cang_chan_phai": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2090%20220%22%20width%3D%2290%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2225%22%20y%3D%2210%22%20width%3D%2240%22%20height%3D%22180%22%20rx%3D%2215%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2218%22%20y%3D%22160%22%20width%3D%2254%22%20height%3D%2245%22%20rx%3D%228%22%20fill%3D%22%231e293b%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "offset": [
+        30,
+        130
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.1
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 2,
+      "z_depth_3d": -0.01,
+      "opacity": 1
+    },
+    "trang_phuc": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2020%20L205%2020%20L220%20280%20L20%20280%20Z%22%20fill%3D%22%230284c7%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M100%2020%20L120%20120%20L140%2020%22%20fill%3D%22%23f8fafc%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2250%22%20y%3D%22140%22%20width%3D%22140%22%20height%3D%2224%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2020%20L205%2020%20L220%20280%20L20%20280%20Z%22%20fill%3D%22%230284c7%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M100%2020%20L120%20120%20L140%2020%22%20fill%3D%22%23f8fafc%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2250%22%20y%3D%22140%22%20width%3D%22140%22%20height%3D%2224%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20280%22%20width%3D%22200%22%20height%3D%22280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M50%2020%20L130%2020%20L115%20260%20L65%20260%20Z%22%20fill%3D%22%230284c7%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2255%22%20y%3D%22130%22%20width%3D%2270%22%20height%3D%2220%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20240%20300%22%20width%3D%22240%22%20height%3D%22300%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2020%20L205%2020%20L220%20280%20L20%20280%20Z%22%20fill%3D%22%230284c7%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2250%22%20y%3D%22140%22%20width%3D%22140%22%20height%3D%2224%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Back%20robe%20center%20seam%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M120%2020%20L120%20280%22%20stroke%3D%22%230284c7%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20280%22%20width%3D%22200%22%20height%3D%22280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M50%2020%20L130%2020%20L115%20260%20L65%20260%20Z%22%20fill%3D%22%230284c7%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2255%22%20y%3D%22130%22%20width%3D%2270%22%20height%3D%2220%22%20fill%3D%22%23fbbf24%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        0,
+        10
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 4,
+      "z_depth_3d": 0.02,
+      "opacity": 1
+    },
+    "canh_tay_trai": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%20180%22%20width%3D%2280%22%20height%3D%22180%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2220%22%20y%3D%2210%22%20width%3D%2240%22%20height%3D%22150%22%20rx%3D%2220%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2215%22%20y%3D%2210%22%20width%3D%2250%22%20height%3D%2260%22%20rx%3D%2210%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "offset": [
+        -75,
+        -108
+      ],
+      "scale": [
+        1.09,
+        1.09
+      ],
+      "rotation": 17,
+      "pivot": [
+        0.8,
+        0.2
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 5,
+      "z_depth_3d": 0.006,
+      "opacity": 1
+    },
+    "dau": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M40%2070%20C40%2020%2C%20160%2020%2C%20160%2070%20C160%20130%2C%20130%20180%2C%20100%20200%20C70%20180%2C%2040%20130%2C%2040%2070%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M80%20180%20L80%20215%20L120%20215%20L120%20180%22%20fill%3D%22%23ffdfba%22%20opacity%3D%220.9%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M40%2070%20C40%2020%2C%20160%2020%2C%20160%2070%20C160%20130%2C%20130%20180%2C%20100%20200%20C70%20180%2C%2040%20130%2C%2040%2070%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M80%20180%20L80%20215%20L120%20215%20L120%20180%22%20fill%3D%22%23ffdfba%22%20opacity%3D%220.9%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "three_quarter_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M40%2070%20C40%2020%2C%20160%2020%2C%20160%2070%20C160%20130%2C%20130%20180%2C%20100%20200%20C70%20180%2C%2040%20130%2C%2040%2070%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M80%20180%20L80%20215%20L120%20215%20L120%20180%22%20fill%3D%22%23ffdfba%22%20opacity%3D%220.9%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Profile%20Skull%2C%20Forehead%2C%20Nose%20Bridge%2C%20Lips%2C%20Chin%2C%20Jawline%2C%20Ear%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M120%2040%20C120%2020%2C%2060%2020%2C%2040%2060%20C30%2090%2C%2030%20110%2C%2032%20120%20L15%20135%20L32%20142%20L25%20155%20L35%20160%20C32%20175%2C%2045%20190%2C%2065%20190%20C95%20190%2C%20125%20160%2C%20130%20110%20C132%2080%2C%20130%2050%2C%20120%2040%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Ear%20on%20Profile%20Side%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M100%20110%20C115%20110%2C%20115%20145%2C%20100%20145%20C95%20145%2C%2092%20135%2C%2095%20125%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222.5%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M70%20185%20L70%20215%20L105%20215%20L105%20185%22%20fill%3D%22%23ffdfba%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M40%2070%20C40%2020%2C%20160%2020%2C%20160%2070%20C160%20130%2C%20130%20180%2C%20100%20200%20C70%20180%2C%2040%20130%2C%2040%2070%20Z%22%20fill%3D%22%23ffdfba%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Back%20of%20neck%20%26%20ears%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%20110%20C30%20110%2C%2030%20135%2C%2038%20135%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M165%20110%20C170%20110%2C%20170%20135%2C%20162%20135%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Profile%20Skull%2C%20Forehead%2C%20Nose%20Bridge%2C%20Lips%2C%20Chin%2C%20Jawline%2C%20Ear%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M120%2040%20C120%2020%2C%2060%2020%2C%2040%2060%20C30%2090%2C%2030%20110%2C%2032%20120%20L15%20135%20L32%20142%20L25%20155%20L35%20160%20C32%20175%2C%2045%20190%2C%2065%20190%20C95%20190%2C%20125%20160%2C%20130%20110%20C132%2080%2C%20130%2050%2C%20120%2040%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Ear%20on%20Profile%20Side%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M100%20110%20C115%20110%2C%20115%20145%2C%20100%20145%20C95%20145%2C%2092%20135%2C%2095%20125%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222.5%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M70%20185%20L70%20215%20L105%20215%20L105%20185%22%20fill%3D%22%23ffdfba%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "three_quarter_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20220%22%20width%3D%22200%22%20height%3D%22220%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M40%2070%20C40%2020%2C%20160%2020%2C%20160%2070%20C160%20130%2C%20130%20180%2C%20100%20200%20C70%20180%2C%2040%20130%2C%2040%2070%20Z%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%223%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M80%20180%20L80%20215%20L120%20215%20L120%20180%22%20fill%3D%22%23ffdfba%22%20opacity%3D%220.9%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        0,
+        -180
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 6,
+      "z_depth_3d": 0.045,
+      "opacity": 1
+    },
+    "mat": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%2080%22%20width%3D%22160%22%20height%3D%2280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cellipse%20cx%3D%2245%22%20cy%3D%2240%22%20rx%3D%2220%22%20ry%3D%2214%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2245%22%20cy%3D%2240%22%20r%3D%229%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2248%22%20cy%3D%2237%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cellipse%20cx%3D%22115%22%20cy%3D%2240%22%20rx%3D%2220%22%20ry%3D%2214%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%22115%22%20cy%3D%2240%22%20r%3D%229%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%22118%22%20cy%3D%2237%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M25%2024%20Q45%2018%2065%2024%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M95%2024%20Q115%2018%20135%2024%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%2080%22%20width%3D%22160%22%20height%3D%2280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cellipse%20cx%3D%2245%22%20cy%3D%2240%22%20rx%3D%2220%22%20ry%3D%2214%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2245%22%20cy%3D%2240%22%20r%3D%229%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2248%22%20cy%3D%2237%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cellipse%20cx%3D%22115%22%20cy%3D%2240%22%20rx%3D%2220%22%20ry%3D%2214%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%22115%22%20cy%3D%2240%22%20r%3D%229%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%22118%22%20cy%3D%2237%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M25%2024%20Q45%2018%2065%2024%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M95%2024%20Q115%2018%20135%2024%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%2080%22%20width%3D%22160%22%20height%3D%2280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Single%20side%20profile%20eye%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2030%20L60%2038%20L38%2048%20Z%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2246%22%20cy%3D%2238%22%20r%3D%227%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2248%22%20cy%3D%2236%22%20r%3D%222.5%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2022%20Q50%2018%2068%2028%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%20width%3D%2210%22%20height%3D%2210%22%3E%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20160%2080%22%20width%3D%22160%22%20height%3D%2280%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3C!--%20Single%20side%20profile%20eye%20--%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2030%20L60%2038%20L38%2048%20Z%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2246%22%20cy%3D%2238%22%20r%3D%227%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2248%22%20cy%3D%2236%22%20r%3D%222.5%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2022%20Q50%2018%2068%2028%22%20stroke%3D%22%231e293b%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        2,
+        -265
+      ],
+      "scale": [
+        0.85,
+        0.85
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 8,
+      "z_depth_3d": 0.052,
+      "opacity": 1
+    },
+    "mui": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2050%22%20width%3D%2240%22%20height%3D%2250%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M20%2010%20L16%2035%20L26%2035%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2050%22%20width%3D%2240%22%20height%3D%2250%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M20%2010%20L16%2035%20L26%2035%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2050%22%20width%3D%2240%22%20height%3D%2250%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M12%2010%20L28%2035%20L16%2035%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%20width%3D%2210%22%20height%3D%2210%22%3E%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2050%22%20width%3D%2240%22%20height%3D%2250%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M12%2010%20L28%2035%20L16%2035%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222.5%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        2,
+        -240
+      ],
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 8,
+      "z_depth_3d": 0.055,
+      "opacity": 1
+    },
+    "mieng": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2060%22%20width%3D%22100%22%20height%3D%2260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2025%20Q50%2040%2070%2025%22%20stroke%3D%22%23be123c%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2025%20Q50%2032%2065%2025%22%20fill%3D%22%23fda4af%22%20opacity%3D%220.6%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2060%22%20width%3D%22100%22%20height%3D%2260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2025%20Q50%2040%2070%2025%22%20stroke%3D%22%23be123c%22%20stroke-width%3D%223%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M35%2025%20Q50%2032%2065%2025%22%20fill%3D%22%23fda4af%22%20opacity%3D%220.6%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2060%22%20width%3D%22100%22%20height%3D%2260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M22%2028%20L40%2028%22%20stroke%3D%22%23be123c%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%20width%3D%2210%22%20height%3D%2210%22%3E%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2060%22%20width%3D%22100%22%20height%3D%2260%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M22%2028%20L40%2028%22%20stroke%3D%22%23be123c%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        4,
+        -213
+      ],
+      "scale": [
+        0.8,
+        0.8
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 8,
+      "z_depth_3d": 0.052,
+      "opacity": 1
+    },
+    "toc_truoc": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20220%20180%22%20width%3D%22220%22%20height%3D%22180%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M20%2080%20Q110%20-20%20200%2080%20Q170%2040%20140%20100%20Q110%2050%2080%20110%20Q50%2060%2020%2080%20Z%22%20fill%3D%22%231e293b%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "angles": {
+        "front": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20220%20180%22%20width%3D%22220%22%20height%3D%22180%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M20%2080%20Q110%20-20%20200%2080%20Q170%2040%20140%20100%20Q110%2050%2080%20110%20Q50%2060%2020%2080%20Z%22%20fill%3D%22%231e293b%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "profile_left": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20220%20180%22%20width%3D%22220%22%20height%3D%22180%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2070%20Q90%2010%20140%2070%20Q110%2050%2080%20110%20Q50%2060%2030%2070%20Z%22%20fill%3D%22%231e293b%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+        "back": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%20width%3D%2210%22%20height%3D%2210%22%3E%3C%2Fsvg%3E",
+        "profile_right": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20220%20180%22%20width%3D%22220%22%20height%3D%22180%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M30%2070%20Q90%2010%20140%2070%20Q110%2050%2080%20110%20Q50%2060%2030%2070%20Z%22%20fill%3D%22%231e293b%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E"
+      },
+      "offset": [
+        0,
+        -145
+      ],
+      "scale": [
+        1.05,
+        1.05
+      ],
+      "rotation": 0,
+      "pivot": [
+        0.5,
+        0.2
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 9,
+      "z_depth_3d": 0.07,
+      "opacity": 1
+    },
+    "canh_tay_phai": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%20180%22%20width%3D%2280%22%20height%3D%22180%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2220%22%20y%3D%2210%22%20width%3D%2240%22%20height%3D%22150%22%20rx%3D%2220%22%20fill%3D%22%23ffdfba%22%20stroke%3D%22%23d4a373%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2215%22%20y%3D%2210%22%20width%3D%2250%22%20height%3D%2260%22%20rx%3D%2210%22%20fill%3D%22%230284c7%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "offset": [
+        80,
+        -106
+      ],
+      "scale": [
+        1,
+        1
+      ],
+      "rotation": -25,
+      "pivot": [
+        0.2,
+        0.2
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 10,
+      "z_depth_3d": 0.03,
+      "opacity": 1
+    },
+    "vu_khi": {
+      "path": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20320%22%20width%3D%22100%22%20height%3D%22320%22%3E%0A%20%20%20%20%20%20%20%20%20%20%3Cpath%20d%3D%22M50%2010%20L62%20230%20L38%20230%20Z%22%20fill%3D%22%23e2e8f0%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2230%22%20y%3D%22230%22%20width%3D%2240%22%20height%3D%2210%22%20rx%3D%223%22%20fill%3D%22%23fbbf24%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Crect%20x%3D%2245%22%20y%3D%22240%22%20width%3D%2210%22%20height%3D%2260%22%20rx%3D%222%22%20fill%3D%22%2378350f%22%2F%3E%0A%20%20%20%20%20%20%20%20%20%20%3Ccircle%20cx%3D%2250%22%20cy%3D%22305%22%20r%3D%228%22%20fill%3D%22%23fbbf24%22%2F%3E%0A%20%20%20%20%20%20%20%20%3C%2Fsvg%3E",
+      "offset": [
+        113,
+        -36
+      ],
+      "scale": [
+        0.9,
+        0.9
+      ],
+      "rotation": -30,
+      "pivot": [
+        0.2,
+        0.8
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 11,
+      "z_depth_3d": 0.09,
+      "opacity": 1
+    },
+    "khuon_mat": {
+      "path": "",
+      "offset": [
+        0,
+        0
+      ],
+      "scale": [
+        0.96,
+        0.96
+      ],
+      "rotation": -7,
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "flipX": false,
+      "flipY": false,
+      "z_index": 7,
+      "z_depth_3d": 0.036,
+      "opacity": 1
+    }
+  },
+  "preview_image": "asset_2ds/nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.png"
+}
