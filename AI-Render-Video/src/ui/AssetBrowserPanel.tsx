@@ -257,27 +257,22 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         };
       };
 
-      // Characters
+      // Characters (Built dynamically from manifest.structure or discovered folders)
       const chars = manifest.characters || {};
-      const charCatMap: Record<string, string> = {
-        base_bodies: 'than_co_ban',
-        costumes: 'trang_phuc',
-        faces: 'khuon_mat',
-        hairstyles: 'kieu_toc',
-        hats: 'mu_non',
-        shoes: 'giay_dep',
-        accessories: 'phu_kien',
-        beards: 'kieu_rau',
-        wings: 'canh',
-        tails: 'duoi',
-        _lap_rap: '_lap_rap',
-      };
-
-      for (const [key, catId] of Object.entries(charCatMap)) {
-        const list = chars[key] || [];
-        if (Array.isArray(list)) {
-          list.forEach((c: any) => items.push(parseAsset(c, catId, 'character')));
+      const charStructure = manifest.structure?.character_structure?.categories || [];
+      const charCatMap = new Map<string, string>();
+      for (const cat of charStructure) {
+        charCatMap.set(cat.id, cat.id);
+        charCatMap.set(cat.folder, cat.id);
+        for (const a of cat.folder_aliases || []) {
+          charCatMap.set(a, cat.id);
         }
+      }
+
+      for (const [folderKey, list] of Object.entries(chars)) {
+        if (!Array.isArray(list)) continue;
+        const catId = charCatMap.get(folderKey) || folderKey;
+        list.forEach((c: any) => items.push(parseAsset(c, catId, 'character')));
       }
 
       // ─── Assembled Characters from LocalStorage (_lap_rap) ───
@@ -295,7 +290,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
                 ? (p.body.endsWith('.glb') ? p.body.replace('.glb', '.png') : p.body)
                 : undefined;
 
-              const charBody = p.body || p.base_body || 'assets/characters/base_bodies/nam/body_base_-_manekin.glb';
+              const charBody = p.body || p.base_body || p.than_co_ban || '';
 
               items.push({
                 id: p.id || `assembled_preset_${idx}`,
@@ -520,25 +515,22 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         try {
           const text = await jf.text();
           const profile = JSON.parse(text);
-          if (profile.base_body || profile.costume || profile.face || profile.assembly || profile.character_assembly || profile.model) {
-            const body = profile.base_body || profile.assembly?.base_body || profile.model || 'assets/characters/base_bodies/nam/body_base_-_manekin.glb';
-            const preset: any = {
-              id: profile.id || `preset_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-              name: `${body.includes('manekina') ? '👩' : '🧑'} ${profile.name || jf.name.replace('.json', '')}`,
-              body,
-              costume: profile.costume || profile.assembly?.costume || '',
-              face: profile.face || profile.assembly?.face || '',
-              hairstyle: profile.hairstyle || profile.assembly?.hairstyle || '',
-              gender: profile.gender || (body.includes('manekina') ? 'female' : 'male'),
-              preview: profile.preview_image || undefined,
-            };
+          const ass = profile.assembly || profile.character_assembly || {};
+          const body = profile.than_co_ban || profile.base_body || ass.than_co_ban || ass.base_body || profile.model || '';
+          const preset: any = {
+            id: profile.id || `preset_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name: profile.name || jf.name.replace('.json', ''),
+            body,
+            assembly: { ...ass, than_co_ban: body, base_body: body },
+            gender: profile.gender || (body.includes('nu') || body.includes('female') || body.includes('manekina') ? 'female' : 'male'),
+            preview: profile.preview_image || undefined,
+          };
 
-            const savedRaw = localStorage.getItem('custom_character_presets');
-            const savedList = savedRaw ? JSON.parse(savedRaw) : [];
-            const updated = [preset, ...savedList.filter((p: any) => p.name !== preset.name && p.id !== preset.id)];
-            localStorage.setItem('custom_character_presets', JSON.stringify(updated));
-            importedCount++;
-          }
+          const savedRaw = localStorage.getItem('custom_character_presets');
+          const savedList = savedRaw ? JSON.parse(savedRaw) : [];
+          const updated = [preset, ...savedList.filter((p: any) => p.name !== preset.name && p.id !== preset.id)];
+          localStorage.setItem('custom_character_presets', JSON.stringify(updated));
+          importedCount++;
         } catch (err) {
           console.warn('Lỗi đọc file JSON nhân vật:', err);
         }

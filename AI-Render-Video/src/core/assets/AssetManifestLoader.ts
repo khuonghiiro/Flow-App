@@ -8,223 +8,88 @@ export async function fetchLiveAssetManifest(): Promise<AssetItem[]> {
 
     const items: AssetItem[] = [];
 
-    // 1. Characters: Male (Nam)
-    (manifest.characters?.male || []).forEach((c: any) => {
-      items.push({
-        id: `char_male_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: 'Assets/Characters/Male',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        gender: 'male',
-        description: `Model nhân vật Nam (${c.format}), kèm ảnh tham chiếu 2D`,
-        previewColor: '#0284c7',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['nam', 'nhân vật', 'male', c.format.toLowerCase()]
-      });
-    });
+    // 1. Dynamic Characters (any folder in manifest.characters)
+    for (const [folderKey, charList] of Object.entries(manifest.characters || {})) {
+      if (!Array.isArray(charList)) continue;
+      charList.forEach((c: any) => {
+        const pathLower = (c.relPath || '').toLowerCase();
+        let gender: 'male' | 'female' | undefined = undefined;
+        if (pathLower.includes('/male/') || pathLower.includes('/man/') || pathLower.includes('/nam/')) gender = 'male';
+        else if (pathLower.includes('/female/') || pathLower.includes('/woman/') || pathLower.includes('/nu/')) gender = 'female';
 
-    // 2. Characters: Female (Nữ)
-    (manifest.characters?.female || []).forEach((c: any) => {
-      items.push({
-        id: `char_female_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: 'Assets/Characters/Female',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        gender: 'female',
-        description: `Model nhân vật Nữ (${c.format}), kèm ảnh tham chiếu 2D`,
-        previewColor: '#ec4899',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['nữ', 'nhân vật', 'female', c.format.toLowerCase()]
-      });
-    });
-
-    // 3. Characters: Base Bodies (Thân hình cơ bản / manekin)
-    (manifest.characters?.base_bodies || []).forEach((c: any) => {
-      const isMale = c.relPath.includes('/male/') || c.relPath.includes('/man/');
-      const isFemale = c.relPath.includes('/female/') || c.relPath.includes('/woman/');
-      const subFolder = isMale ? 'Male' : isFemale ? 'Female' : '';
-
-      items.push({
-        id: `body_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: subFolder ? `Assets/Characters/Base_Bodies/${subFolder}` : 'Assets/Characters/Base_Bodies',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        gender: isMale ? 'male' : isFemale ? 'female' : undefined,
-        description: `Thân hình cơ bản manekin (${c.format})`,
-        previewColor: '#64748b',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['manekin', 'thân hình', 'base body']
-      });
-    });
-
-    // 4. Characters: Costumes (Trang phục Nam / Nữ)
-    (manifest.characters?.costumes || []).forEach((c: any) => {
-      const isMale = c.relPath.includes('/male/') || c.relPath.includes('/man/');
-      const isFemale = c.relPath.includes('/female/') || c.relPath.includes('/woman/');
-      const subFolder = isMale ? 'Male' : isFemale ? 'Female' : '';
-
-      items.push({
-        id: `costume_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: subFolder ? `Assets/Characters/Costumes/${subFolder}` : 'Assets/Characters/Costumes',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        gender: isMale ? 'male' : isFemale ? 'female' : undefined,
-        description: `Trang phục ${isMale ? 'Nam' : isFemale ? 'Nữ' : ''} (${c.format}), kèm ảnh tham chiếu`,
-        previewColor: '#f59e0b',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['trang phục', 'costume', isMale ? 'nam' : isFemale ? 'nữ' : 'unisex']
-      });
-    });
-
-    // 5. Characters: Faces (Khuôn mặt Nam / Nữ)
-    (manifest.characters?.faces || []).forEach((c: any) => {
-      const isMale = c.relPath.includes('/male/') || c.relPath.includes('/man/');
-      const isFemale = c.relPath.includes('/female/') || c.relPath.includes('/woman/');
-      const subFolder = isMale ? 'Male' : isFemale ? 'Female' : '';
-
-      items.push({
-        id: `face_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: subFolder ? `Assets/Characters/Faces/${subFolder}` : 'Assets/Characters/Faces',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        gender: isMale ? 'male' : isFemale ? 'female' : undefined,
-        description: `Khuôn mặt ${isMale ? 'Nam' : isFemale ? 'Nữ' : ''} (${c.format})`,
-        previewColor: '#a855f7',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['khuôn mặt', 'face', isMale ? 'nam' : isFemale ? 'nữ' : 'unisex']
-      });
-    });
-
-    // 6. Characters: Hairstyles (Mái tóc)
-    (manifest.characters?.hairstyles || []).forEach((c: any) => {
-      items.push({
-        id: `hair_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: 'Assets/Characters/Hairstyles',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        description: `Kiểu tóc (${c.format})`,
-        previewColor: '#10b981',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['tóc', 'hairstyle']
-      });
-    });
-
-    // 7. Characters: Beards (Râu)
-    (manifest.characters?.beards || []).forEach((c: any) => {
-      items.push({
-        id: `beard_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: 'Assets/Characters/Beards',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        description: `Kiểu râu (${c.format})`,
-        previewColor: '#78716c',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['râu', 'beard']
-      });
-    });
-
-    // 8. Characters: Accessories (Phụ kiện)
-    (manifest.characters?.accessories || []).forEach((c: any) => {
-      items.push({
-        id: `acc_${c.id}`,
-        name: c.name.replace(/\.[^/.]+$/, ''),
-        path: `Assets/${c.relPath}`,
-        folder: 'Assets/Characters/Accessories',
-        type: 'character',
-        format: c.format,
-        size: `${c.sizeMB} MB`,
-        description: `Phụ kiện nhân vật (${c.format})`,
-        previewColor: '#ec4899',
-        previewUrl: c.previewUrl ? `/${c.previewUrl}` : undefined,
-        vrmUrl: `/${c.relPath}`,
-        tags: ['phụ kiện', 'accessories']
-      });
-    });
-
-    // 4. Props
-    const propCategories = ['weapons', 'tools', 'consumables', 'furniture', 'buildings', 'nature', 'vehicles', 'legacy'];
-    propCategories.forEach((catKey) => {
-      const folderName = catKey.charAt(0).toUpperCase() + catKey.slice(1);
-      (manifest.props?.[catKey] || []).forEach((p: any) => {
         items.push({
-          id: `prop_${p.id}`,
-          name: p.name.replace(/\.[^/.]+$/, ''),
+          id: `char_${folderKey}_${c.id || c.name}`,
+          name: c.name ? c.name.replace(/\.[^/.]+$/, '') : 'Tài nguyên',
+          path: `Assets/${c.relPath}`,
+          folder: `Assets/Characters/${folderKey.charAt(0).toUpperCase() + folderKey.slice(1)}`,
+          type: 'character',
+          format: c.format || 'GLB',
+          size: `${c.sizeMB || '0.00'} MB`,
+          gender,
+          description: `Tài nguyên ${folderKey} (${c.format || 'GLB'})`,
+          previewColor: gender === 'female' ? '#ec4899' : '#0284c7',
+          previewUrl: c.previewUrl ? (c.previewUrl.startsWith('/') ? c.previewUrl : `/${c.previewUrl}`) : undefined,
+          vrmUrl: `/${c.relPath}`,
+          tags: ['nhân vật', folderKey, c.format ? c.format.toLowerCase() : 'glb'],
+        });
+      });
+    }
+
+    // 2. Dynamic Props (any category in manifest.props)
+    for (const [catKey, propList] of Object.entries(manifest.props || {})) {
+      if (!Array.isArray(propList)) continue;
+      const folderName = catKey.charAt(0).toUpperCase() + catKey.slice(1);
+      propList.forEach((p: any) => {
+        items.push({
+          id: `prop_${p.id || p.name}`,
+          name: p.name ? p.name.replace(/\.[^/.]+$/, '') : 'Đạo cụ',
           path: `Assets/${p.relPath}`,
           folder: `Assets/Props/${folderName}`,
           type: 'prop',
-          format: p.format,
-          size: `${p.sizeMB} MB`,
+          format: p.format || 'GLB',
+          size: `${p.sizeMB || '0.00'} MB`,
           previewColor: '#d97706',
-          previewUrl: p.previewUrl ? `/${p.previewUrl}` : undefined,
+          previewUrl: p.previewUrl ? (p.previewUrl.startsWith('/') ? p.previewUrl : `/${p.previewUrl}`) : undefined,
           propData: { type: catKey as any, scale: 1.0 },
-          tags: ['đạo cụ', catKey, p.format.toLowerCase()]
+          tags: ['đạo cụ', catKey, p.format ? p.format.toLowerCase() : 'glb'],
         });
       });
-    });
+    }
 
-    // 5. Maps
+    // 3. Maps
     (manifest.maps || []).forEach((m: any) => {
       items.push({
-        id: `map_${m.id}`,
-        name: m.name.replace(/\.[^/.]+$/, ''),
+        id: `map_${m.id || m.name}`,
+        name: m.name ? m.name.replace(/\.[^/.]+$/, '') : 'Bản đồ',
         path: `Assets/${m.relPath}`,
         folder: 'Assets/Maps',
         type: 'map',
-        format: m.format,
-        size: `${m.sizeMB} MB`,
+        format: m.format || 'GLB',
+        size: `${m.sizeMB || '0.00'} MB`,
         previewColor: '#8b5cf6',
-        previewUrl: m.previewUrl ? `/${m.previewUrl}` : undefined,
+        previewUrl: m.previewUrl ? (m.previewUrl.startsWith('/') ? m.previewUrl : `/${m.previewUrl}`) : undefined,
         mapId: m.name,
-        tags: ['bản đồ', 'map', '3d']
+        tags: ['bản đồ', 'map', '3d'],
       });
     });
 
-    // 6. SkyBoxes 360
+    // 4. SkyBoxes 360
     (manifest.skyboxes || []).forEach((sb: any) => {
-      // Determine folder category from path
-      const parts = sb.relPath.split('/');
+      const parts = (sb.relPath || '').split('/');
       const timeFolder = parts[1] || 'General';
       const folderTitle = timeFolder.replace(/_/g, ' ').toUpperCase();
 
       items.push({
-        id: `sky_${sb.id}`,
-        name: sb.name.replace(/\.[^/.]+$/, ''),
+        id: `sky_${sb.id || sb.name}`,
+        name: sb.name ? sb.name.replace(/\.[^/.]+$/, '') : 'Skybox',
         path: `Assets/${sb.relPath}`,
         folder: `Assets/SkyBoxs/${folderTitle}`,
         type: 'skybox',
-        format: sb.format,
-        size: `${sb.sizeMB} MB`,
+        format: sb.format || 'PNG',
+        size: `${sb.sizeMB || '0.00'} MB`,
         previewColor: '#f59e0b',
         previewUrl: `/${sb.relPath}`,
-        tags: ['skybox', '360', 'môi trường']
+        tags: ['skybox', '360', 'môi trường'],
       });
     });
 

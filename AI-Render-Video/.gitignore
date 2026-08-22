@@ -60,3 +60,4 @@ assets/**/*
 !assets/**/asset_manifest.json
 !assets/**/asset_structure.json
 !assets/**/ASSET_FOLDERS_TREE.txt
+!assets/**/*.gitkeep

@@ -43,64 +43,17 @@ import { CharacterProfileModal, CustomAttributeItem } from './character/Characte
 interface ModularOutfitVerticalTabsProps {
   scene: MasterSceneConfig;
   onUpdateScene: (updatedScene: MasterSceneConfig) => void;
-  baseBody: string;
-  costume: string;
-  face: string;
-  hairstyle: string;
-  onBaseBodyChange: (path: string) => void;
-  onCostumeChange: (path: string) => void;
-  onFaceChange: (path: string) => void;
-  onHairstyleChange: (path: string) => void;
+  assembly: CharacterAssembly;
+  onAssemblyChange: (updatedAssembly: CharacterAssembly) => void;
   sliders: FaceSliderConfig;
   onSlidersChange: (sliders: FaceSliderConfig) => void;
 }
 
-const DEFAULT_PRESETS: CustomPreset[] = [
-  {
-    id: 'preset_amber_nectar',
-    name: '🧑 Lý Tiên Sinh',
-    body: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/nam/amber_nectar_-_manekin.glb',
-    face: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
-    gender: 'male',
-  },
-  {
-    id: 'preset_precision_strike',
-    name: '👩 Nữ Võ Khách',
-    body: 'assets/characters/base_bodies/nu/body_base_-_manekina.glb',
-    costume: 'assets/characters/costumes/nu/precision_strike_-_manekina.glb',
-    face: '',
-    gender: 'female',
-  },
-  {
-    id: 'preset_scary_cat',
-    name: '🐱 Hắc Miêu Hiệp Sĩ',
-    body: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/nam/scary_cat_-_manekin.glb',
-    face: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
-    gender: 'male',
-  },
-  {
-    id: 'preset_sleuth_verdict',
-    name: '🕵️ Thám Tử',
-    body: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
-    costume: 'assets/characters/costumes/nam/sleuths_verdict_-_manekin.glb',
-    face: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
-    gender: 'male',
-  },
-];
-
 export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps> = ({
   scene,
   onUpdateScene,
-  baseBody,
-  costume,
-  face,
-  hairstyle,
-  onBaseBodyChange,
-  onCostumeChange,
-  onFaceChange,
-  onHairstyleChange,
+  assembly,
+  onAssemblyChange,
   sliders,
   onSlidersChange,
 }) => {
@@ -149,6 +102,43 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     return [{ key: 'Vũ Khí', value: 'Thanh Vân Kiếm' }];
   });
 
+  // Actor synchronization: Automatically load full assembly, sliders, and profile when switching selectedActorId
+  useEffect(() => {
+    const actor = scene.actors.find((a) => a.id === selectedActorId) || scene.actors[0];
+    if (!actor) return;
+    setCharName(actor.name || 'Nhân Vật');
+    if (actor.profile) {
+      if (actor.profile.age !== undefined) setCharAge(actor.profile.age);
+      if (actor.profile.gender) {
+        setCharGender(actor.profile.gender);
+        if (actor.profile.gender !== 'unisex') setGenderFilter(actor.profile.gender);
+      }
+      if (actor.profile.height_cm !== undefined) setCharHeightCm(actor.profile.height_cm);
+      if (actor.profile.education_level) setCharEducation(actor.profile.education_level);
+      if (actor.profile.occupation) setCharOccupation(actor.profile.occupation);
+      if (actor.profile.faction) setCharFaction(actor.profile.faction);
+      if (actor.profile.personality) setCharPersonality(actor.profile.personality);
+      if (actor.profile.voice_style) setCharVoiceStyle(actor.profile.voice_style);
+      if (actor.profile.power_level !== undefined) setCharPowerLevel(actor.profile.power_level);
+      if (actor.profile.element) setCharElement(actor.profile.element);
+      if (actor.profile.biography) setCharBiography(actor.profile.biography);
+      if (actor.profile.skills) setCharSkills(actor.profile.skills);
+      if (actor.profile.custom_attributes) {
+        setCustomAttributes(
+          Object.entries(actor.profile.custom_attributes).map(([key, value]) => ({ key, value: String(value) }))
+        );
+      }
+    }
+    const ass = actor.assembly || actor.profile?.assembly;
+    if (ass) {
+      onAssemblyChange(ass);
+      const sl = ass.sliders || actor.profile?.sliders;
+      if (sl) onSlidersChange(sl);
+    } else if (actor.model) {
+      onAssemblyChange({ than_co_ban: actor.model, base_body: actor.model });
+    }
+  }, [selectedActorId]);
+
   // Modal State
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [profileModalMode, setProfileModalMode] = useState<'create' | 'edit'>('create');
@@ -162,9 +152,9 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => {
     try {
       const saved = localStorage.getItem('custom_character_presets');
-      return saved ? JSON.parse(saved) : DEFAULT_PRESETS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return DEFAULT_PRESETS;
+      return [];
     }
   });
 
@@ -190,6 +180,10 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 
   const [perActorSliders, setPerActorSliders] = useState<Record<string, FaceSliderConfig>>({});
   const currentSliders = useSharedFaceSliders ? sliders : (perActorSliders[selectedActorId] || sliders);
+
+  const currentBody = assembly?.than_co_ban || assembly?.base_body || categories.find((c) => c.id === 'than_co_ban')?.items[0]?.path || scene.actors[0]?.model || '';
+  const currentCostume = assembly?.trang_phuc || assembly?.costume || '';
+  const currentFace = assembly?.khuon_mat || assembly?.face || '';
 
   const handleSliderChange = (key: keyof FaceSliderConfig, value: number) => {
     let updated: FaceSliderConfig;
@@ -227,17 +221,56 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     } catch {}
   };
 
+  const applyPreset = (p: CustomPreset) => {
+    const presetAss: CharacterAssembly = p.assembly || {
+      than_co_ban: p.body,
+      base_body: p.body,
+      trang_phuc: p.costume,
+      costume: p.costume,
+      khuon_mat: p.face,
+      face: p.face,
+      kieu_toc: p.hairstyle,
+      hairstyle: p.hairstyle,
+      ...p,
+    };
+    onAssemblyChange(presetAss);
+    if (p.sliders) onSlidersChange(p.sliders);
+    setGenderFilter(p.gender);
+    setCharGender(p.gender);
+    if (p.name) setCharName(p.name.replace(/^[^\w\s]*\s*/, ''));
+    if (p.profile) {
+      if (p.profile.age !== undefined) setCharAge(p.profile.age);
+      if (p.profile.height_cm !== undefined) setCharHeightCm(p.profile.height_cm);
+      if (p.profile.education_level) setCharEducation(p.profile.education_level);
+      if (p.profile.occupation) setCharOccupation(p.profile.occupation);
+      if (p.profile.faction) setCharFaction(p.profile.faction);
+      if (p.profile.personality) setCharPersonality(p.profile.personality);
+      if (p.profile.voice_style) setCharVoiceStyle(p.profile.voice_style);
+      if (p.profile.power_level !== undefined) setCharPowerLevel(p.profile.power_level);
+      if (p.profile.element) setCharElement(p.profile.element);
+      if (p.profile.biography) setCharBiography(p.profile.biography);
+      if (p.profile.skills) setCharSkills(p.profile.skills);
+      if (p.profile.custom_attributes) {
+        setCustomAttributes(
+          Object.entries(p.profile.custom_attributes).map(([key, value]) => ({ key, value: String(value) }))
+        );
+      }
+    }
+  };
+
   const handleSaveCustomPreset = () => {
     let name = '';
     try { name = prompt('Nhập tên cho mẫu phối đồ này:', charName) || ''; } catch {}
     if (!name) name = charName || 'Nhân Vật Mới';
     const newPreset: CustomPreset = {
       id: `preset_${Date.now()}`,
-      name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${name}`,
-      body: baseBody,
-      costume,
-      face,
-      gender: baseBody.includes('manekina') ? 'female' : 'male',
+      name: `${currentBody.includes('manekina') ? '👩' : '🧑'} ${name}`,
+      body: currentBody,
+      costume: currentCostume,
+      face: currentFace,
+      gender: currentBody.includes('manekina') ? 'female' : 'male',
+      assembly: { ...assembly, sliders: { ...currentSliders } },
+      sliders: { ...currentSliders },
     };
     const updated = [newPreset, ...customPresets];
     setCustomPresets(updated);
@@ -272,7 +305,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     }, {} as Record<string, any>);
 
     const profile: CharacterProfileJSON = {
-      ...buildCharacterProfile(charName, baseBody, costume, face, hairstyle, currentSliders, charBiography, {
+      ...buildCharacterProfile(charName, { ...assembly, sliders: { ...currentSliders } }, charBiography, {
         age: typeof charAge === 'number' ? charAge : 20,
         gender: charGender,
         height_cm: charHeightCm,
@@ -305,14 +338,15 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       aImg.click();
     }
 
-    // Auto-save to custom_character_presets for _lap_rap tab
     const exportedPreset: CustomPreset = {
       id: `preset_${Date.now()}`,
-      name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName || 'Nhân Vật Đã Ráp'}`,
-      body: baseBody,
-      costume,
-      face,
-      gender: baseBody.includes('manekina') ? 'female' : 'male',
+      name: `${currentBody.includes('manekina') ? '👩' : '🧑'} ${charName || 'Nhân Vật Đã Ráp'}`,
+      body: currentBody,
+      costume: currentCostume,
+      face: currentFace,
+      gender: charGender === 'female' ? 'female' : 'male',
+      assembly: { ...assembly, sliders: { ...currentSliders } },
+      sliders: { ...currentSliders },
     };
     const updatedOnExport = [exportedPreset, ...customPresets.filter((p) => p.name !== exportedPreset.name)];
     setCustomPresets(updatedOnExport);
@@ -332,11 +366,19 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     reader.onload = (evt) => {
       try {
         const profile: CharacterProfileJSON = JSON.parse(evt.target?.result as string);
-        if (profile.base_body) onBaseBodyChange(profile.base_body);
-        if (profile.costume) onCostumeChange(profile.costume);
-        if (profile.face) onFaceChange(profile.face);
-        if (profile.hairstyle) onHairstyleChange(profile.hairstyle);
-        if (profile.face_sliders) onSlidersChange(profile.face_sliders);
+        const ass: CharacterAssembly = profile.assembly || {
+          than_co_ban: profile.base_body,
+          base_body: profile.base_body,
+          trang_phuc: profile.costume,
+          costume: profile.costume,
+          khuon_mat: profile.face,
+          face: profile.face,
+          kieu_toc: profile.hairstyle,
+          hairstyle: profile.hairstyle,
+          ...profile,
+        };
+        onAssemblyChange(ass);
+        if (profile.face_sliders || ass.sliders) onSlidersChange(profile.face_sliders || ass.sliders!);
         if (profile.name) setCharName(profile.name);
         if (profile.age !== undefined) setCharAge(profile.age);
         if (profile.height_cm !== undefined) setCharHeightCm(profile.height_cm);
@@ -356,14 +398,13 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
         }
         if (profile.gender && profile.gender !== 'unisex') setGenderFilter(profile.gender);
 
-        // Auto-save to custom_character_presets for _lap_rap tab
         const importedPreset: CustomPreset = {
           id: `preset_${Date.now()}`,
-          name: `${(profile.base_body || baseBody).includes('manekina') ? '👩' : '🧑'} ${profile.name || 'Nhân Vật Nhập'}`,
-          body: profile.base_body || baseBody,
-          costume: profile.costume || costume,
-          face: profile.face || face,
-          gender: (profile.base_body || baseBody).includes('manekina') ? 'female' : 'male',
+          name: `${((ass.than_co_ban || ass.base_body || '') as string).includes('manekina') ? '👩' : '🧑'} ${profile.name || 'Nhân Vật Nhập'}`,
+          body: ass.than_co_ban || ass.base_body || categories.find((c) => c.id === 'than_co_ban')?.items[0]?.path || '',
+          gender: profile.gender === 'female' ? 'female' : 'male',
+          assembly: ass,
+          sliders: profile.face_sliders || ass.sliders,
         };
         const updatedOnImport = [importedPreset, ...customPresets.filter((p) => p.name !== importedPreset.name)];
         setCustomPresets(updatedOnImport);
@@ -405,21 +446,23 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       element: charElement,
       skills: charSkills,
       custom_attributes: customAttrMap,
+      assembly: { ...assembly, sliders: { ...currentSliders } },
+      sliders: { ...currentSliders },
     };
 
+    const body = assembly?.than_co_ban || assembly?.base_body || targetActor.model || categories.find((c) => c.id === 'than_co_ban')?.items[0]?.path || '';
     targetActor.name = charName;
-    targetActor.model = baseBody;
-    targetActor.assembly = { base_body: baseBody, costume, face, hairstyle: hairstyle || undefined };
+    targetActor.model = body;
+    targetActor.assembly = { ...assembly, sliders: { ...currentSliders } };
     targetActor.profile = profileData;
 
-    // Save/update into custom_character_presets so it immediately shows up in 'Nhân Vật Đã Ráp'
     const appliedPreset: CustomPreset = {
       id: `preset_${targetActor.id}`,
-      name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName}`,
-      body: baseBody,
-      costume,
-      face,
+      name: `${body.includes('manekina') ? '👩' : '🧑'} ${charName}`,
+      body,
       gender: charGender === 'female' ? 'female' : 'male',
+      assembly: { ...assembly, sliders: { ...currentSliders } },
+      sliders: { ...currentSliders },
     };
     const existingIndex = customPresets.findIndex((p) => p.id === appliedPreset.id || p.name === appliedPreset.name);
     const updatedPresets = existingIndex >= 0
@@ -463,15 +506,19 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       element: charElement,
       skills: charSkills,
       custom_attributes: customAttrMap,
+      assembly: { ...assembly, sliders: { ...currentSliders } },
+      sliders: { ...currentSliders },
     };
+
+    const body = assembly?.than_co_ban || assembly?.base_body || categories.find((c) => c.id === 'than_co_ban')?.items[0]?.path || '';
 
     if (profileModalMode === 'create') {
       const newId = `actor_${Math.random().toString(36).substring(2, 7)}`;
       const newActor: ActorConfig = {
         id: newId,
         name: charName.trim(),
-        model: baseBody,
-        assembly: { base_body: baseBody, costume, face, hairstyle: hairstyle || undefined },
+        model: body,
+        assembly: { ...assembly, sliders: { ...currentSliders } },
         profile: profileData,
         spawn_point: [0.0, 0, 1.5],
         rotation_y: 0,
@@ -480,14 +527,13 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       onUpdateScene({ ...scene, actors: [...scene.actors, newActor] });
       setSelectedActorId(newId);
 
-      // Auto-save to custom_character_presets for _lap_rap tab
       const newPreset: CustomPreset = {
         id: `preset_${newId}`,
-        name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName.trim()}`,
-        body: baseBody,
-        costume,
-        face,
+        name: `${body.includes('manekina') ? '👩' : '🧑'} ${charName.trim()}`,
+        body,
         gender: charGender === 'female' ? 'female' : 'male',
+        assembly: { ...assembly, sliders: { ...currentSliders } },
+        sliders: { ...currentSliders },
       };
       const updatedPresets = [newPreset, ...customPresets.filter((p) => p.name !== newPreset.name && p.id !== newPreset.id)];
       setCustomPresets(updatedPresets);
@@ -499,17 +545,18 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       const targetActor = scene.actors.find((a) => a.id === selectedActorId) || scene.actors[0];
       if (targetActor) {
         targetActor.name = charName.trim();
+        targetActor.model = body;
         targetActor.profile = profileData;
-        targetActor.assembly = { base_body: baseBody, costume, face, hairstyle: hairstyle || undefined };
+        targetActor.assembly = { ...assembly, sliders: { ...currentSliders } };
         onUpdateScene({ ...scene, actors: scene.actors.map((a) => (a.id === targetActor.id ? { ...targetActor } : a)) });
 
         const editPreset: CustomPreset = {
           id: `preset_${targetActor.id}`,
-          name: `${baseBody.includes('manekina') ? '👩' : '🧑'} ${charName.trim()}`,
-          body: baseBody,
-          costume,
-          face,
+          name: `${body.includes('manekina') ? '👩' : '🧑'} ${charName.trim()}`,
+          body,
           gender: charGender === 'female' ? 'female' : 'male',
+          assembly: { ...assembly, sliders: { ...currentSliders } },
+          sliders: { ...currentSliders },
         };
         const updatedPresets = [editPreset, ...customPresets.filter((p) => p.name !== editPreset.name && p.id !== editPreset.id)];
         setCustomPresets(updatedPresets);
@@ -525,24 +572,28 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   };
 
   const getSelectionForCategory = (catId: string): string => {
-    switch (catId) {
-      case 'than_co_ban': return baseBody;
-      case 'khuon_mat': return face;
-      case 'trang_phuc': return costume;
-      case 'kieu_toc': return hairstyle;
-      default: return '';
-    }
+    const val = assembly?.[catId] || (catId === 'than_co_ban' ? assembly?.base_body : catId === 'trang_phuc' ? assembly?.costume : catId === 'khuon_mat' ? assembly?.face : catId === 'kieu_toc' ? assembly?.hairstyle : '');
+    return typeof val === 'string' ? val : '';
   };
 
   const handleSelectItem = (catId: string, path: string) => {
     const current = getSelectionForCategory(catId);
-    const newVal = current === path ? '' : path;
-    switch (catId) {
-      case 'than_co_ban': onBaseBodyChange(newVal); break;
-      case 'khuon_mat': onFaceChange(newVal); break;
-      case 'trang_phuc': onCostumeChange(newVal); break;
-      case 'kieu_toc': onHairstyleChange(newVal); break;
+    const nextVal = current === path ? '' : path;
+    const nextAss = { ...assembly };
+    if (nextVal) {
+      nextAss[catId] = nextVal;
+      if (catId === 'than_co_ban') nextAss.base_body = nextVal;
+      if (catId === 'trang_phuc') nextAss.costume = nextVal;
+      if (catId === 'khuon_mat') nextAss.face = nextVal;
+      if (catId === 'kieu_toc') nextAss.hairstyle = nextVal;
+    } else {
+      delete nextAss[catId];
+      if (catId === 'than_co_ban') delete nextAss.base_body;
+      if (catId === 'trang_phuc') delete nextAss.costume;
+      if (catId === 'khuon_mat') delete nextAss.face;
+      if (catId === 'kieu_toc') delete nextAss.hairstyle;
     }
+    onAssemblyChange(nextAss);
   };
 
   const activeCategory = categories.find((c) => c.id === activeCategoryId);
@@ -719,17 +770,10 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
             ) : activeCategoryId === '_lap_rap' || activeCategoryId === 'nhan_vat_lap_rap' ? (
               <AssembledCharactersPanel
                 presets={customPresets}
-                currentBody={baseBody}
-                currentCostume={costume}
-                currentFace={face}
-                onApply={(p) => {
-                  onBaseBodyChange(p.body);
-                  onCostumeChange(p.costume);
-                  onFaceChange(p.face);
-                  setGenderFilter(p.gender);
-                  setCharGender(p.gender);
-                  setCharName(p.name.replace(/^[^\w\s]*\s*/, ''));
-                }}
+                currentBody={currentBody}
+                currentCostume={currentCostume}
+                currentFace={currentFace}
+                onApply={applyPreset}
                 onDelete={handleDeletePreset}
                 onImportClick={() => jsonImportRef.current?.click()}
               />
@@ -739,7 +783,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
           </div>
 
           {/* 2. Pinned Presets Bar at Bottom (34px fixed height) */}
-          <PresetsBar presets={customPresets} onApply={(p) => { onBaseBodyChange(p.body); onCostumeChange(p.costume); onFaceChange(p.face); setGenderFilter(p.gender); setCharGender(p.gender); }} onDelete={handleDeletePreset} />
+          <PresetsBar presets={customPresets} onApply={applyPreset} onDelete={handleDeletePreset} />
 
           {/* 3. Pinned Character HUD Badge */}
           <CharacterHUDCard
@@ -804,6 +848,11 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
           setCharSkills={setCharSkills}
           customAttributes={customAttributes}
           setCustomAttributes={setCustomAttributes}
+          categories={categories}
+          assembly={assembly}
+          onAssemblyChange={onAssemblyChange}
+          sliders={currentSliders}
+          onSlidersChange={onSlidersChange}
           validationError={validationError}
           onClose={() => setShowProfileModal(false)}
           onSave={handleSaveProfileModal}

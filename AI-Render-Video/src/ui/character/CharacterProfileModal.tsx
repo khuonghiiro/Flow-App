@@ -10,7 +10,8 @@ import {
   Tag,
   CheckCircle,
 } from 'lucide-react';
-import { CharacterSkillItem } from '../CharacterAssetRegistry';
+import { CharacterCategory, CHARACTER_CATEGORIES, CharacterSkillItem, DEFAULT_FACE_SLIDERS } from '../CharacterAssetRegistry';
+import { CharacterAssembly, FaceSliderConfig } from '../../types/scene';
 
 export const EDUCATION_PRESETS = [
   'Không có trình độ',
@@ -89,6 +90,11 @@ export interface CharacterProfileModalProps {
   setCharSkills: React.Dispatch<React.SetStateAction<CharacterSkillItem[]>>;
   customAttributes: CustomAttributeItem[];
   setCustomAttributes: React.Dispatch<React.SetStateAction<CustomAttributeItem[]>>;
+  categories?: CharacterCategory[];
+  assembly?: CharacterAssembly;
+  onAssemblyChange?: (assembly: CharacterAssembly) => void;
+  sliders?: FaceSliderConfig;
+  onSlidersChange?: (sliders: FaceSliderConfig) => void;
   validationError: string | null;
   onClose: () => void;
   onSave: () => void;
@@ -137,13 +143,18 @@ export const CharacterProfileModal: React.FC<CharacterProfileModalProps> = ({
   setCharSkills,
   customAttributes,
   setCustomAttributes,
+  categories,
+  assembly,
+  onAssemblyChange,
+  sliders,
+  onSlidersChange,
   validationError,
   onClose,
   onSave,
   onAutoMeasureHeight,
   onGenderFilterChange,
 }) => {
-  const [modalTab, setModalTab] = useState<'basic' | 'combat' | 'lore'>('basic');
+  const [modalTab, setModalTab] = useState<'basic' | 'combat' | 'lore' | 'appearance'>('basic');
 
   return (
     <div
@@ -208,9 +219,10 @@ export const CharacterProfileModal: React.FC<CharacterProfileModalProps> = ({
           }}
         >
           {[
-            { id: 'basic', label: '👤 1. Thông Tin Cơ Bản' },
-            { id: 'combat', label: '⚡ 2. Kỹ Năng & Chiến Đấu' },
-            { id: 'lore', label: '📜 3. Tiểu Sử & Thuộc Tính Tùy Biến' },
+            { id: 'basic', label: '👤 1. Cơ Bản' },
+            { id: 'combat', label: '⚡ 2. Kỹ Năng' },
+            { id: 'lore', label: '📜 3. Tiểu Sử' },
+            { id: 'appearance', label: '👗 4. Lắp Ráp & Slider 3D' },
           ].map((t) => (
             <button
               key={t.id}
@@ -671,6 +683,182 @@ export const CharacterProfileModal: React.FC<CharacterProfileModalProps> = ({
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: 3D MODULAR ASSEMBLY & FACIAL SLIDERS */}
+          {modalTab === 'appearance' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Section 1: Modular Equipped Parts */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>
+                    👘 Các Bộ Phận Lắp Ráp 3D Đang Trang Bị
+                  </span>
+                  <span style={{ fontSize: 10, color: '#94a3b8' }}>
+                    (Tự động đồng bộ với Xưởng 3D)
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {(categories || CHARACTER_CATEGORIES)
+                    .filter((c) => !c.id.startsWith('_'))
+                    .map((cat) => {
+                      const val = assembly?.[cat.id] || (cat.id === 'than_co_ban' ? assembly?.base_body : cat.id === 'trang_phuc' ? assembly?.costume : cat.id === 'khuon_mat' ? assembly?.face : cat.id === 'kieu_toc' ? assembly?.hairstyle : cat.id === 'kieu_rau' ? assembly?.beard : cat.id === 'phu_kien' && Array.isArray(assembly?.accessories) ? assembly.accessories.join(', ') : undefined);
+                      const isEquipped = Boolean(val);
+                      const isRequired = cat.id === 'than_co_ban' || cat.id === 'base_body';
+                      const strVal = typeof val === 'string' ? val : Array.isArray(val) ? val.join(', ') : '';
+                      const cleanName = strVal ? strVal.split('/').pop()?.replace(/\.[^/.]+$/, '').replace(/_/g, ' ') : 'Chưa chọn';
+
+                      return (
+                        <div
+                          key={cat.id}
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: 6,
+                            background: isEquipped ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.02)',
+                            border: `1px solid ${isEquipped ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.06)'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 6,
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: isEquipped ? '#38bdf8' : '#64748b' }}>
+                              {cat.icon || '📦'} {cat.label}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: isEquipped ? '#f1f5f9' : '#475569',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                maxWidth: 180,
+                              }}
+                              title={strVal || 'Chưa chọn'}
+                            >
+                              {cleanName}
+                            </span>
+                          </div>
+
+                          {isEquipped && !isRequired && onAssemblyChange && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!assembly) return;
+                                const updated = { ...assembly };
+                                delete updated[cat.id];
+                                if (cat.id === 'than_co_ban') delete updated.base_body;
+                                if (cat.id === 'trang_phuc') delete updated.costume;
+                                if (cat.id === 'khuon_mat') delete updated.face;
+                                if (cat.id === 'kieu_toc') delete updated.hairstyle;
+                                if (cat.id === 'kieu_rau') delete updated.beard;
+                                if (cat.id === 'long_may') delete updated.eyebrow;
+                                if (cat.id === 'mat') delete updated.eye;
+                                if (cat.id === 'mui') delete updated.nose;
+                                if (cat.id === 'mieng') delete updated.mouth;
+                                if (cat.id === 'mu_non') delete updated.hat;
+                                if (cat.id === 'giay_dep') delete updated.shoes;
+                                if (cat.id === 'phu_kien') delete updated.accessories;
+                                onAssemblyChange(updated);
+                              }}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#f87171',
+                                borderRadius: 4,
+                                padding: '2px 5px',
+                                fontSize: 9,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                              title="Gỡ bỏ món này"
+                            >
+                              Gỡ
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Section 2: Facial Sliders */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24' }}>
+                    🎛️ Cấu Hình Thanh Trượt (Sliders) Khuôn Mặt & Da
+                  </span>
+                  {onSlidersChange && (
+                    <button
+                      type="button"
+                      onClick={() => onSlidersChange({ ...DEFAULT_FACE_SLIDERS })}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#cbd5e1',
+                        borderRadius: 4,
+                        padding: '2px 7px',
+                        fontSize: 9,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Đặt Lại Mặc Định
+                    </button>
+                  )}
+                </div>
+
+                {sliders && onSlidersChange ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {[
+                      { key: 'baseFaceOpacity', label: '🎭 Độ Hiện Face Gốc', val: sliders.baseFaceOpacity ?? 0, color: '#f59e0b' },
+                      { key: 'noseOpacity', label: '👃 Độ Nổi Mũi', val: sliders.noseOpacity ?? 0, color: '#8b5cf6' },
+                      { key: 'mouthOpacity', label: '👄 Độ Rõ Miệng & Môi', val: sliders.mouthOpacity ?? 0, color: '#ec4899' },
+                      { key: 'eyebrowOpacity', label: '🤨 Độ Đậm Lông Mày', val: sliders.eyebrowOpacity ?? 1, color: '#06b6d4' },
+                      { key: 'pupilOpacity', label: '✨ Độ Sáng Tròng Mắt', val: sliders.pupilOpacity ?? 1, color: '#38bdf8' },
+                      { key: 'skinSmoothness', label: '🌸 Độ Mịn Da', val: sliders.skinSmoothness ?? 0.75, color: '#10b981' },
+                      { key: 'costumeOpacity', label: '🥋 Độ Đậm Trang Phục', val: sliders.costumeOpacity ?? 1, color: '#a855f7' },
+                    ].map((s) => (
+                      <div
+                        key={s.key}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          background: 'rgba(255,255,255,0.025)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#f1f5f9' }}>{s.label}</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: s.color }}>{Math.round(s.val * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={s.val}
+                          onChange={(e) => {
+                            const num = parseFloat(e.target.value);
+                            onSlidersChange({ ...sliders, [s.key]: num });
+                          }}
+                          style={{ accentColor: s.color, height: 4, cursor: 'pointer' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center', padding: 8 }}>
+                    Chưa có cấu hình thanh trượt riêng. Sẽ áp dụng mặc định của xưởng.
+                  </div>
+                )}
               </div>
             </div>
           )}

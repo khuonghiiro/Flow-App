@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride } from './types/scene';
+import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride, CharacterAssembly, CharacterProfileData } from './types/scene';
 import { defaultScene, sampleScenes } from './core/scenes/SceneRegistry';
 import { ThreeRenderer } from './core/engine/ThreeRenderer';
 import { SceneLighting } from './core/engine/SceneLighting';
@@ -1024,34 +1024,76 @@ export const App: React.FC = () => {
     handleUpdateScene(updatedScene);
   };
 
-  // Switch Avatar or Modular Part (Quần áo, Mặt, Tóc, Thân) from Asset Browser
-  const handleSelectAvatar = async (actorId: string, vrmUrl: string) => {
+  // Switch Avatar or Modular Part (Quần áo, Mặt, Tóc, Thân, Nón, Giày, Phụ kiện, Râu...) from Asset Browser
+  const handleSelectAvatar = async (
+    actorId: string,
+    vrmUrl: string,
+    assembly?: CharacterAssembly,
+    profile?: CharacterProfileData
+  ) => {
     const targetActor = sceneRef.current.actors.find((a) => a.id === actorId) || sceneRef.current.actors[0];
     if (!targetActor) return;
 
-    if (vrmUrl.includes('/costumes/')) {
-      targetActor.assembly = {
-        ...(targetActor.assembly || { base_body: targetActor.model }),
-        costume: vrmUrl,
-      };
-    } else if (vrmUrl.includes('/faces/')) {
-      targetActor.assembly = {
-        ...(targetActor.assembly || { base_body: targetActor.model }),
-        face: vrmUrl,
-      };
-    } else if (vrmUrl.includes('/hairstyles/')) {
-      targetActor.assembly = {
-        ...(targetActor.assembly || { base_body: targetActor.model }),
-        hairstyle: vrmUrl,
-      };
-    } else if (vrmUrl.includes('/base_bodies/')) {
-      targetActor.assembly = {
-        ...(targetActor.assembly || {}),
-        base_body: vrmUrl,
-      };
-      targetActor.model = vrmUrl;
+    if (assembly) {
+      targetActor.assembly = { ...assembly };
+      if (assembly.base_body) {
+        targetActor.model = assembly.base_body;
+      }
+      if (profile) {
+        targetActor.profile = { ...profile };
+      }
     } else {
-      targetActor.model = vrmUrl;
+      // Dynamic category deduction from URL (e.g. assets/nhan_vat/canh/wing.glb or assets/characters/costumes/...)
+      const parts = vrmUrl.replace(/\\/g, '/').split('/');
+      let catKey = '';
+      if (parts.length >= 2) {
+        const lastFolder = parts[parts.length - 2];
+        if (lastFolder === 'nam' || lastFolder === 'nu' || lastFolder === 'unisex' || lastFolder === 'male' || lastFolder === 'female') {
+          catKey = parts[parts.length - 3] || '';
+        } else {
+          catKey = lastFolder;
+        }
+      }
+
+      if (catKey === 'base_bodies' || catKey === 'than_co_ban') {
+        targetActor.assembly = { ...(targetActor.assembly || {}), than_co_ban: vrmUrl, base_body: vrmUrl };
+        targetActor.model = vrmUrl;
+      } else if (catKey === 'costumes' || catKey === 'trang_phuc') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), trang_phuc: vrmUrl, costume: vrmUrl };
+      } else if (catKey === 'faces' || catKey === 'khuon_mat') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), khuon_mat: vrmUrl, face: vrmUrl };
+      } else if (catKey === 'hairstyles' || catKey === 'kieu_toc') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), kieu_toc: vrmUrl, hairstyle: vrmUrl };
+      } else if (catKey === 'beards' || catKey === 'kieu_rau') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), kieu_rau: vrmUrl, beard: vrmUrl };
+      } else if (catKey === 'eyebrows' || catKey === 'long_may') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), long_may: vrmUrl, eyebrow: vrmUrl };
+      } else if (catKey === 'eyes' || catKey === 'mat') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), mat: vrmUrl, eye: vrmUrl };
+      } else if (catKey === 'noses' || catKey === 'mui') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), mui: vrmUrl, nose: vrmUrl };
+      } else if (catKey === 'mouths' || catKey === 'mieng') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), mieng: vrmUrl, mouth: vrmUrl };
+      } else if (catKey === 'hats' || catKey === 'mu_non') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), mu_non: vrmUrl, hat: vrmUrl };
+      } else if (catKey === 'shoes' || catKey === 'giay_dep') {
+        targetActor.assembly = { ...(targetActor.assembly || { base_body: targetActor.model }), giay_dep: vrmUrl, shoes: vrmUrl };
+      } else if (catKey === 'accessories' || catKey === 'phu_kien') {
+        const accs = targetActor.assembly?.accessories || [];
+        targetActor.assembly = {
+          ...(targetActor.assembly || { base_body: targetActor.model }),
+          accessories: accs.includes(vrmUrl) ? accs : [...accs, vrmUrl],
+          phu_kien: vrmUrl,
+        };
+      } else if (catKey) {
+        // Any dynamic arbitrary category from asset_structure.json (e.g. 'canh', 'duoi', 'ao_choang', etc.)
+        targetActor.assembly = {
+          ...(targetActor.assembly || { base_body: targetActor.model }),
+          [catKey]: vrmUrl,
+        };
+      } else {
+        targetActor.model = vrmUrl;
+      }
     }
 
     const updatedScene = { ...sceneRef.current };

@@ -1,14 +1,29 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 
+import { CharacterAssembly, CharacterProfileData, FaceSliderConfig } from '../../types/scene';
+
 export interface CustomPreset {
   id: string;
   name: string;
   body: string;
-  costume: string;
-  face: string;
+  costume?: string;
+  face?: string;
+  hairstyle?: string;
+  beard?: string;
+  eyebrow?: string;
+  eye?: string;
+  nose?: string;
+  mouth?: string;
+  hat?: string;
+  shoes?: string;
+  accessories?: string[];
+  sliders?: FaceSliderConfig;
   gender: 'male' | 'female';
   preview?: string;
+  profile?: CharacterProfileData;
+  assembly?: CharacterAssembly;
+  [key: string]: any;
 }
 
 interface PresetsBarProps {

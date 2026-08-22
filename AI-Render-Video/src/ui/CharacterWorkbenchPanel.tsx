@@ -16,13 +16,13 @@ import {
   Grid,
   Box,
 } from 'lucide-react';
-import { MasterSceneConfig } from '../types/scene';
+import { MasterSceneConfig, CharacterAssembly } from '../types/scene';
 import { AutoRigEngine, AutoRigResult } from '../core/actors/AutoRigEngine';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ModularOutfitVerticalTabs } from './ModularOutfitVerticalTabs';
 import { MapDesignerPanel } from './MapDesignerPanel';
-import { FaceSliderConfig, DEFAULT_FACE_SLIDERS } from './CharacterAssetRegistry';
+import { FaceSliderConfig, DEFAULT_FACE_SLIDERS, fetchLiveCharacterCategories, CharacterCategory } from './CharacterAssetRegistry';
 
 interface CharacterWorkbenchPanelProps {
   scene: MasterSceneConfig;
@@ -37,28 +37,49 @@ interface CharacterWorkbenchPanelProps {
 export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = ({
   scene,
   onUpdateScene,
+  onSelectAvatar,
   onSelectMap,
   onClose,
   isModal = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'rigging' | 'modular' | 'map'>('modular');
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
+  const [availableCategories, setAvailableCategories] = useState<CharacterCategory[]>([]);
+
+  const firstActor = scene.actors[0];
+  const firstAss = firstActor?.assembly || firstActor?.profile?.assembly || {
+    than_co_ban: firstActor?.model || '',
+    base_body: firstActor?.model || '',
+  };
 
   // --- 1. MODULAR OUTFIT STATE (lifted for 3D preview sync) ---
-  const [baseBody, setBaseBody] = useState<string>('assets/characters/base_bodies/nam/body_base_-_manekin.glb');
-  const [costume, setCostume] = useState<string>('assets/characters/costumes/nam/amber_nectar_-_manekin.glb');
-  const [face, setFace] = useState<string>('assets/characters/faces/nam/dawnbreaker_-_manekin.glb');
-  const [hairstyle, setHairstyle] = useState<string>('');
+  const [assembly, setAssembly] = useState<CharacterAssembly>(() => ({ ...firstAss }));
   const [sceneReadyToken, setSceneReadyToken] = useState<number>(0);
 
   // --- 2. AUTO-RIG STATE ---
-  const [modelToRig, setModelToRig] = useState<string>('assets/characters/base_bodies/nam/body_base_-_manekin.glb');
+  const [modelToRig, setModelToRig] = useState<string>(firstActor?.model || '');
   const [isRigged, setIsRigged] = useState<boolean>(false);
   const [isRiggingLoading, setIsRiggingLoading] = useState<boolean>(false);
   const [showJoints, setShowJoints] = useState<boolean>(true);
   const [activePose, setActivePose] = useState<string>('t_pose');
   const [isPosePlaying, setIsPosePlaying] = useState<boolean>(false);
   const [poseProgress, setPoseProgress] = useState<number>(0);
+
+  useEffect(() => {
+    fetchLiveCharacterCategories().then((cats) => {
+      setAvailableCategories(cats);
+      const bodies = cats.find((c) => c.id === 'than_co_ban')?.items || [];
+      if (bodies.length > 0) {
+        setModelToRig((prev) => prev || bodies[0].path);
+        setAssembly((prev) => {
+          if (!prev.than_co_ban && !prev.base_body) {
+            return { ...prev, than_co_ban: bodies[0].path, base_body: bodies[0].path };
+          }
+          return prev;
+        });
+      }
+    });
+  }, []);
 
   // --- 3. MAP BUILDER STATE ---
   const [selectedMapPath, setSelectedMapPath] = useState<string>(scene.environment?.map || 'assets/maps/cathedral.glb');
@@ -113,18 +134,12 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
   // Khi chọn face mới: Tự động cho mặt cũ, mắt, mũi, miệng, lông mày gốc về 0% để dùng trọn vẹn Face mới
   const handleSelectFace = (newFacePath: string) => {
-    if (face === newFacePath || newFacePath === '') {
-      setFace('');
-      const updated = {
-        ...faceSliders,
-        baseFaceOpacity: 0.0,
-        noseOpacity: 0.0,
-        mouthOpacity: 0.0,
-      };
-      setFaceSliders(updated);
-      try { localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated)); } catch {}
-    } else {
-      setFace(newFacePath);
+    const currentFace = assembly.khuon_mat || assembly.face || '';
+    const nextFace = currentFace === newFacePath || newFacePath === '' ? '' : newFacePath;
+    const nextAss = { ...assembly };
+    if (nextFace) {
+      nextAss.khuon_mat = nextFace;
+      nextAss.face = nextFace;
       const updated = {
         ...faceSliders,
         baseFaceOpacity: 0.0,
@@ -135,7 +150,19 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       };
       setFaceSliders(updated);
       try { localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated)); } catch {}
+    } else {
+      delete nextAss.khuon_mat;
+      delete nextAss.face;
+      const updated = {
+        ...faceSliders,
+        baseFaceOpacity: 0.0,
+        noseOpacity: 0.0,
+        mouthOpacity: 0.0,
+      };
+      setFaceSliders(updated);
+      try { localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated)); } catch {}
     }
+    setAssembly(nextAss);
   };
 
   // Initialize Three.js 3D Preview Canvas
@@ -298,15 +325,36 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     currentPreviewGroupRef.current = group;
     previewScene.add(group);
 
-    const parts = [
-      { key: 'body', path: baseBody },
-      { key: 'costume', path: costume },
-      { key: 'face', path: face },
-      { key: 'hair', path: hairstyle },
-    ].filter((p) => Boolean(p.path));
+    const partsToLoad: { key: string; path: string }[] = [];
+    if (assembly && typeof assembly === 'object') {
+      for (const [key, val] of Object.entries(assembly)) {
+        if (key === 'sliders' || key === 'skin_color' || key === 'hair_color' || key === 'eye_color') continue;
+        if (key === 'base_body' && assembly.than_co_ban) continue;
+        if (key === 'costume' && assembly.trang_phuc) continue;
+        if (key === 'face' && assembly.khuon_mat) continue;
+        if (key === 'hairstyle' && assembly.kieu_toc) continue;
+
+        if (typeof val === 'string' && val.trim()) {
+          partsToLoad.push({ key, path: val });
+        } else if (Array.isArray(val)) {
+          val.forEach((p, idx) => {
+            if (typeof p === 'string' && p.trim()) {
+              partsToLoad.push({ key: `${key}_${idx}`, path: p });
+            }
+          });
+        }
+      }
+    }
+
+    if (!partsToLoad.some(p => p.key === 'than_co_ban' || p.key === 'base_body' || p.key === 'body')) {
+      const bodyPath = firstActor?.model || availableCategories.find(c => c.id === 'than_co_ban')?.items[0]?.path || '';
+      if (bodyPath) {
+        partsToLoad.unshift({ key: 'than_co_ban', path: bodyPath });
+      }
+    }
 
     Promise.all(
-      parts.map(async (p) => {
+      partsToLoad.map(async (p) => {
         try {
           const model = await AssetLoaderRegistry.loadCharacterPart(p.path);
           return { key: p.key, model };
@@ -320,9 +368,9 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         if (!isMounted) return;
         const loadedList = results.filter((item): item is { key: string; model: THREE.Group } => item !== null);
 
-        const hasFace = loadedList.some((item) => item.key === 'face');
-        const bodyItem = loadedList.find((item) => item.key === 'body');
-        const faceItem = loadedList.find((item) => item.key === 'face');
+        const hasFace = loadedList.some((item) => item.key === 'khuon_mat' || item.key === 'face' || item.key.includes('face'));
+        const bodyItem = loadedList.find((item) => item.key === 'than_co_ban' || item.key === 'base_body' || item.key === 'body');
+        const faceItem = loadedList.find((item) => item.key === 'khuon_mat' || item.key === 'face' || item.key.includes('face'));
 
         // Dynamic Anatomical Snapping: Khớp chính xác vị trí và chiều cao của Face theo Body (Nam/Nữ)
         if (bodyItem && faceItem) {
@@ -391,7 +439,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                 matName.includes('eyebrow');
 
               // Lớp trước đè lớp sau: Khi chọn Face mới, ẩn triệt để mặt và mắt/mày của thân gốc
-              if (hasFace && key === 'body' && isFaceDetail) {
+              if (hasFace && (key === 'than_co_ban' || key === 'base_body' || key === 'body') && isFaceDetail) {
                 mesh.visible = false;
               }
 
@@ -407,7 +455,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   if (m.map) {
                     m.map.minFilter = THREE.LinearMipmapLinearFilter;
                     m.map.magFilter = THREE.LinearFilter;
-                    m.map.anisotropy = 16;
+                    m.anisotropy = 16;
                   }
                 });
               }
@@ -437,7 +485,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     return () => {
       isMounted = false;
     };
-  }, [baseBody, costume, face, hairstyle, activeTab, sceneReadyToken]);
+  }, [assembly, activeTab, sceneReadyToken]);
 
   // Execute Auto-Rigging on Selected Model
   const handleRunAutoRig = async () => {
@@ -832,14 +880,10 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                 <ModularOutfitVerticalTabs
                   scene={scene}
                   onUpdateScene={onUpdateScene}
-                  baseBody={baseBody}
-                  costume={costume}
-                  face={face}
-                  hairstyle={hairstyle}
-                  onBaseBodyChange={setBaseBody}
-                  onCostumeChange={setCostume}
-                  onFaceChange={(newFace) => handleSelectFace(newFace)}
-                  onHairstyleChange={setHairstyle}
+                  assembly={assembly}
+                  onAssemblyChange={(updatedAssembly) => {
+                    setAssembly(updatedAssembly);
+                  }}
                   sliders={faceSliders}
                   onSlidersChange={handleFaceSlidersChange}
                 />
@@ -876,18 +920,24 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                           fontSize: 12,
                         }}
                       >
-                        <option value="assets/characters/base_bodies/man/body_base_-_manekin.glb">
-                          assets/characters/base_bodies/man/body_base_-_manekin.glb (Nam)
-                        </option>
-                        <option value="assets/characters/base_bodies/male/body_base_-_manekina.glb">
-                          assets/characters/base_bodies/male/body_base_-_manekina.glb (Nữ)
-                        </option>
-                        <option value="assets/characters/costumes/man/amber_nectar_-_manekin.glb">
-                          assets/characters/costumes/man/amber_nectar_-_manekin.glb
-                        </option>
-                        <option value="assets/characters/costumes/male/precision_strike_-_manekina.glb">
-                          assets/characters/costumes/male/precision_strike_-_manekina.glb
-                        </option>
+                        {(availableCategories.find((c) => c.id === 'than_co_ban')?.items || []).map((item) => (
+                          <option key={item.id} value={item.path}>
+                            [Thân] {item.name} ({item.path})
+                          </option>
+                        ))}
+                        {(availableCategories.find((c) => c.id === 'trang_phuc')?.items || []).map((item) => (
+                          <option key={item.id} value={item.path}>
+                            [Trang Phục] {item.name} ({item.path})
+                          </option>
+                        ))}
+                        {availableCategories
+                          .filter((c) => c.id !== 'than_co_ban' && c.id !== 'trang_phuc' && c.id !== '_lap_rap')
+                          .flatMap((c) => c.items)
+                          .map((item) => (
+                            <option key={item.id} value={item.path}>
+                              {item.name} ({item.path})
+                            </option>
+                          ))}
                       </select>
 
                       <button

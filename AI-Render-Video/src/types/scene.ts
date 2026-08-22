@@ -248,17 +248,36 @@ export interface ActorTracks {
 }
 
 
-/** Lắp ráp nhân vật từ các parts modular */
+export interface FaceSliderConfig {
+  baseFaceOpacity: number;
+  eyebrowOpacity: number;
+  pupilOpacity: number;
+  noseOpacity: number;
+  mouthOpacity: number;
+  skinSmoothness: number;
+  costumeOpacity: number;
+}
+
+/** Lắp ráp nhân vật từ các parts modular - hoàn toàn động theo cấu hình thư mục & asset_structure.json */
 export interface CharacterAssembly {
-  base_body: string;           // "characters/base_bodies/male_warrior.vrm"
-  face?: string;               // "characters/faces/face_male_young.glb"
-  hairstyle?: string;          // "characters/hairstyles/hair_long_flowing.glb"
-  beard?: string;              // "characters/beards/beard_long_sage.glb"
-  costume?: string;            // "characters/costumes/costume_xianxia_white.glb"
-  accessories?: string[];      // ["characters/accessories/acc_crown_gold.glb"]
+  base_body?: string;          // Alias chuẩn cho than_co_ban
+  face?: string;               // Alias chuẩn cho khuon_mat
+  hairstyle?: string;          // Alias chuẩn cho kieu_toc
+  beard?: string;              // Alias chuẩn cho kieu_rau
+  costume?: string;            // Alias chuẩn cho trang_phuc
+  eyebrow?: string;            // Alias chuẩn cho long_may
+  eye?: string;                // Alias chuẩn cho mat
+  nose?: string;               // Alias chuẩn cho mui
+  mouth?: string;              // Alias chuẩn cho mieng
+  hat?: string;                // Alias chuẩn cho mu_non
+  shoes?: string;              // Alias chuẩn cho giay_dep
+  accessories?: string[];      // Alias chuẩn cho phu_kien
+  sliders?: FaceSliderConfig;  // Cấu hình thanh trượt chi tiết khuôn mặt & trang phục
   skin_color?: string;         // "#ffd1b3"
   hair_color?: string;         // "#1a1a2e"
   eye_color?: string;          // "#4a90d9"
+  // Dynamic arbitrary parts: any category ID or folder name from asset_structure.json (e.g. 'canh', 'duoi', 'ao_choang', 'vu_khi', etc.)
+  [categoryKey: string]: any;
 }
 
 export interface CharacterSkillItem {
@@ -283,6 +302,8 @@ export interface CharacterProfileData {
   element?: string;            // Nguyên tố / Hệ (Hỏa, Băng, Lôi, Phong...)
   skills?: CharacterSkillItem[]; // Danh sách kỹ năng & cấp độ
   custom_attributes?: Record<string, any>; // Các thuộc tính tùy biến mở rộng tự do
+  assembly?: CharacterAssembly; // Cấu hình lắp ráp 3D đầy đủ
+  sliders?: FaceSliderConfig;   // Cấu hình thanh trượt khuôn mặt
 }
 
 export interface ActorConfig {

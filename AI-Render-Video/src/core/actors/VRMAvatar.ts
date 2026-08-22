@@ -367,21 +367,36 @@ export class VRMAvatar {
       this.modularGroup.remove(this.modularGroup.children[0]);
     }
 
-    if (assembly && (assembly.base_body || assembly.costume || assembly.face)) {
+    if (assembly && typeof assembly === 'object') {
       const partsToLoad: { key: string; path: string }[] = [];
-      if (assembly.base_body) partsToLoad.push({ key: 'base_body', path: resolvePath(assembly.base_body) });
-      if (assembly.costume) partsToLoad.push({ key: 'costume', path: resolvePath(assembly.costume) });
-      if (assembly.face) partsToLoad.push({ key: 'face', path: resolvePath(assembly.face) });
-      if (assembly.hairstyle) partsToLoad.push({ key: 'hairstyle', path: resolvePath(assembly.hairstyle) });
-      if (assembly.beard) partsToLoad.push({ key: 'beard', path: resolvePath(assembly.beard) });
-      if (assembly.accessories) {
-        assembly.accessories.forEach((acc, idx) => {
-          partsToLoad.push({ key: `acc_${idx}`, path: resolvePath(acc) });
-        });
+      for (const [key, val] of Object.entries(assembly)) {
+        if (key === 'sliders' || key === 'skin_color' || key === 'hair_color' || key === 'eye_color') continue;
+        if (key === 'base_body' && assembly.than_co_ban) continue;
+        if (key === 'costume' && assembly.trang_phuc) continue;
+        if (key === 'face' && assembly.khuon_mat) continue;
+        if (key === 'hairstyle' && assembly.kieu_toc) continue;
+
+        if (typeof val === 'string' && val.trim()) {
+          partsToLoad.push({ key, path: resolvePath(val) });
+        } else if (Array.isArray(val)) {
+          val.forEach((p, idx) => {
+            if (typeof p === 'string' && p.trim()) {
+              partsToLoad.push({ key: `${key}_${idx}`, path: resolvePath(p) });
+            }
+          });
+        }
+      }
+
+      // If assembly does not specify base body, fallback to modelPath or config.model
+      if (!partsToLoad.some(p => p.key === 'than_co_ban' || p.key === 'base_body' || p.key === 'body')) {
+        const bodyPath = modelPath || this.config.model;
+        if (bodyPath && (bodyPath.endsWith('.glb') || bodyPath.endsWith('.gltf') || bodyPath.endsWith('.vrm'))) {
+          partsToLoad.unshift({ key: 'than_co_ban', path: resolvePath(bodyPath) });
+        }
       }
 
       let loadedCount = 0;
-      const hasFace = partsToLoad.some((p) => p.key === 'face');
+      const hasFace = partsToLoad.some((p) => p.key === 'khuon_mat' || p.key === 'face' || p.key.includes('face'));
 
       for (const item of partsToLoad) {
         try {
@@ -413,7 +428,7 @@ export class VRMAvatar {
                 matName.includes('eyebrow');
 
               // Lớp trước đè lớp sau: Khi chọn Face mới, ẩn triệt để mặt và mắt/mày của thân gốc
-              if (hasFace && item.key === 'base_body' && isFaceDetail) {
+              if (hasFace && (item.key === 'than_co_ban' || item.key === 'base_body') && isFaceDetail) {
                 mesh.visible = false;
               }
 
@@ -428,7 +443,7 @@ export class VRMAvatar {
                   if (m.map) {
                     m.map.minFilter = THREE.LinearMipmapLinearFilter;
                     m.map.magFilter = THREE.LinearFilter;
-                    m.map.anisotropy = 16;
+                    m.anisotropy = 16;
                   }
                 });
               }
@@ -443,8 +458,8 @@ export class VRMAvatar {
       }
 
       // Dynamic Alignment: Tự động căn chỉnh chiều cao và vị trí Face theo đúng Body (Nam/Nữ)
-      const baseBodyGroup = this.modularGroup.getObjectByName('part_base_body');
-      const faceGroup = this.modularGroup.getObjectByName('part_face');
+      const baseBodyGroup = this.modularGroup.getObjectByName('part_than_co_ban') || this.modularGroup.getObjectByName('part_base_body');
+      const faceGroup = this.modularGroup.getObjectByName('part_khuon_mat') || this.modularGroup.getObjectByName('part_face');
 
       if (baseBodyGroup && faceGroup) {
         baseBodyGroup.updateMatrixWorld(true);
@@ -490,7 +505,7 @@ export class VRMAvatar {
         // Successfully loaded real 3D modular meshes, hide procedural placeholder
         this.proceduralGroup.visible = false;
         // Instantly apply face sliders (0% base face, 0% nose, 0% mouth)
-        this.applyFaceSliders();
+        this.applyFaceSliders(assembly?.sliders || this.config.assembly?.sliders || this.config.profile?.sliders);
       }
     } else if (modelPath && (modelPath.endsWith('.glb') || modelPath.endsWith('.gltf') || modelPath.endsWith('.vrm'))) {
       if (!modelPath.includes('dark_mage') && !modelPath.includes('warrior.vrm')) {
@@ -499,7 +514,7 @@ export class VRMAvatar {
           fullModel.name = 'full_character_model';
           this.modularGroup.add(fullModel);
           this.proceduralGroup.visible = false;
-          this.applyFaceSliders();
+          this.applyFaceSliders(this.config.assembly?.sliders || this.config.profile?.sliders);
         } catch (err) {
           console.warn(`[VRMAvatar] Không thể nạp full model ${modelPath}:`, err);
         }
@@ -511,7 +526,7 @@ export class VRMAvatar {
    * Instantly applies face sliders to 3D character without requiring manual slider drag
    */
   public applyFaceSliders(sliders?: FaceSliderConfig): void {
-    let activeSliders: FaceSliderConfig = sliders || {
+    let activeSliders: FaceSliderConfig = sliders || this.config.assembly?.sliders || this.config.profile?.sliders || {
       baseFaceOpacity: 0.0,
       eyebrowOpacity: 1.0,
       pupilOpacity: 1.0,
@@ -522,7 +537,7 @@ export class VRMAvatar {
     };
 
     try {
-      if (!sliders) {
+      if (!sliders && !this.config.assembly?.sliders && !this.config.profile?.sliders) {
         const cached = localStorage.getItem('flow_character_face_sliders');
         if (cached) activeSliders = { ...activeSliders, ...JSON.parse(cached) };
       }

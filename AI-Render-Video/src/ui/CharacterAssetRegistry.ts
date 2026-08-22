@@ -27,118 +27,31 @@ export interface CharacterCategory {
   items: CharacterPartItem[];
 }
 
-// ─── Default Fallback Items ──────────────────────────────
-const BASE_BODIES: CharacterPartItem[] = [
-  {
-    id: 'body_male',
-    name: 'Manekin Body (Nam)',
-    path: 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
-    preview: '/assets/characters/base_bodies/nam/body_base_-_manekin.png',
-    gender: 'male',
-  },
-  {
-    id: 'body_female',
-    name: 'Manekina Body (Nữ)',
-    path: 'assets/characters/base_bodies/nu/body_base_-_manekina.glb',
-    preview: '/assets/characters/base_bodies/nu/body_base_-_manekina.png',
-    gender: 'female',
-  },
-];
-
-const COSTUMES: CharacterPartItem[] = [
-  {
-    id: 'costume_amber_man',
-    name: 'Amber Nectar (Hổ Phách Nam)',
-    path: 'assets/characters/costumes/nam/amber_nectar_-_manekin.glb',
-    preview: '/assets/characters/costumes/nam/amber_nectar_-_manekin.png',
-    gender: 'male',
-  },
-  {
-    id: 'costume_precision_female',
-    name: 'Precision Strike (Tinh Nhuệ Nữ)',
-    path: 'assets/characters/costumes/nu/precision_strike_-_manekina.glb',
-    preview: '/assets/characters/costumes/nu/precision_strike_-_manekina.png',
-    gender: 'female',
-  },
-  {
-    id: 'costume_scary_cat_man',
-    name: 'Scary Cat (Hắc Miêu Nam)',
-    path: 'assets/characters/costumes/nam/scary_cat_-_manekin.glb',
-    preview: '/assets/characters/costumes/nam/scary_cat_-_manekin.png',
-    gender: 'male',
-  },
-  {
-    id: 'costume_sleuth_man',
-    name: 'Sleuth\'s Verdict (Thám Tử Nam)',
-    path: 'assets/characters/costumes/nam/sleuths_verdict_-_manekin.glb',
-    preview: '/assets/characters/costumes/nam/sleuths_verdict_-_manekin.png',
-    gender: 'male',
-  },
-  {
-    id: 'costume_precision_man',
-    name: 'Precision Strike (Tinh Nhuệ Nam)',
-    path: 'assets/characters/costumes/nam/precision_strike_-_manekin.glb',
-    preview: '/assets/characters/costumes/nam/precision_strike_-_manekin.png',
-    gender: 'male',
-  },
-  {
-    id: 'costume_amber_female',
-    name: 'Amber Nectar (Hổ Phách Nữ)',
-    path: 'assets/characters/costumes/nu/amber_nectar_-_manekina.glb',
-    preview: '/assets/characters/costumes/nu/amber_nectar_-_manekina.png',
-    gender: 'female',
-  },
-  {
-    id: 'costume_scary_cat_female',
-    name: 'Scary Cat (Hắc Miêu Nữ)',
-    path: 'assets/characters/costumes/nu/scary_cat_-_manekina.glb',
-    preview: '/assets/characters/costumes/nu/scary_cat_-_manekina.png',
-    gender: 'female',
-  },
-];
-
-const FACES: CharacterPartItem[] = [
-  {
-    id: 'face_dawnbreaker_man',
-    name: 'Dawnbreaker (Bình Minh Nam)',
-    path: 'assets/characters/faces/nam/dawnbreaker_-_manekin.glb',
-    preview: '/assets/characters/faces/nam/dawnbreaker_-_manekin.png',
-    gender: 'male',
-  },
-  {
-    id: 'face_starlight_female',
-    name: 'Starlight Fragments (Tinh Tú Nữ)',
-    path: 'assets/characters/faces/nu/starlight_fragments_-_manekin.glb',
-    preview: '/assets/characters/faces/nu/starlight_fragments_-_manekin.png',
-    gender: 'female',
-  },
-];
-
-export const CHARACTER_CATEGORIES: CharacterCategory[] = [
-  { id: 'than_co_ban', label: 'Thân Cơ Bản', icon: '🧍', items: BASE_BODIES },
-  { id: 'trang_phuc',  label: 'Trang Phục',  icon: '👘', items: COSTUMES },
-  { id: 'khuon_mat',   label: 'Khuôn Mặt',   icon: '🎭', items: FACES },
-  { id: 'kieu_toc',    label: 'Kiểu Tóc',    icon: '💇', items: [] },
-  { id: 'long_may',    label: 'Lông Mày',    icon: '🤨', items: [] },
-  { id: 'mat',         label: 'Mắt',         icon: '👁️', items: [] },
-  { id: 'mui',         label: 'Mũi',         icon: '👃', items: [] },
-  { id: 'mieng',       label: 'Miệng',       icon: '👄', items: [] },
-  { id: 'mu_non',      label: 'Mũ & Nón',    icon: '🎩', items: [] },
-  { id: 'giay_dep',    label: 'Giày Dép',    icon: '👟', items: [] },
-  { id: 'phu_kien',    label: 'Phụ Kiện',    icon: '💍', items: [] },
-  { id: 'kieu_rau',    label: 'Râu',         icon: '🧔', items: [] },
-];
+// Default empty categories fallback
+export const CHARACTER_CATEGORIES: CharacterCategory[] = [];
 
 /**
  * Fetch and dynamically build character categories from live manifest & structure JSON
  */
 export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[]> {
   try {
-    const res = await fetch(`/assets/asset_manifest.json?t=${Date.now()}`);
-    if (!res.ok) return CHARACTER_CATEGORIES;
-    const manifest = await res.json();
+    let manifest: any = {};
+    try {
+      const res = await fetch(`/assets/asset_manifest.json?t=${Date.now()}`);
+      if (res.ok) manifest = await res.json();
+    } catch {}
+
     const chars = manifest.characters || {};
-    const structure = manifest.structure?.character_structure;
+    let structure = manifest.structure?.character_structure;
+    if (!structure) {
+      try {
+        const sRes = await fetch(`/assets/asset_structure.json?t=${Date.now()}`);
+        if (sRes.ok) {
+          const sJson = await sRes.json();
+          structure = sJson.character_structure;
+        }
+      } catch {}
+    }
 
     const parseCharList = (list: any[], fallbackGender: AssetGender = 'unisex'): CharacterPartItem[] => {
       if (!Array.isArray(list)) return [];
@@ -162,9 +75,9 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
       });
     };
 
-    // If structure categories are defined in JSON, build dynamically from them
+    // Build categories directly from asset_structure.json
     if (structure && Array.isArray(structure.categories)) {
-      return structure.categories.map((catConfig: any) => {
+      const definedCategories: CharacterCategory[] = structure.categories.map((catConfig: any) => {
         // Collect items matching this category ID or folder aliases
         const aliases = [catConfig.id, catConfig.folder, ...(catConfig.folder_aliases || [])];
         let matchedItems: any[] = [];
@@ -175,22 +88,9 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
           }
         }
 
-        // Check fallback mappings
-        if (matchedItems.length === 0) {
-          if (catConfig.id === 'than_co_ban') matchedItems = chars.base_bodies || [];
-          else if (catConfig.id === 'trang_phuc') matchedItems = chars.costumes || [];
-          else if (catConfig.id === 'khuon_mat') matchedItems = chars.faces || [];
-          else if (catConfig.id === 'kieu_toc') matchedItems = chars.hairstyles || [];
-          else if (catConfig.id === 'kieu_rau') matchedItems = chars.beards || [];
-          else if (catConfig.id === 'phu_kien') matchedItems = chars.accessories || [];
-          else if (catConfig.id === 'mu_non') matchedItems = chars.hats || [];
-          else if (catConfig.id === 'giay_dep') matchedItems = chars.shoes || [];
-        }
-
         const parsed = parseCharList(matchedItems, catConfig.default_gender || 'unisex');
-
-        // Include default presets if empty for key base categories
         let finalItems = parsed;
+
         if (catConfig.id === '_lap_rap' || catConfig.id === 'nhan_vat_lap_rap') {
           const customAssembled: CharacterPartItem[] = [];
           try {
@@ -200,15 +100,16 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
               if (Array.isArray(list)) {
                 list.forEach((p: any, idx: number) => {
                   const preview = p.preview || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
+                  const bodyPath = p.body || p.base_body || p.than_co_ban || '';
                   customAssembled.push({
                     id: p.id || `custom_preset_${idx}`,
                     name: p.name || `Nhân Vật ${idx + 1}`,
-                    path: p.body || 'assets/characters/base_bodies/nam/body_base_-_manekin.glb',
+                    path: bodyPath,
                     preview: preview && !preview.startsWith('/') && !preview.startsWith('data:') ? `/${preview}` : preview,
                     gender: p.gender || 'unisex',
                     format: 'JSON',
                     sizeMB: '0.01',
-                    description: `Thân + Trang phục + Mặt`,
+                    description: `Nhân vật đã phối đồ`,
                     presetData: p,
                   });
                 });
@@ -216,39 +117,36 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
             }
           } catch {}
           finalItems = [...customAssembled, ...parsed];
-        } else if (finalItems.length === 0) {
-          if (catConfig.id === 'than_co_ban') finalItems = BASE_BODIES;
-          else if (catConfig.id === 'trang_phuc') finalItems = COSTUMES;
-          else if (catConfig.id === 'khuon_mat') finalItems = FACES;
         }
 
         return {
           id: catConfig.id,
           label: catConfig.label,
-          icon: catConfig.icon || '🧍',
+          icon: catConfig.icon || '📦',
           items: finalItems,
         };
       });
+
+      // Auto-discover extra folders in chars that are not in asset_structure.json
+      const handledKeys = new Set(structure.categories.flatMap((c: any) => [c.id, c.folder, ...(c.folder_aliases || [])]));
+      for (const [folderKey, folderItems] of Object.entries(chars)) {
+        if (!handledKeys.has(folderKey) && Array.isArray(folderItems) && folderItems.length > 0) {
+          definedCategories.push({
+            id: folderKey,
+            label: formatDisplayName(folderKey),
+            icon: '📦',
+            items: parseCharList(folderItems, 'unisex'),
+          });
+        }
+      }
+
+      return definedCategories;
     }
 
-    // Default mapping fallback
-    return [
-      { id: 'than_co_ban', label: 'Thân Cơ Bản', icon: '🧍', items: parseCharList(chars.base_bodies || chars.than_co_ban, 'male').concat(BASE_BODIES).filter((v, i, a) => a.findIndex(t => t.path === v.path) === i) },
-      { id: 'trang_phuc',  label: 'Trang Phục',  icon: '👘', items: parseCharList(chars.costumes || chars.trang_phuc, 'male').concat(COSTUMES).filter((v, i, a) => a.findIndex(t => t.path === v.path) === i) },
-      { id: 'khuon_mat',   label: 'Khuôn Mặt',   icon: '🎭', items: parseCharList(chars.faces || chars.khuon_mat, 'male').concat(FACES).filter((v, i, a) => a.findIndex(t => t.path === v.path) === i) },
-      { id: 'kieu_toc',    label: 'Kiểu Tóc',    icon: '💇', items: parseCharList(chars.hairstyles || chars.kieu_toc, 'unisex') },
-      { id: 'long_may',    label: 'Lông Mày',    icon: '🤨', items: parseCharList(chars.eyebrows || chars.long_may, 'unisex') },
-      { id: 'mat',         label: 'Mắt',         icon: '👁️', items: parseCharList(chars.eyes || chars.mat, 'unisex') },
-      { id: 'mui',         label: 'Mũi',         icon: '👃', items: parseCharList(chars.noses || chars.mui, 'unisex') },
-      { id: 'mieng',       label: 'Miệng',       icon: '👄', items: parseCharList(chars.mouths || chars.mieng, 'unisex') },
-      { id: 'mu_non',      label: 'Mũ & Nón',    icon: '🎩', items: parseCharList(chars.hats || chars.mu_non, 'unisex') },
-      { id: 'giay_dep',    label: 'Giày Dép',    icon: '👟', items: parseCharList(chars.shoes || chars.giay_dep, 'unisex') },
-      { id: 'phu_kien',    label: 'Phụ Kiện',    icon: '💍', items: parseCharList(chars.accessories || chars.phu_kien, 'unisex') },
-      { id: 'kieu_rau',    label: 'Râu',         icon: '🧔', items: parseCharList(chars.beards || chars.kieu_rau, 'male') },
-    ];
+    return [];
   } catch (err) {
     console.warn('Using default character category fallback:', err);
-    return CHARACTER_CATEGORIES;
+    return [];
   }
 }
 
@@ -273,17 +171,8 @@ export function filterByGender(
   return items.filter((i) => i.gender === gender || i.gender === 'unisex');
 }
 
-// ─── Character Profile JSON (for cross-scene persistence) ────────
-
-export interface FaceSliderConfig {
-  baseFaceOpacity: number;
-  eyebrowOpacity: number;
-  pupilOpacity: number;
-  noseOpacity: number;
-  mouthOpacity: number;
-  skinSmoothness: number;
-  costumeOpacity: number;
-}
+import type { CharacterAssembly, FaceSliderConfig } from '../types/scene';
+export type { FaceSliderConfig };
 
 export const DEFAULT_FACE_SLIDERS: FaceSliderConfig = {
   baseFaceOpacity: 0.0,
@@ -304,11 +193,11 @@ export interface CharacterSkillItem {
 }
 
 export interface CharacterProfileJSON {
-  version: '2.0' | '1.0';
+  version: string;
   name: string;
   age?: number;
   gender: 'male' | 'female' | 'unisex';
-  height_cm?: number;
+  height_cm: number;
   education_level?: string;
   occupation?: string;
   faction?: string;
@@ -317,26 +206,23 @@ export interface CharacterProfileJSON {
   voice_style?: string;
   power_level?: number;
   element?: string;
-  skills?: CharacterSkillItem[];
-  custom_attributes?: Record<string, any>;
-
-  base_body: string;
-  costume: string;
-  face: string;
-  hairstyle: string;
+  skills: CharacterSkillItem[];
+  custom_attributes: Record<string, any>;
+  base_body?: string;
+  costume?: string;
+  face?: string;
+  hairstyle?: string;
+  assembly: CharacterAssembly;
   face_sliders: FaceSliderConfig;
-  ai_description: string;
   preview_image?: string;
+  ai_description: string;
   created_at: string;
+  [key: string]: any;
 }
 
 export function buildCharacterProfile(
   name: string,
-  baseBody: string,
-  costume: string,
-  face: string,
-  hairstyle: string,
-  sliders: FaceSliderConfig,
+  assembly: CharacterAssembly,
   aiDescription: string,
   extraProfile?: {
     age?: number;
@@ -352,9 +238,16 @@ export function buildCharacterProfile(
     element?: string;
     skills?: CharacterSkillItem[];
     custom_attributes?: Record<string, any>;
+    [key: string]: any;
   }
 ): CharacterProfileJSON {
+  const baseBody = (typeof assembly?.than_co_ban === 'string' ? assembly.than_co_ban : typeof assembly?.base_body === 'string' ? assembly.base_body : '') || '';
+  const costume = (typeof assembly?.trang_phuc === 'string' ? assembly.trang_phuc : typeof assembly?.costume === 'string' ? assembly.costume : '') || '';
+  const face = (typeof assembly?.khuon_mat === 'string' ? assembly.khuon_mat : typeof assembly?.face === 'string' ? assembly.face : '') || '';
+  const hairstyle = (typeof assembly?.kieu_toc === 'string' ? assembly.kieu_toc : typeof assembly?.hairstyle === 'string' ? assembly.hairstyle : '') || '';
+  const sliders = assembly?.sliders || DEFAULT_FACE_SLIDERS;
   const gender = extraProfile?.gender || (baseBody.includes('manekina') || baseBody.includes('/nu/') ? 'female' : 'male');
+
   return {
     version: '2.0',
     name,
@@ -375,9 +268,11 @@ export function buildCharacterProfile(
     costume,
     face,
     hairstyle,
+    assembly: { ...assembly },
     face_sliders: { ...sliders },
     ai_description: aiDescription || extraProfile?.biography || '',
     created_at: new Date().toISOString(),
+    ...assembly,
   };
 }
 
