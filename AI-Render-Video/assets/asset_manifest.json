@@ -1,85 +1,23 @@
 {
   "version": "2.0.0",
-  "last_scanned": "2026-08-22T03:46:40.994Z",
-  "total_assets": 31,
-  "total_size_mb": 20.28,
+  "last_scanned": "2026-08-22T04:22:14.316Z",
+  "total_assets": 30,
+  "total_size_mb": 20.27,
   "structure": {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "version": "2.0.0",
-    "description": "Tệp cấu hình duy nhất quản lý toàn bộ danh mục, tên tab Tiếng Việt, Icon và quy tắc lọc giới tính cho FlowMy AI Render Video. Người dùng có thể chỉnh sửa trực tiếp tệp này để đổi tên tab, icon hoặc thêm folder mới.",
-    "settings": {
-      "auto_discover_new_folders": true,
-      "leaf_folder_max_depth_mode": true,
-      "supported_model_formats": [
-        ".glb",
-        ".gltf",
-        ".vrm",
-        ".fbx",
-        ".obj",
-        ".dae"
-      ],
-      "supported_image_formats": [
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".webp",
-        ".gif",
-        ".bmp"
-      ]
-    },
-    "gender_rules": {
-      "filter_enabled": true,
-      "options": [
-        {
-          "id": "male",
-          "key": "nam",
-          "label": "Nam",
-          "icon": "♂",
-          "folder_aliases": [
-            "nam",
-            "male",
-            "man"
-          ]
-        },
-        {
-          "id": "female",
-          "key": "nu",
-          "label": "Nữ",
-          "icon": "♀",
-          "folder_aliases": [
-            "nu",
-            "female",
-            "woman"
-          ]
-        },
-        {
-          "id": "unisex",
-          "key": "chung",
-          "label": "Dùng Chung",
-          "icon": "⚧",
-          "folder_aliases": [
-            "chung",
-            "unisex",
-            "all"
-          ]
-        }
-      ]
-    },
     "character_structure": {
       "root_folders": [
         "nhan_vat",
         "characters"
       ],
+      "gender_folders": [
+        "nam",
+        "nu",
+        "chung"
+      ],
       "categories": [
         {
           "id": "than_co_ban",
           "folder": "than_co_ban",
-          "folder_aliases": [
-            "than_co_ban",
-            "base_bodies",
-            "body",
-            "than"
-          ],
           "label": "Thân Cơ Bản",
           "icon": "🧍",
           "supports_gender": true,
@@ -88,12 +26,6 @@
         {
           "id": "trang_phuc",
           "folder": "trang_phuc",
-          "folder_aliases": [
-            "trang_phuc",
-            "costumes",
-            "outfits",
-            "quan_ao"
-          ],
           "label": "Trang Phục",
           "icon": "👘",
           "supports_gender": true,
@@ -102,12 +34,6 @@
         {
           "id": "khuon_mat",
           "folder": "khuon_mat",
-          "folder_aliases": [
-            "khuon_mat",
-            "faces",
-            "face",
-            "mat"
-          ],
           "label": "Khuôn Mặt",
           "icon": "🎭",
           "supports_gender": true,
@@ -116,12 +42,6 @@
         {
           "id": "kieu_toc",
           "folder": "kieu_toc",
-          "folder_aliases": [
-            "kieu_toc",
-            "hairstyles",
-            "hair",
-            "toc"
-          ],
           "label": "Kiểu Tóc",
           "icon": "💇",
           "supports_gender": true,
@@ -130,10 +50,6 @@
         {
           "id": "long_may",
           "folder": "long_may",
-          "folder_aliases": [
-            "long_may",
-            "eyebrows"
-          ],
           "label": "Lông Mày",
           "icon": "🤨",
           "supports_gender": false
@@ -141,10 +57,6 @@
         {
           "id": "mat",
           "folder": "mat",
-          "folder_aliases": [
-            "mat",
-            "eyes"
-          ],
           "label": "Mắt",
           "icon": "👁️",
           "supports_gender": false
@@ -152,11 +64,6 @@
         {
           "id": "mui",
           "folder": "mui",
-          "folder_aliases": [
-            "mui",
-            "noses",
-            "nose"
-          ],
           "label": "Mũi",
           "icon": "👃",
           "supports_gender": false
@@ -164,11 +71,6 @@
         {
           "id": "mieng",
           "folder": "mieng",
-          "folder_aliases": [
-            "mieng",
-            "mouths",
-            "mouth"
-          ],
           "label": "Miệng",
           "icon": "👄",
           "supports_gender": false
@@ -176,11 +78,6 @@
         {
           "id": "mu_non",
           "folder": "mu_non",
-          "folder_aliases": [
-            "mu_non",
-            "hats",
-            "mu"
-          ],
           "label": "Mũ & Nón",
           "icon": "🎩",
           "supports_gender": true,
@@ -189,11 +86,6 @@
         {
           "id": "giay_dep",
           "folder": "giay_dep",
-          "folder_aliases": [
-            "giay_dep",
-            "shoes",
-            "giay"
-          ],
           "label": "Giày Dép",
           "icon": "👟",
           "supports_gender": true,
@@ -202,10 +94,6 @@
         {
           "id": "phu_kien",
           "folder": "phu_kien",
-          "folder_aliases": [
-            "phu_kien",
-            "accessories"
-          ],
           "label": "Phụ Kiện",
           "icon": "💍",
           "supports_gender": true,
@@ -214,11 +102,6 @@
         {
           "id": "kieu_rau",
           "folder": "kieu_rau",
-          "folder_aliases": [
-            "kieu_rau",
-            "beards",
-            "rau"
-          ],
           "label": "Râu",
           "icon": "🧔",
           "supports_gender": true,
@@ -227,11 +110,6 @@
         {
           "id": "canh",
           "folder": "canh",
-          "folder_aliases": [
-            "canh",
-            "wings",
-            "canh_chim"
-          ],
           "label": "Đôi Cánh",
           "icon": "🪶",
           "supports_gender": true,
@@ -240,11 +118,6 @@
         {
           "id": "duoi",
           "folder": "duoi",
-          "folder_aliases": [
-            "duoi",
-            "tails",
-            "duoi_thu"
-          ],
           "label": "Đuôi Thú",
           "icon": "🦊",
           "supports_gender": true,
@@ -253,12 +126,6 @@
         {
           "id": "_lap_rap",
           "folder": "_lap_rap",
-          "folder_aliases": [
-            "_lap_rap",
-            "lap_rap",
-            "custom_assembled",
-            "nhan_vat_lap_rap"
-          ],
           "label": "Nhân Vật Đã Lắp Ráp",
           "icon": "✨",
           "supports_gender": true,
@@ -269,123 +136,63 @@
     "world_and_props_structure": {
       "root_folders": [
         "dao_cu",
-        "props",
-        "ban_do",
-        "maps",
-        "bau_troi",
-        "SkyBoxs",
-        "hieu_ung",
-        "vfx",
-        "nhan_vat/_lap_rap",
-        "ban_do/_custom_ban_do"
+        "props"
       ],
       "categories": [
         {
           "id": "ban_do",
           "folder": "ban_do",
-          "folder_aliases": [
-            "ban_do",
-            "maps",
-            "map"
-          ],
+          "root_folder": "ban_do",
           "label": "Bản Đồ 3D",
-          "icon": "🗺️",
-          "subcategories": []
+          "icon": "🗺️"
         },
         {
           "id": "_custom_ban_do",
           "folder": "_custom_ban_do",
-          "folder_aliases": [
-            "_custom_ban_do",
-            "custom_ban_do",
-            "custom_maps",
-            "presets"
-          ],
+          "root_folder": "ban_do/_custom_ban_do",
           "label": "Bản Đồ Tự Thiết Kế",
-          "icon": "🏰",
-          "subcategories": []
+          "icon": "🏰"
         },
         {
           "id": "nhan_vat_da_rap",
           "folder": "_lap_rap",
-          "folder_aliases": [
-            "_lap_rap",
-            "lap_rap",
-            "nhan_vat_da_rap"
-          ],
+          "root_folder": "nhan_vat/_lap_rap",
           "label": "Nhân Vật Đã Ráp",
-          "icon": "🧑",
-          "subcategories": []
+          "icon": "🧑"
         },
         {
           "id": "cay_coi",
           "folder": "cay_coi",
-          "folder_aliases": [
-            "cay_coi",
-            "trees",
-            "nature",
-            "thuc_vat"
-          ],
           "label": "Cây Cối & Hoa Lá",
-          "icon": "🌳",
-          "subcategories": []
+          "icon": "🌳"
         },
         {
           "id": "da_dia_hinh",
           "folder": "da_dia_hinh",
-          "folder_aliases": [
-            "da_dia_hinh",
-            "rocks",
-            "terrain",
-            "nui_da"
-          ],
           "label": "Đá & Địa Hình",
-          "icon": "🪨",
-          "subcategories": []
+          "icon": "🪨"
         },
         {
           "id": "dong_vat",
           "folder": "dong_vat",
-          "folder_aliases": [
-            "dong_vat",
-            "animals",
-            "creatures",
-            "sinh_vat"
-          ],
           "label": "Động Vật & Sinh Vật",
           "icon": "🦁",
           "subcategories": [
             {
               "id": "tren_can",
               "folder": "tren_can",
-              "folder_aliases": [
-                "tren_can",
-                "land",
-                "terrestrial"
-              ],
               "label": "Trên Cạn",
               "icon": "🦁"
             },
             {
               "id": "duoi_nuoc",
               "folder": "duoi_nuoc",
-              "folder_aliases": [
-                "duoi_nuoc",
-                "water",
-                "aquatic"
-              ],
               "label": "Dưới Nước",
               "icon": "🐬"
             },
             {
               "id": "tren_troi",
               "folder": "tren_troi",
-              "folder_aliases": [
-                "tren_troi",
-                "air",
-                "flying",
-                "birds"
-              ],
               "label": "Trên Trời",
               "icon": "🦅"
             }
@@ -394,90 +201,43 @@
         {
           "id": "cong_trinh",
           "folder": "cong_trinh",
-          "folder_aliases": [
-            "cong_trinh",
-            "buildings",
-            "architecture",
-            "nha_cua"
-          ],
           "label": "Công Trình & Nhà Cửa",
-          "icon": "🏠",
-          "subcategories": []
+          "icon": "🏠"
         },
         {
           "id": "noi_that",
           "folder": "noi_that",
-          "folder_aliases": [
-            "noi_that",
-            "furniture",
-            "ban_ghe"
-          ],
           "label": "Nội Thất & Đồ Đạc",
-          "icon": "🪑",
-          "subcategories": []
+          "icon": "🪑"
         },
         {
           "id": "dung_cu",
           "folder": "dung_cu",
-          "folder_aliases": [
-            "dung_cu",
-            "tools",
-            "do_nghe"
-          ],
           "label": "Dụng Cụ & Đồ Nghề",
-          "icon": "🔧",
-          "subcategories": []
+          "icon": "🔧"
         },
         {
           "id": "do_tieu_hao",
           "folder": "do_tieu_hao",
-          "folder_aliases": [
-            "do_tieu_hao",
-            "consumables",
-            "items",
-            "vat_pham"
-          ],
           "label": "Đồ Tiêu Hao",
-          "icon": "🍵",
-          "subcategories": []
+          "icon": "🍵"
         },
         {
           "id": "vu_khi",
           "folder": "vu_khi",
-          "folder_aliases": [
-            "vu_khi",
-            "weapons",
-            "kiem",
-            "dao",
-            "cung"
-          ],
           "label": "Vũ Khí & Khiên Giáp",
-          "icon": "⚔️",
-          "subcategories": []
+          "icon": "⚔️"
         },
         {
           "id": "phuong_tien",
           "folder": "phuong_tien",
-          "folder_aliases": [
-            "phuong_tien",
-            "vehicles",
-            "mounts",
-            "xe_co",
-            "thu_cuoi"
-          ],
           "label": "Phương Tiện & Thú Cưỡi",
-          "icon": "🐴",
-          "subcategories": []
+          "icon": "🐴"
         },
         {
           "id": "bau_troi",
           "folder": "bau_troi",
-          "folder_aliases": [
-            "bau_troi",
-            "SkyBoxs",
-            "skyboxes",
-            "sky"
-          ],
+          "root_folder": "bau_troi",
           "label": "Bầu Trời & SkyBox",
           "icon": "🌌",
           "subcategories": [
@@ -522,31 +282,19 @@
         {
           "id": "hieu_ung",
           "folder": "hieu_ung",
-          "folder_aliases": [
-            "hieu_ung",
-            "vfx",
-            "effects"
-          ],
+          "root_folder": "hieu_ung",
           "label": "Hiệu Ứng & VFX",
           "icon": "✨",
           "subcategories": [
             {
               "id": "cam_xuc",
               "folder": "cam_xuc",
-              "folder_aliases": [
-                "cam_xuc",
-                "emotes"
-              ],
               "label": "Biểu Cảm & Emote",
               "icon": "😃"
             },
             {
               "id": "bao_phu",
               "folder": "bao_phu",
-              "folder_aliases": [
-                "bao_phu",
-                "overlays"
-              ],
               "label": "Lớp Phủ Overlay",
               "icon": "🌫️"
             }
@@ -554,27 +302,43 @@
         }
       ]
     },
-    "dictionary": {
-      "thuyen_be": {
-        "label": "Thuyền Bè & Tàu Thủy",
-        "icon": "⛵"
-      },
-      "than_thoai": {
-        "label": "Thần Thoại & Linh Thú",
-        "icon": "🐉"
-      },
-      "quai_vat": {
-        "label": "Quái Vật & Dị Thú",
-        "icon": "👹"
-      },
-      "hoa_co": {
-        "label": "Hoa Cỏ & Thảo Mộc",
-        "icon": "🌸"
-      },
-      "khoang_san": {
-        "label": "Khoáng Sản & Ngọc Quý",
-        "icon": "💎"
-      }
+    "gender_rules": {
+      "filter_enabled": true,
+      "options": [
+        {
+          "id": "male",
+          "key": "nam",
+          "label": "Nam",
+          "icon": "♂",
+          "folder_aliases": [
+            "nam",
+            "male",
+            "man"
+          ]
+        },
+        {
+          "id": "female",
+          "key": "nu",
+          "label": "Nữ",
+          "icon": "♀",
+          "folder_aliases": [
+            "nu",
+            "female",
+            "woman"
+          ]
+        },
+        {
+          "id": "unisex",
+          "key": "chung",
+          "label": "Dùng Chung",
+          "icon": "⚧",
+          "folder_aliases": [
+            "chung",
+            "unisex",
+            "all"
+          ]
+        }
+      ]
     },
     "available_actions": [
       {
@@ -757,227 +521,7 @@
         "label": "Ném Đồ Vật (Throw)",
         "type": "interaction"
       }
-    ],
-    "available_expressions": [
-      {
-        "id": "neutral",
-        "label": "Bình Thường (Neutral)"
-      },
-      {
-        "id": "smile",
-        "label": "Mỉm Cười Thân Thiện (Smile)"
-      },
-      {
-        "id": "angry",
-        "label": "Tức Giận (Angry)"
-      },
-      {
-        "id": "pain",
-        "label": "Đau Đớn (Pain)"
-      },
-      {
-        "id": "smirk",
-        "label": "Cười Nhếch Mép (Smirk)"
-      },
-      {
-        "id": "sad",
-        "label": "Buồn Bã (Sad)"
-      },
-      {
-        "id": "serious",
-        "label": "Nghiêm Túc (Serious)"
-      },
-      {
-        "id": "surprised",
-        "label": "Kinh Ngạc (Surprised)"
-      },
-      {
-        "id": "shock",
-        "label": "Sốc / Hoảng Hốt (Shock)"
-      },
-      {
-        "id": "cold",
-        "label": "Lạnh Lùng (Cold)"
-      },
-      {
-        "id": "arrogant",
-        "label": "Kiêu Ngạo (Arrogant)"
-      },
-      {
-        "id": "contempt",
-        "label": "Khinh Bỉ (Contempt)"
-      },
-      {
-        "id": "wise",
-        "label": "Điềm Đạm Sâu Sắc (Wise)"
-      },
-      {
-        "id": "fierce",
-        "label": "Hung Dữ Uy Nghi (Fierce)"
-      },
-      {
-        "id": "meditative",
-        "label": "Thiền Định Nhập Tâm (Meditative)"
-      },
-      {
-        "id": "menacing",
-        "label": "Hiểm Độc Nguy Hiểm (Menacing)"
-      },
-      {
-        "id": "compassionate",
-        "label": "Từ Bi Nhân Hậu (Compassionate)"
-      },
-      {
-        "id": "determined",
-        "label": "Kiên Định Quyết Tâm (Determined)"
-      }
-    ],
-    "character_profile_schema": {
-      "version": "1.0",
-      "groups": [
-        {
-          "id": "basic",
-          "label": "Thông Tin Cơ Bản",
-          "icon": "👤",
-          "fields": [
-            {
-              "id": "name",
-              "label": "Tên Nhân Vật",
-              "type": "text",
-              "required": true,
-              "placeholder": "Ví dụ: Lý Tiên Sinh, Tiêu Viêm..."
-            },
-            {
-              "id": "age",
-              "label": "Số Tuổi",
-              "type": "number",
-              "required": true,
-              "placeholder": "Ví dụ: 18, 24, 100...",
-              "min": 1,
-              "max": 9999
-            },
-            {
-              "id": "gender",
-              "label": "Giới Tính",
-              "type": "gender_toggle"
-            },
-            {
-              "id": "height_cm",
-              "label": "Chiều Cao (cm)",
-              "type": "number",
-              "has_auto_measure": true,
-              "placeholder": "178"
-            },
-            {
-              "id": "education_level",
-              "label": "Trình Độ / Học Vấn / Tu Vi",
-              "type": "select_or_text",
-              "options": [
-                "Không có trình độ",
-                "Cấp 1 (Tiểu Học)",
-                "Cấp 2 (THCS)",
-                "Cấp 3 (THPT)",
-                "Đại Học",
-                "Thạc Sĩ",
-                "Tiến Sĩ",
-                "Luyện Khí Kỳ",
-                "Trúc Cơ Kỳ",
-                "Kim Đan Kỳ",
-                "Nguyên Anh Kỳ",
-                "Hóa Thần Kỳ",
-                "Kiếm Tông Đệ Tử",
-                "Chưởng Môn Tiên Phái"
-              ]
-            }
-          ]
-        },
-        {
-          "id": "role",
-          "label": "Thân Phận & Khí Chất",
-          "icon": "💼",
-          "fields": [
-            {
-              "id": "occupation",
-              "label": "Nghề Nghiệp / Thân Phận",
-              "type": "text",
-              "placeholder": "Kiếm khách, Đạo sĩ, Học sinh, Bác sĩ, Tổng tài..."
-            },
-            {
-              "id": "faction",
-              "label": "Môn Phái / Phe Phái",
-              "type": "text",
-              "placeholder": "Thục Sơn Kiếm Tông, Võ Đang, Học Viện..."
-            },
-            {
-              "id": "personality",
-              "label": "Tính Cách & Khí Chất",
-              "type": "text",
-              "placeholder": "Lạnh lùng, điềm đạm, quyết đoán, trọng tình cảm..."
-            },
-            {
-              "id": "voice_style",
-              "label": "Giọng Nói & Âm Điệu",
-              "type": "text",
-              "placeholder": "Trầm ấm, uy nghiêm, hào sảng, dịu dàng..."
-            }
-          ]
-        },
-        {
-          "id": "skills_and_combat",
-          "label": "Kỹ Năng & Chiến Đấu",
-          "icon": "⚡",
-          "fields": [
-            {
-              "id": "power_level",
-              "label": "Cấp Độ Sức Mạnh / Chiến Lực",
-              "type": "number",
-              "placeholder": "100"
-            },
-            {
-              "id": "element",
-              "label": "Nguyên Tố / Hệ",
-              "type": "select_or_text",
-              "options": [
-                "Không",
-                "Hỏa (Lửa)",
-                "Băng (Hàn)",
-                "Lôi (Sấm Sét)",
-                "Phong (Gió)",
-                "Thủy (Nước)",
-                "Thổ (Đất)",
-                "Kim (Kim Loại)",
-                "Mộc (Cây)",
-                "Quang (Ánh Sáng)",
-                "Ám (Bóng Tối)"
-              ]
-            },
-            {
-              "id": "skills",
-              "label": "Danh Sách Kỹ Năng & Cấp Độ",
-              "type": "skill_list"
-            }
-          ]
-        },
-        {
-          "id": "lore",
-          "label": "Tiểu Sử & Thuộc Tính Tùy Biến (Cho AI)",
-          "icon": "📜",
-          "fields": [
-            {
-              "id": "biography",
-              "label": "Tiểu Sử & Bối Cảnh Xuất Thân",
-              "type": "textarea",
-              "placeholder": "Mô tả hoàn cảnh, xuất thân, động lực và sở trường của nhân vật để AI sinh kịch bản chân thực nhất..."
-            },
-            {
-              "id": "custom_attributes",
-              "label": "Thuộc Tính Mở Rộng Tùy Biến",
-              "type": "key_value_list"
-            }
-          ]
-        }
-      ]
-    }
+    ]
   },
   "map_presets": [],
   "characters": {
@@ -1636,21 +1180,7 @@
       }
     ]
   },
-  "maps": [
-    {
-      "id": "ban_do_medieval_fantasy_book_textures_book_tittle_basecolor",
-      "name": "Book Tittle BaseColor",
-      "filename": "Book-tittle_baseColor.png",
-      "relPath": "ban_do/medieval_fantasy_book/textures/Book-tittle_baseColor.png",
-      "path": "assets/ban_do/medieval_fantasy_book/textures/Book-tittle_baseColor.png",
-      "format": "PNG",
-      "sizeMB": "0.01",
-      "gender": "unisex",
-      "previewUrl": "assets/ban_do/medieval_fantasy_book/textures/Book-tittle_baseColor.png",
-      "isStandaloneImage": true,
-      "description": "Tài nguyên Hình Ảnh/Texture: Book Tittle BaseColor (PNG)"
-    }
-  ],
+  "maps": [],
   "audio": {
     "bgm": [],
     "sfx_combat": [],

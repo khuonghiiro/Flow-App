@@ -5,6 +5,9 @@
   "settings": {
     "auto_discover_new_folders": true,
     "leaf_folder_max_depth_mode": true,
+    "standalone_images_at_root_only": true,
+    "subfolder_companion_preview_only": true,
+    "scanning_rules_explanation": "Khi quét từ folder gốc C: Chỉ load ảnh đứng độc lập nếu ảnh nằm trực tiếp tại folder C (depth 0). Đối với các folder con (depth > 0), ảnh chỉ được dùng làm preview nếu trùng tên với file 3D model cùng cấp, các ảnh khác tên trong folder con sẽ không được load lên.",
     "supported_model_formats": [".glb", ".gltf", ".vrm", ".fbx", ".obj", ".dae"],
     "supported_image_formats": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]
   },
@@ -36,327 +39,74 @@
   },
   "character_structure": {
     "root_folders": ["nhan_vat", "characters"],
+    "gender_folders": ["nam", "nu", "chung"],
     "categories": [
-      {
-        "id": "than_co_ban",
-        "folder": "than_co_ban",
-        "folder_aliases": ["than_co_ban", "base_bodies", "body", "than"],
-        "label": "Thân Cơ Bản",
-        "icon": "🧍",
-        "supports_gender": true,
-        "default_gender": "male"
-      },
-      {
-        "id": "trang_phuc",
-        "folder": "trang_phuc",
-        "folder_aliases": ["trang_phuc", "costumes", "outfits", "quan_ao"],
-        "label": "Trang Phục",
-        "icon": "👘",
-        "supports_gender": true,
-        "default_gender": "male"
-      },
-      {
-        "id": "khuon_mat",
-        "folder": "khuon_mat",
-        "folder_aliases": ["khuon_mat", "faces", "face", "mat"],
-        "label": "Khuôn Mặt",
-        "icon": "🎭",
-        "supports_gender": true,
-        "default_gender": "male"
-      },
-      {
-        "id": "kieu_toc",
-        "folder": "kieu_toc",
-        "folder_aliases": ["kieu_toc", "hairstyles", "hair", "toc"],
-        "label": "Kiểu Tóc",
-        "icon": "💇",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      },
-      {
-        "id": "long_may",
-        "folder": "long_may",
-        "folder_aliases": ["long_may", "eyebrows"],
-        "label": "Lông Mày",
-        "icon": "🤨",
-        "supports_gender": false
-      },
-      {
-        "id": "mat",
-        "folder": "mat",
-        "folder_aliases": ["mat", "eyes"],
-        "label": "Mắt",
-        "icon": "👁️",
-        "supports_gender": false
-      },
-      {
-        "id": "mui",
-        "folder": "mui",
-        "folder_aliases": ["mui", "noses", "nose"],
-        "label": "Mũi",
-        "icon": "👃",
-        "supports_gender": false
-      },
-      {
-        "id": "mieng",
-        "folder": "mieng",
-        "folder_aliases": ["mieng", "mouths", "mouth"],
-        "label": "Miệng",
-        "icon": "👄",
-        "supports_gender": false
-      },
-      {
-        "id": "mu_non",
-        "folder": "mu_non",
-        "folder_aliases": ["mu_non", "hats", "mu"],
-        "label": "Mũ & Nón",
-        "icon": "🎩",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      },
-      {
-        "id": "giay_dep",
-        "folder": "giay_dep",
-        "folder_aliases": ["giay_dep", "shoes", "giay"],
-        "label": "Giày Dép",
-        "icon": "👟",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      },
-      {
-        "id": "phu_kien",
-        "folder": "phu_kien",
-        "folder_aliases": ["phu_kien", "accessories"],
-        "label": "Phụ Kiện",
-        "icon": "💍",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      },
-      {
-        "id": "kieu_rau",
-        "folder": "kieu_rau",
-        "folder_aliases": ["kieu_rau", "beards", "rau"],
-        "label": "Râu",
-        "icon": "🧔",
-        "supports_gender": true,
-        "default_gender": "male"
-      },
-      {
-        "id": "canh",
-        "folder": "canh",
-        "folder_aliases": ["canh", "wings", "canh_chim"],
-        "label": "Đôi Cánh",
-        "icon": "🪶",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      },
-      {
-        "id": "duoi",
-        "folder": "duoi",
-        "folder_aliases": ["duoi", "tails", "duoi_thu"],
-        "label": "Đuôi Thú",
-        "icon": "🦊",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      },
-      {
-        "id": "_lap_rap",
-        "folder": "_lap_rap",
-        "folder_aliases": ["_lap_rap", "lap_rap", "custom_assembled", "nhan_vat_lap_rap"],
-        "label": "Nhân Vật Đã Lắp Ráp",
-        "icon": "✨",
-        "supports_gender": true,
-        "default_gender": "unisex"
-      }
+      { "id": "than_co_ban", "folder": "than_co_ban", "label": "Thân Cơ Bản", "icon": "🧍", "supports_gender": true, "default_gender": "male" },
+      { "id": "trang_phuc", "folder": "trang_phuc", "label": "Trang Phục", "icon": "👘", "supports_gender": true, "default_gender": "male" },
+      { "id": "khuon_mat", "folder": "khuon_mat", "label": "Khuôn Mặt", "icon": "🎭", "supports_gender": true, "default_gender": "male" },
+      { "id": "kieu_toc", "folder": "kieu_toc", "label": "Kiểu Tóc", "icon": "💇", "supports_gender": true, "default_gender": "unisex" },
+      { "id": "long_may", "folder": "long_may", "label": "Lông Mày", "icon": "🤨", "supports_gender": false },
+      { "id": "mat", "folder": "mat", "label": "Mắt", "icon": "👁️", "supports_gender": false },
+      { "id": "mui", "folder": "mui", "label": "Mũi", "icon": "👃", "supports_gender": false },
+      { "id": "mieng", "folder": "mieng", "label": "Miệng", "icon": "👄", "supports_gender": false },
+      { "id": "mu_non", "folder": "mu_non", "label": "Mũ & Nón", "icon": "🎩", "supports_gender": true, "default_gender": "unisex" },
+      { "id": "giay_dep", "folder": "giay_dep", "label": "Giày Dép", "icon": "👟", "supports_gender": true, "default_gender": "unisex" },
+      { "id": "phu_kien", "folder": "phu_kien", "label": "Phụ Kiện", "icon": "💍", "supports_gender": true, "default_gender": "unisex" },
+      { "id": "kieu_rau", "folder": "kieu_rau", "label": "Râu", "icon": "🧔", "supports_gender": true, "default_gender": "male" },
+      { "id": "canh", "folder": "canh", "label": "Đôi Cánh", "icon": "🪶", "supports_gender": true, "default_gender": "unisex" },
+      { "id": "duoi", "folder": "duoi", "label": "Đuôi Thú", "icon": "🦊", "supports_gender": true, "default_gender": "unisex" },
+      { "id": "_lap_rap", "folder": "_lap_rap", "label": "Nhân Vật Đã Lắp Ráp", "icon": "✨", "supports_gender": true, "default_gender": "unisex" }
     ]
   },
   "world_and_props_structure": {
-    "root_folders": ["dao_cu", "props", "ban_do", "maps", "bau_troi", "SkyBoxs", "hieu_ung", "vfx", "nhan_vat/_lap_rap", "ban_do/_custom_ban_do"],
+    "root_folders": ["dao_cu", "props"],
     "categories": [
-      {
-        "id": "ban_do",
-        "folder": "ban_do",
-        "folder_aliases": ["ban_do", "maps", "map"],
-        "label": "Bản Đồ 3D",
-        "icon": "🗺️",
-        "subcategories": []
-      },
-      {
-        "id": "_custom_ban_do",
-        "folder": "_custom_ban_do",
-        "folder_aliases": ["_custom_ban_do", "custom_ban_do", "custom_maps", "presets"],
-        "label": "Bản Đồ Tự Thiết Kế",
-        "icon": "🏰",
-        "subcategories": []
-      },
-      {
-        "id": "nhan_vat_da_rap",
-        "folder": "_lap_rap",
-        "folder_aliases": ["_lap_rap", "lap_rap", "nhan_vat_da_rap"],
-        "label": "Nhân Vật Đã Ráp",
-        "icon": "🧑",
-        "subcategories": []
-      },
-      {
-        "id": "cay_coi",
-        "folder": "cay_coi",
-        "folder_aliases": ["cay_coi", "trees", "nature", "thuc_vat"],
-        "label": "Cây Cối & Hoa Lá",
-        "icon": "🌳",
-        "subcategories": []
-      },
-      {
-        "id": "da_dia_hinh",
-        "folder": "da_dia_hinh",
-        "folder_aliases": ["da_dia_hinh", "rocks", "terrain", "nui_da"],
-        "label": "Đá & Địa Hình",
-        "icon": "🪨",
-        "subcategories": []
-      },
+      { "id": "ban_do", "folder": "ban_do", "root_folder": "ban_do", "label": "Bản Đồ 3D", "icon": "🗺️" },
+      { "id": "_custom_ban_do", "folder": "_custom_ban_do", "root_folder": "ban_do/_custom_ban_do", "label": "Bản Đồ Tự Thiết Kế", "icon": "🏰" },
+      { "id": "nhan_vat_da_rap", "folder": "_lap_rap", "root_folder": "nhan_vat/_lap_rap", "label": "Nhân Vật Đã Ráp", "icon": "🧑" },
+      { "id": "cay_coi", "folder": "cay_coi", "label": "Cây Cối & Hoa Lá", "icon": "🌳" },
+      { "id": "da_dia_hinh", "folder": "da_dia_hinh", "label": "Đá & Địa Hình", "icon": "🪨" },
       {
         "id": "dong_vat",
         "folder": "dong_vat",
-        "folder_aliases": ["dong_vat", "animals", "creatures", "sinh_vat"],
         "label": "Động Vật & Sinh Vật",
         "icon": "🦁",
         "subcategories": [
-          {
-            "id": "tren_can",
-            "folder": "tren_can",
-            "folder_aliases": ["tren_can", "land", "terrestrial"],
-            "label": "Trên Cạn",
-            "icon": "🦁"
-          },
-          {
-            "id": "duoi_nuoc",
-            "folder": "duoi_nuoc",
-            "folder_aliases": ["duoi_nuoc", "water", "aquatic"],
-            "label": "Dưới Nước",
-            "icon": "🐬"
-          },
-          {
-            "id": "tren_troi",
-            "folder": "tren_troi",
-            "folder_aliases": ["tren_troi", "air", "flying", "birds"],
-            "label": "Trên Trời",
-            "icon": "🦅"
-          }
+          { "id": "tren_can", "folder": "tren_can", "label": "Trên Cạn", "icon": "🦁" },
+          { "id": "duoi_nuoc", "folder": "duoi_nuoc", "label": "Dưới Nước", "icon": "🐬" },
+          { "id": "tren_troi", "folder": "tren_troi", "label": "Trên Trời", "icon": "🦅" }
         ]
       },
-      {
-        "id": "cong_trinh",
-        "folder": "cong_trinh",
-        "folder_aliases": ["cong_trinh", "buildings", "architecture", "nha_cua"],
-        "label": "Công Trình & Nhà Cửa",
-        "icon": "🏠",
-        "subcategories": []
-      },
-      {
-        "id": "noi_that",
-        "folder": "noi_that",
-        "folder_aliases": ["noi_that", "furniture", "ban_ghe"],
-        "label": "Nội Thất & Đồ Đạc",
-        "icon": "🪑",
-        "subcategories": []
-      },
-      {
-        "id": "dung_cu",
-        "folder": "dung_cu",
-        "folder_aliases": ["dung_cu", "tools", "do_nghe"],
-        "label": "Dụng Cụ & Đồ Nghề",
-        "icon": "🔧",
-        "subcategories": []
-      },
-      {
-        "id": "do_tieu_hao",
-        "folder": "do_tieu_hao",
-        "folder_aliases": ["do_tieu_hao", "consumables", "items", "vat_pham"],
-        "label": "Đồ Tiêu Hao",
-        "icon": "🍵",
-        "subcategories": []
-      },
-      {
-        "id": "vu_khi",
-        "folder": "vu_khi",
-        "folder_aliases": ["vu_khi", "weapons", "kiem", "dao", "cung"],
-        "label": "Vũ Khí & Khiên Giáp",
-        "icon": "⚔️",
-        "subcategories": []
-      },
-      {
-        "id": "phuong_tien",
-        "folder": "phuong_tien",
-        "folder_aliases": ["phuong_tien", "vehicles", "mounts", "xe_co", "thu_cuoi"],
-        "label": "Phương Tiện & Thú Cưỡi",
-        "icon": "🐴",
-        "subcategories": []
-      },
+      { "id": "cong_trinh", "folder": "cong_trinh", "label": "Công Trình & Nhà Cửa", "icon": "🏠" },
+      { "id": "noi_that", "folder": "noi_that", "label": "Nội Thất & Đồ Đạc", "icon": "🪑" },
+      { "id": "dung_cu", "folder": "dung_cu", "label": "Dụng Cụ & Đồ Nghề", "icon": "🔧" },
+      { "id": "do_tieu_hao", "folder": "do_tieu_hao", "label": "Đồ Tiêu Hao", "icon": "🍵" },
+      { "id": "vu_khi", "folder": "vu_khi", "label": "Vũ Khí & Khiên Giáp", "icon": "⚔️" },
+      { "id": "phuong_tien", "folder": "phuong_tien", "label": "Phương Tiện & Thú Cưỡi", "icon": "🐴" },
       {
         "id": "bau_troi",
         "folder": "bau_troi",
-        "folder_aliases": ["bau_troi", "SkyBoxs", "skyboxes", "sky"],
+        "root_folder": "bau_troi",
         "label": "Bầu Trời & SkyBox",
         "icon": "🌌",
         "subcategories": [
-          {
-            "id": "binh_minh",
-            "folder": "binh_minh",
-            "label": "Bình Minh",
-            "icon": "🌅"
-          },
-          {
-            "id": "buoi_sang",
-            "folder": "buoi_sang",
-            "label": "Buổi Sáng",
-            "icon": "☀️"
-          },
-          {
-            "id": "buoi_trua",
-            "folder": "buoi_trua",
-            "label": "Buổi Trưa",
-            "icon": "🌞"
-          },
-          {
-            "id": "buoi_chieu",
-            "folder": "buoi_chieu",
-            "label": "Buổi Chiều",
-            "icon": "🌇"
-          },
-          {
-            "id": "buoi_toi",
-            "folder": "buoi_toi",
-            "label": "Buổi Tối",
-            "icon": "🌙"
-          },
-          {
-            "id": "giong_bao",
-            "folder": "giong_bao",
-            "label": "Giông Bão",
-            "icon": "⛈️"
-          }
+          { "id": "binh_minh", "folder": "binh_minh", "label": "Bình Minh", "icon": "🌅" },
+          { "id": "buoi_sang", "folder": "buoi_sang", "label": "Buổi Sáng", "icon": "☀️" },
+          { "id": "buoi_trua", "folder": "buoi_trua", "label": "Buổi Trưa", "icon": "🌞" },
+          { "id": "buoi_chieu", "folder": "buoi_chieu", "label": "Buổi Chiều", "icon": "🌇" },
+          { "id": "buoi_toi", "folder": "buoi_toi", "label": "Buổi Tối", "icon": "🌙" },
+          { "id": "giong_bao", "folder": "giong_bao", "label": "Giông Bão", "icon": "⛈️" }
         ]
       },
       {
         "id": "hieu_ung",
         "folder": "hieu_ung",
-        "folder_aliases": ["hieu_ung", "vfx", "effects"],
+        "root_folder": "hieu_ung",
         "label": "Hiệu Ứng & VFX",
         "icon": "✨",
         "subcategories": [
-          {
-            "id": "cam_xuc",
-            "folder": "cam_xuc",
-            "folder_aliases": ["cam_xuc", "emotes"],
-            "label": "Biểu Cảm & Emote",
-            "icon": "😃"
-          },
-          {
-            "id": "bao_phu",
-            "folder": "bao_phu",
-            "folder_aliases": ["bao_phu", "overlays"],
-            "label": "Lớp Phủ Overlay",
-            "icon": "🌫️"
-          }
+          { "id": "cam_xuc", "folder": "cam_xuc", "label": "Biểu Cảm & Emote", "icon": "😃" },
+          { "id": "bao_phu", "folder": "bao_phu", "label": "Lớp Phủ Overlay", "icon": "🌫️" }
         ]
       }
     ]

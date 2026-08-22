@@ -133,20 +133,26 @@ function getAllFilesInDir(dirPath) {
 }
 
 /**
- * ─── LEAF FOLDER / MAX-DEPTH SCANNER ──────────────────────────────
- * When a directory reaches its leaf category level (e.g. assets/maps or assets/dao_cu/dong_vat/tren_can):
- * 1. Direct Model Files (.glb, .vrm, .gltf, .obj, .fbx, .dae) -> Scanned as Assets.
- *    - If companion image (same basename) exists -> Assigned as model's previewUrl (not duplicated).
- * 2. Subdirectories containing model files (e.g. medieval_fantasy_book/ containing scene.gltf + textures/)
- *    -> Scanned as 1 Folder Model Bundle Asset (main model entry point detected).
- * 3. Standalone Images / GIFs (no matching model) -> Scanned as independent Image Assets!
+ * ─── HIERARCHICAL FOLDER SCANNER ──────────────────────────────
+ * Quy tắc xác nhận nạp tài nguyên theo cấp bậc thư mục:
+ * 1. Cấp gốc danh mục (relativeDepth === 0, ví dụ folder C khi C là gốc):
+ *    - Các file model 3D (.glb, .gltf, .vrm, .fbx, .obj, .dae) -> Nạp thành tài nguyên Model 3D.
+ *      + Nếu có ảnh cùng tên (cùng basename) trong folder C -> Lấy làm ảnh tham chiếu (previewUrl) của file đó.
+ *    - Các file ảnh trong folder C mà KHÔNG trùng tên với file 3D nào -> Là tài nguyên Hình ảnh/Texture độc lập -> Nạp lên sử dụng!
+ *    - Các file Audio/JSON -> Nạp bình thường.
+ * 2. Cấp folder con (relativeDepth > 0, ví dụ các folder con 1, 2, 3, 4, 5... bên trong C):
+ *    - Đi sâu vào kiểm tra xem trong folder con có chứa file model 3D không:
+ *      + Nếu có model 3D: Nạp model 3D đó. Nếu trong folder con có ảnh trùng tên với model 3D -> Lấy làm preview của model.
+ *      + CÁC ẢNH KHÁC KHÁC TÊN TRONG FOLDER CON -> KHÔNG ĐƯỢC LOAD LÊN làm tài nguyên riêng!
+ *      + Nếu là 1 Folder Bundle (chứa scene.gltf + textures/): Nạp thành 1 Model Bundle duy nhất, ảnh preview đại diện, bỏ qua các ảnh texture con.
+ *    - Nếu trong folder con KHÔNG có model 3D: Tuyệt đối KHÔNG nạp bất kỳ ảnh nào trong folder con đó (vì không nằm ở folder gốc C).
  */
-function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) {
-  if (!fs.existsSync(folderPath)) return [];
+function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = currentDir, allowedModelExts = modelExts, options = {}) {
+  if (!fs.existsSync(currentDir)) return [];
   const results = [];
   let entries = [];
   try {
-    entries = fs.readdirSync(folderPath, { withFileTypes: true });
+    entries = fs.readdirSync(currentDir, { withFileTypes: true });
   } catch (err) {
     return [];
   }
@@ -154,16 +160,117 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
   const files = entries.filter(e => !e.isDirectory());
   const dirs = entries.filter(e => e.isDirectory());
 
-  // Track image filenames in this folder used as companion previews to prevent duplication
+  // Track companion preview images in this folder to avoid duplicate listing
   const consumedCompanionImages = new Set();
 
-  // ─── 1. Scan Subdirectories ──────────────────────────────────
+  const isPrimaryImageCategory = options.isImageCategory || false;
+
+  // ─── 1. Scan Direct Model Files in this directory ──────────────────────────────
+  for (const file of files) {
+    const ext = path.extname(file.name).toLowerCase();
+    if (allowedModelExts.includes(ext)) {
+      const fullPath = path.join(currentDir, file.name);
+      const stats = fs.statSync(fullPath);
+      const baseName = path.parse(file.name).name;
+      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+
+      // Look for companion reference image matching this model name in currentDir
+      let previewUrl = '';
+      for (const imgExt of imageExts) {
+        const candidate1 = `${baseName}${imgExt}`;
+        const candidate2 = `${baseName}.preview${imgExt}`;
+        const candidate3 = `${baseName}.thumbnail${imgExt}`;
+
+        if (files.some(f => f.name.toLowerCase() === candidate1.toLowerCase())) {
+          previewUrl = path.relative(rootDir, path.join(currentDir, candidate1)).replace(/\\/g, '/');
+          consumedCompanionImages.add(candidate1);
+          break;
+        } else if (files.some(f => f.name.toLowerCase() === candidate2.toLowerCase())) {
+          previewUrl = path.relative(rootDir, path.join(currentDir, candidate2)).replace(/\\/g, '/');
+          consumedCompanionImages.add(candidate2);
+          break;
+        } else if (files.some(f => f.name.toLowerCase() === candidate3.toLowerCase())) {
+          previewUrl = path.relative(rootDir, path.join(currentDir, candidate3)).replace(/\\/g, '/');
+          consumedCompanionImages.add(candidate3);
+          break;
+        }
+      }
+
+      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
+      results.push({
+        id: uniqueId,
+        name: formatDisplayName(file.name),
+        filename: file.name,
+        relPath: relPath,
+        path: `assets/${relPath}`,
+        format: ext.replace('.', '').toUpperCase(),
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        gender: detectGender(relPath),
+        previewUrl: previewUrl ? (previewUrl.startsWith('assets/') ? previewUrl : `assets/${previewUrl}`) : undefined,
+        description: `${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+      });
+    }
+  }
+
+  // ─── 2. Handle Standalone Images & Audio ──────────────────────────────
+  for (const file of files) {
+    const ext = path.extname(file.name).toLowerCase();
+
+    // Standalone Images & GIFs
+    if (imageExts.includes(ext)) {
+      if (consumedCompanionImages.has(file.name)) continue;
+      if (file.name.startsWith('.') || file.name.toLowerCase().startsWith('preview.') || file.name.toLowerCase().startsWith('thumbnail.')) continue;
+
+      // RULE: Only load standalone images if at ROOT level (relativeDepth === 0) or if this is an explicit image category
+      if (relativeDepth === 0 || isPrimaryImageCategory) {
+        const fullPath = path.join(currentDir, file.name);
+        const stats = fs.statSync(fullPath);
+        const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+        const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
+
+        results.push({
+          id: uniqueId,
+          name: formatDisplayName(file.name),
+          filename: file.name,
+          relPath: relPath,
+          path: `assets/${relPath}`,
+          format: ext.replace('.', '').toUpperCase(),
+          sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+          gender: detectGender(relPath),
+          previewUrl: `assets/${relPath}`,
+          isStandaloneImage: true,
+          description: `Tài nguyên Hình Ảnh/Texture: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+        });
+      }
+      // If relativeDepth > 0 and NOT isPrimaryImageCategory: SKIP image (textures/subfolder images are NOT loaded as standalone assets)
+    }
+
+    // Audio Files
+    if (audioExts.includes(ext)) {
+      const fullPath = path.join(currentDir, file.name);
+      const stats = fs.statSync(fullPath);
+      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
+
+      results.push({
+        id: uniqueId,
+        name: formatDisplayName(file.name),
+        filename: file.name,
+        relPath: relPath,
+        path: `assets/${relPath}`,
+        format: ext.replace('.', '').toUpperCase(),
+        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+        description: `Âm Thanh: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+      });
+    }
+  }
+
+  // ─── 3. Scan Subdirectories ──────────────────────────────────
   for (const dir of dirs) {
-    // Ignore hidden or system folders
     if (dir.name.startsWith('.') || dir.name === 'node_modules' || dir.name === 'presets') continue;
     if (dir.name === '_lap_rap' || dir.name === '_custom_ban_do') continue;
 
-    const subDirPath = path.join(folderPath, dir.name);
+    const subDirPath = path.join(currentDir, dir.name);
     const allSubFiles = getAllFilesInDir(subDirPath);
     const subModelFiles = allSubFiles.filter(f => allowedModelExts.includes(path.extname(f.name).toLowerCase()));
 
@@ -195,7 +302,7 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
       } else {
         for (const imgExt of imageExts) {
           const candidate = `${dir.name}${imgExt}`;
-          const candidateFull = path.join(folderPath, candidate);
+          const candidateFull = path.join(currentDir, candidate);
           if (fs.existsSync(candidateFull)) {
             bundlePreviewUrl = path.relative(rootDir, candidateFull).replace(/\\/g, '/');
             consumedCompanionImages.add(candidate);
@@ -220,106 +327,10 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
         previewUrl: bundlePreviewUrl ? (bundlePreviewUrl.startsWith('assets/') ? bundlePreviewUrl : `assets/${bundlePreviewUrl}`) : undefined,
         description: `${formatDisplayName(dir.name)} (Model Bundle: ${path.extname(mainModel.name).toUpperCase()})`
       });
+      // All other texture images inside the bundle folder are ignored
     } else {
-      // Not a single bundle - recursively scan individual items inside this subfolder!
-      results.push(...scanLeafFolder(subDirPath, allowedModelExts, options));
-    }
-  }
-
-  // ─── 2. Scan Direct Model Files ──────────────────────────────
-  for (const file of files) {
-    const ext = path.extname(file.name).toLowerCase();
-    if (allowedModelExts.includes(ext)) {
-      const fullPath = path.join(folderPath, file.name);
-      const stats = fs.statSync(fullPath);
-      const baseName = path.parse(file.name).name;
-      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-
-      // Look for companion reference photo matching this model name
-      let previewUrl = '';
-      for (const imgExt of imageExts) {
-        const candidate1 = `${baseName}${imgExt}`;
-        const candidate2 = `${baseName}.preview${imgExt}`;
-        const candidate3 = `${baseName}.thumbnail${imgExt}`;
-
-        if (files.some(f => f.name.toLowerCase() === candidate1.toLowerCase())) {
-          previewUrl = path.relative(rootDir, path.join(folderPath, candidate1)).replace(/\\/g, '/');
-          consumedCompanionImages.add(candidate1);
-          break;
-        } else if (files.some(f => f.name.toLowerCase() === candidate2.toLowerCase())) {
-          previewUrl = path.relative(rootDir, path.join(folderPath, candidate2)).replace(/\\/g, '/');
-          consumedCompanionImages.add(candidate2);
-          break;
-        } else if (files.some(f => f.name.toLowerCase() === candidate3.toLowerCase())) {
-          previewUrl = path.relative(rootDir, path.join(folderPath, candidate3)).replace(/\\/g, '/');
-          consumedCompanionImages.add(candidate3);
-          break;
-        }
-      }
-
-      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
-      results.push({
-        id: uniqueId,
-        name: formatDisplayName(file.name),
-        filename: file.name,
-        relPath: relPath,
-        path: `assets/${relPath}`,
-        format: ext.replace('.', '').toUpperCase(),
-        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
-        gender: detectGender(relPath),
-        previewUrl: previewUrl ? (previewUrl.startsWith('assets/') ? previewUrl : `assets/${previewUrl}`) : undefined,
-        description: `${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
-      });
-    }
-  }
-
-  // ─── 3. Scan Standalone Image / GIF / Audio Files ────────────
-  // Files that are NOT companion previews for 3D models
-  for (const file of files) {
-    const ext = path.extname(file.name).toLowerCase();
-    
-    // Standalone Images & GIFs
-    if (imageExts.includes(ext)) {
-      if (consumedCompanionImages.has(file.name)) continue;
-      if (file.name.startsWith('.') || file.name.toLowerCase().startsWith('preview.') || file.name.toLowerCase().startsWith('thumbnail.')) continue;
-
-      const fullPath = path.join(folderPath, file.name);
-      const stats = fs.statSync(fullPath);
-      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
-
-      results.push({
-        id: uniqueId,
-        name: formatDisplayName(file.name),
-        filename: file.name,
-        relPath: relPath,
-        path: `assets/${relPath}`,
-        format: ext.replace('.', '').toUpperCase(),
-        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
-        gender: detectGender(relPath),
-        previewUrl: `assets/${relPath}`, // Standalone image is its own preview
-        isStandaloneImage: true,
-        description: `Tài nguyên Hình Ảnh/Texture: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
-      });
-    }
-
-    // Audio Files
-    if (audioExts.includes(ext)) {
-      const fullPath = path.join(folderPath, file.name);
-      const stats = fs.statSync(fullPath);
-      const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-      const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
-
-      results.push({
-        id: uniqueId,
-        name: formatDisplayName(file.name),
-        filename: file.name,
-        relPath: relPath,
-        path: `assets/${relPath}`,
-        format: ext.replace('.', '').toUpperCase(),
-        sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
-        description: `Âm Thanh: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
-      });
+      // Recurse into subfolder with relativeDepth + 1
+      results.push(...scanFolderHierarchy(subDirPath, relativeDepth + 1, rootCategoryDir, allowedModelExts, options));
     }
   }
 
@@ -327,13 +338,15 @@ function scanLeafFolder(folderPath, allowedModelExts = modelExts, options = {}) 
 }
 
 /**
- * Scan a list of folder aliases and combine results using the Leaf Folder Scanner
+ * Scan a list of folder aliases and combine results using Hierarchical Scanner
  */
-function scanFolderAliases(aliases, allowedModelExts = modelExts) {
+function scanFolderAliases(aliases, allowedModelExts = modelExts, options = {}) {
   const all = [];
   for (const a of aliases) {
     const full = path.join(rootDir, a);
-    all.push(...scanLeafFolder(full, allowedModelExts));
+    if (fs.existsSync(full)) {
+      all.push(...scanFolderHierarchy(full, 0, full, allowedModelExts, options));
+    }
   }
   // Deduplicate by relPath
   return Array.from(new Map(all.map(item => [item.relPath, item])).values());
@@ -341,24 +354,37 @@ function scanFolderAliases(aliases, allowedModelExts = modelExts) {
 
 console.log('Scanning assets directory:', rootDir);
 
+// Dynamic scanner helper for character categories
+function scanCharacterCategory(catId, extraAliases = []) {
+  const cat = assetStructure?.character_structure?.categories?.find(c => c.id === catId);
+  const folder = cat?.folder || catId;
+  const aliases = [
+    `nhan_vat/${folder}/nam`, `nhan_vat/${folder}/nu`, `nhan_vat/${folder}/chung`, `nhan_vat/${folder}`,
+    `characters/${folder}/nam`, `characters/${folder}/nu`, `characters/${folder}/chung`, `characters/${folder}`,
+    `${folder}/nam`, `${folder}/nu`, `${folder}/chung`, folder,
+    ...extraAliases
+  ];
+  return scanFolderAliases(aliases, modelExts);
+}
+
 // ─── 2. Scan Characters (Nam, Nữ, Modular parts) ────────────
 const maleChars = scanFolderAliases(['nhan_vat/nam', 'characters/male', 'characters/man', 'characters/nam'], modelExts);
 const femaleChars = scanFolderAliases(['nhan_vat/nu', 'characters/female', 'characters/woman', 'characters/nu'], modelExts);
 
-const baseBodies = scanFolderAliases(['nhan_vat/than_co_ban', 'characters/base_bodies', 'characters/than_co_ban'], modelExts);
-const faces = scanFolderAliases(['nhan_vat/khuon_mat', 'characters/faces', 'characters/khuon_mat'], modelExts);
-const hairstyles = scanFolderAliases(['nhan_vat/kieu_toc', 'characters/hairstyles', 'characters/kieu_toc'], modelExts);
-const beards = scanFolderAliases(['nhan_vat/kieu_rau', 'characters/beards', 'characters/kieu_rau'], modelExts);
-const costumes = scanFolderAliases(['nhan_vat/trang_phuc', 'characters/costumes', 'characters/trang_phuc'], modelExts);
-const accessories = scanFolderAliases(['nhan_vat/phu_kien', 'characters/accessories', 'characters/phu_kien'], modelExts);
-const eyebrows = scanFolderAliases(['nhan_vat/long_may', 'characters/long_may'], modelExts);
-const eyes = scanFolderAliases(['nhan_vat/mat', 'characters/mat'], modelExts);
-const noses = scanFolderAliases(['nhan_vat/mui', 'characters/mui'], modelExts);
-const mouths = scanFolderAliases(['nhan_vat/mieng', 'characters/mieng'], modelExts);
-const hats = scanFolderAliases(['nhan_vat/mu_non', 'characters/mu_non'], modelExts);
-const shoes = scanFolderAliases(['nhan_vat/giay_dep', 'characters/giay_dep'], modelExts);
-const wings = scanFolderAliases(['nhan_vat/canh', 'characters/canh'], modelExts);
-const tails = scanFolderAliases(['nhan_vat/duoi', 'characters/duoi'], modelExts);
+const baseBodies = scanCharacterCategory('than_co_ban', ['characters/base_bodies', 'characters/body']);
+const faces = scanCharacterCategory('khuon_mat', ['characters/faces', 'characters/face']);
+const hairstyles = scanCharacterCategory('kieu_toc', ['characters/hairstyles', 'characters/hair']);
+const beards = scanCharacterCategory('kieu_rau', ['characters/beards', 'characters/beard']);
+const costumes = scanCharacterCategory('trang_phuc', ['characters/costumes', 'characters/outfits']);
+const accessories = scanCharacterCategory('phu_kien', ['characters/accessories']);
+const eyebrows = scanCharacterCategory('long_may', ['characters/eyebrows']);
+const eyes = scanCharacterCategory('mat', ['characters/eyes']);
+const noses = scanCharacterCategory('mui', ['characters/noses', 'characters/nose']);
+const mouths = scanCharacterCategory('mieng', ['characters/mouths', 'characters/mouth']);
+const hats = scanCharacterCategory('mu_non', ['characters/hats', 'characters/mu']);
+const shoes = scanCharacterCategory('giay_dep', ['characters/shoes', 'characters/giay']);
+const wings = scanCharacterCategory('canh', ['characters/wings']);
+const tails = scanCharacterCategory('duoi', ['characters/tails']);
 
 // 2.1 Assembled Characters (_lap_rap)
 const assembledChars = [];
@@ -460,8 +486,8 @@ if (fs.existsSync(customMapDir)) {
 
 // Legacy root character files
 const rootCharFiles = [
-  ...scanLeafFolder(path.join(rootDir, 'characters'), modelExts).filter(f => !f.relPath.includes('/')),
-  ...scanLeafFolder(path.join(rootDir, 'nhan_vat'), modelExts).filter(f => !f.relPath.includes('/'))
+  ...scanFolderHierarchy(path.join(rootDir, 'characters'), 0, path.join(rootDir, 'characters'), modelExts).filter(f => !f.relPath.includes('/')),
+  ...scanFolderHierarchy(path.join(rootDir, 'nhan_vat'), 0, path.join(rootDir, 'nhan_vat'), modelExts).filter(f => !f.relPath.includes('/'))
 ];
 
 // ─── 3. Scan Props & World Environment ────────────────────────
@@ -480,18 +506,18 @@ const furniture = scanFolderAliases(['dao_cu/noi_that', 'props/noi_that', 'props
 const buildings = scanFolderAliases(['dao_cu/cong_trinh', 'props/cong_trinh', 'props/buildings'], modelExts);
 const vehicles = scanFolderAliases(['dao_cu/phuong_tien', 'props/phuong_tien', 'props/vehicles'], modelExts);
 
-// Skybox images - scan specific subcategories cleanly
-const skyboxDawn = scanFolderAliases(['bau_troi/binh_minh', 'SkyBoxs/binh_minh'], imageExts);
-const skyboxMorning = scanFolderAliases(['bau_troi/buoi_sang', 'SkyBoxs/buoi_sang'], imageExts);
-const skyboxNoon = scanFolderAliases(['bau_troi/buoi_trua', 'SkyBoxs/buoi_trua'], imageExts);
-const skyboxAfternoon = scanFolderAliases(['bau_troi/buoi_chieu', 'SkyBoxs/buoi_chieu'], imageExts);
-const skyboxNight = scanFolderAliases(['bau_troi/buoi_toi', 'SkyBoxs/buoi_toi'], imageExts);
-const skyboxStorm = scanFolderAliases(['bau_troi/giong_bao', 'SkyBoxs/giong_bao'], imageExts);
+// Skybox images - scan specific subcategories cleanly with isImageCategory: true
+const skyboxDawn = scanFolderAliases(['bau_troi/binh_minh', 'SkyBoxs/binh_minh'], imageExts, { isImageCategory: true });
+const skyboxMorning = scanFolderAliases(['bau_troi/buoi_sang', 'SkyBoxs/buoi_sang'], imageExts, { isImageCategory: true });
+const skyboxNoon = scanFolderAliases(['bau_troi/buoi_trua', 'SkyBoxs/buoi_trua'], imageExts, { isImageCategory: true });
+const skyboxAfternoon = scanFolderAliases(['bau_troi/buoi_chieu', 'SkyBoxs/buoi_chieu'], imageExts, { isImageCategory: true });
+const skyboxNight = scanFolderAliases(['bau_troi/buoi_toi', 'SkyBoxs/buoi_toi'], imageExts, { isImageCategory: true });
+const skyboxStorm = scanFolderAliases(['bau_troi/giong_bao', 'SkyBoxs/giong_bao'], imageExts, { isImageCategory: true });
 const allSkyboxes = [...skyboxDawn, ...skyboxMorning, ...skyboxNoon, ...skyboxAfternoon, ...skyboxNight, ...skyboxStorm];
 
 // VFX - scan specific subcategories cleanly
-const vfxCamXuc = scanFolderAliases(['hieu_ung/cam_xuc', 'vfx/cam_xuc'], [...modelExts, ...imageExts]);
-const vfxBaoPhu = scanFolderAliases(['hieu_ung/bao_phu', 'vfx/bao_phu'], [...modelExts, ...imageExts]);
+const vfxCamXuc = scanFolderAliases(['hieu_ung/cam_xuc', 'vfx/cam_xuc'], [...modelExts, ...imageExts], { isImageCategory: true });
+const vfxBaoPhu = scanFolderAliases(['hieu_ung/bao_phu', 'vfx/bao_phu'], [...modelExts, ...imageExts], { isImageCategory: true });
 const vfxProps = [...vfxCamXuc, ...vfxBaoPhu];
 
 // Audio & Animations
@@ -538,13 +564,18 @@ const allAssets = [
 const totalSize = allAssets.reduce((sum, item) => sum + parseFloat(item.sizeMB || 0), 0).toFixed(2);
 const timestamp = new Date().toISOString();
 
-// Build Complete Manifest
+// Build Clean, Lightweight Manifest
 const manifest = {
   version: "2.0.0",
   last_scanned: timestamp,
   total_assets: allAssets.length,
   total_size_mb: parseFloat(totalSize),
-  structure: assetStructure,
+  structure: {
+    character_structure: assetStructure.character_structure,
+    world_and_props_structure: assetStructure.world_and_props_structure,
+    gender_rules: assetStructure.gender_rules,
+    available_actions: assetStructure.available_actions
+  },
   map_presets: mapPresets,
   characters: {
     male: maleChars,
