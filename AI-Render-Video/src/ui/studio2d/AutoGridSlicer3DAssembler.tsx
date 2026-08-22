@@ -443,14 +443,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
         // Map to 3D Assembly part (ensure part exists in assembly)
         if (cell.partSlot) {
+          const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
           if (!updatedAssembly.parts[cell.partSlot]) {
-            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
             updatedAssembly.parts[cell.partSlot] = {
               path: dataUrl,
-              offset: hierarchy?.defaultOffset ?? [0, 0],
+              offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
               scale: [1, 1],
               rotation: 0,
-              pivot: hierarchy?.defaultPivot ?? [0.5, 0.5],
+              pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
               flipX: false,
               flipY: false,
               z_index: hierarchy?.defaultZ ?? 1,
@@ -460,7 +460,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             };
           }
           const part = updatedAssembly.parts[cell.partSlot]!;
-          if (!part.path || cell.angle === 'front' || cell.row === 0 || cell.row === 2) {
+          if (!part.offset || (part.offset[0] === 0 && part.offset[1] === 0 && hierarchy?.defaultOffset)) {
+            part.offset = [...hierarchy.defaultOffset];
+          }
+          if (cell.angle === 'front' || cell.col === 0) {
             part.path = dataUrl;
           }
           if (cell.angle) {

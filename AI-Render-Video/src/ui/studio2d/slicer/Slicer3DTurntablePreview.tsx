@@ -137,8 +137,10 @@ export const Slicer3DTurntablePreview: React.FC<Slicer3DTurntablePreviewProps> =
         {/* Turntable Slider */}
         <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>
-            <span>Xoay Camera 360°:</span>
-            <span style={{ color: '#38bdf8', fontWeight: 700 }}>{activeAngleInfo.angleLabel}</span>
+            <span>{activeAngleInfo.discreteAngle.startsWith('top_down') ? '👑 Xoay 360° Quanh Đỉnh Đầu:' : '🌐 Xoay Camera 360°:'}</span>
+            <span style={{ color: activeAngleInfo.discreteAngle.startsWith('top_down') ? '#f59e0b' : '#38bdf8', fontWeight: 700 }}>
+              {activeAngleInfo.angleLabel}
+            </span>
           </div>
           <input
             type="range"
@@ -149,7 +151,8 @@ export const Slicer3DTurntablePreview: React.FC<Slicer3DTurntablePreviewProps> =
               const val = parseInt(e.target.value);
               setTurntableAngle(val);
               if (threeEngineRef.current) {
-                threeEngineRef.current.jumpToAngle(val);
+                const isTop = activeAngleInfo.discreteAngle.startsWith('top_down');
+                threeEngineRef.current.jumpToAngle(val, isTop);
               }
             }}
             style={{ width: '100%' }}
@@ -160,10 +163,11 @@ export const Slicer3DTurntablePreview: React.FC<Slicer3DTurntablePreviewProps> =
             {[
               { label: '0° Thẳng', deg: 0, isTop: false },
               { label: '45° 3/4', deg: 45, isTop: false },
-              { label: '👂 90° Tai Trái', deg: 90, isTop: false },
+              { label: '👂 90° Tai', deg: 90, isTop: false },
               { label: '180° Sau', deg: 180, isTop: false },
-              { label: '👂 270° Tai Phải', deg: 270, isTop: false },
-              { label: '👑 Đỉnh Đầu', deg: 0, isTop: true },
+              { label: '👑 Đỉnh 0°', deg: 0, isTop: true },
+              { label: '👑 Đỉnh 45°', deg: 45, isTop: true },
+              { label: '👑 Đỉnh 90°', deg: 90, isTop: true },
             ].map((btn) => (
               <button
                 key={btn.label}
@@ -179,9 +183,9 @@ export const Slicer3DTurntablePreview: React.FC<Slicer3DTurntablePreviewProps> =
                   fontSize: 9,
                   fontWeight: 600,
                   borderRadius: 4,
-                  background: 'rgba(255,255,255,0.06)',
-                  color: '#e2e8f0',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: btn.isTop ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.06)',
+                  color: btn.isTop ? '#fbbf24' : '#e2e8f0',
+                  border: btn.isTop ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(255,255,255,0.1)',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                 }}

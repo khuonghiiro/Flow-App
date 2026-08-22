@@ -32,33 +32,33 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
     defaultKeyColor: '#00ff00',
     description: '4 tầng tách lớp của cùng 1 kiểu tóc (Mái trước, Đỉnh đầu, Tóc sau, Tóc mai) qua 5 góc quay.',
     cells: [
-      // Row 0: Front Bangs
-      { row: 0, col: 0, label: 'Mái Trước 0° (Chính diện)', partSlot: 'toc_truoc', angle: 'front', description: 'Mái trước góc nhìn thẳng' },
+      // Row 0: Front Bangs (Mái Trước)
+      { row: 0, col: 0, label: 'Mái Trước 0° (Chính Diện)', partSlot: 'toc_truoc', angle: 'front', description: 'Mái trước góc nhìn thẳng' },
       { row: 0, col: 1, label: 'Mái Trước 45° (Nghiêng 3/4)', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Mái trước góc nghiêng' },
-      { row: 0, col: 2, label: 'Mái Trước 90° (Ngang Profile)', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước góc nhìn ngang' },
+      { row: 0, col: 2, label: 'Mái Trước 90° (Ngang Profile Về Phía Tai)', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước góc nhìn ngang từ phía tai' },
       { row: 0, col: 3, label: 'Mái Trước 135° (Nghiêng Sau)', partSlot: 'toc_truoc', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Mái trước nhìn từ sau chéo' },
       { row: 0, col: 4, label: 'Mái Trước 180° (Góc Khuất)', partSlot: 'toc_truoc', angle: 'back', description: 'Ngọn tóc mái trước ló ra sau sọ đầu' },
 
-      // Row 1: Crown & Top-Down Bird's Eye View (Camera soi từ trên đỉnh sọ xuống)
-      { row: 1, col: 0, label: 'Đỉnh Đầu Soi Xuống 0°', partSlot: 'dau', angle: 'top_down', description: 'Camera từ trên cao soi xuống đỉnh đầu & búi tóc chính diện (0°)' },
-      { row: 1, col: 1, label: 'Đỉnh Đầu Soi Xuống 45°', partSlot: 'dau', angle: 'top_down_three_quarter_left', mirrorAngle: 'top_down_three_quarter_right', description: 'Camera soi đỉnh đầu góc nghiêng 45°' },
-      { row: 1, col: 2, label: 'Đỉnh Đầu Soi Xuống 90°', partSlot: 'dau', angle: 'top_down_profile_left', mirrorAngle: 'top_down_profile_right', description: 'Camera soi đỉnh đầu góc nhìn ngang 90° (Ngang tai)' },
-      { row: 1, col: 3, label: 'Đỉnh Đầu Soi Xuống 135°', partSlot: 'dau', angle: 'top_down_back_three_quarter_left', mirrorAngle: 'top_down_back_three_quarter_right', description: 'Camera soi đỉnh đầu góc sau chéo 135°' },
-      { row: 1, col: 4, label: 'Đỉnh Đầu Soi Xuống 180°', partSlot: 'dau', angle: 'top_down_back', description: 'Camera soi đỉnh đầu & trâm cài từ sau 180°' },
+      // Row 1: Crown & Top-Down Bird's Eye View (Đỉnh Đầu Soi Từ Trên Cao Xuống)
+      { row: 1, col: 0, label: 'Đỉnh Đầu Soi Xuống 0° (Chính Diện)', partSlot: 'dau', angle: 'top_down', description: 'Búi tóc & đỉnh sọ nhìn từ trên cao xuống ở hướng 0°' },
+      { row: 1, col: 1, label: 'Đỉnh Đầu Soi Xuống 45° (Nghiêng)', partSlot: 'dau', angle: 'top_down_three_quarter_left', mirrorAngle: 'top_down_three_quarter_right', description: 'Búi tóc & đỉnh sọ soi từ trên cao góc nghiêng 45°' },
+      { row: 1, col: 2, label: 'Đỉnh Đầu Soi Xuống 90° (Về Phía Tai)', partSlot: 'dau', angle: 'top_down_profile_left', mirrorAngle: 'top_down_profile_right', description: 'Búi tóc & đỉnh sọ soi từ trên cao nhìn ngang về phía tai 90°' },
+      { row: 1, col: 3, label: 'Đỉnh Đầu Soi Xuống 135° (Sau Chéo)', partSlot: 'dau', angle: 'top_down_back_three_quarter_left', mirrorAngle: 'top_down_back_three_quarter_right', description: 'Búi tóc & đỉnh sọ soi từ trên cao góc sau chéo 135°' },
+      { row: 1, col: 4, label: 'Đỉnh Đầu Soi Xuống 180° (Sau Gáy)', partSlot: 'dau', angle: 'top_down_back', description: 'Búi tóc & trâm cài soi từ trên cao phía sau gáy 180°' },
 
-      // Row 2: Back Hair
-      { row: 2, col: 0, label: 'Tóc Sau 0° (Sau Vai)', partSlot: 'toc_sau', angle: 'front', description: 'Tóc xõa hai bên vai nhìn từ trước' },
-      { row: 2, col: 1, label: 'Tóc Sau 45° (Bay Chéo)', partSlot: 'toc_sau', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Tóc sau bay nghiêng' },
-      { row: 2, col: 2, label: 'Tóc Sau 90° (Đuôi Tóc Ngang)', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Đuôi tóc dài nhìn ngang' },
-      { row: 2, col: 3, label: 'Tóc Sau 135°', partSlot: 'toc_sau', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Tóc dài góc sau chéo' },
-      { row: 2, col: 4, label: 'Tóc Sau 180° (Toàn Cảnh)', partSlot: 'toc_sau', angle: 'back', description: 'Suối tóc hùng vĩ trực diện sau lưng' },
+      // Row 2: Back Hair / Shoulder Drape (Suối Tóc Sau / Phủ Vai)
+      { row: 2, col: 0, label: 'Tóc Sau 0° (Phủ Qua Vai Nhìn Từ Trước)', partSlot: 'toc_sau', angle: 'front', description: 'Suối tóc xõa qua 2 vai nhìn từ đằng trước mặt' },
+      { row: 2, col: 1, label: 'Tóc Sau 45° (Bay Chéo)', partSlot: 'toc_sau', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Tóc sau bay nghiêng 45°' },
+      { row: 2, col: 2, label: 'Tóc Sau 90° (Đuôi Tóc Ngang Phía Tai)', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Đuôi tóc dài nhìn ngang từ phía tai 90°' },
+      { row: 2, col: 3, label: 'Tóc Sau 135° (Nghiêng Sau)', partSlot: 'toc_sau', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Tóc dài góc sau chéo 135°' },
+      { row: 2, col: 4, label: 'Tóc Sau 180° (Toàn Cảnh Sau Lưng)', partSlot: 'toc_sau', angle: 'back', description: 'Suối tóc hùng vĩ trực diện sau lưng 180°' },
 
-      // Row 3: Sideburns (No ears)
-      { row: 3, col: 0, label: 'Tóc Mai 0° (2 Bên Má)', partSlot: 'khuon_mat', angle: 'front', description: '2 lọn tóc mai ôm má nhìn thẳng' },
-      { row: 3, col: 1, label: 'Tóc Mai 45°', partSlot: 'khuon_mat', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Lọn tóc mai bên má nghiêng' },
-      { row: 3, col: 2, label: 'Tóc Mai 90° (Vành Tai)', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai cong quanh tai' },
-      { row: 3, col: 3, label: 'Tóc Mai 135°', partSlot: 'khuon_mat', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Lọn tóc sau tai' },
-      { row: 3, col: 4, label: 'Tóc Gáy 180°', partSlot: 'khuon_mat', angle: 'back', description: 'Tóc tơ chân gáy sau lưng' },
+      // Row 3: Sideburns (Tóc Mai Ôm Má & Vành Tai)
+      { row: 3, col: 0, label: 'Tóc Mai 0° (2 Bên Má Nhìn Thẳng)', partSlot: 'khuon_mat', angle: 'front', description: '2 lọn tóc mai ôm 2 bên má nhìn thẳng' },
+      { row: 3, col: 1, label: 'Tóc Mai 45° (Má Nghiêng)', partSlot: 'khuon_mat', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Lọn tóc mai bên má nghiêng 45°' },
+      { row: 3, col: 2, label: 'Tóc Mai 90° (Vành Tai Nhìn Ngang)', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai cong ôm quanh vành tai khi nhìn từ phía tai 90°' },
+      { row: 3, col: 3, label: 'Tóc Mai 135° (Sau Tai)', partSlot: 'khuon_mat', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Lọn tóc sau tai 135°' },
+      { row: 3, col: 4, label: 'Tóc Gáy 180° (Chân Gáy Sau Lưng)', partSlot: 'khuon_mat', angle: 'back', description: 'Tóc tơ chân gáy sau lưng 180°' },
     ],
   },
   {
