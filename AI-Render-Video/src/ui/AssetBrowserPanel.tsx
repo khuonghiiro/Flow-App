@@ -184,6 +184,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
   // ─── State ──────────────────────────────────────────────────
   const [mainSection, setMainSection] = useState<'character' | 'world' | 'media'>('character');
   const [allAssets, setAllAssets] = useState<AssetItem[]>([]);
+  const [manifestStructure, setManifestStructure] = useState<any>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string>('than_co_ban');
   const [activeSubCategoryId, setActiveSubCategoryId] = useState<string>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
@@ -194,19 +195,6 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Switch active category when main section changes
-  const handleSwitchSection = (section: 'character' | 'world' | 'media') => {
-    setMainSection(section);
-    setActiveSubCategoryId('all');
-    if (section === 'character') {
-      setActiveCategoryId('than_co_ban');
-    } else if (section === 'world') {
-      setActiveCategoryId('ban_do');
-    } else {
-      setActiveCategoryId('audio');
-    }
-  };
-
   // ─── 1. Load Live Assets from asset_manifest.json ─────────────
   const loadManifest = useCallback(async () => {
     setIsLoadingManifest(true);
@@ -214,6 +202,9 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
       const res = await fetch(`/assets/asset_manifest.json?t=${Date.now()}`);
       if (!res.ok) throw new Error('Could not fetch asset_manifest.json');
       const manifest = await res.json();
+      if (manifest.structure) {
+        setManifestStructure(manifest.structure);
+      }
 
       const items: AssetItem[] = [];
 
@@ -257,22 +248,12 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         };
       };
 
-      // Characters (Built dynamically from manifest.structure or discovered folders)
+      // 1. Characters (Dynamic 100% from manifest.characters)
       const chars = manifest.characters || {};
-      const charStructure = manifest.structure?.character_structure?.categories || [];
-      const charCatMap = new Map<string, string>();
-      for (const cat of charStructure) {
-        charCatMap.set(cat.id, cat.id);
-        charCatMap.set(cat.folder, cat.id);
-        for (const a of cat.folder_aliases || []) {
-          charCatMap.set(a, cat.id);
+      for (const [catId, list] of Object.entries(chars)) {
+        if (Array.isArray(list)) {
+          list.forEach((c: any) => items.push(parseAsset(c, catId, 'character')));
         }
-      }
-
-      for (const [folderKey, list] of Object.entries(chars)) {
-        if (!Array.isArray(list)) continue;
-        const catId = charCatMap.get(folderKey) || folderKey;
-        list.forEach((c: any) => items.push(parseAsset(c, catId, 'character')));
       }
 
       // ─── Assembled Characters from LocalStorage (_lap_rap) ───
@@ -319,65 +300,66 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         console.warn('Lỗi đọc custom_character_presets:', err);
       }
 
-      // Root Male & Female
-      (chars.male || []).forEach((c: any) => items.push(parseAsset(c, 'than_co_ban', 'character')));
-      (chars.female || []).forEach((c: any) => items.push(parseAsset(c, 'than_co_ban', 'character')));
-
-      // Maps
+      // 2. Maps
       const mapList = manifest.maps || manifest.structure?.map_presets || [];
       if (Array.isArray(mapList)) {
         mapList.forEach((m: any) => items.push(parseAsset(m, 'ban_do', 'map')));
       }
 
-      // Custom Maps
+      // 3. Custom Maps
       const customMaps = manifest.props?._custom_ban_do || manifest.map_presets || [];
       if (Array.isArray(customMaps)) {
         customMaps.forEach((m: any) => items.push(parseAsset(m, '_custom_ban_do', 'map')));
       }
 
-      // World Props
+      // 4. World Props (Dynamic 100% from manifest.props)
       const props = manifest.props || {};
-      const propMap: Record<string, string> = {
-        trees: 'cay_coi',
-        rocks: 'da_dia_hinh',
-        weapons: 'vu_khi',
-        tools: 'dung_cu',
-        consumables: 'do_tieu_hao',
-        furniture: 'noi_that',
-        buildings: 'cong_trinh',
-        vehicles: 'phuong_tien',
-      };
-
-      for (const [key, catId] of Object.entries(propMap)) {
-        const list = props[key] || [];
-        if (Array.isArray(list)) {
-          list.forEach((p: any) => items.push(parseAsset(p, catId, 'prop')));
+      for (const [catId, propVal] of Object.entries(props)) {
+        if (catId === '_custom_ban_do' || catId === 'nhan_vat_da_rap') continue;
+        if (Array.isArray(propVal)) {
+          propVal.forEach((p: any) => items.push(parseAsset(p, catId, 'prop')));
+        } else if (typeof propVal === 'object' && propVal !== null) {
+          for (const [subCatId, subList] of Object.entries(propVal as Record<string, any>)) {
+            if (subCatId === 'all') continue;
+            if (Array.isArray(subList)) {
+              subList.forEach((p: any) => items.push(parseAsset(p, catId, 'prop', subCatId)));
+            }
+          }
         }
       }
 
-      // Animals with subcategories
-      if (props.animals) {
-        (props.animals.terrestrial || []).forEach((p: any) => items.push(parseAsset(p, 'dong_vat', 'prop', 'tren_can')));
-        (props.animals.aquatic || []).forEach((p: any) => items.push(parseAsset(p, 'dong_vat', 'prop', 'duoi_nuoc')));
-        (props.animals.aerial || []).forEach((p: any) => items.push(parseAsset(p, 'dong_vat', 'prop', 'tren_troi')));
+      // 5. Skyboxes
+      const skies = manifest.skyboxes || {};
+      for (const [timeKey, list] of Object.entries(skies)) {
+        if (timeKey === 'all') continue;
+        if (Array.isArray(list)) {
+          list.forEach((s: any) => items.push(parseAsset(s, 'bau_troi', 'skybox', timeKey)));
+        }
       }
 
-      // Skyboxes
-      const skies = manifest.skyboxes || {};
-      ['binh_minh', 'buoi_sang', 'buoi_trua', 'buoi_chieu', 'buoi_toi', 'giong_bao'].forEach((time) => {
-        (skies[time] || []).forEach((s: any) => items.push(parseAsset(s, 'bau_troi', 'skybox', time)));
-      });
+      // 6. VFX
+      const vfx = manifest.vfx || manifest.props?.vfx || {};
+      if (Array.isArray(vfx)) {
+        vfx.forEach((v: any) => items.push(parseAsset(v, 'hieu_ung', 'prop')));
+      } else if (typeof vfx === 'object') {
+        for (const [vfxKey, list] of Object.entries(vfx)) {
+          if (vfxKey === 'all') continue;
+          if (Array.isArray(list)) {
+            list.forEach((v: any) => items.push(parseAsset(v, 'hieu_ung', 'prop', vfxKey)));
+          }
+        }
+      }
 
-      // Audio
+      // 7. Audio
       const audio = manifest.audio || {};
       (audio.bgm || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'bgm')));
-      (audio.sfx?.combat || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'sfx_combat')));
-      (audio.sfx?.ambient || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'sfx_ambient')));
-      (audio.sfx?.interactions || audio.sfx?.interaction || []).forEach((a: any) =>
+      (audio.sfx_combat || audio.sfx?.combat || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'sfx_combat')));
+      (audio.sfx_ambient || audio.sfx?.ambient || []).forEach((a: any) => items.push(parseAsset(a, 'audio', 'audio', 'sfx_ambient')));
+      (audio.sfx_interaction || audio.sfx_interactions || audio.sfx?.interactions || []).forEach((a: any) =>
         items.push(parseAsset(a, 'audio', 'audio', 'sfx_interaction'))
       );
 
-      // Animations
+      // 8. Animations
       const anims = manifest.animations || {};
       (anims.combat || []).forEach((a: any) => items.push(parseAsset(a, 'animations', 'animation', 'combat')));
       (anims.xianxia || []).forEach((a: any) => items.push(parseAsset(a, 'animations', 'animation', 'xianxia')));
@@ -386,13 +368,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
         items.push(parseAsset(a, 'animations', 'animation', 'interactions'))
       );
 
-      // VFX
-      const vfx = manifest.props?.vfx || manifest.vfx || [];
-      if (Array.isArray(vfx)) {
-        vfx.forEach((v: any) => items.push(parseAsset(v, 'hieu_ung', 'vfx')));
-      }
-
-      // Deduplicate by ID (or path fallback) to ensure all custom presets are displayed
+      // Deduplicate by ID (or path fallback)
       const uniqueItems = Array.from(new Map(items.map((i) => [i.id || i.path, i])).values());
       setAllAssets(uniqueItems);
     } catch (err) {
@@ -413,19 +389,99 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
     };
   }, [loadManifest]);
 
+  // ─── Dynamic Category Tabs derived from Manifest Structure ────
+  const dynamicCategoryTabs = useMemo<CategoryTab[]>(() => {
+    if (!manifestStructure) return CATEGORY_TABS;
+
+    const tabs: CategoryTab[] = [];
+
+    // 1. Character categories from structure
+    const charCats = manifestStructure.character_structure?.categories || [];
+    for (const c of charCats) {
+      tabs.push({
+        id: c.id,
+        label: c.label || c.id,
+        icon: c.icon || '🧍',
+        group: 'character',
+        subCategories: c.subcategories?.map((s: any) => ({
+          id: s.id,
+          label: s.label || s.id,
+          icon: s.icon
+        }))
+      });
+    }
+
+    // 2. World & Props categories from structure
+    const propCats = manifestStructure.world_and_props_structure?.categories || [];
+    for (const p of propCats) {
+      if (p.id === 'audio' || p.id === 'animations') continue;
+      tabs.push({
+        id: p.id,
+        label: p.label || p.id,
+        icon: p.icon || '📦',
+        group: p.id === 'hieu_ung' ? 'media' : 'world',
+        subCategories: p.subcategories?.map((s: any) => ({
+          id: s.id,
+          label: s.label || s.id,
+          icon: s.icon
+        }))
+      });
+    }
+
+    // 3. Media Tabs
+    tabs.push(
+      {
+        id: 'audio',
+        label: 'Âm Thanh',
+        icon: '🎵',
+        group: 'media',
+        subCategories: [
+          { id: 'bgm', label: 'Nhạc Nền (BGM)', icon: '🎼' },
+          { id: 'sfx_combat', label: 'SFX Chiến Đấu', icon: '⚔️' },
+          { id: 'sfx_ambient', label: 'SFX Môi Trường', icon: '🍃' },
+          { id: 'sfx_interaction', label: 'SFX Tương Tác', icon: '💬' },
+        ],
+      },
+      {
+        id: 'animations',
+        label: 'Hoạt Ảnh (Anim)',
+        icon: '🎬',
+        group: 'media',
+        subCategories: [
+          { id: 'combat', label: 'Chiến Đấu', icon: '⚔️' },
+          { id: 'xianxia', label: 'Tiên Hiệp', icon: '🧘' },
+          { id: 'locomotion', label: 'Di Chuyển', icon: '🚶' },
+          { id: 'interactions', label: 'Tương Tác', icon: '🤝' },
+        ],
+      }
+    );
+
+    return tabs;
+  }, [manifestStructure]);
+
+  // Switch active category when main section changes
+  const handleSwitchSection = (section: 'character' | 'world' | 'media') => {
+    setMainSection(section);
+    setActiveSubCategoryId('all');
+    const firstCat = dynamicCategoryTabs.find((t) => t.group === section);
+    if (firstCat) {
+      setActiveCategoryId(firstCat.id);
+    }
+  };
+
   // ─── Active Category & Subcategories ──────────────────────────
-  const currentCategoryTab = CATEGORY_TABS.find((t) => t.id === activeCategoryId) || CATEGORY_TABS[0];
-  const subCategories = currentCategoryTab.subCategories || [];
+  const currentCategoryTab = dynamicCategoryTabs.find((t) => t.id === activeCategoryId) || dynamicCategoryTabs.find((t) => t.group === mainSection) || dynamicCategoryTabs[0];
+  const subCategories = currentCategoryTab?.subCategories || [];
   const hasSubCategories = subCategories.length > 0;
 
   // ─── Count Items Per Category ─────────────────────────────────
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    CATEGORY_TABS.forEach((cat) => {
+    dynamicCategoryTabs.forEach((cat) => {
       counts[cat.id] = allAssets.filter((a) => a.category === cat.id).length;
     });
     return counts;
-  }, [allAssets]);
+  }, [allAssets, dynamicCategoryTabs]);
 
   // ─── Filtered Items for Display ───────────────────────────────
   const filteredAssets = useMemo(() => {
@@ -833,7 +889,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
               scrollBehavior: 'smooth',
             }}
           >
-            {CATEGORY_TABS.filter((cat) => cat.group === mainSection).map((cat) => {
+            {dynamicCategoryTabs.filter((cat) => cat.group === mainSection).map((cat) => {
               const isActive = activeCategoryId === cat.id;
               const count = categoryCounts[cat.id] || 0;
 

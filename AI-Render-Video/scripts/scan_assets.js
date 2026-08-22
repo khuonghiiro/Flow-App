@@ -354,38 +354,6 @@ function scanFolderAliases(aliases, allowedModelExts = modelExts, options = {}) 
 
 console.log('Scanning assets directory:', rootDir);
 
-// Dynamic scanner helper for character categories
-function scanCharacterCategory(catId, extraAliases = []) {
-  const cat = assetStructure?.character_structure?.categories?.find(c => c.id === catId);
-  const folder = cat?.folder || catId;
-  const aliases = [
-    `nhan_vat/${folder}/nam`, `nhan_vat/${folder}/nu`, `nhan_vat/${folder}/chung`, `nhan_vat/${folder}`,
-    `characters/${folder}/nam`, `characters/${folder}/nu`, `characters/${folder}/chung`, `characters/${folder}`,
-    `${folder}/nam`, `${folder}/nu`, `${folder}/chung`, folder,
-    ...extraAliases
-  ];
-  return scanFolderAliases(aliases, modelExts);
-}
-
-// ─── 2. Scan Characters (Nam, Nữ, Modular parts) ────────────
-const maleChars = scanFolderAliases(['nhan_vat/nam', 'characters/male', 'characters/man', 'characters/nam'], modelExts);
-const femaleChars = scanFolderAliases(['nhan_vat/nu', 'characters/female', 'characters/woman', 'characters/nu'], modelExts);
-
-const baseBodies = scanCharacterCategory('than_co_ban', ['characters/base_bodies', 'characters/body']);
-const faces = scanCharacterCategory('khuon_mat', ['characters/faces', 'characters/face']);
-const hairstyles = scanCharacterCategory('kieu_toc', ['characters/hairstyles', 'characters/hair']);
-const beards = scanCharacterCategory('kieu_rau', ['characters/beards', 'characters/beard']);
-const costumes = scanCharacterCategory('trang_phuc', ['characters/costumes', 'characters/outfits']);
-const accessories = scanCharacterCategory('phu_kien', ['characters/accessories']);
-const eyebrows = scanCharacterCategory('long_may', ['characters/eyebrows']);
-const eyes = scanCharacterCategory('mat', ['characters/eyes']);
-const noses = scanCharacterCategory('mui', ['characters/noses', 'characters/nose']);
-const mouths = scanCharacterCategory('mieng', ['characters/mouths', 'characters/mouth']);
-const hats = scanCharacterCategory('mu_non', ['characters/hats', 'characters/mu']);
-const shoes = scanCharacterCategory('giay_dep', ['characters/shoes', 'characters/giay']);
-const wings = scanCharacterCategory('canh', ['characters/wings']);
-const tails = scanCharacterCategory('duoi', ['characters/tails']);
-
 // 2.1 Assembled Characters (_lap_rap)
 const assembledChars = [];
 const possibleLapRapDirs = [
@@ -484,46 +452,111 @@ if (fs.existsSync(customMapDir)) {
   }
 }
 
-// Legacy root character files
-const rootCharFiles = [
-  ...scanFolderHierarchy(path.join(rootDir, 'characters'), 0, path.join(rootDir, 'characters'), modelExts).filter(f => !f.relPath.includes('/')),
-  ...scanFolderHierarchy(path.join(rootDir, 'nhan_vat'), 0, path.join(rootDir, 'nhan_vat'), modelExts).filter(f => !f.relPath.includes('/'))
-];
+// ─── 2. DYNAMICALLY SCAN CHARACTERS ────────────────────────────
+const charactersManifest = {};
+const charCategories = assetStructure?.character_structure?.categories || [];
 
-// ─── 3. Scan Props & World Environment ────────────────────────
-const maps = scanFolderAliases(['ban_do', 'maps'], modelExts);
-const trees = scanFolderAliases(['dao_cu/cay_coi', 'props/cay_coi', 'props/nature/trees'], modelExts);
-const rocks = scanFolderAliases(['dao_cu/da_dia_hinh', 'props/da_dia_hinh', 'props/nature/rocks'], modelExts);
+for (const cat of charCategories) {
+  if (cat.id === '_lap_rap') {
+    charactersManifest['_lap_rap'] = assembledChars;
+    continue;
+  }
+  const folder = cat.folder || cat.id;
+  const aliases = [
+    `nhan_vat/${folder}/nam`, `nhan_vat/${folder}/nu`, `nhan_vat/${folder}/chung`, `nhan_vat/${folder}`,
+    `characters/${folder}/nam`, `characters/${folder}/nu`, `characters/${folder}/chung`, `characters/${folder}`,
+    `${folder}/nam`, `${folder}/nu`, `${folder}/chung`, folder
+  ];
+  if (cat.id !== folder) {
+    aliases.push(`nhan_vat/${cat.id}/nam`, `nhan_vat/${cat.id}/nu`, `nhan_vat/${cat.id}/chung`, `nhan_vat/${cat.id}`);
+  }
+  charactersManifest[cat.id] = scanFolderAliases(aliases, modelExts);
+}
 
-const animalsLand = scanFolderAliases(['dao_cu/dong_vat/tren_can', 'props/dong_vat/tren_can', 'props/animals/terrestrial'], modelExts);
-const animalsWater = scanFolderAliases(['dao_cu/dong_vat/duoi_nuoc', 'props/dong_vat/duoi_nuoc', 'props/animals/aquatic'], modelExts);
-const animalsAir = scanFolderAliases(['dao_cu/dong_vat/tren_troi', 'props/dong_vat/tren_troi', 'props/animals/aerial'], modelExts);
+// ─── 3. DYNAMICALLY SCAN WORLD & PROPS ──────────────────────────
+const propsManifest = {};
+const propCategories = [...(assetStructure?.world_and_props_structure?.categories || [])];
+let mapsList = [];
+let skyboxManifest = {};
+let vfxManifest = {};
 
-const weapons = scanFolderAliases(['dao_cu/vu_khi', 'props/vu_khi', 'props/weapons'], modelExts);
-const tools = scanFolderAliases(['dao_cu/dung_cu', 'props/dung_cu', 'props/tools'], modelExts);
-const consumables = scanFolderAliases(['dao_cu/do_tieu_hao', 'props/do_tieu_hao', 'props/consumables'], modelExts);
-const furniture = scanFolderAliases(['dao_cu/noi_that', 'props/noi_that', 'props/furniture'], modelExts);
-const buildings = scanFolderAliases(['dao_cu/cong_trinh', 'props/cong_trinh', 'props/buildings'], modelExts);
-const vehicles = scanFolderAliases(['dao_cu/phuong_tien', 'props/phuong_tien', 'props/vehicles'], modelExts);
+for (const cat of propCategories) {
+  if (cat.id === 'ban_do') {
+    mapsList = scanFolderAliases(['ban_do', 'maps', cat.folder || 'ban_do'], modelExts);
+  } else if (cat.id === '_custom_ban_do') {
+    propsManifest['_custom_ban_do'] = customMaps;
+  } else if (cat.id === 'nhan_vat_da_rap') {
+    propsManifest['nhan_vat_da_rap'] = assembledChars;
+  } else if (cat.id === 'bau_troi') {
+    skyboxManifest = {};
+    const allSky = [];
+    for (const sub of (cat.subcategories || [])) {
+      const aliases = [`bau_troi/${sub.folder}`, `SkyBoxs/${sub.folder}`, sub.folder];
+      const scannedSub = scanFolderAliases(aliases, imageExts, { isImageCategory: true });
+      skyboxManifest[sub.id] = scannedSub;
+      allSky.push(...scannedSub);
+    }
+    skyboxManifest.all = allSky;
+  } else if (cat.id === 'hieu_ung') {
+    vfxManifest = {};
+    const allVfx = [];
+    for (const sub of (cat.subcategories || [])) {
+      const aliases = [`hieu_ung/${sub.folder}`, `vfx/${sub.folder}`, sub.folder];
+      const scannedSub = scanFolderAliases(aliases, [...modelExts, ...imageExts], { isImageCategory: true });
+      vfxManifest[sub.id] = scannedSub;
+      allVfx.push(...scannedSub);
+    }
+    vfxManifest.all = allVfx;
+  } else if (cat.subcategories && cat.subcategories.length > 0) {
+    propsManifest[cat.id] = {};
+    const allInCat = [];
+    for (const sub of cat.subcategories) {
+      const aliases = [
+        `dao_cu/${cat.folder}/${sub.folder}`, `props/${cat.folder}/${sub.folder}`,
+        `${cat.folder}/${sub.folder}`, `dao_cu/${cat.id}/${sub.id}`, `${cat.id}/${sub.id}`
+      ];
+      const scannedSub = scanFolderAliases(aliases, modelExts);
+      propsManifest[cat.id][sub.id] = scannedSub;
+      allInCat.push(...scannedSub);
+    }
+    propsManifest[cat.id].all = allInCat;
+  } else {
+    const aliases = [`dao_cu/${cat.folder}`, `props/${cat.folder}`, cat.folder];
+    if (cat.id !== cat.folder) {
+      aliases.push(`dao_cu/${cat.id}`, `props/${cat.id}`, cat.id);
+    }
+    propsManifest[cat.id] = scanFolderAliases(aliases, modelExts);
+  }
+}
 
-// Skybox images - scan specific subcategories cleanly with isImageCategory: true
-const skyboxDawn = scanFolderAliases(['bau_troi/binh_minh', 'SkyBoxs/binh_minh'], imageExts, { isImageCategory: true });
-const skyboxMorning = scanFolderAliases(['bau_troi/buoi_sang', 'SkyBoxs/buoi_sang'], imageExts, { isImageCategory: true });
-const skyboxNoon = scanFolderAliases(['bau_troi/buoi_trua', 'SkyBoxs/buoi_trua'], imageExts, { isImageCategory: true });
-const skyboxAfternoon = scanFolderAliases(['bau_troi/buoi_chieu', 'SkyBoxs/buoi_chieu'], imageExts, { isImageCategory: true });
-const skyboxNight = scanFolderAliases(['bau_troi/buoi_toi', 'SkyBoxs/buoi_toi'], imageExts, { isImageCategory: true });
-const skyboxStorm = scanFolderAliases(['bau_troi/giong_bao', 'SkyBoxs/giong_bao'], imageExts, { isImageCategory: true });
-const allSkyboxes = [...skyboxDawn, ...skyboxMorning, ...skyboxNoon, ...skyboxAfternoon, ...skyboxNight, ...skyboxStorm];
+// ─── 4. AUTO-DISCOVERY OF UNCONFIGURED FOLDERS ON DISK ─────────
+const knownTopFolders = new Set(['node_modules', '.git', 'animations', 'audio', 'ban_do', 'bau_troi', 'dao_cu', 'hieu_ung', 'nhan_vat', 'characters', 'props', 'maps', 'SkyBoxs', 'vfx', 'presets']);
+try {
+  const topEntries = fs.readdirSync(rootDir, { withFileTypes: true });
+  for (const entry of topEntries) {
+    if (entry.isDirectory() && !knownTopFolders.has(entry.name) && !entry.name.startsWith('.')) {
+      const discoveredItems = scanFolderHierarchy(path.join(rootDir, entry.name), 0, path.join(rootDir, entry.name), modelExts);
+      if (discoveredItems.length > 0) {
+        propsManifest[entry.name] = discoveredItems;
+        if (!propCategories.some(c => c.id === entry.name || c.folder === entry.name)) {
+          propCategories.push({
+            id: entry.name,
+            folder: entry.name,
+            label: formatDisplayName(entry.name),
+            icon: '📦'
+          });
+        }
+      }
+    }
+  }
+} catch (e) {
+  console.warn('Auto-discovery error:', e.message);
+}
 
-// VFX - scan specific subcategories cleanly
-const vfxCamXuc = scanFolderAliases(['hieu_ung/cam_xuc', 'vfx/cam_xuc'], [...modelExts, ...imageExts], { isImageCategory: true });
-const vfxBaoPhu = scanFolderAliases(['hieu_ung/bao_phu', 'vfx/bao_phu'], [...modelExts, ...imageExts], { isImageCategory: true });
-const vfxProps = [...vfxCamXuc, ...vfxBaoPhu];
-
-// Audio & Animations
+// ─── 5. Audio & Animations ─────────────────────────────────────
 const bgm = scanFolderAliases(['audio/bgm'], audioExts);
 const sfxCombat = scanFolderAliases(['audio/sfx/combat'], audioExts);
-const sfxInteract = scanFolderAliases(['audio/sfx/interactions'], audioExts);
+const sfxInteract = scanFolderAliases(['audio/sfx/interactions', 'audio/sfx/interaction'], audioExts);
 const sfxAmbient = scanFolderAliases(['audio/sfx/ambient'], audioExts);
 
 const animCombat = scanFolderAliases(['animations/combat'], animExts);
@@ -552,79 +585,61 @@ for (const pDir of mapPresetDirs) {
   }
 }
 
-// Compute total assets
-const allAssets = [
-  ...maleChars, ...femaleChars, ...baseBodies, ...faces, ...hairstyles, ...beards,
-  ...costumes, ...accessories, ...eyebrows, ...eyes, ...noses, ...mouths, ...hats, ...shoes, ...wings, ...tails,
-  ...rootCharFiles, ...maps, ...trees, ...rocks, ...animalsLand, ...animalsWater, ...animalsAir,
-  ...weapons, ...tools, ...consumables, ...furniture, ...buildings, ...vehicles,
-  ...allSkyboxes, ...vfxProps, ...bgm, ...sfxCombat, ...sfxInteract, ...sfxAmbient,
-  ...animCombat, ...animInteract, ...animXianxia, ...animLocomotion
-];
+// Collect all unique assets
+const allAssetsMap = new Map();
+function collectAssets(obj) {
+  if (!obj) return;
+  if (Array.isArray(obj)) {
+    obj.forEach(item => {
+      if (item && item.relPath) allAssetsMap.set(item.relPath, item);
+    });
+  } else if (typeof obj === 'object') {
+    Object.values(obj).forEach(val => collectAssets(val));
+  }
+}
+
+collectAssets(charactersManifest);
+collectAssets(propsManifest);
+collectAssets(skyboxManifest);
+collectAssets(vfxManifest);
+collectAssets(mapsList);
+collectAssets(bgm);
+collectAssets(sfxCombat);
+collectAssets(sfxInteract);
+collectAssets(sfxAmbient);
+collectAssets(animCombat);
+collectAssets(animInteract);
+collectAssets(animXianxia);
+collectAssets(animLocomotion);
+
+const allAssets = Array.from(allAssetsMap.values());
 const totalSize = allAssets.reduce((sum, item) => sum + parseFloat(item.sizeMB || 0), 0).toFixed(2);
 const timestamp = new Date().toISOString();
 
-// Build Clean, Lightweight Manifest
+// Build Clean, Dynamic Manifest
 const manifest = {
   version: "2.0.0",
   last_scanned: timestamp,
   total_assets: allAssets.length,
   total_size_mb: parseFloat(totalSize),
   structure: {
-    character_structure: assetStructure.character_structure,
-    world_and_props_structure: assetStructure.world_and_props_structure,
+    character_structure: {
+      ...assetStructure.character_structure,
+      categories: charCategories
+    },
+    world_and_props_structure: {
+      ...assetStructure.world_and_props_structure,
+      categories: propCategories
+    },
     gender_rules: assetStructure.gender_rules,
     available_actions: assetStructure.available_actions
   },
   map_presets: mapPresets,
-  characters: {
-    male: maleChars,
-    female: femaleChars,
-    base_bodies: [...baseBodies, ...rootCharFiles],
-    faces,
-    hairstyles,
-    beards,
-    costumes,
-    accessories,
-    eyebrows,
-    eyes,
-    noses,
-    mouths,
-    hats,
-    shoes,
-    wings,
-    tails,
-    _lap_rap: assembledChars
-  },
-  props: {
-    _custom_ban_do: customMaps,
-    nhan_vat_da_rap: assembledChars,
-    trees,
-    rocks,
-    animals: {
-      all: [...animalsLand, ...animalsWater, ...animalsAir],
-      terrestrial: animalsLand,
-      aquatic: animalsWater,
-      aerial: animalsAir
-    },
-    weapons,
-    tools,
-    consumables,
-    furniture,
-    buildings,
-    vehicles,
-    vfx: vfxProps
-  },
-  skyboxes: {
-    all: allSkyboxes,
-    binh_minh: skyboxDawn,
-    buoi_sang: skyboxMorning,
-    buoi_trua: skyboxNoon,
-    buoi_chieu: skyboxAfternoon,
-    buoi_toi: skyboxNight,
-    giong_bao: skyboxStorm
-  },
-  maps,
+  characters: charactersManifest,
+  props: propsManifest,
+  skyboxes: skyboxManifest,
+  vfx: vfxManifest,
+  maps: mapsList,
   audio: {
     bgm,
     sfx_combat: sfxCombat,
@@ -637,7 +652,6 @@ const manifest = {
     xianxia: animXianxia,
     locomotion: animLocomotion
   },
-  vfx: vfxProps,
   available_actions: assetStructure.available_actions || [
     { id: "idle", label: "Đứng Chờ (Idle)" },
     { id: "walk", label: "Bước Đi (Walk)" },
