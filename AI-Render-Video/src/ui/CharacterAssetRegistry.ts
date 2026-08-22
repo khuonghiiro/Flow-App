@@ -99,7 +99,7 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
               const list = JSON.parse(raw);
               if (Array.isArray(list)) {
                 list.forEach((p: any, idx: number) => {
-                  const preview = p.preview || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
+                  const preview = p.preview || (p.profile?.preview_image) || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
                   const bodyPath = p.body || p.base_body || p.than_co_ban || '';
                   customAssembled.push({
                     id: p.id || `custom_preset_${idx}`,

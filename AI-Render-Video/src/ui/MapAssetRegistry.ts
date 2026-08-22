@@ -39,7 +39,7 @@ const DEFAULT_MAPS: MapAssetItem[] = [
   {
     id: 'cathedral',
     name: 'Thánh Đường (Cathedral)',
-    path: 'assets/maps/cathedral.glb',
+    path: 'assets/ban_do/cathedral.glb',
     format: 'GLB',
     sizeMB: '103.80',
     category: 'ban_do',
@@ -48,20 +48,20 @@ const DEFAULT_MAPS: MapAssetItem[] = [
   {
     id: 'game_pirate_adventure_map',
     name: 'Đảo Hải Tặc (Pirate Island)',
-    path: 'assets/maps/game_pirate_adventure_map.glb',
+    path: 'assets/ban_do/game_pirate_adventure_map.glb',
     format: 'GLB',
     sizeMB: '7.48',
     category: 'ban_do',
     description: 'Bản đồ đảo biển hải tặc nhiệt đới',
   },
   {
-    id: 'medieval_fantasy_book',
-    name: 'Sách Phép Kỳ Ảo (Fantasy Book)',
-    path: 'assets/maps/medieval_fantasy_book.glb',
+    id: 'zone9_real_light',
+    name: 'Zone 9 Khu Đô Thị (Zone9 Real Light)',
+    path: 'assets/ban_do/zone9_real_light.glb',
     format: 'GLB',
-    sizeMB: '3.88',
+    sizeMB: '36.33',
     category: 'ban_do',
-    description: 'Bản đồ bối cảnh thế giới mở trong trang sách',
+    description: 'Khu bối cảnh đô thị chân thực',
   },
 ];
 
@@ -237,7 +237,7 @@ export async function fetchLiveMapCategories(): Promise<MapCategory[]> {
 
     // If structure is defined in root JSON, build dynamically from schema
     if (structure && Array.isArray(structure.categories)) {
-      return structure.categories.map((catConfig: any) => {
+      const categoriesList: MapCategory[] = structure.categories.map((catConfig: any) => {
         const catId = catConfig.id;
         const aliases = [catId, catConfig.folder, ...(catConfig.folder_aliases || [])];
         let rawItems: any[] = [];
@@ -333,13 +333,109 @@ export async function fetchLiveMapCategories(): Promise<MapCategory[]> {
           items,
         };
       });
+
+      return enrichWithLocalPresets(categoriesList);
     }
 
-    return buildFallbackCategories(manifestData);
+    return enrichWithLocalPresets(buildFallbackCategories(manifestData));
   } catch (err) {
     console.warn('Using default map category fallback:', err);
-    return buildFallbackCategories();
+    return enrichWithLocalPresets(buildFallbackCategories());
   }
+}
+
+function enrichWithLocalPresets(cats: MapCategory[]): MapCategory[] {
+  try {
+    const deduplicate = (list: MapAssetItem[]): MapAssetItem[] => {
+      const map = new Map<string, MapAssetItem>();
+      for (const item of list) {
+        const key = item.path || item.id;
+        if (!map.has(key)) map.set(key, item);
+      }
+      return Array.from(map.values());
+    };
+
+    // 1. Custom Maps (_custom_ban_do)
+    const customMapsRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('custom_map_designer_presets') : null;
+    if (customMapsRaw) {
+      const customMaps = JSON.parse(customMapsRaw);
+      if (Array.isArray(customMaps) && customMaps.length > 0) {
+        const customMapItems: MapAssetItem[] = customMaps.map((cm: any) => {
+          const rawName = cm.name || 'custom_map';
+          const cleanName = rawName.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\p{Emoji}/gu, '').trim();
+          const safeName = (cleanName || rawName)
+            .replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_')
+            .toLowerCase()
+            .replace(/^_+/, '') || 'custom_map';
+          return {
+            id: `local_map_${cm.name}`,
+            name: cm.name,
+            path: `assets/ban_do/_custom_ban_do/${safeName}.json`,
+            format: 'JSON',
+            sizeMB: '0.1',
+            previewUrl: cm.preview_image || undefined,
+            category: '_custom_ban_do',
+            description: `Bản đồ tự thiết kế (${cm.placed_objects?.length || 0} vật thể)`,
+          };
+        });
+
+        let customCat = cats.find((c) => c.id === '_custom_ban_do');
+        if (!customCat) {
+          customCat = {
+            id: '_custom_ban_do',
+            label: 'Bản Đồ Tự Thiết Kế',
+            icon: '🏰',
+            subCategories: [],
+            items: [],
+          };
+          cats.unshift(customCat);
+        }
+        customCat.items = deduplicate([...customMapItems, ...customCat.items]);
+      }
+    }
+
+    // 2. Assembled Characters (nhan_vat_da_rap)
+    const customCharsRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('custom_character_presets') : null;
+    if (customCharsRaw) {
+      const customChars = JSON.parse(customCharsRaw);
+      if (Array.isArray(customChars) && customChars.length > 0) {
+        const customCharItems: MapAssetItem[] = customChars.map((cc: any) => {
+          const rawName = cc.name || 'char';
+          const cleanName = rawName.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\p{Emoji}/gu, '').trim();
+          const safeName = (cleanName || rawName)
+            .replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_')
+            .toLowerCase()
+            .replace(/^_+/, '') || 'nhan_vat_lap_rap';
+          return {
+            id: `local_char_${cc.id || cc.name}`,
+            name: cc.name,
+            path: `assets/nhan_vat/_lap_rap/${safeName}.json`,
+            format: 'JSON',
+            sizeMB: '0.1',
+            previewUrl: cc.preview || cc.profile?.preview_image || undefined,
+            category: 'nhan_vat_da_rap',
+            description: `${cc.gender === 'female' ? 'Nữ' : 'Nam'} • Đã phối đồ modular`,
+          };
+        });
+
+        let charCat = cats.find((c) => c.id === 'nhan_vat_da_rap');
+        if (!charCat) {
+          charCat = {
+            id: 'nhan_vat_da_rap',
+            label: 'Nhân Vật Đã Lắp Ráp',
+            icon: '🧑',
+            subCategories: [],
+            items: [],
+          };
+          cats.push(charCat);
+        }
+        charCat.items = deduplicate([...customCharItems, ...charCat.items]);
+      }
+    }
+  } catch (e) {
+    console.warn('Enrich local presets error:', e);
+  }
+  return cats;
 }
 
 function buildFallbackCategories(manifestData?: any): MapCategory[] {

@@ -55,6 +55,7 @@ export interface PlacedObject {
   rotationY: number; // in degrees
   scale: number;
   visible: boolean;
+  orientation?: 'horizontal' | 'vertical';
 }
 
 export interface MapPresetJSON {
@@ -103,7 +104,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   const [toastMessage, setToastMessage] = useState('');
 
   // ─── Placed Objects / Multi-Map Layers State ──────────────────
-  const initialBaseMap = scene.environment?.map || 'assets/maps/cathedral.glb';
+  const initialBaseMap = (scene.environment?.map || 'assets/ban_do/cathedral.glb').replace(/^assets\/maps\//, 'assets/ban_do/');
   const [placedObjects, setPlacedObjects] = useState<PlacedObject[]>([
     {
       instanceId: `layer_base_map`,
@@ -176,6 +177,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
+      preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
@@ -403,22 +405,295 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
         existingMesh.rotation.y = (obj.rotationY * Math.PI) / 180;
         existingMesh.scale.set(totalScale, totalScale, totalScale);
         existingMesh.visible = obj.visible;
+
+        // If it's a 2D material/texture plane, update orientation (horizontal vs vertical)
+        const childMesh = existingMesh.children[0] as THREE.Mesh;
+        if (childMesh && childMesh.isMesh && (childMesh.geometry as THREE.PlaneGeometry)) {
+          const isVert = obj.orientation === 'vertical';
+          if (isVert) {
+            childMesh.rotation.x = 0;
+            childMesh.position.y = 4.0;
+          } else {
+            childMesh.rotation.x = -Math.PI / 2;
+            childMesh.position.y = 0.05;
+          }
+        }
       } else {
-        // Load new 3D model
+        // Load new 3D model or material texture
         if (!obj.path) return;
 
-        // If skybox image, load as background texture
-        if (obj.path.endsWith('.png') || obj.path.endsWith('.jpg')) {
+        const pathLower = obj.path.toLowerCase();
+        const isImage =
+          pathLower.endsWith('.png') ||
+          pathLower.endsWith('.jpg') ||
+          pathLower.endsWith('.jpeg') ||
+          pathLower.endsWith('.webp') ||
+          pathLower.endsWith('.bmp');
+
+        // CASE 1: 2D Images / Textures / Materials / Skyboxes
+        if (isImage) {
+          const cleanUrl = obj.path.startsWith('http') ? obj.path : (obj.path.startsWith('/') ? obj.path : `/${obj.path}`);
           const loader = new THREE.TextureLoader();
-          loader.load(obj.path.startsWith('/') ? obj.path : `/${obj.path}`, (tex) => {
-            if (sceneRef.current) {
-              tex.mapping = THREE.EquirectangularReflectionMapping;
-              sceneRef.current.background = tex;
-            }
-          });
+
+          if (obj.category === 'bau_troi') {
+            // Equirectangular Skybox
+            loader.load(cleanUrl, (tex) => {
+              if (sceneRef.current) {
+                tex.mapping = THREE.EquirectangularReflectionMapping;
+                tex.colorSpace = THREE.SRGBColorSpace;
+                sceneRef.current.background = tex;
+              }
+            });
+            return;
+          }
+
+          // 2D Material Quad / Ground Slab / Decal / Poster / Wall
+          loader.load(
+            cleanUrl,
+            (tex) => {
+              tex.colorSpace = THREE.SRGBColorSpace;
+              tex.wrapS = THREE.RepeatWrapping;
+              tex.wrapT = THREE.RepeatWrapping;
+
+              const aspect = (tex.image && tex.image.width && tex.image.height)
+                ? tex.image.width / tex.image.height
+                : 1.0;
+
+              const width = 8.0 * aspect;
+              const depth = 8.0;
+              const isVertical = obj.orientation === 'vertical';
+
+              const geo = new THREE.PlaneGeometry(width, depth);
+              const mat = new THREE.MeshStandardMaterial({
+                map: tex,
+                transparent: true,
+                side: THREE.DoubleSide,
+                roughness: 0.7,
+                metalness: 0.05,
+                depthWrite: true,
+                depthTest: true,
+              });
+              const mesh = new THREE.Mesh(geo, mat);
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+
+              if (isVertical) {
+                mesh.position.y = depth / 2;
+              } else {
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.position.y = 0.05;
+              }
+
+              const wrapper = new THREE.Group();
+              wrapper.name = `wrapper_${obj.instanceId}`;
+              wrapper.add(mesh);
+              (wrapper as any).userData = { baseScale: 1.0 };
+
+              const totalScale = obj.scale;
+              wrapper.position.set(obj.position[0], obj.position[1], obj.position[2]);
+              wrapper.rotation.y = (obj.rotationY * Math.PI) / 180;
+              wrapper.scale.set(totalScale, totalScale, totalScale);
+              wrapper.visible = obj.visible;
+
+              group.add(wrapper);
+              loadedMeshesMapRef.current.set(obj.instanceId, wrapper);
+            },
+            undefined,
+            (err) => console.warn(`Lỗi tải texture vật liệu cho ${obj.name}:`, err)
+          );
           return;
         }
 
+        // CASE 2: JSON Assembled Characters or Custom Map Presets
+        if (pathLower.endsWith('.json')) {
+          const cleanUrl = obj.path.startsWith('http') ? obj.path : (obj.path.startsWith('/') ? obj.path : `/${obj.path}`);
+
+          const loadJSONData = async (): Promise<any> => {
+            try {
+              const res = await fetch(encodeURI(cleanUrl));
+              if (res.ok) return await res.json();
+            } catch {}
+
+            // Fallback: Check local storage presets in memory
+            try {
+              const localChars = JSON.parse(localStorage.getItem('custom_character_presets') || '[]');
+              const foundChar = localChars.find((c: any) =>
+                obj.name.includes(c.name) || c.name.includes(obj.name) ||
+                obj.path.includes((c.name || '').replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_').toLowerCase())
+              );
+              if (foundChar) return foundChar.profile || foundChar;
+
+              const localMaps = JSON.parse(localStorage.getItem('custom_map_designer_presets') || '[]');
+              const foundMap = localMaps.find((m: any) => obj.name.includes(m.name) || m.name.includes(obj.name));
+              if (foundMap) return foundMap;
+            } catch {}
+
+            return null;
+          };
+
+          loadJSONData()
+            .then(async (data) => {
+              if (!data) return;
+
+              // Subcase 2A: Character Assembly (.json)
+              const assembly = data.assembly || data.profileData?.assembly || {
+                than_co_ban: data.than_co_ban || data.base_body,
+                trang_phuc: data.trang_phuc || data.costume,
+                khuon_mat: data.khuon_mat || data.face,
+                kieu_toc: data.kieu_toc || data.hairstyle,
+              };
+
+              if (assembly && (assembly.than_co_ban || assembly.base_body || data.than_co_ban || data.base_body)) {
+                const charGroup = new THREE.Group();
+                charGroup.name = `char_assembly_${obj.instanceId}`;
+
+                const partsToLoad: Array<{ key: string; path: string }> = [];
+                const rawBody = assembly.than_co_ban || assembly.base_body || data.than_co_ban || data.base_body;
+                if (rawBody) partsToLoad.push({ key: 'than_co_ban', path: rawBody });
+
+                const rawCostume = assembly.trang_phuc || assembly.costume || data.trang_phuc || data.costume;
+                if (rawCostume) partsToLoad.push({ key: 'trang_phuc', path: rawCostume });
+
+                const rawFace = assembly.khuon_mat || assembly.face || data.khuon_mat || data.face;
+                if (rawFace) partsToLoad.push({ key: 'khuon_mat', path: rawFace });
+
+                const rawHair = assembly.kieu_toc || assembly.hairstyle || data.kieu_toc || data.hairstyle;
+                if (rawHair) partsToLoad.push({ key: 'kieu_toc', path: rawHair });
+
+                // Extra parts: non_mu, giay_dep, rau_ria, long_may, etc.
+                for (const [k, v] of Object.entries(assembly)) {
+                  if (['than_co_ban', 'base_body', 'trang_phuc', 'costume', 'khuon_mat', 'face', 'kieu_toc', 'hairstyle', 'sliders'].includes(k)) continue;
+                  if (typeof v === 'string' && v.trim()) partsToLoad.push({ key: k, path: v });
+                }
+
+                const loadedParts: Array<{ key: string; model: THREE.Group }> = [];
+                for (const p of partsToLoad) {
+                  try {
+                    const m = await AssetLoaderRegistry.loadCharacterPart(p.path);
+                    m.traverse((child) => {
+                      if ((child as THREE.Mesh).isMesh) {
+                        const cm = child as THREE.Mesh;
+                        cm.castShadow = true;
+                        cm.receiveShadow = true;
+                        cm.frustumCulled = false;
+                        if (cm.material) {
+                          const mats = Array.isArray(cm.material) ? cm.material : [cm.material];
+                          mats.forEach((mat) => {
+                            mat.side = THREE.DoubleSide;
+                            mat.depthWrite = true;
+                            mat.needsUpdate = true;
+                          });
+                        }
+                      }
+                    });
+                    charGroup.add(m);
+                    loadedParts.push({ key: p.key, model: m });
+                  } catch (err) {
+                    console.warn(`Lỗi nạp bộ phận nhân vật ${p.key} (${p.path}):`, err);
+                  }
+                }
+
+                // Anatomical Snapping for Head/Face
+                const bodyItem = loadedParts.find((item) => item.key === 'than_co_ban');
+                const faceItem = loadedParts.find((item) => item.key === 'khuon_mat');
+                if (bodyItem && faceItem) {
+                  bodyItem.model.updateMatrixWorld(true);
+                  faceItem.model.updateMatrixWorld(true);
+
+                  let bodyFaceMesh: THREE.Mesh | null = null;
+                  bodyItem.model.traverse((c) => {
+                    if ((c as THREE.Mesh).isMesh && !bodyFaceMesh) {
+                      const n = c.name.toLowerCase();
+                      if (n.includes('face') || n.includes('head')) bodyFaceMesh = c as THREE.Mesh;
+                    }
+                  });
+
+                  let addonFaceMesh: THREE.Mesh | null = null;
+                  faceItem.model.traverse((c) => {
+                    if ((c as THREE.Mesh).isMesh && !addonFaceMesh) addonFaceMesh = c as THREE.Mesh;
+                  });
+
+                  if (bodyFaceMesh && addonFaceMesh) {
+                    const bodyFaceBox = new THREE.Box3().setFromObject(bodyFaceMesh);
+                    const bodyFaceCenter = new THREE.Vector3();
+                    bodyFaceBox.getCenter(bodyFaceCenter);
+
+                    const faceBox = new THREE.Box3().setFromObject(addonFaceMesh);
+                    const faceCenter = new THREE.Vector3();
+                    faceBox.getCenter(faceCenter);
+
+                    const delta = bodyFaceCenter.clone().sub(faceCenter);
+                    faceItem.model.position.add(delta);
+                    faceItem.model.updateMatrixWorld(true);
+                  }
+                }
+
+                // Scale & Center
+                const box = new THREE.Box3().setFromObject(charGroup);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z, 0.01);
+                const targetSize = 1.8;
+                const baseScale = targetSize / maxDim;
+
+                const center = box.getCenter(new THREE.Vector3());
+                charGroup.position.x = -center.x;
+                charGroup.position.z = -center.z;
+                charGroup.position.y = -box.min.y;
+
+                const wrapper = new THREE.Group();
+                wrapper.name = `wrapper_${obj.instanceId}`;
+                wrapper.add(charGroup);
+                (wrapper as any).userData = { baseScale };
+
+                const totalScale = obj.scale * baseScale;
+                wrapper.position.set(obj.position[0], obj.position[1], obj.position[2]);
+                wrapper.rotation.y = (obj.rotationY * Math.PI) / 180;
+                wrapper.scale.set(totalScale, totalScale, totalScale);
+                wrapper.visible = obj.visible;
+
+                group.add(wrapper);
+                loadedMeshesMapRef.current.set(obj.instanceId, wrapper);
+                return;
+              }
+
+              // Subcase 2B: Custom Map Preset with placed_objects (.json)
+              if (data.placed_objects && Array.isArray(data.placed_objects)) {
+                const subMapGroup = new THREE.Group();
+                subMapGroup.name = `submap_${obj.instanceId}`;
+
+                for (const subObj of data.placed_objects) {
+                  if (!subObj.path) continue;
+                  try {
+                    const subModel = await AssetLoaderRegistry.loadCharacterPart(subObj.path);
+                    subModel.position.set(subObj.position[0] || 0, subObj.position[1] || 0, subObj.position[2] || 0);
+                    subModel.rotation.y = ((subObj.rotationY || 0) * Math.PI) / 180;
+                    const s = subObj.scale || 1.0;
+                    subModel.scale.set(s, s, s);
+                    subMapGroup.add(subModel);
+                  } catch (e) {
+                    console.warn(`Lỗi nạp vật thể con trong submap:`, e);
+                  }
+                }
+
+                const wrapper = new THREE.Group();
+                wrapper.name = `wrapper_${obj.instanceId}`;
+                wrapper.add(subMapGroup);
+                (wrapper as any).userData = { baseScale: 1.0 };
+
+                wrapper.position.set(obj.position[0], obj.position[1], obj.position[2]);
+                wrapper.rotation.y = (obj.rotationY * Math.PI) / 180;
+                wrapper.scale.set(obj.scale, obj.scale, obj.scale);
+                wrapper.visible = obj.visible;
+
+                group.add(wrapper);
+                loadedMeshesMapRef.current.set(obj.instanceId, wrapper);
+              }
+            })
+            .catch((err) => console.warn(`Lỗi đọc file JSON ${obj.name}:`, err));
+          return;
+        }
+
+        // CASE 3: Standard 3D Models (.glb, .gltf, .fbx, .obj)
         AssetLoaderRegistry.loadCharacterPart(obj.path)
           .then((model) => {
             model.traverse((c) => {
@@ -426,26 +701,40 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                 const mesh = c as THREE.Mesh;
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
+                mesh.frustumCulled = false;
+                if (mesh.material) {
+                  const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                  mats.forEach((mat) => {
+                    mat.side = THREE.DoubleSide;
+                    mat.depthWrite = true;
+                    mat.needsUpdate = true;
+                  });
+                }
               }
             });
 
             // 1. Calculate natural bounding box dimensions
-            const box = new THREE.Box3().setFromObject(model);
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
+            const isBaseMap = obj.instanceId === 'layer_base_map' || (obj.category === 'ban_do' && obj.position[0] === 0 && obj.position[1] === 0 && obj.position[2] === 0 && placedObjects[0]?.instanceId === obj.instanceId);
 
-            const isBaseMap = obj.instanceId === 'layer_base_map';
-            const targetSize = getNaturalTargetSize(obj.category, isBaseMap);
             let baseScale = 1.0;
-            if (maxDim > 0) {
-              baseScale = targetSize / maxDim;
-            }
+            if (!isBaseMap) {
+              const box = new THREE.Box3().setFromObject(model);
+              const size = box.getSize(new THREE.Vector3());
+              const maxDim = Math.max(size.x, size.y, size.z);
+              const targetSize = getNaturalTargetSize(obj.category, false);
+              if (maxDim > 0) {
+                baseScale = targetSize / maxDim;
+              }
 
-            // 2. Align bottom center to origin (0, 0, 0) so object rests nicely on the floor grid
-            const center = box.getCenter(new THREE.Vector3());
-            model.position.x = -center.x;
-            model.position.z = -center.z;
-            model.position.y = -box.min.y;
+              // Align bottom center to origin (0, 0, 0) so props rest nicely on floor
+              const center = box.getCenter(new THREE.Vector3());
+              model.position.x = -center.x;
+              model.position.z = -center.z;
+              model.position.y = -box.min.y;
+            } else {
+              // Base Map retains 1:1 authoring coordinate space
+              model.position.set(0, 0, 0);
+            }
 
             // 3. Put in wrapper group with baseScale metadata
             const wrapper = new THREE.Group();
@@ -471,21 +760,57 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
 
   // ─── 4. Add / Place Object Logic (1-Click or Drag & Drop) ─────
   const handleAddObject = (item: MapAssetItem, dropPos: [number, number, number] = [0, 0, 0]) => {
+    // 1. If Skybox: Load into scene background directly
+    if (item.category === 'bau_troi' || item.subCategory?.includes('buoi_') || item.path.includes('bau_troi') || item.path.includes('SkyBoxs')) {
+      const cleanUrl = item.path.startsWith('http') ? item.path : (item.path.startsWith('/') ? item.path : `/${item.path}`);
+      const loader = new THREE.TextureLoader();
+      loader.load(cleanUrl, (tex) => {
+        if (sceneRef.current) {
+          tex.mapping = THREE.EquirectangularReflectionMapping;
+          tex.colorSpace = THREE.SRGBColorSpace;
+          sceneRef.current.background = tex;
+          triggerToast(`🌌 Đã đổi bầu trời thành "${item.name}"`);
+        }
+      });
+      return;
+    }
+
+    // 2. Add ANY Map, Sub-map, Material, Prop, Building, Vehicle, Tree, Animal, Weapon, Character as a new layer!
+    // No restrictions! Multi-Map layering is fully supported!
+    const isMapCategory = item.category === 'ban_do' || item.category === 'maps' || item.category === '_custom_ban_do';
+    const isImageMaterial = item.path.toLowerCase().endsWith('.png') ||
+      item.path.toLowerCase().endsWith('.jpg') ||
+      item.path.toLowerCase().endsWith('.webp') ||
+      item.path.toLowerCase().endsWith('.jpeg') ||
+      item.path.toLowerCase().endsWith('.bmp');
+
+    // Smart initial position offset if spawned at origin to avoid complete overlap
+    let finalPos: [number, number, number] = [...dropPos];
+    if (dropPos[0] === 0 && dropPos[2] === 0 && placedObjects.length > 0) {
+      if (isMapCategory && placedObjects.length >= 1) {
+        finalPos = [placedObjects.length * 30, 0, 0];
+      } else if (!isMapCategory) {
+        finalPos = [(placedObjects.length % 6) * 3 - 6, 0, Math.floor(placedObjects.length / 6) * 3 - 3];
+      }
+    }
+
     const newInstance: PlacedObject = {
       instanceId: `inst_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       assetId: item.id,
       name: item.name,
       path: item.path,
       category: item.category,
-      position: dropPos,
+      position: finalPos,
       rotationY: 0,
       scale: 1.0,
       visible: true,
+      orientation: isImageMaterial ? 'horizontal' : undefined,
     };
 
     setPlacedObjects((prev) => [...prev, newInstance]);
     setSelectedInstanceId(newInstance.instanceId);
-    triggerToast(`Đã thêm "${item.name}" vào bản đồ tại [${dropPos[0]}, ${dropPos[2]}]`);
+    setShowLayersInspector(true);
+    triggerToast(`✅ Đã thêm lớp "${item.name}" vào 3D Multi-Map!`);
   };
 
   // ─── 5. Drag & Drop Handler with Raycasting on Ground ────────
@@ -593,7 +918,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       snapshotDataUrl = rendererRef.current.domElement.toDataURL('image/png');
     }
 
-    const safeName = name.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_').toLowerCase();
+    const safeName = name.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_').toLowerCase();
     const newPreset: MapPresetJSON = {
       version: '2.0',
       name,
@@ -601,7 +926,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       time_of_day: timeOfDay,
       sun_direction: sunDirection,
       sun_elevation: sunElevation,
-      preview_image: snapshotDataUrl,
+      preview_image: `assets/ban_do/_custom_ban_do/${safeName}.png`,
       placed_objects: placedObjects,
       created_at: new Date().toISOString(),
     };
@@ -612,6 +937,17 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       localStorage.setItem('custom_map_designer_presets', JSON.stringify(updatedList));
     } catch {}
 
+    // Post to server API to save directly in assets/ban_do/_custom_ban_do/
+    fetch('/api/save-map', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: safeName,
+        mapData: newPreset,
+        previewImageBase64: snapshotDataUrl,
+      }),
+    }).catch((err) => console.warn('Lỗi lưu bản đồ qua API:', err));
+
     // Download JSON & PNG
     const jsonBlob = new Blob([JSON.stringify(newPreset, null, 2)], { type: 'application/json' });
     const jsonUrl = URL.createObjectURL(jsonBlob);
@@ -621,14 +957,14 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
     aJson.click();
     URL.revokeObjectURL(jsonUrl);
 
-    if (snapshotDataUrl) {
+    if (snapshotDataUrl && snapshotDataUrl.includes('base64,')) {
       const aImg = document.createElement('a');
       aImg.href = snapshotDataUrl;
       aImg.download = `${safeName}.png`;
       aImg.click();
     }
 
-    triggerToast(`Đã lưu cấu hình Map & tải về "${safeName}.json" + "${safeName}.png" (cho thư mục assets/ban_do/_custom_ban_do/)`);
+    triggerToast(`💾 Đã lưu vào assets/ban_do/_custom_ban_do/ & tải về "${safeName}.json" + "${safeName}.png"!`);
   };
 
   const handleExportJSON = () => {
@@ -638,6 +974,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       snapshotDataUrl = rendererRef.current.domElement.toDataURL('image/png');
     }
 
+    const filename = `map_preset_${Date.now()}`;
     const presetData: MapPresetJSON = {
       version: '2.0',
       name: 'Custom_Map_World',
@@ -645,19 +982,19 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
       time_of_day: timeOfDay,
       sun_direction: sunDirection,
       sun_elevation: sunElevation,
-      preview_image: snapshotDataUrl,
+      preview_image: `assets/ban_do/_custom_ban_do/${filename}.png`,
       placed_objects: placedObjects,
       created_at: new Date().toISOString(),
     };
-    const filename = `map_preset_${Date.now()}.json`;
+    const jsonFilename = `${filename}.json`;
     const blob = new Blob([JSON.stringify(presetData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = jsonFilename;
     a.click();
     URL.revokeObjectURL(url);
-    triggerToast(`Đã xuất tệp ${filename}!`);
+    triggerToast(`Đã xuất tệp ${jsonFilename}!`);
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -684,7 +1021,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
   // ─── 8. Apply All Placed Maps & Props to Master Scene ─────────
   const handleApplyToMasterScene = () => {
     const primaryMapObj = placedObjects.find((o) => o.category === 'ban_do' || o.category === 'maps') || placedObjects[0];
-    const primaryMapPath = primaryMapObj?.path || 'assets/maps/cathedral.glb';
+    const primaryMapPath = (primaryMapObj?.path || 'assets/ban_do/cathedral.glb').replace(/^assets\/maps\//, 'assets/ban_do/');
 
     if (onSelectMap) {
       onSelectMap(primaryMapPath);
@@ -1314,6 +1651,60 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                     </div>
                   </div>
 
+                  {/* Orientation Toggle for 2D Material Textures */}
+                  {(selectedObject.path.toLowerCase().endsWith('.png') ||
+                    selectedObject.path.toLowerCase().endsWith('.jpg') ||
+                    selectedObject.path.toLowerCase().endsWith('.jpeg') ||
+                    selectedObject.path.toLowerCase().endsWith('.webp')) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8', width: 55 }}>Kiểu Đặt:</span>
+                      <button
+                        onClick={() => updateSelectedObject({ orientation: 'horizontal' })}
+                        style={{
+                          flex: 1,
+                          padding: '3px 6px',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          background:
+                            selectedObject.orientation !== 'vertical'
+                              ? 'rgba(56, 189, 248, 0.25)'
+                              : 'rgba(255,255,255,0.05)',
+                          border:
+                            selectedObject.orientation !== 'vertical'
+                              ? '1px solid #38bdf8'
+                              : '1px solid rgba(255,255,255,0.1)',
+                          color: selectedObject.orientation !== 'vertical' ? '#38bdf8' : '#94a3b8',
+                        }}
+                      >
+                        🟫 Mặt Sàn (Nằm Ngang)
+                      </button>
+                      <button
+                        onClick={() => updateSelectedObject({ orientation: 'vertical' })}
+                        style={{
+                          flex: 1,
+                          padding: '3px 6px',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          background:
+                            selectedObject.orientation === 'vertical'
+                              ? 'rgba(168, 85, 247, 0.25)'
+                              : 'rgba(255,255,255,0.05)',
+                          border:
+                            selectedObject.orientation === 'vertical'
+                              ? '1px solid #a855f7'
+                              : '1px solid rgba(255,255,255,0.1)',
+                          color: selectedObject.orientation === 'vertical' ? '#c084fc' : '#94a3b8',
+                        }}
+                      >
+                        🖼️ Bức Tường (Đứng Thẳng)
+                      </button>
+                    </div>
+                  )}
+
                   {/* Rotation Y with Slider & Numeric Input */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: '#94a3b8', width: 55 }}>Góc Xoay:</span>
@@ -1355,7 +1746,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                       <input
                         type="range"
                         min="0.05"
-                        max="5.0"
+                        max="10.0"
                         step="0.05"
                         value={selectedObject.scale}
                         onChange={(e) => updateSelectedObject({ scale: parseFloat(e.target.value) || 0.05 })}
@@ -1364,7 +1755,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                       <input
                         type="number"
                         min="0.01"
-                        max="50"
+                        max="100"
                         step="0.1"
                         value={selectedObject.scale}
                         onChange={(e) => {
@@ -1385,8 +1776,8 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
                       <span style={{ fontSize: 10, color: '#4ade80' }}>x</span>
                     </div>
                     {/* Quick Scale Presets */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 53 }}>
-                      {[0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 3.0].map((sVal) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 53, flexWrap: 'wrap' }}>
+                      {[0.25, 0.5, 1.0, 2.0, 5.0, 10.0].map((sVal) => (
                         <button
                           key={sVal}
                           onClick={() => updateSelectedObject({ scale: sVal })}

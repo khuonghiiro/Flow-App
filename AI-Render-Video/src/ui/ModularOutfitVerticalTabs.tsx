@@ -47,6 +47,7 @@ interface ModularOutfitVerticalTabsProps {
   onAssemblyChange: (updatedAssembly: CharacterAssembly) => void;
   sliders: FaceSliderConfig;
   onSlidersChange: (sliders: FaceSliderConfig) => void;
+  onCaptureSnapshot?: () => string;
 }
 
 export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps> = ({
@@ -56,6 +57,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   onAssemblyChange,
   sliders,
   onSlidersChange,
+  onCaptureSnapshot,
 }) => {
   const [categories, setCategories] = useState<CharacterCategory[]>(CHARACTER_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState('than_co_ban');
@@ -262,6 +264,41 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     let name = '';
     try { name = prompt('Nhập tên cho mẫu phối đồ này:', charName) || ''; } catch {}
     if (!name) name = charName || 'Nhân Vật Mới';
+
+    // 1. Capture snapshot directly from 3D Character Viewport
+    let snapshotDataUrl = '';
+    if (onCaptureSnapshot) {
+      snapshotDataUrl = onCaptureSnapshot();
+    }
+
+    const safeName = (name || 'nhan_vat_lap_rap')
+      .replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_')
+      .toLowerCase();
+
+    const customAttrMap = customAttributes.reduce((acc, curr) => {
+      if (curr.key.trim()) acc[curr.key.trim()] = curr.value;
+      return acc;
+    }, {} as Record<string, any>);
+
+    const profile: CharacterProfileJSON = {
+      ...buildCharacterProfile(name, { ...assembly, sliders: { ...currentSliders } }, charBiography, {
+        age: typeof charAge === 'number' ? charAge : 20,
+        gender: charGender,
+        height_cm: charHeightCm,
+        education_level: charEducation,
+        occupation: charOccupation,
+        faction: charFaction,
+        personality: charPersonality,
+        biography: charBiography,
+        voice_style: charVoiceStyle,
+        power_level: charPowerLevel,
+        element: charElement,
+        skills: charSkills,
+        custom_attributes: customAttrMap,
+      }),
+      preview_image: `assets/nhan_vat/_lap_rap/${safeName}.png`,
+    };
+
     const newPreset: CustomPreset = {
       id: `preset_${Date.now()}`,
       name: `${currentBody.includes('manekina') ? '👩' : '🧑'} ${name}`,
@@ -271,15 +308,46 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       gender: currentBody.includes('manekina') ? 'female' : 'male',
       assembly: { ...assembly, sliders: { ...currentSliders } },
       sliders: { ...currentSliders },
+      preview: snapshotDataUrl || `assets/nhan_vat/_lap_rap/${safeName}.png`,
+      profile: profile as any,
     };
-    const updated = [newPreset, ...customPresets];
+
+    const updated = [newPreset, ...customPresets.filter((p) => p.name !== newPreset.name)];
     setCustomPresets(updated);
     try {
       localStorage.setItem('custom_character_presets', JSON.stringify(updated));
       window.dispatchEvent(new Event('flow_assets_updated'));
     } catch {}
-    setPresetSavedToast(`Đã lưu mẫu "${name}" thành công!`);
-    setTimeout(() => setPresetSavedToast(''), 3500);
+
+    // 2. Save directly to project disk: assets/nhan_vat/_lap_rap/
+    fetch('/api/save-character', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: safeName,
+        profileData: profile,
+        previewImageBase64: snapshotDataUrl,
+      }),
+    }).catch((err) => console.warn('Lỗi lưu nhân vật qua API:', err));
+
+    // 3. Trigger client download so user has file on PC Downloads
+    const jsonBlob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    const aJson = document.createElement('a');
+    aJson.href = jsonUrl;
+    aJson.download = `${safeName}.json`;
+    aJson.click();
+    URL.revokeObjectURL(jsonUrl);
+
+    if (snapshotDataUrl && snapshotDataUrl.includes('base64,')) {
+      const aImg = document.createElement('a');
+      aImg.href = snapshotDataUrl;
+      aImg.download = `${safeName}.png`;
+      aImg.click();
+    }
+
+    setPresetSavedToast(`💾 Đã lưu vào assets/nhan_vat/_lap_rap/ & tải về "${safeName}.json" + "${safeName}.png"!`);
+    setTimeout(() => setPresetSavedToast(''), 5000);
   };
 
   const handleDeletePreset = (id: string, e: React.MouseEvent) => {
@@ -294,11 +362,12 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
 
   const handleExportJSON = () => {
     let snapshotDataUrl = '';
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      try { snapshotDataUrl = canvas.toDataURL('image/png'); } catch {}
+    if (onCaptureSnapshot) {
+      snapshotDataUrl = onCaptureSnapshot();
     }
-    const safeName = (charName || 'nhan_vat_lap_rap').replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF]/g, '_').toLowerCase();
+    const safeName = (charName || 'nhan_vat_lap_rap')
+      .replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_')
+      .toLowerCase();
     const customAttrMap = customAttributes.reduce((acc, curr) => {
       if (curr.key.trim()) acc[curr.key.trim()] = curr.value;
       return acc;
@@ -320,8 +389,19 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
         skills: charSkills,
         custom_attributes: customAttrMap,
       }),
-      preview_image: snapshotDataUrl,
+      preview_image: `assets/nhan_vat/_lap_rap/${safeName}.png`,
     };
+
+    // Save to server disk
+    fetch('/api/save-character', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: safeName,
+        profileData: profile,
+        previewImageBase64: snapshotDataUrl,
+      }),
+    }).catch((err) => console.warn('Lỗi lưu nhân vật qua API:', err));
 
     const jsonBlob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
     const jsonUrl = URL.createObjectURL(jsonBlob);
@@ -331,7 +411,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     aJson.click();
     URL.revokeObjectURL(jsonUrl);
 
-    if (snapshotDataUrl) {
+    if (snapshotDataUrl && snapshotDataUrl.includes('base64,')) {
       const aImg = document.createElement('a');
       aImg.href = snapshotDataUrl;
       aImg.download = `${safeName}.png`;
@@ -347,6 +427,8 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       gender: charGender === 'female' ? 'female' : 'male',
       assembly: { ...assembly, sliders: { ...currentSliders } },
       sliders: { ...currentSliders },
+      preview: snapshotDataUrl || undefined,
+      profile: profile as any,
     };
     const updatedOnExport = [exportedPreset, ...customPresets.filter((p) => p.name !== exportedPreset.name)];
     setCustomPresets(updatedOnExport);
@@ -355,7 +437,7 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       window.dispatchEvent(new Event('flow_assets_updated'));
     } catch {}
 
-    setJsonImportToast(`✅ Đã xuất "${safeName}.json" + "${safeName}.png"!`);
+    setJsonImportToast(`💾 Đã lưu vào assets/nhan_vat/_lap_rap/ & tải về "${safeName}.json" + "${safeName}.png"!`);
     setTimeout(() => setJsonImportToast(''), 5000);
   };
 
@@ -427,6 +509,12 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const handleApplyToCurrentActor = () => {
     const targetActor = scene.actors.find((a) => a.id === selectedActorId) || scene.actors[0];
     if (!targetActor) return;
+
+    let snapshotDataUrl = '';
+    if (onCaptureSnapshot) {
+      snapshotDataUrl = onCaptureSnapshot();
+    }
+
     const customAttrMap = customAttributes.reduce((acc, curr) => {
       if (curr.key.trim()) acc[curr.key.trim()] = curr.value;
       return acc;
@@ -463,6 +551,8 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
       gender: charGender === 'female' ? 'female' : 'male',
       assembly: { ...assembly, sliders: { ...currentSliders } },
       sliders: { ...currentSliders },
+      preview: snapshotDataUrl || undefined,
+      profile: profileData as any,
     };
     const existingIndex = customPresets.findIndex((p) => p.id === appliedPreset.id || p.name === appliedPreset.name);
     const updatedPresets = existingIndex >= 0
@@ -486,6 +576,11 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const handleSaveProfileModal = () => {
     if (!charName.trim()) { setValidationError('Vui lòng nhập Tên Nhân Vật!'); return; }
     if (charAge === '' || Number(charAge) <= 0) { setValidationError('Vui lòng nhập Số Tuổi hợp lệ (> 0)!'); return; }
+
+    let snapshotDataUrl = '';
+    if (onCaptureSnapshot) {
+      snapshotDataUrl = onCaptureSnapshot();
+    }
 
     const customAttrMap = customAttributes.reduce((acc, curr) => {
       if (curr.key.trim()) acc[curr.key.trim()] = curr.value;
@@ -511,6 +606,22 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
     };
 
     const body = assembly?.than_co_ban || assembly?.base_body || categories.find((c) => c.id === 'than_co_ban')?.items[0]?.path || '';
+    const safeName = charName.trim().replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF\-]/g, '_').toLowerCase();
+
+    // Save to disk
+    const fullProfileJSON: CharacterProfileJSON = {
+      ...buildCharacterProfile(charName.trim(), { ...assembly, sliders: { ...currentSliders } }, charBiography, profileData),
+      preview_image: `assets/nhan_vat/_lap_rap/${safeName}.png`,
+    };
+    fetch('/api/save-character', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: safeName,
+        profileData: fullProfileJSON,
+        previewImageBase64: snapshotDataUrl,
+      }),
+    }).catch((err) => console.warn('Lỗi lưu nhân vật qua API:', err));
 
     if (profileModalMode === 'create') {
       const newId = `actor_${Math.random().toString(36).substring(2, 7)}`;
@@ -534,6 +645,8 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
         gender: charGender === 'female' ? 'female' : 'male',
         assembly: { ...assembly, sliders: { ...currentSliders } },
         sliders: { ...currentSliders },
+        preview: snapshotDataUrl || undefined,
+        profile: profileData as any,
       };
       const updatedPresets = [newPreset, ...customPresets.filter((p) => p.name !== newPreset.name && p.id !== newPreset.id)];
       setCustomPresets(updatedPresets);
@@ -557,6 +670,8 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
           gender: charGender === 'female' ? 'female' : 'male',
           assembly: { ...assembly, sliders: { ...currentSliders } },
           sliders: { ...currentSliders },
+          preview: snapshotDataUrl || undefined,
+          profile: profileData as any,
         };
         const updatedPresets = [editPreset, ...customPresets.filter((p) => p.name !== editPreset.name && p.id !== editPreset.id)];
         setCustomPresets(updatedPresets);
@@ -958,7 +1073,7 @@ function AssembledCharactersPanel({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
         {presets.map((p) => {
           const isCurrentActive = currentBody === p.body && currentCostume === p.costume && currentFace === p.face;
-          const preview = p.preview || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
+          const preview = p.preview || (p.profile?.preview_image) || (p.costume ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume) : (p.body?.endsWith('.glb') ? p.body.replace('.glb', '.png') : ''));
 
           return (
             <div

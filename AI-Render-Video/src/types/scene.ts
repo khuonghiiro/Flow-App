@@ -304,6 +304,7 @@ export interface CharacterProfileData {
   custom_attributes?: Record<string, any>; // Các thuộc tính tùy biến mở rộng tự do
   assembly?: CharacterAssembly; // Cấu hình lắp ráp 3D đầy đủ
   sliders?: FaceSliderConfig;   // Cấu hình thanh trượt khuôn mặt
+  preview_image?: string;       // Ảnh snapshot kết xuất từ 3D Viewport
 }
 
 export interface ActorConfig {

@@ -529,10 +529,64 @@ for (const cat of propCategories) {
   }
 }
 
-// ─── 4. AUTO-DISCOVERY OF UNCONFIGURED FOLDERS ON DISK ─────────
+// ─── 4. AUTO-DISCOVERY OF UNCONFIGURED FOLDERS & ROOT ASSETS ON DISK ─────────
 const knownTopFolders = new Set(['node_modules', '.git', 'animations', 'audio', 'ban_do', 'bau_troi', 'dao_cu', 'hieu_ung', 'nhan_vat', 'characters', 'props', 'maps', 'SkyBoxs', 'vfx', 'presets']);
 try {
   const topEntries = fs.readdirSync(rootDir, { withFileTypes: true });
+
+  // 4.1 Root-level Model Files (e.g. assets/doan_tau_sat.glb, assets/xe_bus.glb, assets/goc_cay_co_reu.glb)
+  const rootModelFiles = topEntries.filter(e => !e.isDirectory() && modelExts.includes(path.extname(e.name).toLowerCase()));
+  for (const file of rootModelFiles) {
+    const fullPath = path.join(rootDir, file.name);
+    const stats = fs.statSync(fullPath);
+    const ext = path.extname(file.name).toLowerCase();
+    const relPath = file.name;
+    const lowerName = file.name.toLowerCase();
+    const uniqueId = `root_${file.name.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase()}`;
+
+    // Look for companion image
+    let previewUrl = '';
+    const baseName = path.parse(file.name).name;
+    for (const imgExt of imageExts) {
+      const candidate = `${baseName}${imgExt}`;
+      if (fs.existsSync(path.join(rootDir, candidate))) {
+        previewUrl = `assets/${candidate}`;
+        break;
+      }
+    }
+
+    const item = {
+      id: uniqueId,
+      name: formatDisplayName(file.name),
+      filename: file.name,
+      relPath: relPath,
+      path: `assets/${relPath}`,
+      format: ext.replace('.', '').toUpperCase(),
+      sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+      gender: detectGender(relPath),
+      previewUrl: previewUrl || undefined,
+      description: `${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
+    };
+
+    // Classify into best category
+    if (lowerName.includes('xe') || lowerName.includes('tau') || lowerName.includes('bus') || lowerName.includes('thuyen') || lowerName.includes('car')) {
+      if (!propsManifest['phuong_tien']) propsManifest['phuong_tien'] = [];
+      if (Array.isArray(propsManifest['phuong_tien'])) propsManifest['phuong_tien'].push(item);
+    } else if (lowerName.includes('cay') || lowerName.includes('goc') || lowerName.includes('hoa') || lowerName.includes('la') || lowerName.includes('tree')) {
+      if (!propsManifest['cay_coi']) propsManifest['cay_coi'] = [];
+      if (Array.isArray(propsManifest['cay_coi'])) propsManifest['cay_coi'].push(item);
+    } else if (lowerName.includes('nha') || lowerName.includes('house') || lowerName.includes('cabin') || lowerName.includes('building')) {
+      if (!propsManifest['cong_trinh']) propsManifest['cong_trinh'] = [];
+      if (Array.isArray(propsManifest['cong_trinh'])) propsManifest['cong_trinh'].push(item);
+    } else if (lowerName.includes('map') || lowerName.includes('island') || lowerName.includes('cathedral')) {
+      mapsList.push(item);
+    } else {
+      if (!propsManifest['noi_that']) propsManifest['noi_that'] = [];
+      if (Array.isArray(propsManifest['noi_that'])) propsManifest['noi_that'].push(item);
+    }
+  }
+
+  // 4.2 Discovered Unconfigured Subdirectories
   for (const entry of topEntries) {
     if (entry.isDirectory() && !knownTopFolders.has(entry.name) && !entry.name.startsWith('.')) {
       const discoveredItems = scanFolderHierarchy(path.join(rootDir, entry.name), 0, path.join(rootDir, entry.name), modelExts);

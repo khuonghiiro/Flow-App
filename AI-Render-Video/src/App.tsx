@@ -180,7 +180,7 @@ export const App: React.FC = () => {
         ? glbSource
         : (glbSource.startsWith('assets/') || glbSource.startsWith('/assets/')
           ? (glbSource.startsWith('/') ? glbSource : `/${glbSource}`)
-          : `/assets/maps/${glbSource}`);
+          : `/assets/ban_do/${glbSource}`);
 
       try {
         setIsLoadingMap(true);

@@ -276,7 +276,13 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
 
     // If explicit preview URL is provided and has not failed, use it
     if (previewUrl && previewUrl.trim() !== '' && !hasFailed) {
-      const pUrl = previewUrl.startsWith('/') || previewUrl.startsWith('http') ? previewUrl : `/${previewUrl}`;
+      const pUrl =
+        previewUrl.startsWith('/') ||
+        previewUrl.startsWith('http') ||
+        previewUrl.startsWith('data:') ||
+        previewUrl.startsWith('blob:')
+          ? previewUrl
+          : `/${previewUrl}`;
       setImgSrc(pUrl);
       return;
     }

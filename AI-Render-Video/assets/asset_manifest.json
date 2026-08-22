@@ -1,8 +1,8 @@
 {
   "version": "2.0.0",
-  "last_scanned": "2026-08-22T04:39:02.134Z",
-  "total_assets": 31,
-  "total_size_mb": 20.27,
+  "last_scanned": "2026-08-22T12:39:07.804Z",
+  "total_assets": 43,
+  "total_size_mb": 291.32,
   "structure": {
     "character_structure": {
       "root_folders": [
@@ -534,150 +534,143 @@
     "than_co_ban": [
       {
         "id": "nhan_vat_than_co_ban_nam_body_base___manekin",
-        "name": "Body Base Manekin",
-        "filename": "body_base_-_manekin.png",
-        "relPath": "nhan_vat/than_co_ban/nam/body_base_-_manekin.png",
-        "path": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.03",
+        "name": "Nam",
+        "filename": "nam",
+        "relPath": "nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+        "path": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+        "bundleDir": "nhan_vat/than_co_ban/nam",
+        "isFolderBundle": true,
+        "format": "GLB",
+        "sizeMB": "0.57",
         "gender": "male",
-        "previewUrl": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Body Base Manekin (PNG)"
+        "description": "Nam (Model Bundle: .GLB)"
       },
       {
         "id": "nhan_vat_than_co_ban_nu_body_base___manekina",
-        "name": "Body Base Manekina",
-        "filename": "body_base_-_manekina.png",
-        "relPath": "nhan_vat/than_co_ban/nu/body_base_-_manekina.png",
-        "path": "assets/nhan_vat/than_co_ban/nu/body_base_-_manekina.png",
-        "format": "PNG",
-        "sizeMB": "0.03",
+        "name": "Nữ",
+        "filename": "nu",
+        "relPath": "nhan_vat/than_co_ban/nu/body_base_-_manekina.glb",
+        "path": "assets/nhan_vat/than_co_ban/nu/body_base_-_manekina.glb",
+        "bundleDir": "nhan_vat/than_co_ban/nu",
+        "isFolderBundle": true,
+        "format": "GLB",
+        "sizeMB": "0.56",
         "gender": "female",
-        "previewUrl": "assets/nhan_vat/than_co_ban/nu/body_base_-_manekina.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Body Base Manekina (PNG)"
+        "description": "Nữ (Model Bundle: .GLB)"
       }
     ],
     "trang_phuc": [
       {
         "id": "nhan_vat_trang_phuc_nam_amber_nectar___manekin",
         "name": "Amber Nectar Manekin",
-        "filename": "amber_nectar_-_manekin.png",
-        "relPath": "nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.png",
-        "path": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.05",
+        "filename": "amber_nectar_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "3.43",
         "gender": "male",
         "previewUrl": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Amber Nectar Manekin (PNG)"
+        "description": "Amber Nectar Manekin (GLB)"
       },
       {
         "id": "nhan_vat_trang_phuc_nam_precision_strike___manekin",
         "name": "Precision Strike Manekin",
-        "filename": "precision_strike_-_manekin.png",
-        "relPath": "nhan_vat/trang_phuc/nam/precision_strike_-_manekin.png",
-        "path": "assets/nhan_vat/trang_phuc/nam/precision_strike_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.04",
+        "filename": "precision_strike_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/precision_strike_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/precision_strike_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "1.15",
         "gender": "male",
         "previewUrl": "assets/nhan_vat/trang_phuc/nam/precision_strike_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Precision Strike Manekin (PNG)"
+        "description": "Precision Strike Manekin (GLB)"
       },
       {
         "id": "nhan_vat_trang_phuc_nam_scary_cat___manekin",
         "name": "Scary Cat Manekin",
-        "filename": "scary_cat_-_manekin.png",
-        "relPath": "nhan_vat/trang_phuc/nam/scary_cat_-_manekin.png",
-        "path": "assets/nhan_vat/trang_phuc/nam/scary_cat_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.04",
+        "filename": "scary_cat_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/scary_cat_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/scary_cat_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "0.90",
         "gender": "male",
         "previewUrl": "assets/nhan_vat/trang_phuc/nam/scary_cat_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Scary Cat Manekin (PNG)"
+        "description": "Scary Cat Manekin (GLB)"
       },
       {
         "id": "nhan_vat_trang_phuc_nam_sleuths_verdict___manekin",
         "name": "Sleuths Verdict Manekin",
-        "filename": "sleuths_verdict_-_manekin.png",
-        "relPath": "nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.png",
-        "path": "assets/nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.05",
+        "filename": "sleuths_verdict_-_manekin.glb",
+        "relPath": "nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.glb",
+        "path": "assets/nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.glb",
+        "format": "GLB",
+        "sizeMB": "3.19",
         "gender": "male",
         "previewUrl": "assets/nhan_vat/trang_phuc/nam/sleuths_verdict_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Sleuths Verdict Manekin (PNG)"
+        "description": "Sleuths Verdict Manekin (GLB)"
       },
       {
         "id": "nhan_vat_trang_phuc_nu_amber_nectar___manekina",
         "name": "Amber Nectar Manekina",
-        "filename": "amber_nectar_-_manekina.png",
-        "relPath": "nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.png",
-        "path": "assets/nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.png",
-        "format": "PNG",
-        "sizeMB": "0.05",
+        "filename": "amber_nectar_-_manekina.glb",
+        "relPath": "nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.glb",
+        "path": "assets/nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.glb",
+        "format": "GLB",
+        "sizeMB": "3.37",
         "gender": "female",
         "previewUrl": "assets/nhan_vat/trang_phuc/nu/amber_nectar_-_manekina.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Amber Nectar Manekina (PNG)"
+        "description": "Amber Nectar Manekina (GLB)"
       },
       {
         "id": "nhan_vat_trang_phuc_nu_precision_strike___manekina",
         "name": "Precision Strike Manekina",
-        "filename": "precision_strike_-_manekina.png",
-        "relPath": "nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
-        "path": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
-        "format": "PNG",
-        "sizeMB": "0.04",
+        "filename": "precision_strike_-_manekina.glb",
+        "relPath": "nhan_vat/trang_phuc/nu/precision_strike_-_manekina.glb",
+        "path": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.glb",
+        "format": "GLB",
+        "sizeMB": "0.99",
         "gender": "female",
         "previewUrl": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Precision Strike Manekina (PNG)"
+        "description": "Precision Strike Manekina (GLB)"
       },
       {
         "id": "nhan_vat_trang_phuc_nu_scary_cat___manekina",
         "name": "Scary Cat Manekina",
-        "filename": "scary_cat_-_manekina.png",
-        "relPath": "nhan_vat/trang_phuc/nu/scary_cat_-_manekina.png",
-        "path": "assets/nhan_vat/trang_phuc/nu/scary_cat_-_manekina.png",
-        "format": "PNG",
-        "sizeMB": "0.04",
+        "filename": "scary_cat_-_manekina.glb",
+        "relPath": "nhan_vat/trang_phuc/nu/scary_cat_-_manekina.glb",
+        "path": "assets/nhan_vat/trang_phuc/nu/scary_cat_-_manekina.glb",
+        "format": "GLB",
+        "sizeMB": "1.37",
         "gender": "female",
         "previewUrl": "assets/nhan_vat/trang_phuc/nu/scary_cat_-_manekina.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Scary Cat Manekina (PNG)"
+        "description": "Scary Cat Manekina (GLB)"
       }
     ],
     "khuon_mat": [
       {
         "id": "nhan_vat_khuon_mat_nam_dawnbreaker___manekin",
-        "name": "Dawnbreaker Manekin",
-        "filename": "dawnbreaker_-_manekin.png",
-        "relPath": "nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.png",
-        "path": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.05",
+        "name": "Nam",
+        "filename": "nam",
+        "relPath": "nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+        "path": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+        "bundleDir": "nhan_vat/khuon_mat/nam",
+        "isFolderBundle": true,
+        "format": "GLB",
+        "sizeMB": "0.25",
         "gender": "male",
-        "previewUrl": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Dawnbreaker Manekin (PNG)"
+        "description": "Nam (Model Bundle: .GLB)"
       },
       {
         "id": "nhan_vat_khuon_mat_nu_starlight_fragments___manekin",
-        "name": "Starlight Fragments Manekin",
-        "filename": "starlight_fragments_-_manekin.png",
-        "relPath": "nhan_vat/khuon_mat/nu/starlight_fragments_-_manekin.png",
-        "path": "assets/nhan_vat/khuon_mat/nu/starlight_fragments_-_manekin.png",
-        "format": "PNG",
-        "sizeMB": "0.05",
+        "name": "Nữ",
+        "filename": "nu",
+        "relPath": "nhan_vat/khuon_mat/nu/starlight_fragments_-_manekin.glb",
+        "path": "assets/nhan_vat/khuon_mat/nu/starlight_fragments_-_manekin.glb",
+        "bundleDir": "nhan_vat/khuon_mat/nu",
+        "isFolderBundle": true,
+        "format": "GLB",
+        "sizeMB": "0.24",
         "gender": "female",
-        "previewUrl": "assets/nhan_vat/khuon_mat/nu/starlight_fragments_-_manekin.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Starlight Fragments Manekin (PNG)"
+        "description": "Nữ (Model Bundle: .GLB)"
       }
     ],
     "kieu_toc": [],
@@ -691,12 +684,224 @@
     "kieu_rau": [],
     "canh": [],
     "duoi": [],
-    "_lap_rap": []
+    "_lap_rap": [
+      {
+        "id": "đảo_chính",
+        "name": "đảo chính",
+        "filename": "đảo_chính.json",
+        "relPath": "nhan_vat/_lap_rap/đảo_chính.json",
+        "path": "assets/nhan_vat/_lap_rap/đảo_chính.json",
+        "format": "JSON",
+        "sizeMB": "0.01",
+        "gender": "male",
+        "previewUrl": "assets/nhan_vat/_lap_rap/đảo_chính.png",
+        "character_data": {
+          "version": "2.0",
+          "name": "đảo chính",
+          "age": 20,
+          "gender": "male",
+          "height_cm": 178,
+          "education_level": "Đại Học",
+          "occupation": "Kiếm Khách",
+          "faction": "Thục Sơn Kiếm Tông",
+          "personality": "Điềm đạm, cương trực, trọng tình cảm",
+          "biography": "Hiệp khách phiêu bạt giang hồ...",
+          "voice_style": "Trầm ấm, uy nghiêm",
+          "power_level": 100,
+          "element": "Kiếm Khí",
+          "skills": [
+            {
+              "name": "Vạn Kiếm Quy Tông",
+              "level": 5,
+              "type": "Kiếm Pháp",
+              "description": "Ngự kiếm phi hành"
+            }
+          ],
+          "custom_attributes": {
+            "Vũ Khí": "Thanh Vân Kiếm"
+          },
+          "base_body": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "costume": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "face": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "hairstyle": "",
+          "assembly": {
+            "than_co_ban": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+            "base_body": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+            "trang_phuc": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+            "costume": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+            "khuon_mat": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+            "face": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+            "sliders": {
+              "baseFaceOpacity": 0,
+              "eyebrowOpacity": 1,
+              "pupilOpacity": 1,
+              "noseOpacity": 0,
+              "mouthOpacity": 0,
+              "skinSmoothness": 1,
+              "costumeOpacity": 1
+            }
+          },
+          "face_sliders": {
+            "baseFaceOpacity": 0,
+            "eyebrowOpacity": 1,
+            "pupilOpacity": 1,
+            "noseOpacity": 0,
+            "mouthOpacity": 0,
+            "skinSmoothness": 1,
+            "costumeOpacity": 1
+          },
+          "ai_description": "Hiệp khách phiêu bạt giang hồ...",
+          "created_at": "2026-08-22T12:32:21.077Z",
+          "than_co_ban": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "trang_phuc": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "khuon_mat": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "sliders": {
+            "baseFaceOpacity": 0,
+            "eyebrowOpacity": 1,
+            "pupilOpacity": 1,
+            "noseOpacity": 0,
+            "mouthOpacity": 0,
+            "skinSmoothness": 1,
+            "costumeOpacity": 1
+          },
+          "preview_image": "assets/nhan_vat/_lap_rap/đảo_chính.png"
+        },
+        "assembly": {
+          "than_co_ban": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "base_body": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "trang_phuc": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "costume": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "khuon_mat": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "face": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "sliders": {
+            "baseFaceOpacity": 0,
+            "eyebrowOpacity": 1,
+            "pupilOpacity": 1,
+            "noseOpacity": 0,
+            "mouthOpacity": 0,
+            "skinSmoothness": 1,
+            "costumeOpacity": 1
+          }
+        }
+      }
+    ]
   },
   "props": {
     "_custom_ban_do": [],
-    "nhan_vat_da_rap": [],
-    "cay_coi": [],
+    "nhan_vat_da_rap": [
+      {
+        "id": "đảo_chính",
+        "name": "đảo chính",
+        "filename": "đảo_chính.json",
+        "relPath": "nhan_vat/_lap_rap/đảo_chính.json",
+        "path": "assets/nhan_vat/_lap_rap/đảo_chính.json",
+        "format": "JSON",
+        "sizeMB": "0.01",
+        "gender": "male",
+        "previewUrl": "assets/nhan_vat/_lap_rap/đảo_chính.png",
+        "character_data": {
+          "version": "2.0",
+          "name": "đảo chính",
+          "age": 20,
+          "gender": "male",
+          "height_cm": 178,
+          "education_level": "Đại Học",
+          "occupation": "Kiếm Khách",
+          "faction": "Thục Sơn Kiếm Tông",
+          "personality": "Điềm đạm, cương trực, trọng tình cảm",
+          "biography": "Hiệp khách phiêu bạt giang hồ...",
+          "voice_style": "Trầm ấm, uy nghiêm",
+          "power_level": 100,
+          "element": "Kiếm Khí",
+          "skills": [
+            {
+              "name": "Vạn Kiếm Quy Tông",
+              "level": 5,
+              "type": "Kiếm Pháp",
+              "description": "Ngự kiếm phi hành"
+            }
+          ],
+          "custom_attributes": {
+            "Vũ Khí": "Thanh Vân Kiếm"
+          },
+          "base_body": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "costume": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "face": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "hairstyle": "",
+          "assembly": {
+            "than_co_ban": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+            "base_body": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+            "trang_phuc": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+            "costume": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+            "khuon_mat": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+            "face": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+            "sliders": {
+              "baseFaceOpacity": 0,
+              "eyebrowOpacity": 1,
+              "pupilOpacity": 1,
+              "noseOpacity": 0,
+              "mouthOpacity": 0,
+              "skinSmoothness": 1,
+              "costumeOpacity": 1
+            }
+          },
+          "face_sliders": {
+            "baseFaceOpacity": 0,
+            "eyebrowOpacity": 1,
+            "pupilOpacity": 1,
+            "noseOpacity": 0,
+            "mouthOpacity": 0,
+            "skinSmoothness": 1,
+            "costumeOpacity": 1
+          },
+          "ai_description": "Hiệp khách phiêu bạt giang hồ...",
+          "created_at": "2026-08-22T12:32:21.077Z",
+          "than_co_ban": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "trang_phuc": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "khuon_mat": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "sliders": {
+            "baseFaceOpacity": 0,
+            "eyebrowOpacity": 1,
+            "pupilOpacity": 1,
+            "noseOpacity": 0,
+            "mouthOpacity": 0,
+            "skinSmoothness": 1,
+            "costumeOpacity": 1
+          },
+          "preview_image": "assets/nhan_vat/_lap_rap/đảo_chính.png"
+        },
+        "assembly": {
+          "than_co_ban": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "base_body": "assets/nhan_vat/than_co_ban/nam/body_base_-_manekin.glb",
+          "trang_phuc": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "costume": "assets/nhan_vat/trang_phuc/nam/amber_nectar_-_manekin.glb",
+          "khuon_mat": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "face": "assets/nhan_vat/khuon_mat/nam/dawnbreaker_-_manekin.glb",
+          "sliders": {
+            "baseFaceOpacity": 0,
+            "eyebrowOpacity": 1,
+            "pupilOpacity": 1,
+            "noseOpacity": 0,
+            "mouthOpacity": 0,
+            "skinSmoothness": 1,
+            "costumeOpacity": 1
+          }
+        }
+      }
+    ],
+    "cay_coi": [
+      {
+        "id": "root_goc_cay_co_reu",
+        "name": "Goc Cay Co Reu",
+        "filename": "goc_cay_co_reu.glb",
+        "relPath": "goc_cay_co_reu.glb",
+        "path": "assets/goc_cay_co_reu.glb",
+        "format": "GLB",
+        "sizeMB": "56.85",
+        "gender": "unisex",
+        "description": "Goc Cay Co Reu (GLB)"
+      }
+    ],
     "da_dia_hinh": [],
     "dong_vat": {
       "tren_can": [],
@@ -709,8 +914,57 @@
     "dung_cu": [],
     "do_tieu_hao": [],
     "vu_khi": [],
-    "phuong_tien": [],
+    "phuong_tien": [
+      {
+        "id": "root_doan_tau_sat",
+        "name": "Doan Tau Sat",
+        "filename": "doan_tau_sat.glb",
+        "relPath": "doan_tau_sat.glb",
+        "path": "assets/doan_tau_sat.glb",
+        "format": "GLB",
+        "sizeMB": "38.75",
+        "gender": "unisex",
+        "description": "Doan Tau Sat (GLB)"
+      },
+      {
+        "id": "root_xe_bus",
+        "name": "Xe Bus",
+        "filename": "xe_bus.glb",
+        "relPath": "xe_bus.glb",
+        "path": "assets/xe_bus.glb",
+        "format": "GLB",
+        "sizeMB": "2.39",
+        "gender": "unisex",
+        "description": "Xe Bus (GLB)"
+      }
+    ],
     "ngoi_nha": [
+      {
+        "id": "ngoi_nha_farm_windmill_export",
+        "name": "Farm Windmill Export",
+        "filename": "farm_windmill_export.jpg",
+        "relPath": "ngoi_nha/farm_windmill_export.jpg",
+        "path": "assets/ngoi_nha/farm_windmill_export.jpg",
+        "format": "JPG",
+        "sizeMB": "0.36",
+        "gender": "unisex",
+        "previewUrl": "assets/ngoi_nha/farm_windmill_export.jpg",
+        "isStandaloneImage": true,
+        "description": "Tài nguyên Hình Ảnh/Texture: Farm Windmill Export (JPG)"
+      },
+      {
+        "id": "ngoi_nha_forest_cabin_export",
+        "name": "Forest Cabin Export",
+        "filename": "forest_cabin_export.jpg",
+        "relPath": "ngoi_nha/forest_cabin_export.jpg",
+        "path": "assets/ngoi_nha/forest_cabin_export.jpg",
+        "format": "JPG",
+        "sizeMB": "0.00",
+        "gender": "unisex",
+        "previewUrl": "assets/ngoi_nha/forest_cabin_export.jpg",
+        "isStandaloneImage": true,
+        "description": "Tài nguyên Hình Ảnh/Texture: Forest Cabin Export (JPG)"
+      },
       {
         "id": "ngoi_nha_long_house_export",
         "name": "Long House Export",
@@ -723,6 +977,19 @@
         "previewUrl": "assets/ngoi_nha/long_house_export.png",
         "isStandaloneImage": true,
         "description": "Tài nguyên Hình Ảnh/Texture: Long House Export (PNG)"
+      },
+      {
+        "id": "ngoi_nha_v_boat_export",
+        "name": "V Boat Export",
+        "filename": "v_boat_export.jpg",
+        "relPath": "ngoi_nha/v_boat_export.jpg",
+        "path": "assets/ngoi_nha/v_boat_export.jpg",
+        "format": "JPG",
+        "sizeMB": "0.00",
+        "gender": "unisex",
+        "previewUrl": "assets/ngoi_nha/v_boat_export.jpg",
+        "isStandaloneImage": true,
+        "description": "Tài nguyên Hình Ảnh/Texture: V Boat Export (JPG)"
       }
     ]
   },
@@ -1200,10 +1467,90 @@
   },
   "vfx": {
     "cam_xuc": [],
-    "bao_phu": [],
-    "all": []
+    "bao_phu": [
+      {
+        "id": "hieu_ung_bao_phu_duck_prop",
+        "name": "Duck Prop",
+        "filename": "duck_prop.glb",
+        "relPath": "hieu_ung/bao_phu/duck_prop.glb",
+        "path": "assets/hieu_ung/bao_phu/duck_prop.glb",
+        "format": "GLB",
+        "sizeMB": "0.11",
+        "gender": "unisex",
+        "description": "Duck Prop (GLB)"
+      },
+      {
+        "id": "hieu_ung_bao_phu_lantern_prop",
+        "name": "Lantern Prop",
+        "filename": "lantern_prop.glb",
+        "relPath": "hieu_ung/bao_phu/lantern_prop.glb",
+        "path": "assets/hieu_ung/bao_phu/lantern_prop.glb",
+        "format": "GLB",
+        "sizeMB": "9.42",
+        "gender": "unisex",
+        "description": "Lantern Prop (GLB)"
+      }
+    ],
+    "all": [
+      {
+        "id": "hieu_ung_bao_phu_duck_prop",
+        "name": "Duck Prop",
+        "filename": "duck_prop.glb",
+        "relPath": "hieu_ung/bao_phu/duck_prop.glb",
+        "path": "assets/hieu_ung/bao_phu/duck_prop.glb",
+        "format": "GLB",
+        "sizeMB": "0.11",
+        "gender": "unisex",
+        "description": "Duck Prop (GLB)"
+      },
+      {
+        "id": "hieu_ung_bao_phu_lantern_prop",
+        "name": "Lantern Prop",
+        "filename": "lantern_prop.glb",
+        "relPath": "hieu_ung/bao_phu/lantern_prop.glb",
+        "path": "assets/hieu_ung/bao_phu/lantern_prop.glb",
+        "format": "GLB",
+        "sizeMB": "9.42",
+        "gender": "unisex",
+        "description": "Lantern Prop (GLB)"
+      }
+    ]
   },
-  "maps": [],
+  "maps": [
+    {
+      "id": "ban_do_cathedral",
+      "name": "Cathedral",
+      "filename": "cathedral.glb",
+      "relPath": "ban_do/cathedral.glb",
+      "path": "assets/ban_do/cathedral.glb",
+      "format": "GLB",
+      "sizeMB": "103.80",
+      "gender": "unisex",
+      "description": "Cathedral (GLB)"
+    },
+    {
+      "id": "ban_do_game_pirate_adventure_map",
+      "name": "Game Pirate Adventure Map",
+      "filename": "game_pirate_adventure_map.glb",
+      "relPath": "ban_do/game_pirate_adventure_map.glb",
+      "path": "assets/ban_do/game_pirate_adventure_map.glb",
+      "format": "GLB",
+      "sizeMB": "7.48",
+      "gender": "unisex",
+      "description": "Game Pirate Adventure Map (GLB)"
+    },
+    {
+      "id": "ban_do_zone9_real_light",
+      "name": "Zone9 Real Light",
+      "filename": "zone9_real_light.glb",
+      "relPath": "ban_do/zone9_real_light.glb",
+      "path": "assets/ban_do/zone9_real_light.glb",
+      "format": "GLB",
+      "sizeMB": "36.33",
+      "gender": "unisex",
+      "description": "Zone9 Real Light (GLB)"
+    }
+  ],
   "audio": {
     "bgm": [],
     "sfx_combat": [],

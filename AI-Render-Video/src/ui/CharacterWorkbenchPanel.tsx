@@ -82,7 +82,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   }, []);
 
   // --- 3. MAP BUILDER STATE ---
-  const [selectedMapPath, setSelectedMapPath] = useState<string>(scene.environment?.map || 'assets/maps/cathedral.glb');
+  const [selectedMapPath, setSelectedMapPath] = useState<string>((scene.environment?.map || 'assets/ban_do/cathedral.glb').replace(/^assets\/maps\//, 'assets/ban_do/'));
   const [selectedSkyTime, setSelectedSkyTime] = useState<string>(scene.environment?.sky_time || 'noon');
   const [isAppliedSuccess, setIsAppliedSuccess] = useState<boolean>(false);
 
@@ -181,7 +181,12 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     camera.lookAt(0, 0.85, 0);
     previewCameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      preserveDrawingBuffer: true,
+      powerPreference: 'high-performance',
+    });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -549,6 +554,15 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     setTimeout(() => setIsAppliedSuccess(false), 3000);
   };
 
+  // Capture high-definition snapshot directly from 3D Character Viewport
+  const handleCaptureSnapshot = (): string => {
+    if (previewRendererRef.current && previewSceneRef.current && previewCameraRef.current) {
+      previewRendererRef.current.render(previewSceneRef.current, previewCameraRef.current);
+      return previewRendererRef.current.domElement.toDataURL('image/png');
+    }
+    return '';
+  };
+
   return (
     <div
       style={{
@@ -886,6 +900,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   }}
                   sliders={faceSliders}
                   onSlidersChange={handleFaceSlidersChange}
+                  onCaptureSnapshot={handleCaptureSnapshot}
                 />
               )}
 

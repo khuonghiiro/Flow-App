@@ -4,7 +4,7 @@
   "fps": 60,
   "duration": 20.0,
   "environment": {
-    "map": "assets/maps/game_pirate_adventure_map.glb",
+    "map": "assets/ban_do/game_pirate_adventure_map.glb",
     "sky_time": "sunset",
     "weather": {
       "fog": 0.0005,

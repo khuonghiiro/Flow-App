@@ -265,6 +265,8 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
             savedPresets.forEach((p: any, idx: number) => {
               const previewUrl = p.preview
                 ? p.preview
+                : p.profile?.preview_image
+                ? p.profile.preview_image
                 : p.costume
                 ? (p.costume.endsWith('.glb') ? p.costume.replace('.glb', '.png') : p.costume)
                 : p.body

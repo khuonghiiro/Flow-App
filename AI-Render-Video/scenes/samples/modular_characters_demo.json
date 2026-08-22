@@ -4,7 +4,7 @@
   "fps": 60,
   "duration": 20.0,
   "environment": {
-    "map": "assets/maps/cathedral.glb",
+    "map": "assets/ban_do/cathedral.glb",
     "sky_time": "noon",
     "weather": {
       "fog": 0.002,
