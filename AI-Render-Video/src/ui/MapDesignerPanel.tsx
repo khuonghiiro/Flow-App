@@ -1041,7 +1041,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
         {showLayersInspector && (
           <div
             style={{
-              height: 180,
+              height: 260,
               borderTop: '1px solid rgba(255,255,255,0.1)',
               background: 'rgba(15, 23, 42, 0.98)',
               display: 'flex',
@@ -1167,54 +1167,185 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
               {/* Transform Controls */}
               {selectedObject ? (
                 <div style={{ flex: 1, padding: '8px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {/* Position X, Y, Z */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: '#94a3b8', width: 45 }}>Tọa độ:</span>
-                    <div style={{ display: 'flex', gap: 4, flex: 1 }}>
-                      {['X', 'Y', 'Z'].map((axis, idx) => (
-                        <div key={axis} style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                          <span style={{ fontSize: 9, color: axis === 'X' ? '#f87171' : axis === 'Y' ? '#4ade80' : '#38bdf8' }}>
-                            {axis}:
-                          </span>
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={selectedObject.position[idx]}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              const newPos = [...selectedObject.position] as [number, number, number];
-                              newPos[idx] = val;
-                              updateSelectedObject({ position: newPos });
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '2px 4px',
-                              background: '#090d16',
-                              border: '1px solid rgba(255,255,255,0.15)',
-                              color: '#fff',
-                              borderRadius: 4,
-                              fontSize: 10,
-                            }}
-                          />
-                        </div>
-                      ))}
+                  {/* Position X, Y, Z with Sliders & Numeric Inputs */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#cbd5e1' }}>Vị Trí Tọa Độ (Position):</span>
+                      <button
+                        onClick={() => updateSelectedObject({ position: [0, 0, 0] })}
+                        style={{
+                          fontSize: 9,
+                          padding: '1px 5px',
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          color: '#94a3b8',
+                          borderRadius: 3,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Về Gốc [0, 0, 0]
+                      </button>
+                    </div>
+
+                    {/* X Axis */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#f87171', width: 14 }}>X:</span>
+                      <input
+                        type="range"
+                        min="-60"
+                        max="60"
+                        step="0.5"
+                        value={selectedObject.position[0]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const newPos = [...selectedObject.position] as [number, number, number];
+                          newPos[0] = val;
+                          updateSelectedObject({ position: newPos });
+                        }}
+                        style={{ flex: 1, accentColor: '#f87171' }}
+                      />
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={selectedObject.position[0]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            const newPos = [...selectedObject.position] as [number, number, number];
+                            newPos[0] = val;
+                            updateSelectedObject({ position: newPos });
+                          }
+                        }}
+                        style={{
+                          width: 52,
+                          padding: '2px 4px',
+                          background: '#090d16',
+                          border: '1px solid rgba(248, 113, 113, 0.35)',
+                          color: '#f87171',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          textAlign: 'right',
+                        }}
+                      />
+                    </div>
+
+                    {/* Y Axis */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', width: 14 }}>Y:</span>
+                      <input
+                        type="range"
+                        min="-15"
+                        max="40"
+                        step="0.2"
+                        value={selectedObject.position[1]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const newPos = [...selectedObject.position] as [number, number, number];
+                          newPos[1] = val;
+                          updateSelectedObject({ position: newPos });
+                        }}
+                        style={{ flex: 1, accentColor: '#4ade80' }}
+                      />
+                      <input
+                        type="number"
+                        step="0.2"
+                        value={selectedObject.position[1]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            const newPos = [...selectedObject.position] as [number, number, number];
+                            newPos[1] = val;
+                            updateSelectedObject({ position: newPos });
+                          }
+                        }}
+                        style={{
+                          width: 52,
+                          padding: '2px 4px',
+                          background: '#090d16',
+                          border: '1px solid rgba(74, 222, 128, 0.35)',
+                          color: '#4ade80',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          textAlign: 'right',
+                        }}
+                      />
+                    </div>
+
+                    {/* Z Axis */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', width: 14 }}>Z:</span>
+                      <input
+                        type="range"
+                        min="-60"
+                        max="60"
+                        step="0.5"
+                        value={selectedObject.position[2]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const newPos = [...selectedObject.position] as [number, number, number];
+                          newPos[2] = val;
+                          updateSelectedObject({ position: newPos });
+                        }}
+                        style={{ flex: 1, accentColor: '#38bdf8' }}
+                      />
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={selectedObject.position[2]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            const newPos = [...selectedObject.position] as [number, number, number];
+                            newPos[2] = val;
+                            updateSelectedObject({ position: newPos });
+                          }
+                        }}
+                        style={{
+                          width: 52,
+                          padding: '2px 4px',
+                          background: '#090d16',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          color: '#38bdf8',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          textAlign: 'right',
+                        }}
+                      />
                     </div>
                   </div>
 
-                  {/* Rotation Y */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: '#94a3b8', width: 45 }}>Góc Xoay:</span>
+                  {/* Rotation Y with Slider & Numeric Input */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: '#94a3b8', width: 55 }}>Góc Xoay:</span>
                     <input
                       type="range"
                       min="0"
                       max="360"
                       value={selectedObject.rotationY}
-                      onChange={(e) => updateSelectedObject({ rotationY: parseFloat(e.target.value) })}
-                      style={{ flex: 1, accentColor: '#38bdf8' }}
+                      onChange={(e) => updateSelectedObject({ rotationY: parseFloat(e.target.value) || 0 })}
+                      style={{ flex: 1, accentColor: '#c084fc' }}
                     />
-                    <span style={{ fontSize: 10, color: '#38bdf8', width: 35, textAlign: 'right' }}>
-                      {selectedObject.rotationY}°
-                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="360"
+                      value={selectedObject.rotationY}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) updateSelectedObject({ rotationY: val });
+                      }}
+                      style={{
+                        width: 52,
+                        padding: '2px 4px',
+                        background: '#090d16',
+                        border: '1px solid rgba(192, 132, 252, 0.35)',
+                        color: '#c084fc',
+                        borderRadius: 4,
+                        fontSize: 10,
+                        textAlign: 'right',
+                      }}
+                    />
+                    <span style={{ fontSize: 10, color: '#c084fc' }}>°</span>
                   </div>
 
                   {/* Scale with Slider, Number Input, and Quick Presets */}
