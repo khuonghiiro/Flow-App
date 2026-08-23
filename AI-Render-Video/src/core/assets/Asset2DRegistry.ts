@@ -158,26 +158,26 @@ export const PART_HIERARCHY_CONFIG: Record<
   Character2DPartType,
   { label: string; defaultZ: number; defaultZDepth3D: number; defaultPivot: [number, number]; defaultOffset: [number, number] }
 > = {
-  toc_sau: { label: 'Tóc Sau', defaultZ: 1, defaultZDepth3D: -0.06, defaultPivot: [0.5, 0.15], defaultOffset: [0, -165] },
-  than_co_ban: { label: 'Thân Cơ Bản', defaultZ: 2, defaultZDepth3D: 0.0, defaultPivot: [0.5, 0.5], defaultOffset: [0, 0] },
-  dui_trai: { label: 'Đùi Trái', defaultZ: 2, defaultZDepth3D: -0.01, defaultPivot: [0.5, 0.1], defaultOffset: [-22, 60] },
-  dui_phai: { label: 'Đùi Phải', defaultZ: 2, defaultZDepth3D: -0.01, defaultPivot: [0.5, 0.1], defaultOffset: [22, 60] },
-  cang_chan_trai: { label: 'Cẳng Chân Trái', defaultZ: 3, defaultZDepth3D: -0.01, defaultPivot: [0.5, 0.1], defaultOffset: [-22, 75] },
-  cang_chan_phai: { label: 'Cẳng Chân Phải', defaultZ: 3, defaultZDepth3D: -0.01, defaultPivot: [0.5, 0.1], defaultOffset: [22, 75] },
-  trang_phuc: { label: 'Trang Phục', defaultZ: 4, defaultZDepth3D: 0.02, defaultPivot: [0.5, 0.5], defaultOffset: [0, 5] },
-  canh_tay_trai: { label: 'Cánh Tay Trái', defaultZ: 5, defaultZDepth3D: 0.03, defaultPivot: [0.8, 0.15], defaultOffset: [-55, -60] },
-  cang_tay_trai: { label: 'Cẳng Tay Trái', defaultZ: 5, defaultZDepth3D: 0.035, defaultPivot: [0.8, 0.2], defaultOffset: [-65, 10] },
-  ban_tay_trai: { label: 'Bàn Tay Trái', defaultZ: 5, defaultZDepth3D: 0.04, defaultPivot: [0.5, 0.2], defaultOffset: [-70, 50] },
-  dau: { label: 'Đầu & Cằm', defaultZ: 6, defaultZDepth3D: 0.045, defaultPivot: [0.5, 0.85], defaultOffset: [0, -100] },
-  khuon_mat: { label: 'Khuôn Mặt', defaultZ: 7, defaultZDepth3D: 0.048, defaultPivot: [0.5, 0.5], defaultOffset: [0, -135] },
-  mat: { label: 'Mắt (Chớp/Mở)', defaultZ: 8, defaultZDepth3D: 0.052, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
-  mui: { label: 'Mũi', defaultZ: 8, defaultZDepth3D: 0.055, defaultPivot: [0.5, 0.5], defaultOffset: [0, -125] },
-  mieng: { label: 'Miệng (Khẩu hình)', defaultZ: 8, defaultZDepth3D: 0.052, defaultPivot: [0.5, 0.5], defaultOffset: [0, -110] },
-  toc_truoc: { label: 'Tóc Mái Trước', defaultZ: 9, defaultZDepth3D: 0.07, defaultPivot: [0.5, 0.1], defaultOffset: [0, -170] },
-  canh_tay_phai: { label: 'Cánh Tay Phải', defaultZ: 10, defaultZDepth3D: 0.03, defaultPivot: [0.2, 0.15], defaultOffset: [55, -60] },
-  cang_tay_phai: { label: 'Cẳng Tay Phải', defaultZ: 10, defaultZDepth3D: 0.035, defaultPivot: [0.2, 0.2], defaultOffset: [65, 10] },
-  ban_tay_phai: { label: 'Bàn Tay Phải', defaultZ: 10, defaultZDepth3D: 0.04, defaultPivot: [0.5, 0.2], defaultOffset: [70, 50] },
-  vu_khi: { label: 'Vũ Khí / Pháp Bảo', defaultZ: 11, defaultZDepth3D: 0.09, defaultPivot: [0.5, 0.2], defaultOffset: [72, 35] },
+  toc_sau: { label: 'Tóc Sau', defaultZ: 1, defaultZDepth3D: 1, defaultPivot: [0.5, 0.15], defaultOffset: [0, -165] },
+  than_co_ban: { label: 'Thân Cơ Bản', defaultZ: 2, defaultZDepth3D: 2, defaultPivot: [0.5, 0.5], defaultOffset: [0, 0] },
+  dui_trai: { label: 'Đùi Trái', defaultZ: 2, defaultZDepth3D: 2, defaultPivot: [0.5, 0.1], defaultOffset: [-22, 60] },
+  dui_phai: { label: 'Đùi Phải', defaultZ: 2, defaultZDepth3D: 2, defaultPivot: [0.5, 0.1], defaultOffset: [22, 60] },
+  cang_chan_trai: { label: 'Cẳng Chân Trái', defaultZ: 3, defaultZDepth3D: 2, defaultPivot: [0.5, 0.1], defaultOffset: [-22, 75] },
+  cang_chan_phai: { label: 'Cẳng Chân Phải', defaultZ: 3, defaultZDepth3D: 2, defaultPivot: [0.5, 0.1], defaultOffset: [22, 75] },
+  trang_phuc: { label: 'Trang Phục', defaultZ: 4, defaultZDepth3D: 4, defaultPivot: [0.5, 0.5], defaultOffset: [0, 5] },
+  canh_tay_trai: { label: 'Cánh Tay Trái', defaultZ: 5, defaultZDepth3D: 5, defaultPivot: [0.8, 0.15], defaultOffset: [-55, -60] },
+  cang_tay_trai: { label: 'Cẳng Tay Trái', defaultZ: 5, defaultZDepth3D: 6, defaultPivot: [0.8, 0.2], defaultOffset: [-65, 10] },
+  ban_tay_trai: { label: 'Bàn Tay Trái', defaultZ: 5, defaultZDepth3D: 7, defaultPivot: [0.5, 0.2], defaultOffset: [-70, 50] },
+  dau: { label: 'Đầu & Cằm', defaultZ: 6, defaultZDepth3D: 8, defaultPivot: [0.5, 0.85], defaultOffset: [0, -100] },
+  khuon_mat: { label: 'Khuôn Mặt', defaultZ: 7, defaultZDepth3D: 9, defaultPivot: [0.5, 0.5], defaultOffset: [0, -135] },
+  mat: { label: 'Mắt (Chớp/Mở)', defaultZ: 8, defaultZDepth3D: 10, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
+  mui: { label: 'Mũi', defaultZ: 8, defaultZDepth3D: 11, defaultPivot: [0.5, 0.5], defaultOffset: [0, -125] },
+  mieng: { label: 'Miệng (Khẩu hình)', defaultZ: 8, defaultZDepth3D: 10, defaultPivot: [0.5, 0.5], defaultOffset: [0, -110] },
+  toc_truoc: { label: 'Tóc Mái Trước', defaultZ: 9, defaultZDepth3D: 12, defaultPivot: [0.5, 0.1], defaultOffset: [0, -170] },
+  canh_tay_phai: { label: 'Cánh Tay Phải', defaultZ: 10, defaultZDepth3D: 5, defaultPivot: [0.2, 0.15], defaultOffset: [55, -60] },
+  cang_tay_phai: { label: 'Cẳng Tay Phải', defaultZ: 10, defaultZDepth3D: 6, defaultPivot: [0.2, 0.2], defaultOffset: [65, 10] },
+  ban_tay_phai: { label: 'Bàn Tay Phải', defaultZ: 10, defaultZDepth3D: 7, defaultPivot: [0.5, 0.2], defaultOffset: [70, 50] },
+  vu_khi: { label: 'Vũ Khí / Pháp Bảo', defaultZ: 11, defaultZDepth3D: 13, defaultPivot: [0.5, 0.2], defaultOffset: [72, 35] },
 };
 
 // ─── Procedural Vector Texture Generator for Multi-Angle Instant Preview ─────
@@ -443,10 +443,42 @@ export interface AIPromptResult {
   promptEnglish: string;
   promptVietnamese: string;
   promptJSON: string;
-  negativePrompt: string;
+  promptGemini: string;
   gridStructureGuide: string;
+  negativePrompt: string;
   fullCopyText: string;
 }
+
+export const getSheetTypeLabel = (s: string) => {
+  switch(s) {
+    case 'hair_multi_angle_grid': return 'Bảng Tóc Đa Góc (4x5)';
+    case 'eyes_grid': return 'Bảng Trạng Thái Mắt & Lông Mày';
+    case 'mouth_grid': return 'Bảng Khẩu Hình Miệng Lip-sync';
+    case 'nose_chin_grid': return 'Bảng Sống Mũi, Cằm & Tai';
+    case 'costume_grid': return 'Bảng Đạo Bào / Trang Phục Rỗng';
+    case 'weapons_grid': return 'Bảng Vũ Khí & Pháp Bảo';
+    case 'limbs_hands_grid': return 'Bảng Tứ Chi & Bắt Quyết';
+    case 'body_turnaround_grid': return 'Bảng Nhân Vật Hoàn Chỉnh';
+    case 'step1_master_character': return 'Bảng Thiết Kế Nhân Vật (Master Turnaround Sheet)';
+    default: return 'Linh Kiện Đơn Lẻ';
+  }
+};
+
+export const getStyleLabel = (s: string) => {
+  switch(s) {
+    case 'tu_tien_manhua': return 'Tu Tiên / Manhua Trung Quốc';
+    case 'hoat_hinh_3d_trung_quoc': return 'Hoạt Hình 3D Trung Quốc (3D Donghua)';
+    case 'kiem_hiep': return 'Kiếm Hiệp / Cổ Trang';
+    case 'anime_action': return 'Anime Action Nhật Bản';
+    case 'cyberpunk_anime': return 'Cyberpunk Anime';
+    case 'chibi': return 'Chibi Đáng Yêu';
+    default: return s;
+  }
+};
+
+export const getGenderLabel = (g: string) => {
+  return g === 'nam' ? 'Nam Tu Sĩ' : g === 'nu' ? 'Nữ Tiên Tử' : 'Chung';
+};
 
 export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult => {
   const sheet = config.sheet_type || 'hair_multi_angle_grid';
@@ -715,7 +747,12 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
 
     const negativePrompt = 'text, letters, words, labels, watermark, signature, deformed anatomy, extra limbs, bad proportions, blurry, 3D clay render, photorealistic realism';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
-    return { promptEnglish, promptVietnamese, promptJSON, gridStructureGuide, negativePrompt, fullCopyText };
+    const promptGemini = `Hãy đóng vai chuyên gia thiết kế đồ họa 2D/3D.
+Vẽ bảng thiết kế tổng thể (Master Turnaround Sheet) ở 5 góc độ.
+Phong cách: ${getStyleLabel(config.character_style)}
+Tuyệt đối không vẽ: ${negativePrompt}
+Tỷ lệ: ${config.aspect_ratio || '16:9'}.`;
+    return { promptEnglish, promptVietnamese, promptJSON, promptGemini, gridStructureGuide, negativePrompt, fullCopyText };
   }
 
   // 1. HAIR MULTI-ANGLE GRID (4 DÃY TÓC TÁCH LỚP KHÔNG CÓ TAI / KHÔNG CÓ DA MẶT)
@@ -1125,17 +1162,45 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
     );
   }
 
+  if (!promptJSON) {
+    promptJSON = JSON.stringify(
+      {
+        project: 'Flow-App 2D Motion Comic Engine',
+        title: getSheetTypeLabel(sheet),
+        art_style: getStyleLabel(config.character_style),
+        gender: getGenderLabel(config.gender),
+        prompt: promptEnglish,
+        negative_prompt: negativePrompt,
+      },
+      null,
+      2
+    );
+  }
+
+  const promptGemini = `Hãy đóng vai một chuyên gia thiết kế nguyên liệu (Asset) đồ họa 2D/3D.
+Bạn hãy vẽ ra một bức ảnh theo đúng các yêu cầu cực kỳ khắt khe sau đây:
+
+1. CHỦ ĐỀ CHÍNH: ${getSheetTypeLabel(sheet)}
+2. PHONG CÁCH ĐỒ HỌA: ${getStyleLabel(config.character_style)}.
+3. THÔNG TIN NHÂN VẬT: Giới tính ${getGenderLabel(config.gender)}. ${config.color_theme ? `Màu chủ đạo: ${config.color_theme}.` : ''}
+4. YÊU CẦU NỀN TRỐNG (RẤT QUAN TRỌNG): Vẽ trên nền màu đồng nhất là ${config.bg_type === 'chroma_green' ? 'Xanh lá Chroma Green (#00FF00)' : config.bg_type === 'pure_white' ? 'Trắng tinh (#FFFFFF)' : 'Màu trơn'}. Không được vẽ bóng đổ.
+5. CẤU TRÚC LƯỚI / ẢNH:
+${gridStructureGuide}
+6. NHỮNG ĐIỀU TUYỆT ĐỐI CẤM (NEGATIVE PROMPT): 
+Bạn tuyệt đối không được phép vẽ: ${negativePrompt}.
+LƯU Ý ĐẶC BIỆT: Nếu đây là bảng bóc tách linh kiện (như Tóc, Mắt, Áo), tuyệt đối KHÔNG được vẽ da mặt hay cơ thể người bên trong. Chỉ vẽ linh kiện lơ lửng tách rời.
+
+Hãy sinh ra bức ảnh với tỷ lệ ${config.aspect_ratio || '16:9'} bám sát hoàn toàn mô tả trên!`;
+
   const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
   return {
     promptEnglish,
     promptVietnamese,
     promptJSON,
+    promptGemini,
     negativePrompt,
     gridStructureGuide,
     fullCopyText,
   };
 };
-
-
-

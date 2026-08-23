@@ -103,7 +103,7 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
           flipX: false,
           flipY: false,
           z_index: 1,
-          z_depth_3d: -0.045,
+          z_depth_3d: -1,
           opacity: 1,
         }),
         ...kit.parts.toc_sau,

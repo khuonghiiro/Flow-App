@@ -32,6 +32,7 @@ export class ThreeMultiAngleBillboardEngine {
   private currentDiscreteAngle: Character2DAngle = 'front';
   private onAngleChangeCallback?: (result: AngleDetectionResult) => void;
   private animFrameId: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private gridHelper!: THREE.GridHelper;
   private checkerboardTexture: THREE.CanvasTexture | null = null;
 
@@ -45,17 +46,25 @@ export class ThreeMultiAngleBillboardEngine {
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 500;
 
-    // 1. Scene & Camera Setup
+    // 1. Scene & Camera Setup (Framed sharply for 1:1 HD resolution)
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
-    this.camera.position.set(0, 0.2, 3.2);
+    this.camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 100);
+    this.camera.position.set(0, 0.52, 1.85);
 
-    // 2. WebGL Renderer (True 2D flat color rendering)
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // 2. WebGL Renderer (High-DPI Retina Razor-Sharp Rendering)
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+      preserveDrawingBuffer: true,
+    });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
     this.renderer.toneMapping = THREE.NoToneMapping; // Preserve 100% 2D flat vibrancy
+    if ('outputColorSpace' in this.renderer) {
+      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    }
     this.container.appendChild(this.renderer.domElement);
 
     // 3. OrbitControls
@@ -64,8 +73,22 @@ export class ThreeMultiAngleBillboardEngine {
     this.controls.dampingFactor = 0.08;
     this.controls.target.set(0, 0.52, 0); // Focus directly on the Head & Hair center
     this.controls.maxPolarAngle = Math.PI / 2 + 0.15;
-    this.controls.minDistance = 0.8;
-    this.controls.maxDistance = 6.0;
+    this.controls.minDistance = 0.5;
+    this.controls.maxDistance = 5.0;
+
+    // 3.5 Auto-detect Container Resize for Instant HD Sync
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = Math.round(entry.contentRect.width);
+          const h = Math.round(entry.contentRect.height);
+          if (w > 0 && h > 0) {
+            this.resize(w, h);
+          }
+        }
+      });
+      this.resizeObserver.observe(this.container);
+    }
 
     // 4. Character Group & 2D Background
     this.characterGroup = new THREE.Group();
@@ -183,9 +206,14 @@ export class ThreeMultiAngleBillboardEngine {
       }
     });
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.generateMipmaps = true;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    // Disable mipmaps on 2D billboard textures to prevent blurry downsampling!
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
+    if (this.renderer?.capabilities) {
+      tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    }
+    tex.needsUpdate = true;
     this.textureCache.set(url, tex);
     return tex;
   }
@@ -195,7 +223,7 @@ export class ThreeMultiAngleBillboardEngine {
    */
   public setAssembly(assembly: Character2DAssembly): void {
     this.currentAssembly = assembly;
-    const layerSpacing = assembly.layer_depth_spacing ?? 1.0;
+    const layerSpacing = assembly.layer_depth_spacing ?? 0.005;
     const currentSlots = new Set(Object.keys(assembly.parts));
 
     // Remove meshes for parts that no longer exist
@@ -217,7 +245,8 @@ export class ThreeMultiAngleBillboardEngine {
       if (!activeUrl) continue;
 
       const hierarchy = PART_HIERARCHY_CONFIG[slot];
-      const zDepth = (part.z_depth_3d ?? hierarchy?.defaultZDepth3D ?? 0) * layerSpacing;
+      const zIndex = part.z_depth_3d ?? hierarchy?.defaultZDepth3D ?? 0;
+      const zDepth = zIndex * 0.0001; // Microscopic coplanar offset (0.1mm) to prevent perspective scale distortion
 
       let mesh = this.partMeshes.get(slot);
       if (!mesh) {
@@ -226,12 +255,14 @@ export class ThreeMultiAngleBillboardEngine {
         const mat = new THREE.MeshBasicMaterial({
           map: texture,
           transparent: true,
-          alphaTest: 0.01,
+          alphaTest: 0.001,
           side: THREE.DoubleSide,
-          depthWrite: true,
+          depthWrite: false, // Prevents transparent parts of front layer from cutting holes in back layers
+          depthTest: true,
         });
 
         mesh = new THREE.Mesh(geo, mat);
+        mesh.renderOrder = zIndex + 100; // Exact Z-Index draw order
         mesh.position.set(0, 0, zDepth);
         this.characterGroup.add(mesh);
         this.partMeshes.set(slot, mesh);
@@ -294,7 +325,9 @@ export class ThreeMultiAngleBillboardEngine {
       const posX = offsetX * 0.0035 * baseScale;
       const posY = offsetY * -0.0035 * baseScale;
 
-      const zDepth = (override?.z_depth_3d ?? part.z_depth_3d ?? hierarchy?.defaultZDepth3D ?? 0) * layerSpacing;
+      const zIndex = override?.z_depth_3d ?? part.z_depth_3d ?? hierarchy?.defaultZDepth3D ?? 0;
+      const zDepth = zIndex * 0.0001;
+      mesh.renderOrder = zIndex + 100;
       mesh.position.set(posX, posY, zDepth);
 
       // 4. Rotation
@@ -482,6 +515,14 @@ export class ThreeMultiAngleBillboardEngine {
       this.applyTransformsForAngle(discreteAngle);
     }
 
+    // Y-axis & Elevation Billboarding: Keep character planes facing the camera so 2D sprites at all angles (especially 90° & 270° profiles) are viewed completely flat & face-on like 2D!
+    this.characterGroup.rotation.y = Math.atan2(dx, dz);
+    if (isTopDown) {
+      this.characterGroup.rotation.x = -(Math.PI / 2 - polarAngle);
+    } else {
+      this.characterGroup.rotation.x = 0;
+    }
+
     const result: AngleDetectionResult = {
       angleDeg: Math.round(angleDeg),
       discreteAngle,
@@ -513,14 +554,14 @@ export class ThreeMultiAngleBillboardEngine {
     const rad = (targetDeg * Math.PI) / 180;
     if (this.isTopDownMode) {
       // Orbit around the crown of the head in top-down mode
-      const orbitRadius = 0.8;
-      const cameraHeight = 2.4;
+      const orbitRadius = 0.55;
+      const cameraHeight = 1.6;
       const x = Math.sin(rad) * orbitRadius;
       const z = Math.cos(rad) * orbitRadius;
       this.camera.position.set(x, headCenterY + cameraHeight, z);
     } else {
-      // Orbit horizontally around head center
-      const orbitRadius = 2.8;
+      // Orbit horizontally around head center with crystal-clear framing
+      const orbitRadius = 1.85;
       const x = Math.sin(rad) * orbitRadius;
       const z = Math.cos(rad) * orbitRadius;
       this.camera.position.set(x, headCenterY, z);
@@ -563,6 +604,10 @@ export class ThreeMultiAngleBillboardEngine {
   }
 
   public dispose(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     this.controls.dispose();
     this.renderer.dispose();

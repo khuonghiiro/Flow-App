@@ -273,15 +273,15 @@ export const AssemblerInspectorPanel: React.FC<AssemblerInspectorPanelProps> = (
             {/* Z-Depth 3D */}
             <div style={{ background: 'rgba(0,0,0,0.25)', padding: 3, borderRadius: 3 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#cbd5e1' }}>
-                <span>Sâu 3D:</span>
-                <span style={{ color: '#ec4899', fontWeight: 700 }}>{(selectedPart.z_depth_3d || 0).toFixed(2)}m</span>
+                <span>Z-Index:</span>
+                <span style={{ color: '#ec4899', fontWeight: 700 }}>{Math.round(selectedPart.z_depth_3d || 0)}</span>
               </div>
               <input
                 type="range"
                 min="-60"
                 max="60"
-                value={Math.round((selectedPart.z_depth_3d || 0) * 1000)}
-                onChange={(e) => updatePartConfig({ z_depth_3d: parseInt(e.target.value) / 1000 })}
+                value={Math.round(selectedPart.z_depth_3d || 0)}
+                onChange={(e) => updatePartConfig({ z_depth_3d: parseInt(e.target.value, 10) })}
                 style={{ width: '100%' }}
               />
             </div>

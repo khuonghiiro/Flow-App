@@ -180,15 +180,15 @@ export const CharacterStructureTunerPanel: React.FC<CharacterStructureTunerPanel
         {/* Z-Depth 3D */}
         <div style={{ background: 'rgba(0,0,0,0.3)', padding: 6, borderRadius: 5 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#e2e8f0', marginBottom: 2 }}>
-            <span>Độ Sâu 3D (Z-Depth):</span>
-            <span style={{ color: '#ec4899', fontWeight: 700 }}>{(partConfig.z_depth_3d || 0).toFixed(3)}m</span>
+            <span>Thứ Tự Lớp (Z-Index):</span>
+            <span style={{ color: '#ec4899', fontWeight: 700 }}>{Math.round(partConfig.z_depth_3d || 0)}</span>
           </div>
           <input
             type="range"
             min="-80"
             max="80"
-            value={Math.round((partConfig.z_depth_3d || 0) * 1000)}
-            onChange={(e) => handleUpdate('z_depth_3d', parseInt(e.target.value) / 1000)}
+            value={Math.round(partConfig.z_depth_3d || 0)}
+            onChange={(e) => handleUpdate('z_depth_3d', parseInt(e.target.value, 10))}
             style={{ width: '100%' }}
           />
         </div>

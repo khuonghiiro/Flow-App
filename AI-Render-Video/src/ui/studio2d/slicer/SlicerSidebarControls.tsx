@@ -32,6 +32,10 @@ export interface SlicerSidebarControlsProps {
   setTolerance: (tol: number) => void;
   feather: number;
   setFeather: (f: number) => void;
+  strokeWidth?: number;
+  setStrokeWidth?: (val: number) => void;
+  strokeColorHex?: string;
+  setStrokeColorHex?: (hex: string) => void;
   // Despeckle params
   bgCleanupSubTab: 'chroma' | 'despeckle';
   setBgCleanupSubTab: (tab: 'chroma' | 'despeckle') => void;
@@ -42,6 +46,14 @@ export interface SlicerSidebarControlsProps {
   keepLargestIslandOnly: boolean;
   setKeepLargestIslandOnly: (keep: boolean) => void;
   // Slicing & Actions
+  // Cumulative / Multi-Pass mode & Apply as Base
+  isCumulativeProcessing?: boolean;
+  setIsCumulativeProcessing?: (val: boolean) => void;
+  onResetToRawSlices?: () => void;
+  onApplyAsNewBaseImage?: () => void;
+  // Padding Inset
+  paddingInset?: number;
+  setPaddingInset?: (val: number) => void;
   isProcessing: boolean;
   assemblySuccess: boolean;
   onAutoSliceAndAssemble: () => void;
@@ -69,6 +81,10 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   setTolerance,
   feather,
   setFeather,
+  strokeWidth = 0,
+  setStrokeWidth,
+  strokeColorHex = '#000000',
+  setStrokeColorHex,
   bgCleanupSubTab,
   setBgCleanupSubTab,
   despeckleSize,
@@ -77,6 +93,12 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   setWhiteSpeckleSensitivity,
   keepLargestIslandOnly,
   setKeepLargestIslandOnly,
+  isCumulativeProcessing = false,
+  setIsCumulativeProcessing,
+  onResetToRawSlices,
+  onApplyAsNewBaseImage,
+  paddingInset = 0,
+  setPaddingInset,
   isProcessing,
   assemblySuccess,
   onAutoSliceAndAssemble,
@@ -124,6 +146,52 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Padding Inset: Thu Viền Mép Ô */}
+      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
+          <span style={{ fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+            ✂️ Thu Nhỏ Viền Ô (Padding Inset):
+          </span>
+          <span style={{ color: '#4ade80', fontWeight: 700 }}>{paddingInset} px</span>
+        </div>
+        <div style={{ fontSize: 8.5, color: '#94a3b8', marginBottom: 4, lineHeight: 1.25 }}>
+          Tự động thụt lùi 4 mép cắt vào trong để loại bỏ triệt để viền kẻ ô, khung đen hoặc khoảng trống thừa.
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {setPaddingInset && (
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={paddingInset}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                setPaddingInset(val);
+              }}
+              onPointerUp={() => {
+                if (onCommitSliderChange) onCommitSliderChange();
+              }}
+              onTouchEnd={() => {
+                if (onCommitSliderChange) onCommitSliderChange();
+              }}
+              onKeyUp={() => {
+                if (onCommitSliderChange) onCommitSliderChange();
+              }}
+              style={{ flex: 1 }}
+            />
+          )}
+          {setPaddingInset && (
+            <>
+              <button onClick={() => { setPaddingInset(0); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
+              <button onClick={() => { setPaddingInset(4); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>4px</button>
+              <button onClick={() => { setPaddingInset(8); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>8px</button>
+              <button onClick={() => { setPaddingInset(12); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>12px</button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 2. Image Source Controls */}
@@ -207,6 +275,31 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               🗡️ Mẫu Kiếm Khách
             </button>
           </div>
+          {/* Apply Current Result as New Base Image */}
+          {slicedCount > 0 && onApplyAsNewBaseImage && (
+            <button
+              onClick={onApplyAsNewBaseImage}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 5,
+                background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
+                color: '#ffffff',
+                border: '1px solid #14b8a6',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: '0 2px 8px rgba(13, 148, 136, 0.35)',
+              }}
+              title="Ghi đè kết quả đã cắt/tách nền này thành Ảnh Gốc Mới để tiếp tục bóc tách và lọc màu trên ảnh đã xử lý"
+            >
+              📌 Áp Dụng Làm Ảnh Gốc Mới (Apply Base)
+            </button>
+          )}
         </div>
       </div>
 
@@ -215,6 +308,88 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         <div style={{ fontSize: 10.5, fontWeight: 700, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 5 }}>
           <Scissors size={13} /> 3. Tách Nền & Khử Đốm Rác:
         </div>
+        {/* Toggle Chế Độ Xử Lý Tiếp (Lọc màu bổ sung / Multi-pass Keying) */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            background: isCumulativeProcessing ? 'rgba(234, 179, 8, 0.12)' : 'rgba(0,0,0,0.25)',
+            padding: '6px 8px',
+            borderRadius: 6,
+            border: isCumulativeProcessing ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: isCumulativeProcessing ? '#facc15' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+              ⚡ Xử Lý Tiếp (Giữ kết quả cũ):
+            </span>
+            {setIsCumulativeProcessing && (
+              <button
+                onClick={() => setIsCumulativeProcessing(!isCumulativeProcessing)}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  border: 'none',
+                  background: isCumulativeProcessing ? '#eab308' : 'rgba(255,255,255,0.1)',
+                  color: isCumulativeProcessing ? '#090d16' : '#cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: isCumulativeProcessing ? '0 0 10px rgba(234, 179, 8, 0.4)' : 'none',
+                }}
+              >
+                {isCumulativeProcessing ? '✓ BẬT' : '○ TẮT'}
+              </button>
+            )}
+          </div>
+          <div style={{ fontSize: 8.5, color: isCumulativeProcessing ? '#fde047' : '#64748b', lineHeight: 1.25 }}>
+            {isCumulativeProcessing
+              ? '✓ Bật xử lý tiếp: Bạn có thể chọn màu khác (vd: trắng/xanh/custom) để bóc tách thêm trên ảnh đã cắt, không bị reset về ảnh gốc!'
+              : '○ Đang tắt: Mỗi lần bấm bóc tách sẽ làm mới lại từ ảnh gốc.'}
+          </div>
+          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+            {onApplyAsNewBaseImage && slicedCount > 0 && (
+              <button
+                onClick={onApplyAsNewBaseImage}
+                style={{
+                  flex: 1,
+                  padding: '3px 6px',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  border: '1px solid #14b8a6',
+                  background: 'rgba(13, 148, 136, 0.25)',
+                  color: '#2dd4bf',
+                  cursor: 'pointer',
+                }}
+                title="Ghi đè kết quả hiện tại thành ảnh gốc mới"
+              >
+                📌 Lưu đè thành Ảnh Gốc Mới
+              </button>
+            )}
+            {isCumulativeProcessing && onResetToRawSlices && (
+              <button
+                onClick={onResetToRawSlices}
+                style={{
+                  flex: 1,
+                  padding: '3px 6px',
+                  fontSize: 9,
+                  fontWeight: 600,
+                  borderRadius: 4,
+                  border: '1px dashed rgba(234, 179, 8, 0.5)',
+                  background: 'transparent',
+                  color: '#facc15',
+                  cursor: 'pointer',
+                }}
+              >
+                ↺ Quay lại ảnh gốc
+              </button>
+            )}
+          </div>
+        </div>
+
 
         {/* Sub-tab Switcher */}
         <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.35)', padding: 2, borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -418,6 +593,79 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                 }}
                 style={{ width: '100%' }}
               />
+            </div>
+
+                                    {/* Thêm Viền Theo Màu Đã Chọn (Edge Stroke / Outline) */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  🎨 Thêm Viền Theo Màu (Stroke):
+                </span>
+                <span style={{ fontSize: 9.5, color: '#4ade80', fontWeight: 700 }}>{strokeWidth}px</span>
+              </div>
+              <div style={{ fontSize: 8.5, color: '#94a3b8', lineHeight: 1.25 }}>
+                Tạo một đường viền nét mịn bao quanh hình dựa theo màu bạn chọn bên dưới.
+              </div>
+
+              {/* Color picker & quick color presets */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9, color: '#cbd5e1' }}>Màu viền:</span>
+                {setStrokeColorHex && (
+                  <input
+                    type="color"
+                    value={strokeColorHex}
+                    onChange={(e) => {
+                      setStrokeColorHex(e.target.value);
+                      if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: e.target.value });
+                    }}
+                    style={{ width: 24, height: 20, border: 'none', borderRadius: 3, cursor: 'pointer', background: 'transparent' }}
+                    title="Chọn màu viền tùy thích"
+                  />
+                )}
+                {setStrokeColorHex && (
+                  <>
+                    <button onClick={() => { setStrokeColorHex('#000000'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#000000' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#000000' ? '#0284c7' : 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🖤 Đen</button>
+                    <button onClick={() => { setStrokeColorHex('#ffffff'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#ffffff' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#ffffff' ? '#0284c7' : 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🤍 Trắng</button>
+                    <button onClick={() => { setStrokeColorHex('#2b1810'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#2b1810' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#2b1810' ? '#0284c7' : '#2b1810', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🤎 Nâu Nét</button>
+                    <button onClick={() => { setStrokeColorHex(keyColorHex); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: keyColorHex }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === keyColorHex ? '#0284c7' : 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>✨ Màu Nền</button>
+                  </>
+                )}
+              </div>
+
+              {/* Slider for stroke width */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {setStrokeWidth && (
+                  <input
+                    type="range"
+                    min="0"
+                    max="12"
+                    step="1"
+                    value={strokeWidth}
+                    onChange={(e) => setStrokeWidth(parseInt(e.target.value, 10))}
+                    onPointerUp={(e) => {
+                      const val = parseInt((e.target as HTMLInputElement).value, 10);
+                      if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: val, strokeColorHex });
+                    }}
+                    onTouchEnd={(e) => {
+                      const val = parseInt((e.target as HTMLInputElement).value, 10);
+                      if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: val, strokeColorHex });
+                    }}
+                    onKeyUp={(e) => {
+                      const val = parseInt((e.target as HTMLInputElement).value, 10);
+                      if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: val, strokeColorHex });
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                )}
+                {setStrokeWidth && (
+                  <>
+                    <button onClick={() => { setStrokeWidth(0); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 0 }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
+                    <button onClick={() => { setStrokeWidth(1); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 1, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>1px</button>
+                    <button onClick={() => { setStrokeWidth(2); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 2, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>2px</button>
+                    <button onClick={() => { setStrokeWidth(4); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 4, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>4px</button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Feather Slider */}

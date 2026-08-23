@@ -195,8 +195,20 @@ export const MultiAngleTunerModal: React.FC<MultiAngleTunerModalProps> = ({
     ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
 
-    // Draw stack of layers
-    HAIR_STACK_ORDER.forEach((slot) => {
+    // Draw stack of layers sorted by active Z-Index
+    const sortedHairSlots = [...HAIR_TARGET_SLOTS.map((s) => s.slot)].sort((a, b) => {
+      const partA = assemblyDraft.parts[a];
+      const partB = assemblyDraft.parts[b];
+      const hierA = PART_HIERARCHY_CONFIG[a];
+      const hierB = PART_HIERARCHY_CONFIG[b];
+      const overrideA = partA?.angle_overrides?.[selectedAngle];
+      const overrideB = partB?.angle_overrides?.[selectedAngle];
+      const zA = overrideA?.z_depth_3d ?? partA?.z_depth_3d ?? hierA?.defaultZDepth3D ?? 0;
+      const zB = overrideB?.z_depth_3d ?? partB?.z_depth_3d ?? hierB?.defaultZDepth3D ?? 0;
+      return zA - zB;
+    });
+
+    sortedHairSlots.forEach((slot) => {
       const part = assemblyDraft.parts[slot];
       if (!part) return;
 

@@ -22,8 +22,9 @@ import { AIPartPromptConfig } from '../../types/scene2d';
 import { buildAIPromptForPart, AIPromptResult } from '../../core/assets/Asset2DRegistry';
 
 export const AIPromptGenerator2D: React.FC = () => {
-  const [workflowTab, setWorkflowTab] = useState<'step1_master' | 'step2_decomposed_hair' | 'step3_actions'>('step1_master');
-  const [displayLangTab, setDisplayLangTab] = useState<'vietnamese' | 'english' | 'json' | 'both'>('both');
+  const [workflowTab, setWorkflowTab] = useState<'step1_master' | 'step2_decomposed_parts' | 'step3_actions'>('step1_master');
+  const [decomposedPartType, setDecomposedPartType] = useState<'hair_multi_angle_grid' | 'eyes_grid' | 'mouth_grid' | 'nose_chin_grid' | 'costume_grid' | 'weapons_grid' | 'limbs_hands_grid'>('hair_multi_angle_grid');
+  const [displayLangTab, setDisplayLangTab] = useState<'vietnamese' | 'english' | 'json' | 'gemini' | 'both'>('both');
   const [referenceImageUrl, setReferenceImageUrl] = useState<string>('');
 
   // Master Character & Part Config State
@@ -80,25 +81,25 @@ export const AIPromptGenerator2D: React.FC = () => {
     workflow_step:
       workflowTab === 'step1_master'
         ? 'step1_master_character'
-        : workflowTab === 'step2_decomposed_hair'
-        ? 'step2_decomposed_hair'
+        : workflowTab === 'step2_decomposed_parts'
+        ? 'step2_decomposed_parts'
         : undefined,
-    sheet_type: workflowTab === 'step1_master' ? 'body_turnaround_grid' : 'hair_multi_angle_grid',
-    aspect_ratio: config.aspect_ratio || (workflowTab === 'step1_master' ? '16:9' : '1:1'),
+    sheet_type: workflowTab === 'step1_master' ? 'body_turnaround_grid' : decomposedPartType,
+    aspect_ratio: config.aspect_ratio || (workflowTab === 'step1_master' ? '16:9' : decomposedPartType !== 'hair_multi_angle_grid' ? '16:9' : '1:1'),
   };
 
   const promptResult: AIPromptResult = buildAIPromptForPart(effectiveConfig);
 
   // If user provided a reference image URL in Step 2, append --sref to Midjourney prompt
   const finalPromptEnglish =
-    workflowTab === 'step2_decomposed_hair' && referenceImageUrl.trim()
+    workflowTab === 'step2_decomposed_parts' && referenceImageUrl.trim()
       ? promptResult.promptEnglish.includes('--ar')
         ? promptResult.promptEnglish.replace('--ar', `--sref ${referenceImageUrl.trim()} --ar`)
         : `${promptResult.promptEnglish} --sref ${referenceImageUrl.trim()}`
       : promptResult.promptEnglish;
 
   const finalFullCopyText =
-    workflowTab === 'step2_decomposed_hair' && referenceImageUrl.trim()
+    workflowTab === 'step2_decomposed_parts' && referenceImageUrl.trim()
       ? `${finalPromptEnglish}\n\nNegative prompt:\n${promptResult.negativePrompt}`
       : promptResult.fullCopyText;
 
@@ -266,27 +267,27 @@ export const AIPromptGenerator2D: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setWorkflowTab('step2_decomposed_hair')}
+              onClick={() => setWorkflowTab('step2_decomposed_parts')}
               style={{
                 padding: '8px 6px',
                 fontSize: 11.5,
                 fontWeight: 700,
                 borderRadius: 8,
-                border: workflowTab === 'step2_decomposed_hair' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.08)',
-                background: workflowTab === 'step2_decomposed_hair' ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.03)',
-                color: workflowTab === 'step2_decomposed_hair' ? '#ffffff' : '#94a3b8',
+                border: workflowTab === 'step2_decomposed_parts' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.08)',
+                background: workflowTab === 'step2_decomposed_parts' ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.03)',
+                color: workflowTab === 'step2_decomposed_parts' ? '#ffffff' : '#94a3b8',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 3,
-                boxShadow: workflowTab === 'step2_decomposed_hair' ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none',
+                boxShadow: workflowTab === 'step2_decomposed_parts' ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none',
                 transition: 'all 0.2s ease',
               }}
             >
               <Scissors size={15} />
               <span>BƯỚC 2</span>
-              <span style={{ fontSize: 9.5, opacity: 0.9 }}>Bóc Tách Tóc</span>
+              <span style={{ fontSize: 9.5, opacity: 0.9 }}>Bóc Tách Linh Kiện</span>
             </button>
 
             <button
@@ -371,6 +372,7 @@ export const AIPromptGenerator2D: React.FC = () => {
                   style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6 }}
                 >
                   <option value="chibi">🌟 Hoạt Hình Chibi Đáng Yêu (Cute Anime Chibi 2.5D)</option>
+                  <option value="hoat_hinh_3d_trung_quoc">🐉 Hoạt Hình 3D Trung Quốc (3D Donghua)</option>
                   <option value="tu_tien_manhua">Tu Tiên / Manhua Trung Quốc</option>
                   <option value="kiem_hiep">Kiếm Hiệp / Cổ Trang Wuxia</option>
                   <option value="anime_action">Anime Action Nhật Bản</option>
@@ -736,15 +738,34 @@ export const AIPromptGenerator2D: React.FC = () => {
           </div>
         )}
 
-        {/* ─── STEP 2: DECOMPOSED HAIR GRID (AUTO INHERITED FROM STEP 1) ─── */}
-        {workflowTab === 'step2_decomposed_hair' && (
+        {/* ─── STEP 2: DECOMPOSED PARTS (HAIR, EYES, MOUTH, CLOTHES, ETC.) ─── */}
+        {workflowTab === 'step2_decomposed_parts' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* Step Guide Banner */}
             <div style={{ background: 'rgba(16, 185, 129, 0.12)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)', fontSize: 11.5, color: '#d1fae5', lineHeight: 1.5 }}>
-              ✂️ <b>Bóc tách mái tóc từ nhân vật Bước 1 thành Sprite Sheet 4 dòng $\times$ 5 cột</b>. Hệ thống tự động kế thừa trọn vẹn đặc tính tóc từ Bước 1 để đảm bảo khi ghép vào Studio sẽ chuẩn khít 100%!
+              ✂️ <b>Bóc tách linh kiện (Tóc, Mắt, Miệng, Đạo bào...) từ nhân vật Bước 1 thành Sprite Sheet đa góc quay</b>. Hệ thống tự động kế thừa đặc tính từ Bước 1 để đảm bảo khi ghép vào Studio sẽ chuẩn khít 100%!
+            </div>
+            
+            {/* Part Selection */}
+            <div>
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Chọn linh kiện cần bóc tách:</label>
+              <select
+                value={decomposedPartType}
+                onChange={(e) => setDecomposedPartType(e.target.value as any)}
+                style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#fff', border: '1px solid rgba(52, 211, 153, 0.5)', borderRadius: 6 }}
+              >
+                <option value="hair_multi_angle_grid">💇 Mái Tóc (4 Tầng x 5 Góc Quay)</option>
+                <option value="eyes_grid">👁️ Đôi Mắt & Chớp Mắt (Cảm xúc & Khớp Khung Mắt)</option>
+                <option value="mouth_grid">👄 Khẩu Hình Miệng (Nói Chuyện & Biểu Cảm)</option>
+                <option value="nose_chin_grid">👃 Sống Mũi, Khung Cằm & Vành Tai</option>
+                <option value="costume_grid">👘 Trang Phục / Đạo Bào Rỗng Ruột</option>
+                <option value="weapons_grid">🗡️ Vũ Khí & Pháp Bảo</option>
+                <option value="limbs_hands_grid">💪 Tứ Chi & Bàn Tay Bắt Quyết</option>
+              </select>
             </div>
 
-            {/* Inherited Character Hair Badge Card */}
+            {/* Inherited Character Hair Badge Card (Show only for hair) */}
+            {decomposedPartType === 'hair_multi_angle_grid' && (
             <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: 12, borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -788,6 +809,7 @@ export const AIPromptGenerator2D: React.FC = () => {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Step 1 Image Reference Link Input */}
             <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -940,8 +962,8 @@ export const AIPromptGenerator2D: React.FC = () => {
             <Sparkles size={16} />
             {workflowTab === 'step1_master'
               ? '🌟 PROMPT BƯỚC 1: BẢNG THIẾT KẾ NHÂN VẬT GỐC (MASTER 4K)'
-              : workflowTab === 'step2_decomposed_hair'
-              ? '✂️ PROMPT BƯỚC 2: BÓC TÁCH TÓC 4 TẦNG ĐỒNG BỘ THEO NHÂN VẬT'
+              : workflowTab === 'step2_decomposed_parts'
+              ? '✂️ PROMPT BƯỚC 2: BÓC TÁCH LINH KIỆN NHÂN VẬT ĐA GÓC QUAY'
               : '⚔️ PROMPT BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG & CHIÊU THỨC (4K)'}
           </div>
 
@@ -950,7 +972,13 @@ export const AIPromptGenerator2D: React.FC = () => {
               onClick={() => setDisplayLangTab('both')}
               style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'both' ? '#0284c7' : 'transparent', color: displayLangTab === 'both' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 600 }}
             >
-              Song Ngữ
+              Tất cả
+            </button>
+            <button
+              onClick={() => setDisplayLangTab('gemini')}
+              style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'gemini' ? '#f59e0b' : 'transparent', color: displayLangTab === 'gemini' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
+            >
+              🍌 Gemini/LLM
             </button>
             <button
               onClick={() => setDisplayLangTab('json')}
@@ -976,20 +1004,20 @@ export const AIPromptGenerator2D: React.FC = () => {
         {/* Workflow Instruction Banner */}
         {workflowTab === 'step1_master' && (
           <div style={{ background: 'rgba(2, 132, 199, 0.08)', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(2, 132, 199, 0.25)', fontSize: 11.5, color: '#7dd3fc', lineHeight: 1.5 }}>
-            💡 <b>Hướng dẫn Bước 1:</b> Copy prompt tiếng Anh bên dưới dán vào <b>Midjourney / Stable Diffusion / Flux</b> $\to$ Tải ảnh nhân vật tạo được về $\to$ Chuyển sang <b>Bước 2</b> để bóc tách tóc theo đúng tạo hình này!
+            💡 <b>Hướng dẫn Bước 1:</b> Copy prompt tiếng Anh dán vào <b>Midjourney / Flux</b> HOẶC copy prompt Gemini dán vào <b>Gemini / DALL-E</b> $\to$ Tải ảnh nhân vật về $\to$ Sang Bước 2 để bóc tách!
           </div>
         )}
 
-        {workflowTab === 'step2_decomposed_hair' && (
+        {workflowTab === 'step2_decomposed_parts' && (
           <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(34, 197, 94, 0.25)', fontSize: 11.5, color: '#86efac', lineHeight: 1.5 }}>
-            💡 <b>Hướng dẫn Bước 2 (Khớp Tóc 100%):</b> Trong Midjourney, thêm cờ <code>--sref [link_ảnh_bước_1]</code> hoặc dùng tính năng Image-to-Image / Reference trong Stable Diffusion để AI sao chép nguyên vẹn màu tóc, chất tóc và trâm cài từ Bước 1 vào lưới 4 dòng!
+            💡 <b>Hướng dẫn Bước 2:</b> Trong Midjourney, thêm cờ <code>--sref [link_ảnh_bước_1]</code> hoặc dán prompt vào Gemini/DALL-E kèm theo ảnh Bước 1 để làm mẫu tham chiếu gốc (Reference Image).
           </div>
         )}
 
         {/* Quick Copy Buttons */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
-            onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptJSON : JSON.stringify(currentAction, null, 2), 'json_copy')}
+            onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptGemini : currentAction.promptVi, 'gemini_copy')}
             style={{
               flex: 1,
               display: 'flex',
@@ -1000,15 +1028,15 @@ export const AIPromptGenerator2D: React.FC = () => {
               fontSize: 11.5,
               fontWeight: 700,
               borderRadius: 6,
-              background: copiedPrompt === 'json_copy' ? '#22c55e' : 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+              background: copiedPrompt === 'gemini_copy' ? '#22c55e' : 'linear-gradient(135deg, #d97706, #b45309)',
               color: '#fff',
               border: 'none',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+              boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)',
             }}
           >
-            {copiedPrompt === 'json_copy' ? <Check size={14} /> : <Copy size={14} />}
-            {copiedPrompt === 'json_copy' ? 'Đã Sao Chép JSON (AI-Ready)!' : '📋 Sao Chép JSON (AI-Ready)'}
+            {copiedPrompt === 'gemini_copy' ? <Check size={14} /> : <Copy size={14} />}
+            {copiedPrompt === 'gemini_copy' ? 'Đã Chép Cho LLM!' : '🍌 Sao Chép Cho Gemini / LLM'}
           </button>
 
           <button
@@ -1031,29 +1059,29 @@ export const AIPromptGenerator2D: React.FC = () => {
             }}
           >
             {copiedPrompt === 'full_en' ? <Check size={14} /> : <Copy size={14} />}
-            {copiedPrompt === 'full_en' ? 'Đã Sao Chép Text!' : '📋 Sao Chép Text Tiếng Anh'}
-          </button>
-
-          <button
-            onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptVietnamese : currentAction.promptVi, 'vi')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '9px 14px',
-              fontSize: 11.5,
-              fontWeight: 600,
-              borderRadius: 6,
-              background: copiedPrompt === 'vi' ? '#22c55e' : 'rgba(255,255,255,0.06)',
-              color: '#e2e8f0',
-              border: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer',
-            }}
-          >
-            {copiedPrompt === 'vi' ? <Check size={13} /> : <FileText size={13} />}
-            {copiedPrompt === 'vi' ? 'Đã Chép!' : 'Chép Tiếng Việt'}
+            {copiedPrompt === 'full_en' ? 'Đã Sao Chép Text!' : '📋 Sao Chép Cho Midjourney'}
           </button>
         </div>
+
+        {/* Gemini Conversational Prompt Box */}
+        {(displayLangTab === 'gemini' || displayLangTab === 'both') && (
+          <div style={{ background: '#1c1917', padding: 14, borderRadius: 8, border: '1px solid #f59e0b' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={13} /> Lệnh tự nhiên (Dành cho Gemini / ChatGPT / DALL-E 3):
+              </span>
+              <button
+                onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptGemini : currentAction.promptVi, 'gemini_box')}
+                style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid #f59e0b', cursor: 'pointer' }}
+              >
+                {copiedPrompt === 'gemini_box' ? 'Đã Chép!' : 'Chép Đoạn Này'}
+              </button>
+            </div>
+            <pre style={{ fontSize: 11.5, color: '#fde68a', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+              {workflowTab !== 'step3_actions' ? promptResult.promptGemini : currentAction.promptVi}
+            </pre>
+          </div>
+        )}
 
         {/* JSON Structured Prompt Box */}
         {(displayLangTab === 'json' || displayLangTab === 'both') && (

@@ -13,6 +13,9 @@ export interface ChromaProcessOptions {
   isolationMode: 'all' | 'outer_only';
   tolerance: number;                // 5 to 100
   feather: number;                  // 0 to 20 px
+  strokeWidth?: number;             // 0 to 15 px (Thêm độ dày viền bao quanh theo màu)
+  strokeColorHex?: string;          // Mã màu viền bổ sung (mặc định '#000000' hoặc màu tùy chọn)
+  edgeSmoothing?: number;
   despeckleSize: number;            // 0 to 150 px
   whiteSpeckleSensitivity: number;  // 0 to 100%
   keepLargestIslandOnly: boolean;
@@ -48,6 +51,11 @@ export function processCellChromaAndDespeckle(
 
   for (let i = 0; i < totalPixels; i++) {
     const p = i * 4;
+    const a = data[p + 3];
+    if (a < 15) {
+      isKeyPixel[i] = 1;
+      continue;
+    }
     const r = data[p];
     const g = data[p + 1];
     const b = data[p + 2];
@@ -78,8 +86,16 @@ export function processCellChromaAndDespeckle(
   const isTransparent = new Uint8Array(totalPixels);
 
   if (options.isolationMode === 'outer_only') {
-    // BFS Flood Fill from the 4 outer borders only
+    // BFS Flood Fill from the 4 outer borders and pre-existing transparent areas
     const queue: number[] = [];
+
+    // Pre-seed with any existing transparent pixels (for cumulative / multi-pass keying)
+    for (let i = 0; i < totalPixels; i++) {
+      if (data[i * 4 + 3] < 15) {
+        isTransparent[i] = 1;
+        queue.push(i);
+      }
+    }
 
     // Top & Bottom edges
     for (let x = 0; x < width; x++) {
@@ -217,6 +233,9 @@ export function processCellChromaAndDespeckle(
     }
   }
 
+
+  
+  
   // 5. White Speckle / Noise Removal
   if (options.whiteSpeckleSensitivity > 0) {
     const whiteThreshold = 255 - (options.whiteSpeckleSensitivity / 100) * 75;
@@ -306,5 +325,94 @@ export function processCellChromaAndDespeckle(
     }
   }
 
+  
+  // 7. Final Step: Outer Stroke & Color Contour Outline
+  const strokeW = Math.min(25, Math.max(0, options.strokeWidth || 0));
+  if (strokeW > 0) {
+    const sHex = (options.strokeColorHex || '#000000').replace('#', '');
+    const sR = parseInt(sHex.slice(0, 2), 16) || 0;
+    const sG = parseInt(sHex.slice(2, 4), 16) || 0;
+    const sB = parseInt(sHex.slice(4, 6), 16) || 0;
+
+    const strokeDist = new Uint8Array(totalPixels);
+    strokeDist.fill(255);
+    const sQueue: number[] = [];
+
+    // 1. Find all solid subject pixels (alpha > 30) bordering transparent space (alpha <= 30)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        if (data[idx * 4 + 3] <= 30) continue;
+
+        const hasEmptyNeighbor =
+          (y > 0 && data[((y - 1) * width + x) * 4 + 3] <= 30) ||
+          (y < height - 1 && data[((y + 1) * width + x) * 4 + 3] <= 30) ||
+          (x > 0 && data[(y * width + (x - 1)) * 4 + 3] <= 30) ||
+          (x < width - 1 && data[(y * width + (x + 1)) * 4 + 3] <= 30);
+
+        if (hasEmptyNeighbor) {
+          strokeDist[idx] = 0;
+          sQueue.push(idx);
+        }
+      }
+    }
+
+    // 2. Propagate outward into empty/transparent pixels up to strokeW
+    let sHead = 0;
+    while (sHead < sQueue.length) {
+      const cur = sQueue[sHead++];
+      const curDist = strokeDist[cur];
+      if (curDist >= strokeW) continue;
+
+      const cx = cur % width;
+      const cy = Math.floor(cur / width);
+
+      const neighbors = [
+        cy > 0 ? (cy - 1) * width + cx : -1,
+        cy < height - 1 ? (cy + 1) * width + cx : -1,
+        cx > 0 ? cy * width + (cx - 1) : -1,
+        cx < width - 1 ? cy * width + (cx + 1) : -1,
+      ];
+
+      for (const n of neighbors) {
+        if (n !== -1 && strokeDist[n] > curDist + 1) {
+          // Only expand into transparent or semi-transparent outer boundary
+          if (data[n * 4 + 3] <= 180) {
+            strokeDist[n] = curDist + 1;
+            sQueue.push(n);
+          }
+        }
+      }
+    }
+
+    // 3. Paint the stroke in transparent / outer boundary pixels with anti-aliased edge
+    for (let i = 0; i < totalPixels; i++) {
+      const d = strokeDist[i];
+      if (d > 0 && d <= strokeW) {
+        const p = i * 4;
+        const currentA = data[p + 3];
+
+        let targetAlpha = 255;
+        if (d === strokeW && strokeW > 1) {
+          targetAlpha = 180; // Anti-aliased outer edge
+        }
+
+        if (currentA <= 30) {
+          data[p] = sR;
+          data[p + 1] = sG;
+          data[p + 2] = sB;
+          data[p + 3] = targetAlpha;
+        } else if (currentA < 255) {
+          const blendFactor = (255 - currentA) / 255;
+          data[p] = Math.round(data[p] * (1 - blendFactor) + sR * blendFactor);
+          data[p + 1] = Math.round(data[p + 1] * (1 - blendFactor) + sG * blendFactor);
+          data[p + 2] = Math.round(data[p + 2] * (1 - blendFactor) + sB * blendFactor);
+          data[p + 3] = Math.max(currentA, targetAlpha);
+        }
+      }
+    }
+  }
+
+  // Put image data back
   ctx.putImageData(imgData, 0, 0);
 }

@@ -228,7 +228,7 @@ export interface AIPartPromptConfig {
     | 'body_turnaround_grid'
     | 'single_part';
   part_type: Character2DPartType | 'map_layer' | 'combat_scene';
-  character_style: 'tu_tien_manhua' | 'anime_action' | 'kiem_hiep' | 'cyberpunk_anime' | 'chibi' | 'custom';
+  character_style: 'tu_tien_manhua' | 'anime_action' | 'kiem_hiep' | 'cyberpunk_anime' | 'chibi' | 'hoat_hinh_3d_trung_quoc' | 'custom';
   custom_character_style?: string;
   gender: 'nam' | 'nu' | 'neutral';
   view_angle: 'front' | 'three_quarter' | 'profile_side' | 'back' | 'all_angles_16_9';
@@ -248,7 +248,7 @@ export interface AIPartPromptConfig {
   hair_accessories?: 'none' | 'jade_hairpin' | 'flowing_ribbons' | 'golden_crown' | 'custom';
   custom_hair_accessories?: string;
   // Workflow Step Mode
-  workflow_step?: 'step1_master_character' | 'step2_decomposed_hair' | 'step3_action_sequence';
+  workflow_step?: 'step1_master_character' | 'step2_decomposed_parts' | 'step2_decomposed_hair' | 'step3_action_sequence';
   // Character Details (Step 1)
   costume_style?: 'dao_bao_tien_hiep' | 'kiem_khach_ao_vai' | 'hac_y_ma_dao' | 'hoang_toc_kim_bao' | 'bach_y_tien_tu' | 'custom';
   custom_costume_style?: string;

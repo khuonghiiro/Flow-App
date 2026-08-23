@@ -50,10 +50,32 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('outer_only');
   const [tolerance, setTolerance] = useState<number>(38);
   const [feather, setFeather] = useState<number>(1);
+  const [strokeWidth, setStrokeWidth] = useState<number>(0);
+  const [strokeColorHex, setStrokeColorHex] = useState<string>('#000000');
   const [bgCleanupSubTab, setBgCleanupSubTab] = useState<'chroma' | 'despeckle'>('chroma');
   const [despeckleSize, setDespeckleSize] = useState<number>(18);
   const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(45);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
+  const [isCumulativeProcessing, setIsCumulativeProcessing] = useState<boolean>(false);
+
+  // Sync snapshot when cumulative mode is toggled
+  const toggleCumulativeProcessing = (enabled: boolean) => {
+    setIsCumulativeProcessing(enabled);
+    if (enabled) {
+      // Snapshot current sliced canvases as stable cumulative base
+      const snapshot = new Map<string, HTMLCanvasElement>();
+      slicedCanvasesRef.current.forEach((canvas, key) => {
+        const copy = document.createElement('canvas');
+        copy.width = canvas.width;
+        copy.height = canvas.height;
+        const cCtx = copy.getContext('2d');
+        if (cCtx) cCtx.drawImage(canvas, 0, 0);
+        snapshot.set(key, copy);
+      });
+      cumulativeBaseCanvasesRef.current = snapshot;
+    }
+  };
+  const [paddingInset, setPaddingInset] = useState<number>(0);
 
   // User upload & Slicing state
   const [userUploadedImageUrl, setUserUploadedImageUrl] = useState<string | null>(null);
@@ -86,6 +108,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
   const slicedCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const cumulativeBaseCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
   // Interactive Grid Dividers: X coords for cols & Y coords for rows
   const [colDividers, setColDividers] = useState<number[]>([]);
@@ -208,10 +231,15 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         const key = `${cell.row}_${cell.col}`;
         const cellCanvas = slicedCanvasesRef.current.get(key);
         if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-          const x0 = colDividers[cell.col];
-          const y0 = rowDividers[cell.row];
-          const w = colDividers[cell.col + 1] - x0;
-          const h = rowDividers[cell.row + 1] - y0;
+          const pad = Math.max(0, paddingInset);
+          const rawX0 = colDividers[cell.col];
+          const rawY0 = rowDividers[cell.row];
+          const rawW = colDividers[cell.col + 1] - rawX0;
+          const rawH = rowDividers[cell.row + 1] - rawY0;
+          const x0 = rawX0 + pad;
+          const y0 = rawY0 + pad;
+          const w = Math.max(10, rawW - pad * 2);
+          const h = Math.max(10, rawH - pad * 2);
           ctx.drawImage(cellCanvas, x0, y0, w, h);
         }
       });
@@ -219,41 +247,80 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       ctx.drawImage(img, 0, 0);
     }
 
-    // Draw Grid Lines
-    ctx.lineWidth = 1.5;
+    // Draw Grid Lines (Alternating Black & White Dashes for 100% Contrast on Any Background)
+    const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
+      if (isBorder) {
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#000000';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      } else {
+        // Pass 1: Solid Black Base Dash
+        ctx.lineWidth = 2.0;
+        ctx.strokeStyle = '#000000';
+        ctx.setLineDash([6, 6]);
+        ctx.lineDashOffset = 0;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Pass 2: Interleaved White Dash
+        ctx.lineWidth = 2.0;
+        ctx.strokeStyle = '#ffffff';
+        ctx.setLineDash([6, 6]);
+        ctx.lineDashOffset = 6;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+    };
+
     colDividers.forEach((x, c) => {
-      ctx.strokeStyle = c === 0 || c === colDividers.length - 1 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(56, 189, 248, 0.6)';
-      ctx.setLineDash(c === 0 || c === colDividers.length - 1 ? [] : [4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
+      const isBorder = c === 0 || c === colDividers.length - 1;
+      drawDualDashLine(x, 0, x, canvas.height, isBorder);
     });
 
     rowDividers.forEach((y, r) => {
-      ctx.strokeStyle = r === 0 || r === rowDividers.length - 1 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(56, 189, 248, 0.6)';
-      ctx.setLineDash(r === 0 || r === rowDividers.length - 1 ? [] : [4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
+      const isBorder = r === 0 || r === rowDividers.length - 1;
+      drawDualDashLine(0, y, canvas.width, y, isBorder);
     });
     ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
 
-    // Highlight Selected Cell
+    // Highlight Selected Cell with High-Contrast Dual Stroke
     if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
       const x0 = colDividers[selectedCell.col];
       const y0 = rowDividers[selectedCell.row];
       const w = colDividers[selectedCell.col + 1] - x0;
       const h = rowDividers[selectedCell.row + 1] - y0;
 
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
       ctx.fillRect(x0, y0, w, h);
+
+      // Outer black border
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([]);
+      ctx.strokeRect(x0, y0, w, h);
+
+      // Inner glowing cyan border
       ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2.0;
       ctx.strokeRect(x0, y0, w, h);
     }
-  }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults]);
+  }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults, paddingInset]);
 
   useEffect(() => {
     redrawCanvas();
@@ -375,11 +442,16 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const key = `${cell.row}_${cell.col}`;
     const dataUrl = slicedResults.get(key);
     if (!dataUrl && loadedImageRef.current) {
-      // Create quick slice for this cell
-      const x0 = colDividers[cell.col];
-      const y0 = rowDividers[cell.row];
-      const w = colDividers[cell.col + 1] - x0;
-      const h = rowDividers[cell.row + 1] - y0;
+      // Create quick slice for this cell with padding inset
+      const pad = Math.max(0, paddingInset);
+      const rawX0 = colDividers[cell.col];
+      const rawY0 = rowDividers[cell.row];
+      const rawW = colDividers[cell.col + 1] - rawX0;
+      const rawH = rowDividers[cell.row + 1] - rawY0;
+      const x0 = rawX0 + pad;
+      const y0 = rawY0 + pad;
+      const w = Math.max(10, rawW - pad * 2);
+      const h = Math.max(10, rawH - pad * 2);
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = w;
       tempCanvas.height = h;
@@ -402,6 +474,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
     const effTol = overrides?.tolerance !== undefined ? overrides.tolerance : tolerance;
     const effFeather = overrides?.feather !== undefined ? overrides.feather : feather;
+    const effStrokeW = overrides?.strokeWidth !== undefined ? overrides.strokeWidth : strokeWidth;
+    const effStrokeColor = overrides?.strokeColorHex !== undefined ? overrides.strokeColorHex : strokeColorHex;
     const effKeyType = overrides?.keyColorType !== undefined ? overrides.keyColorType : keyColorType;
     const effKeyHex = overrides?.keyColorHex !== undefined ? overrides.keyColorHex : keyColorHex;
     const effIsoMode = overrides?.isolationMode !== undefined ? overrides.isolationMode : isolationMode;
@@ -417,10 +491,15 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       currentCategory.cells.forEach((cell) => {
         if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) return;
 
-        const x0 = colDividers[cell.col];
-        const y0 = rowDividers[cell.row];
-        const w = colDividers[cell.col + 1] - x0;
-        const h = rowDividers[cell.row + 1] - y0;
+        const pad = Math.max(0, paddingInset);
+        const rawX0 = colDividers[cell.col];
+        const rawY0 = rowDividers[cell.row];
+        const rawW = colDividers[cell.col + 1] - rawX0;
+        const rawH = rowDividers[cell.row + 1] - rawY0;
+        const x0 = rawX0 + pad;
+        const y0 = rawY0 + pad;
+        const w = Math.max(10, rawW - pad * 2);
+        const h = Math.max(10, rawH - pad * 2);
 
         const cellCanvas = document.createElement('canvas');
         cellCanvas.width = w;
@@ -428,7 +507,16 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         const ctx = cellCanvas.getContext('2d');
         if (!ctx) return;
 
-        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
+        const key = `${cell.row}_${cell.col}`;
+        const cumulativeBase = cumulativeBaseCanvasesRef.current.get(key);
+
+        if (isCumulativeProcessing && cumulativeBase) {
+          // Draw from stable snapshot of previous pass (prevents compounding erosion on slider moves!)
+          ctx.drawImage(cumulativeBase, 0, 0, w, h);
+        } else {
+          // Draw from original raw sprite sheet (with padding inset)
+          ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
+        }
 
         // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with latest effective values
         processCellChromaAndDespeckle(ctx, w, h, {
@@ -437,13 +525,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           isolationMode: effIsoMode,
           tolerance: effTol,
           feather: effFeather,
+          strokeWidth: effStrokeW,
+          strokeColorHex: effStrokeColor,
           despeckleSize: effDespeckle,
           whiteSpeckleSensitivity: effWhiteSens,
           keepLargestIslandOnly: effKeepLargest,
         });
 
         const dataUrl = cellCanvas.toDataURL('image/png');
-        const key = `${cell.row}_${cell.col}`;
         results.set(key, dataUrl);
         slicedCanvasesRef.current.set(key, cellCanvas);
 
@@ -504,12 +593,73 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     isolationMode,
     tolerance,
     feather,
+    strokeWidth,
+    strokeColorHex,
     despeckleSize,
     whiteSpeckleSensitivity,
     keepLargestIslandOnly,
+    isCumulativeProcessing,
+    paddingInset,
     onApplyAssembly,
     redrawCanvas,
   ]);
+
+  // Apply current sliced / processed / erased results as the new Base Image
+  const handleApplyAsNewBaseImage = useCallback(() => {
+    const baseImg = loadedImageRef.current;
+    if (!baseImg) return;
+
+    const compositeCanvas = document.createElement('canvas');
+    compositeCanvas.width = baseImg.width;
+    compositeCanvas.height = baseImg.height;
+    const cCtx = compositeCanvas.getContext('2d');
+    if (!cCtx) return;
+
+    // Draw base image first
+    cCtx.drawImage(baseImg, 0, 0);
+
+    // Overlay all sliced / processed / erased cells onto their exact grid positions
+    currentCategory.cells.forEach((cell) => {
+      const key = `${cell.row}_${cell.col}`;
+      const cellCanvas = slicedCanvasesRef.current.get(key);
+      if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+        const pad = Math.max(0, paddingInset);
+        const rawX0 = colDividers[cell.col];
+        const rawY0 = rowDividers[cell.row];
+        const rawW = colDividers[cell.col + 1] - rawX0;
+        const rawH = rowDividers[cell.row + 1] - rawY0;
+        const x0 = rawX0 + pad;
+        const y0 = rawY0 + pad;
+        const w = Math.max(10, rawW - pad * 2);
+        const h = Math.max(10, rawH - pad * 2);
+        cCtx.clearRect(rawX0, rawY0, rawW, rawH);
+        cCtx.drawImage(cellCanvas, x0, y0, w, h);
+      }
+    });
+
+    const newBaseDataUrl = compositeCanvas.toDataURL('image/png');
+    
+    // Create new Image object to replace loadedImageRef and update state
+    const newImg = new Image();
+    newImg.crossOrigin = 'anonymous';
+    newImg.onload = () => {
+      loadedImageRef.current = newImg;
+      setLoadedImage(newImg);
+      setUserUploadedImageUrl(newBaseDataUrl);
+      slicedCanvasesRef.current.clear();
+      setPreviewDisplayMode('original');
+      setHasExplicitlySliced(false);
+      redrawCanvas();
+    };
+    newImg.src = newBaseDataUrl;
+  }, [currentCategory, colDividers, rowDividers, redrawCanvas]);
+
+  // Reset cumulative cache to original raw slices
+  const handleResetToRawSlices = useCallback(() => {
+    slicedCanvasesRef.current.clear();
+    setIsCumulativeProcessing(false);
+    handleAutoSliceAndAssemble();
+  }, [handleAutoSliceAndAssemble]);
 
   // Adjust Column Width
   const adjustColWidth = (deltaPx: number) => {
@@ -554,6 +704,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               setUserUploadedImageUrl(url);
               setHasExplicitlySliced(false);
               setSlicedResults(new Map());
+              slicedCanvasesRef.current.clear();
+              setIsCumulativeProcessing(false);
               setPreviewDisplayMode('original');
               setAssemblySuccess(false);
             }
@@ -563,6 +715,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             setActiveDemoKey(key);
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
+            slicedCanvasesRef.current.clear();
+            setIsCumulativeProcessing(false);
             setPreviewDisplayMode('original');
             setAssemblySuccess(false);
           }}
@@ -577,6 +731,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setTolerance={setTolerance}
           feather={feather}
           setFeather={setFeather}
+          strokeWidth={strokeWidth}
+          setStrokeWidth={setStrokeWidth}
+          strokeColorHex={strokeColorHex}
+          setStrokeColorHex={setStrokeColorHex}
           bgCleanupSubTab={bgCleanupSubTab}
           setBgCleanupSubTab={setBgCleanupSubTab}
           despeckleSize={despeckleSize}
@@ -585,6 +743,12 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setWhiteSpeckleSensitivity={setWhiteSpeckleSensitivity}
           keepLargestIslandOnly={keepLargestIslandOnly}
           setKeepLargestIslandOnly={setKeepLargestIslandOnly}
+          isCumulativeProcessing={isCumulativeProcessing}
+          setIsCumulativeProcessing={toggleCumulativeProcessing}
+          onResetToRawSlices={handleResetToRawSlices}
+          onApplyAsNewBaseImage={handleApplyAsNewBaseImage}
+          paddingInset={paddingInset}
+          setPaddingInset={setPaddingInset}
           isProcessing={isProcessing}
           assemblySuccess={assemblySuccess}
           onAutoSliceAndAssemble={handleAutoSliceAndAssemble}
