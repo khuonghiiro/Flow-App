@@ -690,8 +690,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
-      {/* Main 3-Column Studio Grid: 260px Sidebar, 1fr Interactive Canvas, 400px 3D Preview */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '260px 1fr 400px', gap: 8, minHeight: 0 }}>
+      {/* Main 3-Column Studio Grid: 340px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '340px 1fr 380px', gap: 10, minHeight: 0 }}>
         {/* Left Column: Slicer Controls & Filters */}
         <SlicerSidebarControls
           selectedCatId={selectedCatId}

@@ -7,6 +7,10 @@ import {
   Save,
   Check,
   RefreshCw,
+  Sliders,
+  ChevronDown,
+  Info,
+  Palette,
 } from 'lucide-react';
 import {
   GRID_CATEGORY_DEFINITIONS,
@@ -108,98 +112,81 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   onOpenCatalogModal,
   onCommitSliderChange,
 }) => {
+  const currentCat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) || GRID_CATEGORY_DEFINITIONS[0];
+
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
-        background: 'rgba(15, 23, 42, 0.7)',
-        padding: 10,
-        borderRadius: 8,
+        gap: 10,
+        background: '#090e1a',
+        padding: 12,
+        borderRadius: 10,
         border: '1px solid rgba(255,255,255,0.08)',
         overflowY: 'auto',
+        color: '#e2e8f0',
       }}
     >
-      {/* 1. Category Selector */}
-      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Layers size={13} /> 1. Bảng Linh Kiện Cần Cắt:
+      {/* ========================================================
+          CARD 1: BẢNG LINH KIỆN CẦN CẮT (GRID CATEGORY & IMAGE)
+         ======================================================== */}
+      <div
+        style={{
+          background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%)',
+          borderRadius: 8,
+          border: '1px solid rgba(56, 189, 248, 0.25)',
+          padding: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Layers size={14} color="#38bdf8" /> 1. BẢNG LINH KIỆN CẦN CẮT
+          </div>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: 4,
+              background: 'rgba(56, 189, 248, 0.15)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+            }}
+          >
+            {currentCat.rows} Hàng × {currentCat.cols} Cột • {currentCat.cells.length} Ô
+          </span>
         </div>
+
+        {/* Dropdown Category Selector */}
         <select
           value={selectedCatId}
           onChange={(e) => onSelectCatId(e.target.value)}
           style={{
             width: '100%',
-            padding: '6px 8px',
-            fontSize: 10.5,
-            background: '#0f172a',
+            padding: '7px 9px',
+            fontSize: 11,
+            background: '#0b1329',
             color: '#38bdf8',
-            border: '1px solid #0284c7',
-            borderRadius: 5,
-            fontWeight: 600,
+            border: '1.5px solid #0284c7',
+            borderRadius: 6,
+            fontWeight: 700,
+            cursor: 'pointer',
+            outline: 'none',
           }}
         >
           {GRID_CATEGORY_DEFINITIONS.map((cat) => (
             <option key={cat.id} value={cat.id}>
-              {cat.label}
+              {cat.label} ({cat.rows}x{cat.cols})
             </option>
           ))}
         </select>
-      </div>
 
-      {/* Padding Inset: Thu Viền Mép Ô */}
-      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
-          <span style={{ fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-            ✂️ Thu Nhỏ Viền Ô (Padding Inset):
-          </span>
-          <span style={{ color: '#4ade80', fontWeight: 700 }}>{paddingInset} px</span>
-        </div>
-        <div style={{ fontSize: 8.5, color: '#94a3b8', marginBottom: 4, lineHeight: 1.25 }}>
-          Tự động thụt lùi 4 mép cắt vào trong để loại bỏ triệt để viền kẻ ô, khung đen hoặc khoảng trống thừa.
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {setPaddingInset && (
-            <input
-              type="range"
-              min="0"
-              max="50"
-              step="1"
-              value={paddingInset}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                setPaddingInset(val);
-              }}
-              onPointerUp={() => {
-                if (onCommitSliderChange) onCommitSliderChange();
-              }}
-              onTouchEnd={() => {
-                if (onCommitSliderChange) onCommitSliderChange();
-              }}
-              onKeyUp={() => {
-                if (onCommitSliderChange) onCommitSliderChange();
-              }}
-              style={{ flex: 1 }}
-            />
-          )}
-          {setPaddingInset && (
-            <>
-              <button onClick={() => { setPaddingInset(0); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
-              <button onClick={() => { setPaddingInset(4); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>4px</button>
-              <button onClick={() => { setPaddingInset(8); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>8px</button>
-              <button onClick={() => { setPaddingInset(12); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>12px</button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Image Source Controls */}
-      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Upload size={13} /> 2. Ảnh Nguồn Sprite Sheet:
-        </div>
-
+        {/* Image Source & Upload Controls */}
         <input
           ref={fileInputRef}
           type="file"
@@ -208,26 +195,27 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
           style={{ display: 'none' }}
         />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
           <button
             onClick={() => fileInputRef.current?.click()}
             style={{
               width: '100%',
-              padding: '6px 8px',
-              fontSize: 10.5,
-              fontWeight: 600,
-              borderRadius: 5,
-              background: '#0284c7',
+              padding: '7px 10px',
+              fontSize: 11,
+              fontWeight: 700,
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
               color: '#ffffff',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 5,
+              gap: 6,
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
             }}
           >
-            <Upload size={12} /> {userUploadedImageUrl ? 'Tải Ảnh Khác' : 'Tải Ảnh Lên Cắt'}
+            <Upload size={13} /> {userUploadedImageUrl ? '📤 Tải Ảnh Khác' : '📤 Tải Ảnh Sprite Sheet Lên'}
           </button>
 
           <div style={{ display: 'flex', gap: 4 }}>
@@ -235,94 +223,113 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               onClick={() => onResetToDemoImage('chibi')}
               style={{
                 flex: 1,
-                padding: '5px 4px',
+                padding: '4px 6px',
                 fontSize: 9.5,
                 fontWeight: 700,
-                borderRadius: 5,
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.25))',
+                borderRadius: 4,
+                background: 'rgba(16, 185, 129, 0.15)',
                 color: '#6ee7b7',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3,
               }}
               title="Dùng ảnh mẫu bóc tách tóc Chibi 4x5"
             >
-              🌟 Mẫu Chibi (4x5)
+              🌟 Mẫu Chibi 4x5
             </button>
 
             <button
               onClick={() => onResetToDemoImage('default')}
               style={{
                 flex: 1,
-                padding: '5px 4px',
+                padding: '4px 6px',
                 fontSize: 9.5,
                 fontWeight: 600,
-                borderRadius: 5,
-                background: 'rgba(255,255,255,0.05)',
-                color: '#94a3b8',
+                borderRadius: 4,
+                background: 'rgba(255,255,255,0.06)',
+                color: '#cbd5e1',
                 border: '1px solid rgba(255,255,255,0.1)',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3,
               }}
               title="Dùng ảnh mẫu tóc Kiếm Khách"
             >
               🗡️ Mẫu Kiếm Khách
             </button>
           </div>
-          {/* Apply Current Result as New Base Image */}
-          {slicedCount > 0 && onApplyAsNewBaseImage && (
-            <button
-              onClick={onApplyAsNewBaseImage}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 5,
-                background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
-                color: '#ffffff',
-                border: '1px solid #14b8a6',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5,
-                boxShadow: '0 2px 8px rgba(13, 148, 136, 0.35)',
-              }}
-              title="Ghi đè kết quả đã cắt/tách nền này thành Ảnh Gốc Mới để tiếp tục bóc tách và lọc màu trên ảnh đã xử lý"
-            >
-              📌 Áp Dụng Làm Ảnh Gốc Mới (Apply Base)
-            </button>
-          )}
+        </div>
+
+        {/* Padding Inset (Thu lùi mép viền khung ô) */}
+        <div style={{ background: 'rgba(0,0,0,0.3)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', marginTop: 2 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
+            <span style={{ fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+              ✂️ Thu Viền Ô (Padding Inset):
+            </span>
+            <span style={{ color: '#4ade80', fontWeight: 700 }}>{paddingInset}px</span>
+          </div>
+          <div style={{ fontSize: 8.5, color: '#94a3b8', marginBottom: 4 }}>
+            Thụt lùi 4 mép cắt vào trong để xén bỏ viền kẻ đen / khung ô của AI.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {setPaddingInset && (
+              <input
+                type="range"
+                min="0"
+                max="40"
+                step="1"
+                value={paddingInset}
+                onChange={(e) => setPaddingInset(parseInt(e.target.value, 10))}
+                onPointerUp={() => { if (onCommitSliderChange) onCommitSliderChange(); }}
+                onTouchEnd={() => { if (onCommitSliderChange) onCommitSliderChange(); }}
+                onKeyUp={() => { if (onCommitSliderChange) onCommitSliderChange(); }}
+                style={{ flex: 1 }}
+              />
+            )}
+            {setPaddingInset && (
+              <>
+                <button onClick={() => { setPaddingInset(0); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
+                <button onClick={() => { setPaddingInset(4); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>4px</button>
+                <button onClick={() => { setPaddingInset(8); if (onCommitSliderChange) onCommitSliderChange(); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>8px</button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 3. Chroma Key & Despeckle Cleanup Section */}
-      <div style={{ background: 'rgba(34, 197, 94, 0.06)', padding: 8, borderRadius: 6, border: '1px solid rgba(34, 197, 94, 0.2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Scissors size={13} /> 3. Tách Nền & Khử Đốm Rác:
+      {/* ========================================================
+          CARD 2: TÁCH NỀN & TINH CHỈNH ĐƯỜNG VIỀN (CHROMA & EDGES)
+         ======================================================== */}
+      <div
+        style={{
+          background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%)',
+          borderRadius: 8,
+          border: '1px solid rgba(34, 197, 94, 0.25)',
+          padding: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Scissors size={14} color="#4ade80" /> 2. TÁCH NỀN & TINH CHỈNH VIỀN
+          </div>
         </div>
-        {/* Toggle Chế Độ Xử Lý Tiếp (Lọc màu bổ sung / Multi-pass Keying) */}
+
+        {/* Workflow Toolbar: Xử Lý Tiếp & Áp Dụng Làm Ảnh Gốc */}
         <div
           style={{
+            background: isCumulativeProcessing ? 'rgba(234, 179, 8, 0.12)' : 'rgba(0,0,0,0.3)',
+            padding: 7,
+            borderRadius: 6,
+            border: isCumulativeProcessing ? '1.5px solid #eab308' : '1px solid rgba(255,255,255,0.08)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 4,
-            background: isCumulativeProcessing ? 'rgba(234, 179, 8, 0.12)' : 'rgba(0,0,0,0.25)',
-            padding: '6px 8px',
-            borderRadius: 6,
-            border: isCumulativeProcessing ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.08)',
+            gap: 5,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: isCumulativeProcessing ? '#facc15' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-              ⚡ Xử Lý Tiếp (Giữ kết quả cũ):
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: isCumulativeProcessing ? '#facc15' : '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4 }}>
+              ⚡ Chế Độ Xử Lý Tiếp:
             </span>
             {setIsCumulativeProcessing && (
               <button
@@ -334,71 +341,54 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   borderRadius: 4,
                   border: 'none',
                   background: isCumulativeProcessing ? '#eab308' : 'rgba(255,255,255,0.1)',
-                  color: isCumulativeProcessing ? '#090d16' : '#cbd5e1',
+                  color: isCumulativeProcessing ? '#0f172a' : '#94a3b8',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
                   boxShadow: isCumulativeProcessing ? '0 0 10px rgba(234, 179, 8, 0.4)' : 'none',
                 }}
               >
-                {isCumulativeProcessing ? '✓ BẬT' : '○ TẮT'}
+                {isCumulativeProcessing ? '✓ ĐANG BẬT' : '○ TẮT'}
               </button>
             )}
           </div>
-          <div style={{ fontSize: 8.5, color: isCumulativeProcessing ? '#fde047' : '#64748b', lineHeight: 1.25 }}>
+          <div style={{ fontSize: 8.5, color: isCumulativeProcessing ? '#fef08a' : '#64748b', lineHeight: 1.25 }}>
             {isCumulativeProcessing
-              ? '✓ Bật xử lý tiếp: Bạn có thể chọn màu khác (vd: trắng/xanh/custom) để bóc tách thêm trên ảnh đã cắt, không bị reset về ảnh gốc!'
-              : '○ Đang tắt: Mỗi lần bấm bóc tách sẽ làm mới lại từ ảnh gốc.'}
+              ? '✓ Bật xử lý tiếp: Giữ nguyên kết quả cắt trước, cho phép chọn màu khác để bóc tách thêm nhiều tầng.'
+              : '○ Đang tắt: Mỗi lần bóc tách sẽ làm sạch mới lại từ ảnh gốc.'}
           </div>
-          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-            {onApplyAsNewBaseImage && slicedCount > 0 && (
-              <button
-                onClick={onApplyAsNewBaseImage}
-                style={{
-                  flex: 1,
-                  padding: '3px 6px',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  borderRadius: 4,
-                  border: '1px solid #14b8a6',
-                  background: 'rgba(13, 148, 136, 0.25)',
-                  color: '#2dd4bf',
-                  cursor: 'pointer',
-                }}
-                title="Ghi đè kết quả hiện tại thành ảnh gốc mới"
-              >
-                📌 Lưu đè thành Ảnh Gốc Mới
-              </button>
-            )}
-            {isCumulativeProcessing && onResetToRawSlices && (
-              <button
-                onClick={onResetToRawSlices}
-                style={{
-                  flex: 1,
-                  padding: '3px 6px',
-                  fontSize: 9,
-                  fontWeight: 600,
-                  borderRadius: 4,
-                  border: '1px dashed rgba(234, 179, 8, 0.5)',
-                  background: 'transparent',
-                  color: '#facc15',
-                  cursor: 'pointer',
-                }}
-              >
-                ↺ Quay lại ảnh gốc
-              </button>
-            )}
-          </div>
+
+          {onApplyAsNewBaseImage && slicedCount > 0 && (
+            <button
+              onClick={onApplyAsNewBaseImage}
+              style={{
+                width: '100%',
+                padding: '5px 8px',
+                fontSize: 9.5,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
+                color: '#ffffff',
+                border: '1px solid #14b8a6',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+              }}
+              title="Lưu đè kết quả đã cắt thành ảnh gốc mới"
+            >
+              📌 Áp Dụng Làm Ảnh Gốc Mới (Apply Base)
+            </button>
+          )}
         </div>
 
-
-        {/* Sub-tab Switcher */}
-        <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.35)', padding: 2, borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* Color & Cleanup Sub-tabs */}
+        <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
           <button
             onClick={() => setBgCleanupSubTab('chroma')}
             style={{
               flex: 1,
-              padding: '4px',
-              fontSize: 9.5,
+              padding: '5px',
+              fontSize: 10,
               fontWeight: 700,
               borderRadius: 4,
               border: 'none',
@@ -407,15 +397,14 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               cursor: 'pointer',
             }}
           >
-            1. Tách Màu
+            🎨 1. Tách Màu & Viền
           </button>
-
           <button
             onClick={() => setBgCleanupSubTab('despeckle')}
             style={{
               flex: 1,
-              padding: '4px',
-              fontSize: 9.5,
+              padding: '5px',
+              fontSize: 10,
               fontWeight: 700,
               borderRadius: 4,
               border: 'none',
@@ -424,15 +413,15 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               cursor: 'pointer',
             }}
           >
-            2. Khử Rác
+            🧹 2. Khử Rác & Bụi
           </button>
         </div>
 
         {bgCleanupSubTab === 'chroma' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {/* Target Color Selector */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Color Selection */}
             <div>
-              <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 3, fontWeight: 600 }}>Màu Nền Cần Tách:</div>
+              <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 4, fontWeight: 700 }}>Chọn Màu Cần Tách:</div>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button
                   onClick={() => {
@@ -441,18 +430,17 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   }}
                   style={{
                     flex: 1,
-                    padding: '4px 3px',
-                    fontSize: 9,
+                    padding: '5px 3px',
+                    fontSize: 9.5,
                     fontWeight: 700,
                     borderRadius: 4,
                     border: keyColorType === 'chroma_green' ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
-                    background: keyColorType === 'chroma_green' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(0,0,0,0.3)',
+                    background: keyColorType === 'chroma_green' ? 'rgba(34, 197, 94, 0.25)' : 'rgba(0,0,0,0.3)',
                     color: keyColorType === 'chroma_green' ? '#4ade80' : '#94a3b8',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
                   }}
                 >
-                  🟢 Xanh
+                  🟢 Xanh Lá
                 </button>
                 <button
                   onClick={() => {
@@ -461,15 +449,14 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   }}
                   style={{
                     flex: 1,
-                    padding: '4px 3px',
-                    fontSize: 9,
+                    padding: '5px 3px',
+                    fontSize: 9.5,
                     fontWeight: 700,
                     borderRadius: 4,
-                    border: keyColorType === 'pure_white' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                    background: keyColorType === 'pure_white' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(0,0,0,0.3)',
-                    color: keyColorType === 'pure_white' ? '#38bdf8' : '#94a3b8',
+                    border: keyColorType === 'pure_white' ? '1.5px solid #ffffff' : '1px solid rgba(255,255,255,0.1)',
+                    background: keyColorType === 'pure_white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)',
+                    color: keyColorType === 'pure_white' ? '#ffffff' : '#94a3b8',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
                   }}
                 >
                   ⚪ Trắng
@@ -477,19 +464,18 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                 <button
                   onClick={() => {
                     setKeyColorType('custom');
-                    if (onCommitSliderChange) onCommitSliderChange({ keyColorType: 'custom' });
+                    if (onCommitSliderChange) onCommitSliderChange({ keyColorType: 'custom', keyColorHex });
                   }}
                   style={{
                     flex: 1,
-                    padding: '4px 3px',
-                    fontSize: 9,
+                    padding: '5px 3px',
+                    fontSize: 9.5,
                     fontWeight: 700,
                     borderRadius: 4,
-                    border: keyColorType === 'custom' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
-                    background: keyColorType === 'custom' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0,0,0,0.3)',
-                    color: keyColorType === 'custom' ? '#c084fc' : '#94a3b8',
+                    border: keyColorType === 'custom' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                    background: keyColorType === 'custom' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0,0,0,0.3)',
+                    color: keyColorType === 'custom' ? '#38bdf8' : '#94a3b8',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
                   }}
                 >
                   🎨 Tự Chọn
@@ -497,7 +483,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               </div>
 
               {keyColorType === 'custom' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, background: 'rgba(0,0,0,0.3)', padding: 5, borderRadius: 5 }}>
                   <input
                     type="color"
                     value={keyColorHex}
@@ -505,46 +491,27 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                       setKeyColorHex(e.target.value);
                       if (onCommitSliderChange) onCommitSliderChange({ keyColorType: 'custom', keyColorHex: e.target.value });
                     }}
-                    style={{ width: 28, height: 22, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                    style={{ width: 28, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent' }}
                   />
                   <input
                     type="text"
                     value={keyColorHex}
                     onChange={(e) => {
                       setKeyColorHex(e.target.value);
+                      if (onCommitSliderChange && e.target.value.length === 7) {
+                        onCommitSliderChange({ keyColorType: 'custom', keyColorHex: e.target.value });
+                      }
                     }}
-                    onBlur={() => {
-                      if (onCommitSliderChange) onCommitSliderChange({ keyColorType: 'custom', keyColorHex });
-                    }}
-                    style={{ flex: 1, padding: '2px 5px', fontSize: 9.5, background: '#090d16', color: '#fff', border: '1px solid #a855f7', borderRadius: 4 }}
+                    style={{ flex: 1, padding: '3px 6px', fontSize: 10, background: '#090e1a', color: '#38bdf8', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, fontFamily: 'monospace' }}
                   />
                 </div>
               )}
             </div>
 
-            {/* Mode: Tách Toàn Bộ vs Chỉ Tách Viền Ngoài */}
+            {/* Isolation Mode */}
             <div>
-              <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 3, fontWeight: 600 }}>Chế Độ Bóc Tách:</div>
+              <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 4, fontWeight: 700 }}>Phạm Vi Bóc Tách:</div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button
-                  onClick={() => {
-                    setIsolationMode('all');
-                    if (onCommitSliderChange) onCommitSliderChange({ isolationMode: 'all' });
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '4px 2px',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    borderRadius: 4,
-                    border: isolationMode === 'all' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                    background: isolationMode === 'all' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(0,0,0,0.3)',
-                    color: isolationMode === 'all' ? '#38bdf8' : '#94a3b8',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🌐 Tách Toàn Bộ
-                </button>
                 <button
                   onClick={() => {
                     setIsolationMode('outer_only');
@@ -552,64 +519,123 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   }}
                   style={{
                     flex: 1,
-                    padding: '4px 2px',
-                    fontSize: 9,
+                    padding: '5px 3px',
+                    fontSize: 9.5,
                     fontWeight: 700,
                     borderRadius: 4,
                     border: isolationMode === 'outer_only' ? '1.5px solid #eab308' : '1px solid rgba(255,255,255,0.1)',
-                    background: isolationMode === 'outer_only' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(0,0,0,0.3)',
+                    background: isolationMode === 'outer_only' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(0,0,0,0.3)',
                     color: isolationMode === 'outer_only' ? '#facc15' : '#94a3b8',
                     cursor: 'pointer',
                   }}
+                  title="Chỉ tách nền viền ngoài, bảo vệ điểm sáng bóng/phụ kiện bên trong"
                 >
-                  🔲 Tách Viền Ngoài
+                  🔲 Tách Viền Ngoài (Bảo vệ thân)
+                </button>
+                <button
+                  onClick={() => {
+                    setIsolationMode('all');
+                    if (onCommitSliderChange) onCommitSliderChange({ isolationMode: 'all' });
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '5px 3px',
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: isolationMode === 'all' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                    background: isolationMode === 'all' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0,0,0,0.3)',
+                    color: isolationMode === 'all' ? '#38bdf8' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                  title="Tách toàn bộ mọi khoảng màu trùng khớp"
+                >
+                  🌐 Tách Toàn Bộ
                 </button>
               </div>
             </div>
 
             {/* Tolerance Slider */}
-            <div style={{ fontSize: 9.5, color: '#94a3b8' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span>Độ nhạy màu (Tolerance):</span>
-                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{tolerance}</span>
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
+                <span style={{ fontWeight: 700, color: '#38bdf8' }}>🎯 Độ Nhạy Tách Màu (Tolerance):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 800 }}>{tolerance}</span>
               </div>
-              <input
-                type="range"
-                min="5"
-                max="100"
-                value={tolerance}
-                onChange={(e) => setTolerance(parseInt(e.target.value))}
-                onPointerUp={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ tolerance: val });
-                }}
-                onTouchEnd={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ tolerance: val });
-                }}
-                onKeyUp={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ tolerance: val });
-                }}
-                style={{ width: '100%' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="range"
+                  min="5"
+                  max="100"
+                  value={tolerance}
+                  onChange={(e) => setTolerance(parseInt(e.target.value))}
+                  onPointerUp={(e) => {
+                    const val = parseInt((e.target as HTMLInputElement).value);
+                    if (onCommitSliderChange) onCommitSliderChange({ tolerance: val });
+                  }}
+                  onTouchEnd={(e) => {
+                    const val = parseInt((e.target as HTMLInputElement).value);
+                    if (onCommitSliderChange) onCommitSliderChange({ tolerance: val });
+                  }}
+                  onKeyUp={(e) => {
+                    const val = parseInt((e.target as HTMLInputElement).value);
+                    if (onCommitSliderChange) onCommitSliderChange({ tolerance: val });
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <button onClick={() => { setTolerance(25); if (onCommitSliderChange) onCommitSliderChange({ tolerance: 25 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>25</button>
+                <button onClick={() => { setTolerance(38); if (onCommitSliderChange) onCommitSliderChange({ tolerance: 38 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>38</button>
+                <button onClick={() => { setTolerance(55); if (onCommitSliderChange) onCommitSliderChange({ tolerance: 55 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>55</button>
+              </div>
             </div>
 
-                                    {/* Thêm Viền Theo Màu Đã Chọn (Edge Stroke / Outline) */}
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {/* Feather Slider */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
+                <span style={{ fontWeight: 700, color: '#38bdf8' }}>🪶 Làm Mềm Viền (Feather):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 800 }}>{feather}px</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="15"
+                  value={feather}
+                  onChange={(e) => setFeather(parseInt(e.target.value))}
+                  onPointerUp={(e) => {
+                    const val = parseInt((e.target as HTMLInputElement).value);
+                    if (onCommitSliderChange) onCommitSliderChange({ feather: val });
+                  }}
+                  onTouchEnd={(e) => {
+                    const val = parseInt((e.target as HTMLInputElement).value);
+                    if (onCommitSliderChange) onCommitSliderChange({ feather: val });
+                  }}
+                  onKeyUp={(e) => {
+                    const val = parseInt((e.target as HTMLInputElement).value);
+                    if (onCommitSliderChange) onCommitSliderChange({ feather: val });
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <button onClick={() => { setFeather(0); if (onCommitSliderChange) onCommitSliderChange({ feather: 0 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
+                <button onClick={() => { setFeather(1); if (onCommitSliderChange) onCommitSliderChange({ feather: 1 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>1px</button>
+                <button onClick={() => { setFeather(2); if (onCommitSliderChange) onCommitSliderChange({ feather: 2 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>2px</button>
+              </div>
+            </div>
+
+            {/* Stroke / Thêm Viền Bao Quanh Theo Màu */}
+            <div style={{ background: 'rgba(0,0,0,0.35)', padding: 8, borderRadius: 6, border: '1.5px solid rgba(56, 189, 248, 0.3)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  🎨 Thêm Viền Theo Màu (Stroke):
+                <span style={{ fontSize: 10, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Palette size={13} color="#38bdf8" /> 🎨 THÊM VIỀN NÉT THEO MÀU (STROKE):
                 </span>
-                <span style={{ fontSize: 9.5, color: '#4ade80', fontWeight: 700 }}>{strokeWidth}px</span>
+                <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 800 }}>{strokeWidth}px</span>
               </div>
               <div style={{ fontSize: 8.5, color: '#94a3b8', lineHeight: 1.25 }}>
-                Tạo một đường viền nét mịn bao quanh hình dựa theo màu bạn chọn bên dưới.
+                Đắp thêm một đường viền nét mịn ra ngoài theo màu bạn chọn bên dưới.
               </div>
 
-              {/* Color picker & quick color presets */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 9, color: '#cbd5e1' }}>Màu viền:</span>
+              {/* Color Presets */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9, color: '#cbd5e1', fontWeight: 600 }}>Màu viền:</span>
                 {setStrokeColorHex && (
                   <input
                     type="color"
@@ -619,12 +645,12 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                       if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: e.target.value });
                     }}
                     style={{ width: 24, height: 20, border: 'none', borderRadius: 3, cursor: 'pointer', background: 'transparent' }}
-                    title="Chọn màu viền tùy thích"
+                    title="Chọn màu viền tùy ý"
                   />
                 )}
                 {setStrokeColorHex && (
                   <>
-                    <button onClick={() => { setStrokeColorHex('#000000'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#000000' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#000000' ? '#0284c7' : 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🖤 Đen</button>
+                    <button onClick={() => { setStrokeColorHex('#000000'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#000000' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#000000' ? '#0284c7' : 'rgba(0,0,0,0.6)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🖤 Đen</button>
                     <button onClick={() => { setStrokeColorHex('#ffffff'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#ffffff' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#ffffff' ? '#0284c7' : 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🤍 Trắng</button>
                     <button onClick={() => { setStrokeColorHex('#2b1810'); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: '#2b1810' }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === '#2b1810' ? '#0284c7' : '#2b1810', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>🤎 Nâu Nét</button>
                     <button onClick={() => { setStrokeColorHex(keyColorHex); if (onCommitSliderChange && strokeWidth > 0) onCommitSliderChange({ strokeColorHex: keyColorHex }); }} style={{ padding: '2px 5px', fontSize: 8.5, background: strokeColorHex === keyColorHex ? '#0284c7' : 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid #475569', borderRadius: 3, cursor: 'pointer' }}>✨ Màu Nền</button>
@@ -632,7 +658,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                 )}
               </div>
 
-              {/* Slider for stroke width */}
+              {/* Stroke Width Slider */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {setStrokeWidth && (
                   <input
@@ -659,55 +685,27 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                 )}
                 {setStrokeWidth && (
                   <>
-                    <button onClick={() => { setStrokeWidth(0); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 0 }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
-                    <button onClick={() => { setStrokeWidth(1); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 1, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>1px</button>
-                    <button onClick={() => { setStrokeWidth(2); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 2, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>2px</button>
-                    <button onClick={() => { setStrokeWidth(4); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 4, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 9, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>4px</button>
+                    <button onClick={() => { setStrokeWidth(0); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 0 }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#94a3b8', border: 'none', borderRadius: 3, cursor: 'pointer' }}>0</button>
+                    <button onClick={() => { setStrokeWidth(1); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 1, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>1px</button>
+                    <button onClick={() => { setStrokeWidth(2); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 2, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>2px</button>
+                    <button onClick={() => { setStrokeWidth(4); if (onCommitSliderChange) onCommitSliderChange({ strokeWidth: 4, strokeColorHex }); }} style={{ padding: '2px 4px', fontSize: 8.5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>4px</button>
                   </>
                 )}
               </div>
             </div>
-
-            {/* Feather Slider */}
-            <div style={{ fontSize: 9.5, color: '#94a3b8' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span>Làm mềm viền (Feather):</span>
-                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{feather}px</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="20"
-                value={feather}
-                onChange={(e) => setFeather(parseInt(e.target.value))}
-                onPointerUp={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ feather: val });
-                }}
-                onTouchEnd={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ feather: val });
-                }}
-                onKeyUp={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ feather: val });
-                }}
-                style={{ width: '100%' }}
-              />
-            </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {/* Despeckle Size Slider */}
-            <div style={{ fontSize: 9.5, color: '#94a3b8' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span>🧹 Kích thước hạt rác:</span>
-                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{despeckleSize}px</span>
+          /* Sub-tab 2: Despeckle & Noise Filtering */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
+                <span style={{ fontWeight: 700, color: '#38bdf8' }}>🧹 Khử Đốm Rác Nhỏ (Despeckle):</span>
+                <span style={{ color: '#38bdf8', fontWeight: 800 }}>{despeckleSize}px</span>
               </div>
               <input
                 type="range"
                 min="0"
-                max="150"
+                max="100"
                 value={despeckleSize}
                 onChange={(e) => setDespeckleSize(parseInt(e.target.value))}
                 onPointerUp={(e) => {
@@ -718,19 +716,14 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   const val = parseInt((e.target as HTMLInputElement).value);
                   if (onCommitSliderChange) onCommitSliderChange({ despeckleSize: val });
                 }}
-                onKeyUp={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ despeckleSize: val });
-                }}
                 style={{ width: '100%' }}
               />
             </div>
 
-            {/* White Speckle Sensitivity */}
-            <div style={{ fontSize: 9.5, color: '#94a3b8' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span>⚪ Khử đốm trắng:</span>
-                <span style={{ color: '#38bdf8', fontWeight: 700 }}>{whiteSpeckleSensitivity}%</span>
+            <div style={{ background: 'rgba(0,0,0,0.25)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1', marginBottom: 2 }}>
+                <span style={{ fontWeight: 700, color: '#38bdf8' }}>✨ Khử Hạt Bụi Trắng:</span>
+                <span style={{ color: '#38bdf8', fontWeight: 800 }}>{whiteSpeckleSensitivity}%</span>
               </div>
               <input
                 type="range"
@@ -746,80 +739,66 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   const val = parseInt((e.target as HTMLInputElement).value);
                   if (onCommitSliderChange) onCommitSliderChange({ whiteSpeckleSensitivity: val });
                 }}
-                onKeyUp={(e) => {
-                  const val = parseInt((e.target as HTMLInputElement).value);
-                  if (onCommitSliderChange) onCommitSliderChange({ whiteSpeckleSensitivity: val });
-                }}
                 style={{ width: '100%' }}
               />
             </div>
 
-            {/* Keep Largest Island Only Toggle */}
-            <button
-              onClick={() => {
-                const nextVal = !keepLargestIslandOnly;
-                setKeepLargestIslandOnly(nextVal);
-                if (onCommitSliderChange) onCommitSliderChange({ keepLargestIslandOnly: nextVal });
-              }}
-              style={{
-                width: '100%',
-                padding: '5px 8px',
-                fontSize: 9.5,
-                fontWeight: 600,
-                borderRadius: 4,
-                border: keepLargestIslandOnly ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                background: keepLargestIslandOnly ? 'rgba(56, 189, 248, 0.2)' : 'rgba(0,0,0,0.3)',
-                color: keepLargestIslandOnly ? '#38bdf8' : '#94a3b8',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              {keepLargestIslandOnly ? '✓ Đang bật: Chỉ giữ lại mảng lớn nhất' : '○ Chỉ giữ lại mảng lớn nhất (Tự lọc rác)'}
-            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#cbd5e1', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={keepLargestIslandOnly}
+                onChange={(e) => {
+                  setKeepLargestIslandOnly(e.target.checked);
+                  if (onCommitSliderChange) onCommitSliderChange({ keepLargestIslandOnly: e.target.checked });
+                }}
+              />
+              🏝️ Chỉ giữ cụm linh kiện lớn nhất (Xóa sạch bụi phụ)
+            </label>
           </div>
         )}
       </div>
 
-      {/* 4. Action Buttons */}
-      <button
-        onClick={onAutoSliceAndAssemble}
-        disabled={isProcessing}
-        style={{
-          width: '100%',
-          padding: '10px 12px',
-          fontSize: 11.5,
-          fontWeight: 700,
-          borderRadius: 6,
-          background: assemblySuccess
-            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-            : 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-          color: '#ffffff',
-          border: 'none',
-          cursor: isProcessing ? 'wait' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
-        }}
-      >
-        {isProcessing ? (
-          <>
-            <RefreshCw size={14} className="animate-spin" /> Đang bóc tách...
-          </>
-        ) : assemblySuccess ? (
-          <>
-            <Check size={14} /> ✓ Đã Bóc Tách & Lắp 3D!
-          </>
-        ) : (
-          <>
-            <Sparkles size={14} /> ⚡ Tách Nền & Lắp Ráp 3D
-          </>
-        )}
-      </button>
-
-      {/* Save Kit & Open Catalog Buttons */}
+      {/* ========================================================
+          CARD 3: HÀNH ĐỘNG CHÍNH & LẮP RÁP 3D (HERO BUTTONS)
+         ======================================================== */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <button
+          onClick={onAutoSliceAndAssemble}
+          disabled={isProcessing}
+          style={{
+            width: '100%',
+            padding: '10px 14px',
+            fontSize: 12,
+            fontWeight: 800,
+            borderRadius: 8,
+            background: isProcessing
+              ? 'rgba(255,255,255,0.1)'
+              : 'linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #7c3aed 100%)',
+            color: '#ffffff',
+            border: '1px solid rgba(255,255,255,0.2)',
+            cursor: isProcessing ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 7,
+            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.45)',
+          }}
+        >
+          {isProcessing ? (
+            <>
+              <RefreshCw size={15} className="animate-spin" /> Đang bóc tách từng ô...
+            </>
+          ) : assemblySuccess ? (
+            <>
+              <Check size={15} /> ✓ Đã Tách ({slicedCount}/{totalCellCount} Ô) & Lắp 3D!
+            </>
+          ) : (
+            <>
+              <Sparkles size={15} /> ⚡ BÓC TÁCH & LẮP RÁP 3D TỰ ĐỘNG
+            </>
+          )}
+        </button>
+
         {slicedCount > 0 && (
           <button
             onClick={onOpenSaveKitModal}
@@ -840,7 +819,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               boxShadow: '0 2px 10px rgba(139, 92, 246, 0.35)',
             }}
           >
-            <Save size={13} /> 💾 Lưu Bộ Linh Kiện ({slicedCount}/{totalCellCount})
+            <Save size={13} /> 💾 Lưu Bộ Kit Linh Kiện ({slicedCount}/{totalCellCount})
           </button>
         )}
 
