@@ -13,6 +13,7 @@ import {
   generateDemoGridSpriteSheet,
 } from '../../core/assets/GridSliceRegistry';
 import demoHairMultiAngleSheet from '../../assets/demo_hair_multi_angle_sheet.jpg';
+import demoChibiHairSpriteSheet from '../../assets/demo_chibi_hair_sprite_sheet.jpg';
 import {
   ThreeMultiAngleBillboardEngine,
   AngleDetectionResult,
@@ -43,6 +44,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 }) => {
   // Slicing & Category Configuration
   const [selectedCatId, setSelectedCatId] = useState<string>('hair_multi_angle_grid');
+  const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi'>('chibi');
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
   const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('outer_only');
@@ -168,9 +170,13 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     if (userUploadedImageUrl) {
       img.src = userUploadedImageUrl;
     } else {
-      img.src = currentCategory.id === 'hair_multi_angle_grid' ? demoHairMultiAngleSheet : generateDemoGridSpriteSheet(currentCategory.id);
+      if (currentCategory.id === 'hair_multi_angle_grid') {
+        img.src = activeDemoKey === 'chibi' ? demoChibiHairSpriteSheet : demoHairMultiAngleSheet;
+      } else {
+        img.src = generateDemoGridSpriteSheet(currentCategory.id);
+      }
     }
-  }, [userUploadedImageUrl, selectedCatId, currentCategory, initUniformDividers]);
+  }, [userUploadedImageUrl, activeDemoKey, selectedCatId, currentCategory, initUniformDividers]);
 
   // Redraw Canvas & Grid Dividers
   const redrawCanvas = useCallback(() => {
@@ -552,8 +558,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               setAssemblySuccess(false);
             }
           }}
-          onResetToDemoImage={() => {
+          onResetToDemoImage={(key = 'chibi') => {
             setUserUploadedImageUrl(null);
+            setActiveDemoKey(key);
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
             setPreviewDisplayMode('original');

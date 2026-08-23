@@ -195,47 +195,47 @@ export class ThreeMultiAngleBillboardEngine {
    */
   public setAssembly(assembly: Character2DAssembly): void {
     this.currentAssembly = assembly;
-
-    // Remove old meshes
-    for (const mesh of this.partMeshes.values()) {
-      this.characterGroup.remove(mesh);
-      mesh.geometry.dispose();
-      (mesh.material as THREE.Material).dispose();
-    }
-    this.partMeshes.clear();
-
     const layerSpacing = assembly.layer_depth_spacing ?? 1.0;
+    const currentSlots = new Set(Object.keys(assembly.parts));
 
-    // Create a Plane Mesh for each part
+    // Remove meshes for parts that no longer exist
+    for (const [slot, mesh] of this.partMeshes.entries()) {
+      if (!currentSlots.has(slot)) {
+        this.characterGroup.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+        this.partMeshes.delete(slot);
+      }
+    }
+
+    // Create or update Plane Mesh for each part
     for (const [slotKey, part] of Object.entries(assembly.parts)) {
-      if (!part?.path) continue;
+      if (!part) continue;
       const slot = slotKey as Character2DPartType;
+
+      const activeUrl = this.getTextureForAngle(part, this.currentDiscreteAngle) || part.path || '';
+      if (!activeUrl) continue;
 
       const hierarchy = PART_HIERARCHY_CONFIG[slot];
       const zDepth = (part.z_depth_3d ?? hierarchy?.defaultZDepth3D ?? 0) * layerSpacing;
 
-      // Initial active texture for current camera angle
-      const activeUrl = this.getTextureForAngle(part, this.currentDiscreteAngle);
-      const texture = this.loadTexture(activeUrl);
+      let mesh = this.partMeshes.get(slot);
+      if (!mesh) {
+        const texture = this.loadTexture(activeUrl);
+        const geo = new THREE.PlaneGeometry(1.0, 1.0);
+        const mat = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          alphaTest: 0.01,
+          side: THREE.DoubleSide,
+          depthWrite: true,
+        });
 
-      const planeW = 1.0;
-      const planeH = 1.0;
-      const geo = new THREE.PlaneGeometry(planeW, planeH);
-
-      // Pure flat 2D Basic Material - zero muddy shading or artificial gloss
-      const mat = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        alphaTest: 0.01,
-        side: THREE.DoubleSide,
-        depthWrite: true,
-      });
-
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(0, 0, zDepth);
-
-      this.characterGroup.add(mesh);
-      this.partMeshes.set(slot, mesh);
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(0, 0, zDepth);
+        this.characterGroup.add(mesh);
+        this.partMeshes.set(slot, mesh);
+      }
     }
 
     // Apply per-angle transform overrides immediately

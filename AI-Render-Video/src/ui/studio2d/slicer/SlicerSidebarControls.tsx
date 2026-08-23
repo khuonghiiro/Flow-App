@@ -19,7 +19,7 @@ export interface SlicerSidebarControlsProps {
   onSelectCatId: (id: string) => void;
   userUploadedImageUrl: string | null;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onResetToDemoImage: () => void;
+  onResetToDemoImage: (key?: 'default' | 'chibi') => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   // Background removal params
   keyColorType: 'chroma_green' | 'pure_white' | 'custom';
@@ -140,11 +140,11 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
           style={{ display: 'none' }}
         />
 
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <button
             onClick={() => fileInputRef.current?.click()}
             style={{
-              flex: 1,
+              width: '100%',
               padding: '6px 8px',
               fontSize: 10.5,
               fontWeight: 600,
@@ -159,24 +159,54 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               gap: 5,
             }}
           >
-            <Upload size={12} /> {userUploadedImageUrl ? 'Tải Ảnh Khác' : 'Tải Ảnh Lên'}
+            <Upload size={12} /> {userUploadedImageUrl ? 'Tải Ảnh Khác' : 'Tải Ảnh Lên Cắt'}
           </button>
 
-          <button
-            onClick={onResetToDemoImage}
-            style={{
-              padding: '6px 8px',
-              fontSize: 10,
-              borderRadius: 5,
-              background: 'rgba(255,255,255,0.06)',
-              color: '#94a3b8',
-              border: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer',
-            }}
-            title="Dùng lại ảnh mẫu sprite sheet"
-          >
-            Ảnh Mẫu
-          </button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={() => onResetToDemoImage('chibi')}
+              style={{
+                flex: 1,
+                padding: '5px 4px',
+                fontSize: 9.5,
+                fontWeight: 700,
+                borderRadius: 5,
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.25))',
+                color: '#6ee7b7',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+              }}
+              title="Dùng ảnh mẫu bóc tách tóc Chibi 4x5"
+            >
+              🌟 Mẫu Chibi (4x5)
+            </button>
+
+            <button
+              onClick={() => onResetToDemoImage('default')}
+              style={{
+                flex: 1,
+                padding: '5px 4px',
+                fontSize: 9.5,
+                fontWeight: 600,
+                borderRadius: 5,
+                background: 'rgba(255,255,255,0.05)',
+                color: '#94a3b8',
+                border: '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+              }}
+              title="Dùng ảnh mẫu tóc Kiếm Khách"
+            >
+              🗡️ Mẫu Kiếm Khách
+            </button>
+          </div>
         </div>
       </div>
 

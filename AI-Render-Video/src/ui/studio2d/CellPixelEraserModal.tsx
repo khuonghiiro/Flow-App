@@ -12,6 +12,7 @@ import {
   Redo2,
   Hand,
   Feather,
+  Droplet,
 } from 'lucide-react';
 
 export interface CellPixelEraserModalProps {
@@ -413,6 +414,38 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
       }
     }
 
+    ctx.putImageData(imgData, 0, 0);
+  };
+
+  /**
+   * Khử ám viền xanh (Despill Green Spill)
+   */
+  const handleDespillGreen = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    saveStateToUndo();
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      
+      const maxRB = Math.max(r, b);
+      // Nếu Green nhỉnh hơn Red và Blue -> Khử ám xanh
+      if (g > maxRB) {
+        data[i + 1] = maxRB; // Capping Green channel
+      }
+    }
+    
     ctx.putImageData(imgData, 0, 0);
   };
 
@@ -972,7 +1005,27 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
               }}
               title="Tự động quét và xóa sạch các hạt đốm trắng li ti trong ô này"
             >
-              <Sparkles size={12} /> 🧹 Quét Đốm Trắng
+              <Wand2 size={12} /> Auto-Xóa Cặn rác
+            </button>
+
+            <button
+              onClick={handleDespillGreen}
+              style={{
+                padding: '4px 9px',
+                fontSize: 10.5,
+                fontWeight: 600,
+                borderRadius: 4,
+                background: 'rgba(34, 197, 94, 0.15)',
+                color: '#4ade80',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+              title="Khử viền xanh (Despill Green) - Khắc phục hắt sáng xanh vào tóc"
+            >
+              <Droplet size={12} /> Khử Viền Xanh
             </button>
           </div>
         </div>

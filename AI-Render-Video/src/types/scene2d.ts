@@ -228,7 +228,8 @@ export interface AIPartPromptConfig {
     | 'body_turnaround_grid'
     | 'single_part';
   part_type: Character2DPartType | 'map_layer' | 'combat_scene';
-  character_style: 'tu_tien_manhua' | 'anime_action' | 'kiem_hiep' | 'cyberpunk_anime' | 'chibi';
+  character_style: 'tu_tien_manhua' | 'anime_action' | 'kiem_hiep' | 'cyberpunk_anime' | 'chibi' | 'custom';
+  custom_character_style?: string;
   gender: 'nam' | 'nu' | 'neutral';
   view_angle: 'front' | 'three_quarter' | 'profile_side' | 'back' | 'all_angles_16_9';
   action_or_expression: string;
@@ -236,7 +237,7 @@ export interface AIPartPromptConfig {
   special_features: string;
   clean_background: boolean;
   aspect_ratio?: '1:1' | '3:4' | '16:9' | '9:16';
-  bg_type?: 'chroma_green' | 'pure_white';
+  bg_type?: 'chroma_green' | 'pure_white' | 'chroma_gray' | 'pure_black';
   // Hair specific
   hair_length?: 'short' | 'medium_shoulder' | 'long_waist' | 'very_long_flowing' | 'top_knot_daoist' | 'custom';
   custom_hair_length?: string;
@@ -246,11 +247,26 @@ export interface AIPartPromptConfig {
   custom_hair_color?: string;
   hair_accessories?: 'none' | 'jade_hairpin' | 'flowing_ribbons' | 'golden_crown' | 'custom';
   custom_hair_accessories?: string;
+  // Workflow Step Mode
+  workflow_step?: 'step1_master_character' | 'step2_decomposed_hair' | 'step3_action_sequence';
+  // Character Details (Step 1)
+  costume_style?: 'dao_bao_tien_hiep' | 'kiem_khach_ao_vai' | 'hac_y_ma_dao' | 'hoang_toc_kim_bao' | 'bach_y_tien_tu' | 'custom';
+  custom_costume_style?: string;
+  costume_color?: string;
+  facial_features?: string;
+  prop_item?: 'flying_sword' | 'jade_hairpin' | 'feather_fan' | 'talisman_scrolls' | 'gourd_wine' | 'custom';
+  custom_prop_item?: string;
+  nose_shape?: 'straight_high_bridge' | 'small_delicate' | 'sharp_defined' | 'chibi_tiny_dot' | 'chibi_no_nose' | 'custom';
+  custom_nose_shape?: string;
+  ear_style?: 'human_natural' | 'elf_fairy_pointed';
   // Eyes specific
-  eye_color?: 'azure_blue' | 'emerald_green' | 'crimson_red' | 'golden_amber' | 'mystic_purple' | 'obsidian_black';
-  eye_shape?: 'sharp_phoenix' | 'large_clear' | 'fox_alluring' | 'cold_swordsman';
+  eye_color?: 'azure_blue' | 'emerald_green' | 'crimson_red' | 'golden_amber' | 'mystic_purple' | 'obsidian_black' | 'chibi_sweet_pink' | 'custom';
+  custom_eye_color?: string;
+  eye_shape?: 'sharp_phoenix' | 'large_clear' | 'fox_alluring' | 'cold_swordsman' | 'chibi_sparkling_starry' | 'chibi_happy_crescent' | 'chibi_pouty_teary' | 'custom';
+  custom_eye_shape?: string;
   // Mouth specific
-  mouth_style?: 'gentle_smile' | 'speaking_cycle' | 'battle_roar' | 'confident_smirk';
+  mouth_style?: 'gentle_smile' | 'speaking_cycle' | 'battle_roar' | 'confident_smirk' | 'chibi_cat_mouth' | 'chibi_surprised_o' | 'chibi_puffed_cheek' | 'chibi_big_smile' | 'custom';
+  custom_mouth_style?: string;
   // Weapon specific
   weapon_type?: 'flying_sword' | 'broadsword' | 'staff' | 'feather_fan' | 'celestial_bow';
   weapon_element?: 'azure_lightning' | 'crimson_flame' | 'frost_ice' | 'golden_radiance';

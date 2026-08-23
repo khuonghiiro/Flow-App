@@ -163,10 +163,21 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
         if (dist < tolDist) {
           // Transparent background
           data[i + 3] = 0;
-        } else if (dist < tolDist + feather * 10) {
+        } else {
           // Smooth edge alpha feathering
-          const alphaFactor = (dist - tolDist) / (feather * 10);
-          data[i + 3] = Math.round(data[i + 3] * alphaFactor);
+          if (dist < tolDist + feather * 10) {
+            const alphaFactor = (dist - tolDist) / (feather * 10);
+            data[i + 3] = Math.round(data[i + 3] * alphaFactor);
+          }
+          
+          // Auto Despill (Khử ám xanh) nếu Key Color là Xanh lá (#00FF00)
+          // Rất quan trọng để các viền tóc không bị dính vệt xanh bán trong suốt
+          if (kg > kr + 50 && kg > kb + 50 && data[i + 3] > 0) {
+            const maxRB = Math.max(r, b);
+            if (g > maxRB) {
+              data[i + 1] = maxRB; // Ép kênh Green xuống bằng Red hoặc Blue
+            }
+          }
         }
       }
       ctx.putImageData(imgData, 0, 0);
