@@ -464,67 +464,203 @@ export const getSheetTypeLabel = (s: string) => {
   }
 };
 
-export const getStyleLabel = (s: string) => {
+export const getStyleLabel = (s: string, custom?: string) => {
+  if (custom?.trim()) return custom.trim();
+  if (!s) return '🌸 Anime Nhật Bản Chuẩn Đẹp';
   switch(s) {
-    case 'tu_tien_manhua': return 'Tu Tiên / Manhua Trung Quốc';
-    case 'hoat_hinh_3d_trung_quoc': return 'Hoạt Hình 3D Trung Quốc (3D Donghua)';
-    case 'kiem_hiep': return 'Kiếm Hiệp / Cổ Trang';
-    case 'anime_action': return 'Anime Action Nhật Bản';
-    case 'cyberpunk_anime': return 'Cyberpunk Anime';
-    case 'chibi': return 'Chibi Đáng Yêu';
+    case 'anime_japan': return '🌸 Anime Nhật Bản Chuẩn Đẹp (Mắt to, sắc nét)';
+    case 'auto_detect': return '🤖 AI Tự Hiểu & Sáng Tạo (Anime / Tự Nhiên)';
+    case 'chibi': return '🌟 Anime Chibi Đáng Yêu (Đầu to mắt to 2.5D)';
+    case 'custom': return custom?.trim() || 'Phong cách tùy chỉnh';
     default: return s;
   }
 };
 
 export const getGenderLabel = (g: string) => {
-  return g === 'nam' ? 'Nam Tu Sĩ' : g === 'nu' ? 'Nữ Tiên Tử' : 'Chung';
+  return g === 'nam' ? 'Nam' : g === 'nu' ? 'Nữ' : 'Chung';
+};
+
+export const getEyeShapeLabels = (shape?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!shape) return { vi: 'Mắt anime to tròn sắc nét', en: 'large clear beautiful anime eyes' };
+  switch (shape) {
+    case 'chibi_sparkling_starry': return { vi: 'Mắt tròn to long lanh ánh sao (Anime)', en: 'giant sparkling round starry anime eyes with glossy highlights' };
+    case 'chibi_happy_crescent': return { vi: 'Mắt cười híp cong lưỡi liềm', en: 'happy joyful crescent-shaped anime curved wink eyes' };
+    case 'chibi_pouty_teary': return { vi: 'Mắt ươn ướt cún con dễ thương', en: 'cute puppy teary glossy anime eyes' };
+    case 'large_clear': return { vi: 'Mắt to tròn trong sáng tinh anh (Anime)', en: 'large beautiful expressive anime eyes with clean pupil highlights' };
+    case 'sharp_phoenix': return { vi: 'Mắt phượng sắc sảo cuốn hút', en: 'sharp defined anime eyes with prominent eyelashes' };
+    case 'cold_swordsman': return { vi: 'Mắt kiếm khách kiên định lạnh lùng', en: 'cold determined swordsman anime eyes' };
+    case 'fox_alluring': return { vi: 'Mắt hồ ly quyến rũ ma mị', en: 'alluring sleek anime eyes' };
+    default: return { vi: shape, en: shape };
+  }
+};
+
+export const getEyeColorLabels = (col?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!col) return { vi: 'Xanh lam ngọc phát sáng', en: 'azure cyan glowing iris' };
+  switch (col) {
+    case 'azure_blue': return { vi: 'Xanh lam ngọc phát sáng', en: 'glowing azure cyan iris' };
+    case 'chibi_sweet_pink': return { vi: 'Hồng dâu tây kẹo ngọt', en: 'sweet strawberry pink iris' };
+    case 'golden_amber': return { vi: 'Vàng mật ong hổ phách', en: 'golden amber glowing iris' };
+    case 'emerald_green': return { vi: 'Xanh ngọc lục bảo', en: 'emerald green vibrant iris' };
+    case 'crimson_red': return { vi: 'Đỏ rực hỏa diệm', en: 'crimson red fiery iris' };
+    case 'mystic_purple': return { vi: 'Tím tử linh huyền ảo', en: 'mystic violet purple iris' };
+    case 'obsidian_black': return { vi: 'Đen tuyền sâu thẳm', en: 'obsidian black deep glossy iris' };
+    default: return { vi: col, en: col };
+  }
+};
+
+export const getNoseLabels = (nose?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!nose) return { vi: 'Sống mũi thẳng cao thanh tú', en: 'tall straight delicate anime nose bridge' };
+  switch (nose) {
+    case 'chibi_tiny_dot': return { vi: 'Mũi chấm nhỏ xíu anime', en: 'cute microscopic dot anime nose' };
+    case 'chibi_no_nose': return { vi: 'Ẩn mũi (Anime không vẽ mũi)', en: 'classic anime style with no visible nose' };
+    case 'small_delicate': return { vi: 'Mũi nhỏ nhắn thanh tú', en: 'small delicate anime nose' };
+    case 'sharp_defined': return { vi: 'Sống mũi cao sắc nét', en: 'sharp refined anime nose bridge' };
+    case 'straight_high_bridge': return { vi: 'Sống mũi thẳng cao thanh tú', en: 'tall straight delicate anime nose bridge' };
+    default: return { vi: nose, en: nose };
+  }
+};
+
+export const getMouthLabels = (mouth?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!mouth) return { vi: 'Cười nhếch môi tự tin', en: 'confident subtle smirk' };
+  switch (mouth) {
+    case 'chibi_cat_mouth': return { vi: 'Miệng mèo tinh nghịch :3', en: 'cute playful cat-like :3 smile mouth' };
+    case 'chibi_surprised_o': return { vi: 'Miệng chữ O ngơ ngác đáng yêu', en: 'cute open surprised circle O-mouth' };
+    case 'chibi_puffed_cheek': return { vi: 'Phồng má ngậm bánh bao dễ thương', en: 'cute chubby puffed cheeks with pouty mouth' };
+    case 'chibi_big_smile': return { vi: 'Cười tít mắt hớn hở', en: 'big joyful open happy anime smile' };
+    case 'confident_smirk': return { vi: 'Cười nhếch môi tự tin', en: 'confident subtle smirk' };
+    case 'gentle_smile': return { vi: 'Nụ cười dịu dàng tươi tắn', en: 'gentle serene sweet anime smile' };
+    case 'battle_roar': return { vi: 'Nghiêm nghị tập trung chiến đấu', en: 'determined focused expression' };
+    default: return { vi: mouth, en: mouth };
+  }
+};
+
+export const getCostumeLabels = (costume?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!costume) return { vi: 'Đạo bào tu tiên thướt tha cách tân', en: 'stylish anime costume with flowing sleeves' };
+  switch (costume) {
+    case 'dao_bao_tien_hiep': return { vi: 'Đạo bào tu tiên thướt tha cách tân', en: 'stylish modern anime costume with flowing sleeves and ornamental trim' };
+    case 'bach_y_tien_tu': return { vi: 'Bạch y thanh khiết xếp ly thướt tha', en: 'pure white elegant flowing anime robes with delicate ribbons' };
+    case 'kiem_khach_ao_vai': return { vi: 'Trang phục kiếm khách lãng tử phong trần', en: 'stylish anime wanderer adventurer outfit with leather accents' };
+    case 'hac_y_ma_dao': return { vi: 'Hắc y huyền bí viền đỏ quyền lực', en: 'dark stylish anime coat with crimson flame trim' };
+    case 'hoang_toc_kim_bao': return { vi: 'Kim bào hoàng gia thêu chỉ vàng quý phái', en: 'imperial golden embroidered anime coat with luxury details' };
+    default: return { vi: costume, en: costume };
+  }
+};
+
+export const getPropLabels = (prop?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!prop) return { vi: 'Phi kiếm phát sáng linh lực lam ngọc', en: 'spirit sword glowing with azure energy' };
+  switch (prop) {
+    case 'flying_sword': return { vi: 'Phi kiếm phát sáng linh lực lam ngọc', en: 'spirit sword glowing with azure energy' };
+    case 'feather_fan': return { vi: 'Quạt lông vũ thái cực tiên gia', en: 'celestial feather fan' };
+    case 'talisman_scrolls': return { vi: 'Cuộn bùa chú phù lục phát quang', en: 'glowing spiritual talisman scrolls' };
+    case 'gourd_wine': return { vi: 'Hồ lô tiên tửu ngọc bích', en: 'celestial wine gourd' };
+    case 'jade_hairpin': return { vi: 'Trâm cài ngọc bích đính dải lụa', en: 'carved jade hairpin with silk ribbons' };
+    default: return { vi: prop, en: prop };
+  }
+};
+
+export const getHairLengthLabels = (len?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!len) return { vi: 'Tóc dài ngang lưng suôn mượt', en: 'long waist-length flowing hair' };
+  switch (len) {
+    case 'short': return { vi: 'Tóc ngắn cá tính năng động', en: 'stylish short anime layered hair' };
+    case 'medium_shoulder': return { vi: 'Tóc ngang vai tỉa tầng bồng bềnh', en: 'shoulder-length medium layered anime hair' };
+    case 'very_long_flowing': return { vi: 'Tóc dài thướt tha chấm gót', en: 'floor-length flowing hair cascading down' };
+    case 'top_knot_daoist': return { vi: 'Búi tóc củ tỏi đỉnh đầu cài trâm', en: 'traditional high top-knot bun with hairpin' };
+    case 'long_waist': return { vi: 'Tóc dài ngang lưng suôn mượt', en: 'long waist-length flowing hair' };
+    default: return { vi: len, en: len };
+  }
+};
+
+export const getHairColorLabels = (col?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!col) return { vi: 'Đen tuyền óng ả', en: 'jet black silky' };
+  switch (col) {
+    case 'jet_black': return { vi: 'Đen tuyền óng ả', en: 'jet black silky' };
+    case 'silver_white': return { vi: 'Bạch kim (Trắng bạc lấp lánh)', en: 'silver white luminous' };
+    case 'crimson_red': return { vi: 'Đỏ rực hỏa diệm', en: 'fiery crimson red' };
+    case 'azure_blue': return { vi: 'Xanh lam ngọc phát sáng', en: 'glowing azure cyan' };
+    case 'golden_blonde': return { vi: 'Vàng kim ánh dương', en: 'golden blonde radiant' };
+    case 'mystic_purple': return { vi: 'Tím tử linh huyền bí', en: 'mystic violet purple' };
+    default: return { vi: col, en: col };
+  }
+};
+
+export const getHairTextureLabels = (tex?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!tex) return { vi: 'Thẳng mượt như suối lụa', en: 'straight silky smooth strands' };
+  switch (tex) {
+    case 'wavy_curls': return { vi: 'Xoăn sóng bồng bềnh lượn lờ', en: 'wavy voluminous locks' };
+    case 'wild_spiky': return { vi: 'Đánh rối tỉa nhọn năng động', en: 'action spiky locks' };
+    case 'braided_traditional': return { vi: 'Tết bím cầu kỳ cách tân', en: 'traditional braided anime strands' };
+    case 'straight_silky': return { vi: 'Thẳng mượt như suối lụa', en: 'straight silky smooth strands' };
+    default: return { vi: tex, en: tex };
+  }
+};
+
+export const getHairAccessoryLabels = (acc?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!acc) return { vi: 'Trâm cài ngọc bích đính dải lụa', en: 'carved jade hairpin with delicate silk ribbons' };
+  switch (acc) {
+    case 'jade_hairpin': return { vi: 'Trâm cài ngọc bích đính dải lụa', en: 'carved jade hairpin with delicate silk ribbons' };
+    case 'golden_crown': return { vi: 'Vương miện vàng kim tinh xảo', en: 'ornate golden crown' };
+    case 'flowing_ribbons': return { vi: 'Dải lụa mềm bay phất phơ', en: 'fluttering silk ribbons' };
+    case 'none': return { vi: 'Không có phụ kiện', en: 'none' };
+    default: return { vi: acc, en: acc };
+  }
 };
 
 export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult => {
   const sheet = config.sheet_type || 'hair_multi_angle_grid';
-  let bgTextEn = '';
-  let bgTextVi = '';
-  let bgPromptColorEn = '';
+  let bgTextEn = 'isolated on solid pure flat white background #FFFFFF, clean flat cutout, zero drop shadows, no ambient occlusion, strictly neutral lighting';
+  let bgTextVi = 'Nền trắng tinh khiết (#FFFFFF) phẳng 1 màu, viền tương phản cao dễ cắt';
+  let bgPromptColorEn = 'solid pure white background #FFFFFF';
   
-  switch (config.bg_type) {
-    case 'chroma_green':
-      bgTextEn = 'isolated on solid flat pure chroma green background #00FF00, uniform flat single color, high contrast edge, strictly flat neutral unlit shading, absolutely zero ambient color spill, no bounce light, no rim lighting, no global illumination, pure matte colors';
-      bgTextVi = 'Nền xanh lá Chroma Green (#00FF00) cắt phông 1 click';
-      bgPromptColorEn = 'solid pure chroma green background #00FF00';
-      break;
-    case 'chroma_gray':
-      bgTextEn = 'isolated on solid flat neutral dark gray background #333333, uniform flat single color, high contrast edge, zero shadows, no color spill, perfect for white hair extraction';
-      bgTextVi = 'Nền xám đậm trung tính (#333333) tuyệt đối không ám màu, lý tưởng để tách tóc trắng/bạc';
-      bgPromptColorEn = 'solid neutral dark gray background #333333';
-      break;
-    case 'pure_black':
-      bgTextEn = 'isolated on solid flat pure black background #000000, uniform flat single color, high contrast edge, zero shadows';
-      bgTextVi = 'Nền đen tuyền (#000000) không bóng đổ, dùng cho tóc phát sáng';
-      bgPromptColorEn = 'solid pure black background #000000';
-      break;
-    case 'pure_white':
-    default:
-      bgTextEn = 'isolated on solid pure flat white background #FFFFFF, clean flat cutout, zero drop shadows, no ambient occlusion, strictly neutral lighting';
-      bgTextVi = 'Nền trắng tinh khiết (#FFFFFF) đánh sáng trung tính, tuyệt đối không ám màu';
-      bgPromptColorEn = 'solid pure white background #FFFFFF';
-      break;
+  if (config.bg_type === 'chroma_green') {
+    bgTextEn = 'isolated on solid flat pure chroma green background #00FF00, uniform flat single color, high contrast edge, strictly flat neutral unlit shading, absolutely zero ambient color spill, zero green fringe on edges, no bounce light, no rim lighting, no global illumination, pure matte colors';
+    bgTextVi = 'Nền xanh lá Chroma Green (#00FF00) phẳng 1 màu dứt khoát để cắt phông tức thì';
+    bgPromptColorEn = 'solid pure chroma green background #00FF00';
+  } else if (config.bg_type === 'chroma_gray') {
+    bgTextEn = 'isolated on solid flat neutral dark gray background #333333, uniform flat single color, high contrast edge, zero shadows, no color spill, perfect for white hair extraction';
+    bgTextVi = 'Nền xám đậm trung tính (#333333) không bóng đổ, chuẩn bóc tách tóc trắng/bạc';
+    bgPromptColorEn = 'solid neutral dark gray background #333333';
+  } else if (config.bg_type === 'pure_black') {
+    bgTextEn = 'isolated on solid flat pure black background #000000, uniform flat single color, high contrast edge, zero shadows';
+    bgTextVi = 'Nền đen tuyền (#000000) không bóng đổ, dùng cho chi tiết phát sáng';
+    bgPromptColorEn = 'solid pure black background #000000';
   }
 
   const noTextEn =
     'clean graphic asset only, strictly NO text, NO letters, NO words, NO numbers, NO watermark, NO labels, NO typography, NO captions, NO annotations, NO border writing';
 
   const styleTextEn =
-    config.character_style === 'custom' && config.custom_character_style
-      ? config.custom_character_style
+    config.character_style === 'custom' && config.custom_character_style?.trim()
+      ? config.custom_character_style.trim()
+      : config.character_style === 'auto_detect'
+      ? 'clean 2D anime character turnaround sprite sheet style, vibrant colors, large sparkling expressive eyes, clear distinct outlines, high quality digital illustration'
       : config.character_style === 'chibi'
-      ? 'cute 2D anime chibi character artstyle, adorable 2-head to 3-head body proportions, large sparkling expressive eyes, chubby cheeks, soft cute face, clean bold outlines, vibrant flat cel shading'
-      : config.character_style === 'tu_tien_manhua'
-      ? 'Chinese xianxia cultivation manhua artstyle, clean vector-like anime line art, crisp flat cel shading'
-      : config.character_style === 'anime_action'
-      ? 'modern Japanese anime action animation keyframe style, studio trigger crisp aesthetic'
-      : config.character_style === 'kiem_hiep'
-      ? 'classic wuxia martial arts illustration, clean defined borders, high aesthetic'
-      : 'stylized 2D animation sprite asset';
+      ? 'cute 2D anime chibi character artstyle, adorable 2-head to 3-head body proportions, giant sparkling expressive anime eyes, chubby cheeks, soft cute face, clean bold outlines, vibrant flat cel shading'
+      : 'authentic modern Japanese anime character artstyle, Kyoto Animation and Ufotable aesthetic, giant expressive sparkling anime eyes, crisp clean anime lineart, beautiful expressive facial features, flat cel shading';
+
+  const styleLabelVi = getStyleLabel(config.character_style, config.custom_character_style);
+
+  // Label resolvers
+  const eyeShapeInfo = getEyeShapeLabels(config.eye_shape, config.custom_eye_shape);
+  const eyeColInfo = getEyeColorLabels(config.eye_color, config.custom_eye_color);
+  const noseInfo = getNoseLabels(config.nose_shape, config.custom_nose_shape);
+  const mouthInfo = getMouthLabels(config.mouth_style, config.custom_mouth_style);
+  const costumeInfo = getCostumeLabels(config.costume_style, config.custom_costume_style);
+  const costumeColorVi = config.costume_color?.trim() || 'Xanh lam phối trắng viền kim tuyến';
+  const propInfo = getPropLabels(config.prop_item, config.custom_prop_item);
+  const hairLenInfo = getHairLengthLabels(config.hair_length, config.custom_hair_length);
+  const hairColInfo = getHairColorLabels(config.hair_color, config.custom_hair_color);
+  const hairTexInfo = getHairTextureLabels(config.hair_texture, config.custom_hair_texture);
+  const hairAccInfo = getHairAccessoryLabels(config.hair_accessories, config.custom_hair_accessories);
 
   let promptEnglish = '';
   let promptVietnamese = '';
@@ -536,201 +672,68 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
     const ar = config.aspect_ratio || '16:9';
     const isMale = config.gender === 'nam';
     const isChibi = config.character_style === 'chibi';
+
     const genderTextEn = isChibi
       ? isMale
-        ? 'cute adorable chibi boy character, compact kawaii proportions, 2.5 heads tall'
-        : 'cute adorable chibi girl fairy, compact kawaii proportions, 2.5 heads tall'
+        ? 'cute adorable anime chibi boy character, giant sparkling anime eyes, compact kawaii proportions, 2.5 heads tall'
+        : 'cute adorable anime chibi girl fairy, giant sparkling anime eyes, compact kawaii proportions, 2.5 heads tall'
       : isMale
-      ? 'handsome male cultivator'
-      : 'ethereal celestial female heroine';
-
-    const eyeColEn =
-      config.eye_color === 'custom' && config.custom_eye_color
-        ? config.custom_eye_color
-        : config.eye_color === 'chibi_sweet_pink'
-        ? 'sweet strawberry pink iris'
-        : config.eye_color === 'crimson_red'
-        ? 'crimson red'
-        : config.eye_color === 'golden_amber'
-        ? 'golden amber'
-        : config.eye_color === 'emerald_green'
-        ? 'emerald green'
-        : config.eye_color === 'obsidian_black'
-        ? 'obsidian black'
-        : 'azure cyan';
-
-    const eyeShapeEn =
-      config.eye_shape === 'custom' && config.custom_eye_shape
-        ? config.custom_eye_shape
-        : config.eye_shape === 'chibi_sparkling_starry'
-        ? 'giant sparkling round starry anime chibi eyes with glossy reflections'
-        : config.eye_shape === 'chibi_happy_crescent'
-        ? 'happy joyful crescent-shaped curved anime wink eyes'
-        : config.eye_shape === 'chibi_pouty_teary'
-        ? 'cute puppy teary glossy chibi eyes'
-        : config.eye_shape === 'sharp_phoenix'
-        ? 'sharp phoenix eyes'
-        : config.eye_shape === 'cold_swordsman'
-        ? 'cold piercing swordsman eyes'
-        : config.eye_shape === 'fox_alluring'
-        ? 'alluring fox eyes'
-        : isChibi
-        ? 'large sparkling round expressive chibi eyes with detailed glossy highlights'
-        : 'clear vibrant anime eyes';
-
-    const noseEn =
-      config.nose_shape === 'custom' && config.custom_nose_shape
-        ? config.custom_nose_shape
-        : config.nose_shape === 'chibi_no_nose'
-        ? 'classic chibi style with no visible nose'
-        : config.nose_shape === 'chibi_tiny_dot'
-        ? 'cute microscopic dot anime nose'
-        : config.nose_shape === 'sharp_defined'
-        ? 'sharp refined nose'
-        : config.nose_shape === 'small_delicate'
-        ? 'small delicate nose'
-        : isChibi
-        ? 'cute tiny dot anime nose'
-        : 'tall straight delicate nose bridge';
-
-    const mouthEn =
-      config.mouth_style === 'custom' && config.custom_mouth_style
-        ? config.custom_mouth_style
-        : config.mouth_style === 'chibi_cat_mouth'
-        ? 'cute playful cat-like :3 smile mouth'
-        : config.mouth_style === 'chibi_surprised_o'
-        ? 'cute open surprised circle O-mouth'
-        : config.mouth_style === 'chibi_puffed_cheek'
-        ? 'cute chubby puffed cheeks with pouty mouth'
-        : config.mouth_style === 'chibi_big_smile'
-        ? 'big joyful open happy anime smile'
-        : config.mouth_style === 'confident_smirk'
-        ? 'confident subtle smirk'
-        : config.mouth_style === 'battle_roar'
-        ? 'battle shout'
-        : config.mouth_style === 'gentle_smile'
-        ? 'gentle serene smile'
-        : isChibi
-        ? 'cute happy cat-smile mouth'
-        : 'calm noble expression';
-
-    const costumeStyleEn =
-      config.costume_style === 'custom' && config.custom_costume_style
-        ? config.custom_costume_style
-        : isChibi
-        ? 'cute miniature traditional daoist robes with oversized sleeves and jade pendant'
-        : config.costume_style === 'hac_y_ma_dao'
-        ? 'dark gothic daoist robes with red flame embroidery'
-        : config.costume_style === 'hoang_toc_kim_bao'
-        ? 'imperial golden embroidered robes with dragon motifs'
-        : config.costume_style === 'bach_y_tien_tu'
-        ? 'pure white flowing silk fairy robes'
-        : config.costume_style === 'kiem_khach_ao_vai'
-        ? 'traditional martial arts wanderer robes with leather vambraces'
-        : 'celestial xianxia daoist robes with intricate silk trims and jade pendant sash';
-
-    const costumeColEn = config.costume_color || 'cyan and white with gold accents';
-    const propEn =
-      config.prop_item === 'custom' && config.custom_prop_item
-        ? config.custom_prop_item
-        : config.prop_item === 'jade_hairpin'
-        ? 'carved jade hairpin and silk ribbons'
-        : config.prop_item === 'feather_fan'
-        ? 'feather cultivation fan'
-        : config.prop_item === 'talisman_scrolls'
-        ? 'glowing spiritual talisman scrolls'
-        : config.prop_item === 'gourd_wine'
-        ? 'celestial wine gourd'
-        : 'flying spirit sword glowing with azure sword intent';
-
-    const hairColEn =
-      config.hair_color === 'custom' && config.custom_hair_color
-        ? config.custom_hair_color
-        : config.hair_color === 'silver_white'
-        ? 'silver white'
-        : config.hair_color === 'crimson_red'
-        ? 'fiery red'
-        : 'jet black';
-
-    const hairLenEn =
-      config.hair_length === 'custom' && config.custom_hair_length
-        ? config.custom_hair_length
-        : config.hair_length === 'short'
-        ? 'stylish short hair'
-        : config.hair_length === 'medium_shoulder'
-        ? 'shoulder length hair'
-        : config.hair_length === 'very_long_flowing'
-        ? 'floor-length celestial flowing hair'
-        : 'long waist-length flowing hair';
-
-    const hairTexEn =
-      config.hair_texture === 'custom' && config.custom_hair_texture
-        ? config.custom_hair_texture
-        : config.hair_texture === 'wavy_curls'
-        ? 'wavy locks'
-        : config.hair_texture === 'wild_spiky'
-        ? 'action spiky locks'
-        : 'straight silky strands';
-
-    const hairAccEn =
-      config.hair_accessories === 'custom' && config.custom_hair_accessories
-        ? config.custom_hair_accessories
-        : config.hair_accessories === 'golden_crown'
-        ? 'ornate golden crown'
-        : config.hair_accessories === 'flowing_ribbons'
-        ? 'fluttering silk ribbons'
-        : 'traditional jade hairpin bun';
+      ? 'handsome attractive Japanese anime male protagonist, large clear anime eyes'
+      : 'beautiful charming Japanese anime female heroine, large gorgeous sparkling anime eyes';
 
     promptEnglish = [
       `masterpiece, best quality, ultra detailed 4k resolution, full body and upper body multi-angle character model sheet of ONE SINGLE character`,
-      `Chinese 3D Donghua animation style, exquisite breathtaking Wuxia/Xianxia aesthetics, extremely beautiful and flawless facial features (ngũ quan tuyệt mỹ)`,
-      `consistent character depicted from 5 angles: front view, 45 degree three-quarter view, 90 degree side profile, 135 degree back three-quarter view, 180 degree rear back view, plus top-down bird's-eye head crown view`,
-      `${genderTextEn}, extremely handsome/gorgeous, beautiful facial structure, consistent facial features: ${eyeShapeEn} with glowing ${eyeColEn} iris, ${noseEn}, ${mouthEn}, clean defined ears`,
-      `attire: ${costumeStyleEn}, color theme: ${costumeColEn}, wide flowing sleeves, flutter ribbons in spiritual wind`,
-      `accessories and weapons: ${propEn}`,
-      `hairstyle: ${hairColEn} ${hairLenEn}, ${hairTexEn}, styled with ${hairAccEn}`,
       styleTextEn,
+      `consistent character depicted from 5 angles: front view, 45 degree three-quarter view, 90 degree side profile, 135 degree back three-quarter view, 180 degree rear back view, plus top-down bird's-eye head crown view`,
+      `${genderTextEn}, extremely handsome/gorgeous, beautiful facial structure, consistent facial features: ${eyeShapeInfo.en} with glowing ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}, clean defined ears`,
+      `attire: ${costumeInfo.en}, color theme: ${costumeColorVi}, wide flowing sleeves, flutter ribbons in breeze`,
+      `accessories and weapons: ${propInfo.en}`,
+      `hairstyle: ${hairColInfo.en} ${hairLenInfo.en}, ${hairTexInfo.en}, styled with ${hairAccInfo.en}`,
       'solid pure clean white studio background #FFFFFF with high contrast character silhouette, zero clutter, no background scenery',
       `uniform soft studio lighting, crisp cinematic shading, character concept turnaround sheet`,
       `--ar ${ar} --no text typography letters font words labels captions numbers writing watermark signature logo characters subtitle calligraphy heading title annotations alphabet stamp frame border-text`,
     ].join(', ');
 
-    promptVietnamese = `【 BƯỚC 1: BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐẦY ĐỦ 5 GÓC QUAY (MASTER TURNAROUND SHEET) 】
-• Phong cách: ${isChibi ? 'Hoạt Hình Chibi Đáng Yêu (2.5 Heads Tall)' : config.character_style}
-• Mục tiêu: Sinh ra ảnh nhân vật hoàn chỉnh (Khuôn mặt, Ngũ quan mắt-mũi-miệng-tai, Trang phục đạo bào, Pháp bảo, Mái tóc đồng nhất).
-• Nền: Nền trắng Studio tinh khiết (#FFFFFF) tương phản cao, giúp AI vẽ chuẩn màu nhân vật không bị ám màu và cực kỳ dễ phân tách.
-• Bố cục 5 góc quay: 0° Chính diện, 45° Nghiêng 3/4, 90° Nhìn ngang tai (Profile), 135° Nghiêng sau, 180° Sau lưng + 1 góc soi đỉnh đầu.
-• Hướng dẫn tiếp theo: Sau khi tạo được ảnh nhân vật ưng ý ở Bước này, hãy lưu lại ảnh để nạp vào Bước 2 (Bóc tách tóc 4 tầng đồng bộ 100%).`;
+    promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET) 】
+• Phong cách: ${styleLabelVi} (Mắt to tròn long lanh, nét vẽ anime sắc sảo)
+• Nhân vật: ${isMale ? 'Nam' : 'Nữ'} (${isChibi ? 'Chibi đáng yêu 2.5 đầu' : 'Anime chuẩn nét đẹp'})
+• Khuôn mặt & Ngũ quan: Dáng mắt (${eyeShapeInfo.vi}), Màu mắt (${eyeColInfo.vi}), Sống mũi (${noseInfo.vi}), Khẩu hình (${mouthInfo.vi})
+• Trang phục: ${costumeInfo.vi} (Màu sắc & Họa tiết: ${costumeColorVi})
+• Mái tóc: Màu (${hairColInfo.vi}), Độ dài (${hairLenInfo.vi}), Chất tóc (${hairTexInfo.vi}), Phụ kiện/Trâm cài (${hairAccInfo.vi})
+• Pháp bảo / Vật phẩm cầm: ${propInfo.vi}
+• Phông nền: ${bgTextVi}
+• Bố cục 5 góc quay: 0° Chính diện (Front), 45° Nghiêng 3/4 (Three-Quarter), 90° Nhìn ngang (Side Profile), 135° Nghiêng sau, 180° Sau lưng (Back) + 1 góc soi đỉnh đầu (Top-Down).
+• Lệnh điều khiển AI: Hãy vẽ bảng thiết kế mẫu (Model Sheet) của ĐÚNG CÙNG 1 NHÂN VẬT ở tất cả các góc quay trên, giữ nguyên 100% trang phục, kiểu tóc và khuôn mặt.`;
 
     promptJSON = JSON.stringify({
-      project: 'Flow-App 2D Motion Comic Engine',
+      project: 'Flow-App 2D Character Generator',
       workflow_step: 'Step 1 - Master Character Turnaround Reference Sheet',
       title: isChibi
         ? 'Bảng Thiết Kế Nhân Vật Hoạt Hình Chibi 5 Góc Quay (Chibi Turnaround Sheet)'
-        : 'Bảng Thiết Kế Nhân Vật Gốc Hoàn Chỉnh 5 Góc Quay (Master Character Turnaround)',
-      art_style: isChibi ? 'Cute 2D Anime Chibi (2.5 Heads Tall Proportion)' : 'Chinese Xianxia Cultivation Manhua (Crisp Flat 2D Cel Shading)',
+        : 'Bảng Thiết Kế Nhân Vật Anime Nhật Bản 5 Góc Quay (Anime Turnaround Sheet)',
+      art_style: styleLabelVi,
       resolution: '4K Ultra High Definition (3840x2160)',
       aspect_ratio: ar === '16:9' ? '16:9 Landscape Model Sheet' : `${ar} Aspect Ratio`,
       background: 'Solid Clean Pure White Studio (#FFFFFF) with high contrast character silhouette',
       character_design: {
-        character_type: isChibi ? 'Chibi Anime Character' : 'Standard Proportions Anime Character',
-        gender: isMale ? 'Nam Tu Sĩ (Male Cultivator)' : 'Nữ Tiên Tử (Female Heroine)',
+        character_type: isChibi ? 'Chibi Anime Character' : 'Japanese Anime Character',
+        gender: isMale ? 'Nam (Male)' : 'Nữ (Female)',
         facial_features: {
-          eyes: `${eyeShapeEn} with ${eyeColEn} glowing iris`,
-          nose: noseEn,
-          mouth: mouthEn,
-          ears: 'Clean natural human ears'
+          eyes: `${eyeShapeInfo.vi} (${eyeShapeInfo.en}) - Màu ${eyeColInfo.vi}`,
+          nose: `${noseInfo.vi} (${noseInfo.en})`,
+          mouth: `${mouthInfo.vi} (${mouthInfo.en})`,
+          ears: 'Clean natural anime ears'
         },
         costume_and_robes: {
-          style: costumeStyleEn,
-          color_palette: costumeColEn
+          style: costumeInfo.vi,
+          color_palette: costumeColorVi
         },
-        weapon_and_props: propEn,
+        weapon_and_props: propInfo.vi,
         hairstyle: {
-          length: hairLenEn,
-          color: hairColEn,
-          texture: hairTexEn,
-          accessories: hairAccEn
+          length: hairLenInfo.vi,
+          color: hairColInfo.vi,
+          texture: hairTexInfo.vi,
+          accessories: hairAccInfo.vi
         }
       },
       turnaround_camera_angles: [
@@ -747,190 +750,115 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
 
     const negativePrompt = 'text, letters, words, labels, watermark, signature, deformed anatomy, extra limbs, bad proportions, blurry, 3D clay render, photorealistic realism';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
-    const promptGemini = `Hãy đóng vai chuyên gia thiết kế đồ họa 2D/3D.
-Vẽ bảng thiết kế tổng thể (Master Turnaround Sheet) ở 5 góc độ.
-Phong cách: ${getStyleLabel(config.character_style)}
-Tuyệt đối không vẽ: ${negativePrompt}
-Tỷ lệ: ${config.aspect_ratio || '16:9'}.`;
+    const promptGemini = `Hãy đóng vai họa sĩ thiết kế nhân vật Anime 2D chuyên nghiệp.\nTạo một bảng vẽ mẫu nhân vật (Character Turnaround Model Sheet) gồm 5 góc quay (Chính diện 0°, Nghiêng 45°, Góc ngang 90°, Nghiêng sau 135°, Sau lưng 180° và Đỉnh đầu):\n- Phong cách: ${styleLabelVi} (Mắt to tròn long lanh có điểm sáng phản chiếu, nét vẽ anime sắc sảo).\n- Nhân vật: ${isMale ? 'Nam' : 'Nữ'} (${isChibi ? 'Chibi đáng yêu 2.5 đầu' : 'Anime chuẩn tỷ lệ đẹp'}), thần thái ${mouthInfo.vi}, mắt ${eyeShapeInfo.vi} màu ${eyeColInfo.vi}.\n- Mái tóc: Màu ${hairColInfo.vi}, độ dài ${hairLenInfo.vi}, kiểu ${hairTexInfo.vi}, phụ kiện ${hairAccInfo.vi}.\n- Trang phục: ${costumeInfo.vi}, tông màu: ${costumeColorVi}.\n- Phụ kiện/Vũ khí: ${propInfo.vi}.\n- Nền: ${bgTextVi}, không vẽ cảnh vật rườm rà.\n- Yêu cầu kỹ thuật: Tỷ lệ ${config.aspect_ratio || '16:9'}, độ phân giải 4K sắc nét, các góc quay phải thể hiện ĐÚNG CÙNG MỘT NHÂN VẬT (đồng nhất khuôn mặt, kiểu tóc và trang phục). Không chèn chữ, số hay watermark.`;
     return { promptEnglish, promptVietnamese, promptJSON, promptGemini, gridStructureGuide, negativePrompt, fullCopyText };
   }
 
-  // 1. HAIR MULTI-ANGLE GRID (4 DÃY TÓC TÁCH LỚP KHÔNG CÓ TAI / KHÔNG CÓ DA MẶT)
+    // 1. HAIR MULTI-ANGLE GRID (BÓC TÁCH THEO ĐỘ SÂU Z-INDEX & 5 GÓC QUAY CINEMATIC)
   if (sheet === 'hair_multi_angle_grid') {
-    const ar = config.aspect_ratio || '1:1';
-    const hairLenEn =
-      config.hair_length === 'custom' && config.custom_hair_length
-        ? config.custom_hair_length
-        : config.hair_length === 'short'
-        ? 'stylish short spiky anime hair'
-        : config.hair_length === 'medium_shoulder'
-        ? 'shoulder-length medium layered hair'
-        : config.hair_length === 'very_long_flowing'
-        ? 'celestial floor-length flowing hair cascading down'
-        : config.hair_length === 'top_knot_daoist'
-        ? 'traditional xianxia daoist high top-knot bun with silver hairpin'
-        : 'long waist-length flowing hair with silver hairpin';
-
-    const hairTexEn =
-      config.hair_texture === 'custom' && config.custom_hair_texture
-        ? config.custom_hair_texture
-        : config.hair_texture === 'wavy_curls'
-        ? 'wavy curls'
-        : config.hair_texture === 'wild_spiky'
-        ? 'action spiky locks'
-        : config.hair_texture === 'braided_traditional'
-        ? 'traditional braided locks'
-        : 'straight silky hair';
-
-    const hairColEn =
-      config.hair_color === 'custom' && config.custom_hair_color
-        ? config.custom_hair_color
-        : config.hair_color === 'silver_white'
-        ? 'silver white'
-        : config.hair_color === 'crimson_red'
-        ? 'fiery crimson red'
-        : config.hair_color === 'azure_blue'
-        ? 'glowing azure cyan'
-        : config.hair_color === 'golden_blonde'
-        ? 'golden amber'
-        : config.hair_color === 'mystic_purple'
-        ? 'mystic violet purple'
-        : 'jet black';
-
-    const hairAccessoryEn =
-      config.hair_accessories === 'custom' && config.custom_hair_accessories
-        ? config.custom_hair_accessories
-        : config.hair_accessories === 'jade_hairpin'
-        ? 'carved jade and silver hairpin'
-        : config.hair_accessories === 'golden_crown'
-        ? 'ornate golden hair crown'
-        : config.hair_accessories === 'flowing_ribbons'
-        ? 'silk ribbons'
-        : 'none';
+    const ar = config.aspect_ratio || '16:9';
 
     promptEnglish = [
-      `masterpiece, best quality, extremely detailed gorgeous hair design sheet, Chinese 3D Donghua animation style, exquisite Wuxia Xianxia aesthetics`,
-      `isolated hair turnaround sprite sheet, 4 rows by 5 columns grid layout on ${bgPromptColorEn}`,
-      `strictly headless pure hair assets only, transparent invisible mannequin, no human face, no skin, no body`,
-      `Column 1: 0° Front View, Column 2: 45° Three-Quarter View, Column 3: 90° Side Profile View, Column 4: 135° Back Three-Quarter View, Column 5: 180° Back View`,
-      `Row 1: front fringe bangs only. Row 2: top crown buns and hairpins. Row 3: complete back hair mantle. Row 4: sideburns and nape tendrils`,
-      `${hairColEn} hair, ${hairLenEn}, ${hairTexEn}, accessory: ${hairAccessoryEn}`,
+      `masterpiece, best quality, ultra detailed 2D anime character hair turnaround model sheet`,
+      `consistent modular hair layers sprite sheet organized in a clean 3-row by 5-column grid on ${bgPromptColorEn}`,
+      `strictly headless pure hair component assets only, transparent invisible mannequin, no human face, no skin, no body, no human ears`,
+      `Column 1: 0° Front View, Column 2: 45° Three-Quarter View, Column 3: 90° Side Profile View, Column 4: 135° Back Three-Quarter View, Column 5: 180° Rear Back View`,
+      `[ROW 1 - FRONT BANGS FRINGE]: pure front fringe bangs floating alone across 5 angles, strictly no back hair`,
+      `[ROW 2 - SIDEBURNS & CHEEK LOCKS]: floating sideburn cheek locks hugging the face contours across 5 angles, strictly no ears, no skin`,
+      `[ROW 3 - BACK HAIR MANTLE & VOLUME]: complete back hair flowing down across 5 angles, pure rear hair layer with empty hollow face center`,
+      `${hairColInfo.en} hair, ${hairLenInfo.en}, ${hairTexInfo.en}${hairAccInfo.en !== 'none' ? `, accessory: ${hairAccInfo.en}` : ''}`,
       styleTextEn,
       bgTextEn,
-      `flat clean cutout sticker asset, crisp borders, modular puppet assembly ready`,
-      `--ar ${ar} --no text typography letters font words labels captions numbers writing watermark signature logo characters subtitle calligraphy heading title annotations alphabet stamp frame border-text human face eyes mouth nose skin body ${config.bg_type === 'chroma_green' || !config.bg_type ? 'green ambient light green color spill green glow green reflection green tinted hair neon glow rim light bounce light global illumination' : 'ambient lighting color spill rim light neon glow'}`,
+      `extremely crisp high-contrast edge separation, hard edge sticker cutout, unlit flat shading, absolutely ZERO background color bleeding, ZERO ambient green color spill onto hair strands, ZERO glowing halo around hair contours, 100% opaque solid matte color borders, modular puppet assembly ready`,
+      `--ar ${ar} --no text typography letters font words labels captions numbers writing watermark signature logo characters subtitle calligraphy heading title annotations alphabet stamp frame border-text human face eyes mouth nose skin body ears neck ${config.bg_type === 'chroma_green' || !config.bg_type ? 'green reflection green glow green ambient light green fringe color spill neon rim light bounce light soft glowing outline translucent borders' : 'color spill rim light bounce light glow'}`,
     ].join(', ');
 
     const jsonSpec = {
       project: 'Flow-App 2D Motion Comic Engine',
-      workflow_step: 'Step 2 - Modular Hair 4-Layer Turnaround Grid Decomposition',
-      title: 'Bảng Bóc Tách Tóc 4 Tầng Đồng Bộ Theo Nhân Vật Gốc (Decomposed Hair Grid 4x5)',
-      art_style: 'Chinese Xianxia Cultivation Manhua (Crisp Flat 2D Cel Shading)',
+      workflow_step: 'Step 2 - Cinematographic Modular Hair Turnaround Grid Decomposition',
+      title: 'Bảng Bóc Tách Tóc Đa Tầng Theo Độ Sâu Z-Index & 5 Góc Quay Chuẩn Cinematic (3 Rows x 5 Columns)',
+      art_style: styleLabelVi,
       resolution: '4K Ultra High Definition (3840x2160)',
-      aspect_ratio: ar === '1:1' ? '1:1 Square Grid (4 Rows x 5 Columns)' : `${ar} Aspect Ratio`,
-      background: bgTextEn,
+      aspect_ratio: `${ar} Aspect Ratio (3 Rows x 5 Columns)`,
+      background: bgTextVi,
       hair_specifications: {
-        color: hairColEn,
-        length: hairLenEn,
-        texture: hairTexEn,
-        accessories: hairAccessoryEn,
+        color: `${hairColInfo.vi} (${hairColInfo.en})`,
+        length: `${hairLenInfo.vi} (${hairLenInfo.en})`,
+        texture: `${hairTexInfo.vi} (${hairTexInfo.en})`,
+        accessories: `${hairAccInfo.vi} (${hairAccInfo.en})`,
+      },
+      cinematographic_layer_breakdown: {
+        total_rows: 3,
+        total_columns: 5,
+        camera_angles: [
+          'Column 1: 0° Front View (Chính diện)',
+          'Column 2: 45° Three-Quarter View (Nghiêng 3/4)',
+          'Column 3: 90° Full Side Profile View (Nhìn ngang vành tai 90 độ)',
+          'Column 4: 135° Back Three-Quarter View (Nghiêng sau 135 độ)',
+          'Column 5: 180° Full Rear Back View (Sau lưng toàn cảnh 180 độ)'
+        ],
+        rows_definition: [
+          {
+            row: 'Row 1 (Z-Index Cao Nhất - Trên Cùng): Tóc Mái Trước Trán (Front Bangs Fringe)',
+            description: '5 floating front fringe bangs pieces across 5 camera angles. Pure bangs only, strictly no back hair.',
+          },
+          {
+            row: 'Row 2 (Z-Index Trung Gian - Ôm Mặt): Lọn Tóc Mai 2 Bên Má (Sideburns & Cheek Locks)',
+            description: '5 floating sideburn cheek locks hugging the jawline and face contour across 5 angles. Strictly no ears, no skin.',
+          },
+          {
+            row: 'Row 3 (Z-Index Thấp Nhất - Dưới Cùng): Suối Tóc Sau Đầu (Back Hair Mantle & Flowing Volume)',
+            description: '5 complete back hair streams cascading down across 5 angles. Hollow face center to assemble behind head base.',
+          },
+        ],
+      },
+      anti_color_spill_rules: {
+        zero_color_bleed: 'Strictly zero background color fringe or bleed onto fine hair edges.',
+        solid_matte_edges: '100% opaque solid matte color borders without glow, rim light, or soft halos.',
+        clean_cutout: 'Sharp crisp borders for instant 1-click transparent AI matting extraction.'
       },
       strict_constraints: {
         headless_pure_hair_only: 'Strictly pure hair components only. No human face, no skin, no ears, no body.',
         no_text_or_watermark: 'Zero text, zero labels, zero watermark.',
         ample_margins: 'Ample margins around each hair sprite to prevent clipping at borders.',
       },
-      grid_layout_structure: {
-        total_rows: 4,
-        total_columns: 5,
-        camera_angles: [
-          '0° Front View (Chính diện)',
-          '45° Three-Quarter View (Nghiêng 3/4)',
-          '90° Full Side Profile View (Nhìn ngang vành tai 90 độ)',
-          '135° Back Three-Quarter View (Nghiêng sau 135 độ)',
-          '180° Full Back View (Sau lưng toàn cảnh 180 độ)'
-        ],
-        rows_definition: [
-          {
-            row: 'Row 1 - Tóc Mái Trước Trán (Front Bangs Fringe - Thuần túy mái trước)',
-            description: '5 floating front fringe bangs pieces, strictly no back of head',
-            columns: [
-              '0° Front Center-Parted Bangs',
-              '45° Angled Bangs',
-              '90° Side Profile Thin Slice Bangs Alone',
-              '135° Fading Diagonal Bangs Edge',
-              '180° Empty Green Cell (Hidden behind head)'
-            ],
-          },
-          {
-            row: "Row 2 - Đỉnh Chỏm Đầu / Búi Tóc & Trâm Cài Soi Từ Trên Cao Xuống (Top-Down Bird's Eye Crown)",
-            description: "5 top crown views looking straight down from above skull top with hairpin rotating 360 degrees",
-            columns: [
-              '0° Horizontal Hairpin (Ngang 9h-3h)',
-              '45° Diagonal Hairpin (Chéo 7h-1h)',
-              '90° Vertical Hairpin (Dọc 12h-6h)',
-              '135° Rear Diagonal Hairpin',
-              '180° Rear Horizontal Hairpin'
-            ],
-          },
-          {
-            row: 'Row 3 - Toàn Bộ Tóc Sau Đầu (Thuần túy tóc sau - Zero tóc mái trước)',
-            description: '5 complete back-of-head flowing hair streams including upper back skull dome, pure back hair with zero front bangs',
-            columns: [
-              '0° Front View Two Shoulder Drapes with Open Face Center',
-              '45° Three-Quarter Flowing Drape',
-              '90° Side Profile Rear Skull & Flowing S-Curve with Hollow Forehead',
-              '135° Rear-Quarter Flowing Mantle',
-              '180° Full Wide Symmetrical Back Hair Curtain'
-            ],
-          },
-          {
-            row: 'Row 4 - Lọn Tóc Mai 2 Bên Má & Tóc Tơ Chân Gáy (Sideburns & Nape Tendrils)',
-            description: '5 floating delicate sideburn cheek tendrils and nape wisps, strictly NO ears, NO skin',
-            columns: [
-              '0° Two Cheek Strands',
-              '45° Single Cheek Strand',
-              '90° Single Lateral Ear Strand',
-              '135° Behind-Ear Lock',
-              '180° Central Neck Nape Wisps'
-            ],
-          },
-        ],
-      },
-      negative_prompt: 'human face, eyes, mouth, nose, human ears, skin, neck, body, text, watermark, blurry, 3D clay render',
+      negative_prompt: 'human face, eyes, mouth, nose, human ears, skin, neck, body, text, watermark, blurry, 3D clay render, color spill, green halo, glowing outline',
     };
     promptJSON = JSON.stringify(jsonSpec, null, 2);
 
-    promptVietnamese = `【 BẢNG SPRITE LINH KIỆN TÓC 4 DÃY × 5 CỘT (TỶ LỆ ${ar}) 】
-• Quy tắc bắt buộc: TÁCH SẠCH $100\\%$ DA MẶT, TAI VÀ CỔ. Mỗi ô có lề xanh rộng rãi để không bị cụt ngọn tóc.
-• Nền: ${bgTextVi}.
+    promptVietnamese = `【 BẢNG SPRITE LINH KIỆN TÓC 3 DÃY × 5 GÓC QUAY CHUẨN ĐIỆN ẢNH (TỶ LỆ ${ar}) 】
+• Mục tiêu: Bóc tách mái tóc thành 3 tầng độ sâu Z-Index đồng bộ xoay 360° (Mái trước $\to$ Tóc mai $\to$ Tóc sau lưng) để ghép khớp 100% vào nhân vật mà không bị phụ kiện thừa.
+• Mái tóc: Tóc ${hairColInfo.vi}, ${hairLenInfo.vi}, ${hairTexInfo.vi}${hairAccInfo.vi !== 'Không có' ? `, Phụ kiện (${hairAccInfo.vi})` : ''}.
+• Phông nền: ${bgTextVi}.
+• ⚠️ YÊU CẦU ĐẶC BIỆT CHỐNG DÍNH MÀU NỀN VÀO VIỀN TÓC (ANTI-COLOR-SPILL):
+  1. Đường viền sợi tóc phân tách sắc nét (Crisp Edge / Hard Cutout) dứt khoát với nền ${bgPromptColorEn}.
+  2. Tuyệt đối KHÔNG ĐỂ MÀU NỀN HẮT ÁNH SÁNG/ÁM MÀU (Zero Color Spill / Zero Fringe) vào các sợi tóc con.
+  3. Màu tóc là mảng màu đặc (Solid Opaque Matte Color), không bóng mờ phát sáng viền (No Glow/Rim Light) để khi bóc tách bằng AI trong suốt sạch 100%, không bị sạn viền.
+  4. Thuần túy là tóc, KHÔNG CÓ DA MẶT, TAI, MẮT, MŨI HAY CỔ.
 
-【 CHI TIẾT 4 HÀNG × 5 GÓC XOAY THEO TỶ LỆ ${ar} 】:
-🔹 HÀNG 1: TÓC MÁI TRƯỚC TRÁN (Thuần túy mái trước, không dính tóc sau/gáy)
-   - Cột 1: 0° Mái chẻ đôi chính diện ôm 2 bên trán
+【 CHI TIẾT 3 TẦNG ĐỘ SÂU (Z-INDEX) × 5 GÓC QUAY CINEMATIC 】:
+🔹 HÀNG 1 (Z-Index Cao Nhất - Đè Lên Mặt): TÓC MÁI TRƯỚC TRÁN (Thuần túy mái trước)
+   - Cột 1: 0° Mái chính diện ôm 2 bên trán
    - Cột 2: 45° Mái nghiêng 3/4 ôm theo mặt xoay
-   - Cột 3: 90° Lát cắt mỏng của mái trước nhìn ngang 90°
+   - Cột 3: 90° Mái nhìn ngang 90°
    - Cột 4: 135° Mép mái khuất dần phía sau chéo
-   - Cột 5: 180° Ô rỗng hoàn toàn (vì mặt quay lưng 180° nên không thấy mái trước)
+   - Cột 5: 180° Ô rỗng (vì mặt quay lưng 180° nên không thấy mái trước)
 
-🔹 HÀNG 2: ĐỈNH ĐẦU / BÚI TÓC SOI THẲNG TỪ TRÊN XUỐNG (Camera Top-Down Bird's Eye View)
-   - Cột 1: 0° Trâm cài nằm ngang (9h - 3h)
-   - Cột 2: 45° Trâm cài xiên chéo (7h - 1h)
-   - Cột 3: 90° Trâm cài thẳng đứng (12h - 6h)
-   - Cột 4: 135° Trâm cài xiên sau
-   - Cột 5: 180° Trâm cài sau đối xứng
+🔹 HÀNG 2 (Z-Index Trung Gian - Ôm 2 Bên Mặt): LỌN TÓC MAI 2 BÊN MÁ (Thuần túy tóc mai, không dính tai)
+   - Cột 1: 0° Hai lọn tóc mai ôm 2 bên má
+   - Cột 2: 45° Lọn tóc mai nghiêng 3/4
+   - Cột 3: 90° Lọn tóc mai nhìn ngang trước tai
+   - Cột 4: 135° Lọn tóc mai nhìn từ phía sau chéo
+   - Cột 5: 180° Lọn tóc mai 2 bên nhìn từ sau lưng
 
-🔹 HÀNG 3: TOÀN BỘ TÓC SAU ĐẦU (Thuần túy tóc sau, tuyệt đối không dính tóc mái trước)
-   - Cột 1: 0° Vòm đầu sau + 2 suối tóc rủ vai (khoảng giữa rỗng cho mặt/thân)
+🔹 HÀNG 3 (Z-Index Dưới Cùng - Nằm Dưới Thân/Đầu): SUỐI TÓC SAU ĐẦU (Thuần túy tóc sau)
+   - Cột 1: 0° Vòm đầu sau + suối tóc rủ 2 bên vai (khoảng giữa rỗng để ghép mặt/thân)
    - Cột 2: 45° Vòm đầu sau nghiêng 45° + suối tóc đổ dài chéo
-   - Cột 3: 90° Nửa sau sọ đầu + suối tóc cong chữ S sau gáy (trán trước rỗng)
+   - Cột 3: 90° Nửa sau sọ đầu + suối tóc sau gáy (trán trước rỗng)
    - Cột 4: 135° Mặt sau vòm đầu + suối tóc sau chéo
-   - Cột 5: 180° Trọn vẹn vòm đầu sau + suối tóc phủ rộng kín lưng
+   - Cột 5: 180° Trọn vẹn vòm đầu sau + suối tóc phủ kín lưng`;
 
-🔹 HÀNG 4: LỌN TÓC MAI 2 BÊN MÁ & TÓC TƠ GÁY (Thuần túy tóc, không dính tai)
-   - 5 góc lọn tóc mai độc lập ôm 2 bên má và chùm tóc tơ sau gáy để diễn hoạt phất phơ.`;
-
-    gridStructureGuide = `📐 Khung Cắt ${ar}: Lưới 4 Hàng × 5 Cột chuẩn 20 ô linh kiện, tự động khớp vào Tab 1 Cắt Lưới.`;
+    gridStructureGuide = `📐 Khung Cắt ${ar}: Lưới 3 Hàng × 5 Cột chuẩn 15 ô linh kiện độ sâu Z-Index, tự động khớp vào Tab 1 Cắt Lưới.`;
   } else if (sheet === 'eyes_grid') {
     // 2. EYES GRID (CHỈ MẮT & LÔNG MÀY - KHÔNG CÓ DA MẶT / MŨI)
     const eyeCol =
@@ -1102,29 +1030,53 @@ Tỷ lệ: ${config.aspect_ratio || '16:9'}.`;
 
     gridStructureGuide = `📐 Khung Cắt 16:9: Lưới 4 Dãy x 5 Cột chuẩn 4K.`;
   } else if (sheet === 'body_turnaround_grid') {
-    // 8. FULL CHARACTER MASTER TURNAROUND SHEET
+    // 8. FULL-BODY CHINESE DONGHUA PUPPET DECOMPOSITION GRID (4 ROWS X 5 COLUMNS)
     promptEnglish = [
-      `masterpiece, ultra high quality, 4k resolution, 16:9 aspect ratio character turnaround sprite sheet`,
-      `modular 2D puppet cutout components for ${config.gender === 'nam' ? 'male' : 'female'} character`,
-      `color theme: ${config.color_theme || 'celestial cyan blue and gold trim'}`,
-      `organized in 4 clean rows across 4 turnaround camera angles (0° Front, 45° 3/4 View, 90° Side Profile, 180° Back View):`,
-      `[ROW 1 - HEAD & HAIR]: Head bases and layered hair for 0°, 45°, 90°, 180° back view`,
-      `[ROW 2 - TORSO & ROBE OUTFIT]: Traditional xianxia daoist robes across 0°, 45°, 90°, 180° back seam`,
-      `[ROW 3 - LIMBS & SLEEVES]: Arms, flowing sleeves, legs and boots for all angles`,
-      `[ROW 4 - WEAPON & ACCESSORIES]: Glowing spiritual sword, scabbard, sash belt, jade pendant`,
-      noTextEn,
-      styleTextEn,
-      bgTextEn,
-      `flat clean cutout puppet pieces, no overlapping parts, --ar 16:9`,
+      `masterpiece, best quality, ultra detailed 4k Chinese 2D Donghua modular puppet component sprite sheet`,
+      `Xianxia cultivation manhua character anatomy parts decomposition on ${bgPromptColorEn}`,
+      `organized in a 4-row by 5-column grid layout with clean spacing between parts:`,
+      `[ROW 1 - HEAD & HAIR LAYERS]: headless head base, floating front bangs fringe, sideburn locks, flowing back hair mantle, jade hairpin top bun`,
+      `[ROW 2 - FACIAL FEATURES & EXPRESSIONS]: isolated expressive phoenix eyes glowing azure, closed blinking eyelid, open speaking mouth, sharp nose bridge, neutral ear`,
+      `[ROW 3 - DAOIST ROBES & COSTUME]: hollow daoist upper chest robe with gold trim, flowing lower skirt hem, inner pleated skirt, golden waist sash belt with dangling jade pendant, jade tassel sash`,
+      `[ROW 4 - LIMBS, HAND SEALS & FLYING WEAPONS]: detached wide sleeves, arms, two-finger daoist sword seal gesture hand, martial arts boots, glowing azure flying spirit sword`,
+      `strictly flat clean cutout sticker assets, crisp high-contrast outlines, unlit flat shading, zero green ambient color spill, zero glow on edges, 100% opaque solid colors, --ar 16:9`,
     ].join(', ');
 
-    promptVietnamese = `【 BẢNG LINH KIỆN TOÀN THÂN & TRANG PHỤC 4 HƯỚNG (4K - 16:9) 】
-• Dãy 1: Đầu & Tóc (0° Trước, 45° Nghiêng, 90° Ngang, 180° Sau lưng).
-• Dãy 2: Thân & Đạo Bào Trang Phục (0°, 45°, 90°, 180°).
-• Dãy 3: Tứ Chi (0°, 45°, 90°, 180°).
-• Dãy 4: Vũ Khí & Phụ Kiện (0°, 45°, 90°, 180°).`;
+    promptVietnamese = `【 BẢNG BÓC TÁCH TOÀN BỘ LINH KIỆN CƠ THỂ & ĐẠO BÀO (20 LINH KIỆN - CHUẨN HOẠT ẢNH TRUNG QUỐC) 】
+• Mục tiêu: Bóc tách toàn bộ 20 vị trí giải phẫu cơ thể của nhân vật Hoạt ảnh / Hoạt hình Tu Tiên Trung Quốc (Đầu, Tóc, Ngũ quan, Đạo bào, Tứ chi, Bàn tay bắt quyết, Phi kiếm) theo lưới 4 Hàng × 5 Cột để cắt tự động và ghép xương 2D (Rigging).
+• Phông nền: ${bgTextVi}.
+• ⚠️ YÊU CẦU BẮT BUỘC: Các linh kiện nằm độc lập, có khoảng cách rộng rãi, không đè lấn nhau, viền dứt khoát không bóng mờ.
 
-    gridStructureGuide = `📐 Khung Cắt 16:9: Lưới 4 Dãy x 4 Cột chuẩn 4K.`;
+【 CHI TIẾT 4 HÀNG × 5 CỘT LINH KIỆN THEO VỊ TRÍ 】:
+🔹 HÀNG 1: ĐẦU & CÁC LỚP TÓC
+   - Cột 1: Đầu base trần + cổ
+   - Cột 2: Tóc mái trước trán
+   - Cột 3: Lọn tóc mai 2 bên má
+   - Cột 4: Suối tóc sau lưng
+   - Cột 5: Búi tóc củ tỏi đỉnh đầu cài trâm ngọc
+
+🔹 HÀNG 2: NGŨ QUAN & BIỂU CẢM
+   - Cột 1: Mắt phượng sắc sảo mở phát sáng kiếm ý
+   - Cột 2: Mắt nhắm chớp mắt
+   - Cột 3: Khẩu hình miệng mở nói (Lip-sync)
+   - Cột 4: Sống mũi thẳng thanh tú
+   - Cột 5: Đôi tai trần
+
+🔹 HÀNG 3: TRANG PHỤC & ĐẠO BÀO
+   - Cột 1: Thân áo đạo bào rỗng ruột
+   - Cột 2: Vạt áo ngoài thướt tha
+   - Cột 3: Váy lót trong xếp ly
+   - Cột 4: Thắt lưng lụa viền vàng
+   - Cột 5: Ngọc bội hộ thân đính dải lụa
+
+🔹 HÀNG 4: TỨ CHI, BÀN TAY BẮT QUYẾT & VŨ KHÍ
+   - Cột 1: Ống tay áo rộng tách rời
+   - Cột 2: Cánh tay & Cẳng tay
+   - Cột 3: Hai bàn tay bắt quyết kiếm ấn (Two-finger sword seal)
+   - Cột 4: Đôi hài chiến đấu cổ trang
+   - Cột 5: Phi kiếm ngọc bích phát sáng kiếm khí`;
+
+    gridStructureGuide = `📐 Khung Cắt 16:9: Lưới 4 Hàng × 5 Cột chuẩn 20 ô linh kiện cơ thể, tự động khớp vào Tab 1 Cắt Lưới.`;
   } else {
     // SINGLE PART
     promptEnglish = [
@@ -1167,7 +1119,7 @@ Tỷ lệ: ${config.aspect_ratio || '16:9'}.`;
       {
         project: 'Flow-App 2D Motion Comic Engine',
         title: getSheetTypeLabel(sheet),
-        art_style: getStyleLabel(config.character_style),
+        art_style: getStyleLabel(config.character_style, config.custom_character_style),
         gender: getGenderLabel(config.gender),
         prompt: promptEnglish,
         negative_prompt: negativePrompt,
@@ -1181,7 +1133,7 @@ Tỷ lệ: ${config.aspect_ratio || '16:9'}.`;
 Bạn hãy vẽ ra một bức ảnh theo đúng các yêu cầu cực kỳ khắt khe sau đây:
 
 1. CHỦ ĐỀ CHÍNH: ${getSheetTypeLabel(sheet)}
-2. PHONG CÁCH ĐỒ HỌA: ${getStyleLabel(config.character_style)}.
+2. PHONG CÁCH ĐỒ HỌA: ${getStyleLabel(config.character_style, config.custom_character_style)}.
 3. THÔNG TIN NHÂN VẬT: Giới tính ${getGenderLabel(config.gender)}. ${config.color_theme ? `Màu chủ đạo: ${config.color_theme}.` : ''}
 4. YÊU CẦU NỀN TRỐNG (RẤT QUAN TRỌNG): Vẽ trên nền màu đồng nhất là ${config.bg_type === 'chroma_green' ? 'Xanh lá Chroma Green (#00FF00)' : config.bg_type === 'pure_white' ? 'Trắng tinh (#FFFFFF)' : 'Màu trơn'}. Không được vẽ bóng đổ.
 5. CẤU TRÚC LƯỚI / ẢNH:

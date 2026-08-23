@@ -6,16 +6,11 @@ import {
   Swords,
   Scissors,
   User,
-  FileText,
   Globe,
   Eye,
   Shirt,
-  Camera,
   Shield,
   Sparkle,
-  Link,
-  Layers,
-  Edit3,
   Maximize2,
 } from 'lucide-react';
 import { AIPartPromptConfig } from '../../types/scene2d';
@@ -24,49 +19,49 @@ import { buildAIPromptForPart, AIPromptResult } from '../../core/assets/Asset2DR
 export const AIPromptGenerator2D: React.FC = () => {
   const [workflowTab, setWorkflowTab] = useState<'step1_master' | 'step2_decomposed_parts' | 'step3_actions'>('step1_master');
   const [decomposedPartType, setDecomposedPartType] = useState<'hair_multi_angle_grid' | 'eyes_grid' | 'mouth_grid' | 'nose_chin_grid' | 'costume_grid' | 'weapons_grid' | 'limbs_hands_grid'>('hair_multi_angle_grid');
-  const [displayLangTab, setDisplayLangTab] = useState<'vietnamese' | 'english' | 'json' | 'gemini' | 'both'>('both');
+  const [displayLangTab, setDisplayLangTab] = useState<'vietnamese' | 'gemini' | 'english' | 'json' | 'both'>('vietnamese');
   const [referenceImageUrl, setReferenceImageUrl] = useState<string>('');
 
-  // Master Character & Part Config State
+  // Master Character & Part Config State - Direct text values for easy editing
   const [config, setConfig] = useState<AIPartPromptConfig>({
     workflow_step: 'step1_master_character',
     sheet_type: 'hair_multi_angle_grid',
     part_type: 'toc_truoc',
-    character_style: 'tu_tien_manhua',
+    character_style: 'Anime Nhật Bản mắt to sắc nét, phong cách Kyoto Animation / Ufotable',
     custom_character_style: '',
     gender: 'nam',
     view_angle: 'all_angles_16_9',
-    action_or_expression: 'calm sharp gaze, cultivation focus',
-    color_theme: 'cyan and gold trim',
-    special_features: 'celestial energy glow, silk ribbons fluttering',
+    action_or_expression: 'Ánh mắt sắc bén, thần thái kiên định tự tin',
+    color_theme: 'Xanh lam phối trắng viền kim tuyến',
+    special_features: 'Linh lực phát sáng nhẹ, tà áo bay phất phơ',
     clean_background: true,
     aspect_ratio: '16:9',
     bg_type: 'chroma_green',
     // Five Senses & Facial (Step 1)
-    eye_color: 'azure_blue',
-    custom_eye_color: '',
-    eye_shape: 'sharp_phoenix',
+    eye_shape: 'Mắt anime to tròn long lanh tinh anh',
     custom_eye_shape: '',
-    nose_shape: 'straight_high_bridge',
+    eye_color: 'Xanh lam ngọc phát sáng linh lực',
+    custom_eye_color: '',
+    nose_shape: 'Sống mũi thẳng cao thanh tú',
     custom_nose_shape: '',
-    mouth_style: 'confident_smirk',
+    mouth_style: 'Cười nhếch môi tự tin',
     custom_mouth_style: '',
     ear_style: 'human_natural',
     // Costume & Robes (Step 1)
-    costume_style: 'dao_bao_tien_hiep',
+    costume_style: 'Đạo bào tu tiên cách tân thướt tha, tay áo rộng',
     custom_costume_style: '',
-    costume_color: 'cyan and white with gold accents',
+    costume_color: 'Xanh lam phối trắng viền chỉ vàng kim',
     // Weapon & Prop Item (Step 1)
-    prop_item: 'flying_sword',
+    prop_item: 'Phi kiếm phát sáng linh lực lam ngọc',
     custom_prop_item: '',
-    // Hair (Step 1 - Master Character Hair)
-    hair_length: 'long_waist',
+    // Hair (Step 1 & Step 2)
+    hair_length: 'Dài ngang lưng suôn mượt',
     custom_hair_length: '',
-    hair_texture: 'straight_silky',
+    hair_texture: 'Thẳng mượt như suối lụa',
     custom_hair_texture: '',
-    hair_color: 'jet_black',
+    hair_color: 'Đen tuyền óng ả',
     custom_hair_color: '',
-    hair_accessories: 'jade_hairpin',
+    hair_accessories: 'Trâm cài ngọc bích đính dải lụa',
     custom_hair_accessories: '',
   });
 
@@ -159,38 +154,19 @@ export const AIPromptGenerator2D: React.FC = () => {
 
   const currentAction = generateActionSequencePrompt();
 
-  // Friendly human text for inherited hair properties
-  const getInheritedHairText = () => {
-    const color = config.hair_color === 'custom' ? config.custom_hair_color : config.hair_color === 'silver_white' ? 'Bạch kim (Trắng bạc)' : config.hair_color === 'crimson_red' ? 'Đỏ rực hỏa diệm' : config.hair_color === 'azure_blue' ? 'Xanh lam ngọc' : 'Đen tuyền óng ả';
-    const length = config.hair_length === 'custom' ? config.custom_hair_length : config.hair_length === 'very_long_flowing' ? 'Dài chấm gót tiên hiệp' : config.hair_length === 'medium_shoulder' ? 'Ngang vai tỉa tầng' : config.hair_length === 'short' ? 'Tóc ngắn cá tính' : 'Dài ngang lưng';
-    const texture = config.hair_texture === 'custom' ? config.custom_hair_texture : config.hair_texture === 'wavy_curls' ? 'Xoăn sóng bồng bềnh' : config.hair_texture === 'wild_spiky' ? 'Đánh rối hoang dã' : 'Thẳng mượt suối lụa';
-    const acc = config.hair_accessories === 'custom' ? config.custom_hair_accessories : config.hair_accessories === 'golden_crown' ? 'Vương miện vàng' : config.hair_accessories === 'flowing_ribbons' ? 'Dải lụa bay' : config.hair_accessories === 'none' ? 'Không có' : 'Trâm cài ngọc / Bạc';
-    return { color, length, texture, acc };
-  };
-
-  const inheritedHair = getInheritedHairText();
-
   // Helper to render Aspect Ratio Selector with smart recommendation
   const renderAspectRatioSelector = () => {
     const currentAr = config.aspect_ratio || (workflowTab === 'step1_master' ? '16:9' : '1:1');
-    const isLongHair = config.hair_length === 'very_long_flowing' || config.hair_length === 'long_waist';
 
     return (
       <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Maximize2 size={14} /> Tỉ Lệ Khung Hình AI Xuất Ảnh (--ar):
           </div>
           <span style={{ fontSize: 10.5, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '2px 8px', borderRadius: 4, fontWeight: 800 }}>
             {currentAr}
           </span>
-        </div>
-
-        {/* Smart Advice based on hair length & costume */}
-        <div style={{ fontSize: 11, color: '#bae6fd', background: 'rgba(2, 132, 199, 0.12)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(2, 132, 199, 0.25)', lineHeight: 1.45 }}>
-          {isLongHair
-            ? '💡 Nhân vật có suối tóc dài / đạo bào thướt tha: Khuyên dùng 16:9 (Trải đều 5 góc) hoặc 3:4 (Khổ đứng cao) để không bị AI cắt xén đuôi tóc!'
-            : '💡 Tóc ngắn / trung bình: Khuyên dùng 16:9 (Model Sheet 5 góc) hoặc 1:1 (Lưới vuông đều).'}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6 }}>
@@ -232,11 +208,11 @@ export const AIPromptGenerator2D: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40% minmax(0, 1fr)', gap: 16, height: '100%', overflow: 'hidden' }}>
-      {/* ─── LEFT: 3-Step Workflow & Configuration Panel (40%) ───────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', paddingRight: 6 }}>
-        {/* 3-Step Production Workflow Switcher */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(15, 23, 42, 0.95)', padding: 8, borderRadius: 10, border: '1px solid rgba(56, 189, 248, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '42% minmax(0, 1fr)', gap: 16, height: '100%', overflow: 'hidden' }}>
+      {/* ─── LEFT: 3-Step Workflow & Textbox-First Controls Panel (42%) ─── */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        {/* CỐ ĐỊNH: 3-Step Production Workflow Switcher (Sticky Top) */}
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(15, 23, 42, 0.95)', padding: 8, borderRadius: 10, border: '1px solid rgba(56, 189, 248, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Sparkle size={13} /> QUY TRÌNH SẢN XUẤT 3 BƯỚC CHUẨN STUDIO:
           </div>
@@ -316,649 +292,380 @@ export const AIPromptGenerator2D: React.FC = () => {
           </div>
         </div>
 
-        {/* ─── STEP 1: MASTER CHARACTER TURNAROUND CONTROLS ──────── */}
-        {workflowTab === 'step1_master' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Step Guide Banner */}
-            <div style={{ background: 'rgba(2, 132, 199, 0.12)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(2, 132, 199, 0.35)', fontSize: 11.5, color: '#e0f2fe', lineHeight: 1.5 }}>
-              🌟 <b>Tạo bảng vẽ tổng thể nhân vật hoàn chỉnh trên Nền Trắng Studio</b> (Mặt, Mắt, Mũi, Miệng, Đạo bào, Pháp bảo & Mái tóc đồng nhất 5 góc quay). Ảnh này làm mẫu tham chiếu gốc để sang Bước 2 bóc tách tóc!
-            </div>
-
-            {/* Gender & Art Style */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 8 }}>
-              <div>
-                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Giới tính:</label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    onClick={() => setConfig((p) => ({ ...p, gender: 'nam' }))}
-                    style={{
-                      flex: 1,
-                      height: 36,
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: config.gender === 'nam' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.12)',
-                      background: config.gender === 'nam' ? '#0284c7' : 'rgba(255,255,255,0.04)',
-                      color: '#fff',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Nam Tu Sĩ
-                  </button>
-                  <button
-                    onClick={() => setConfig((p) => ({ ...p, gender: 'nu' }))}
-                    style={{
-                      flex: 1,
-                      height: 36,
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: config.gender === 'nu' ? '1px solid #f472b6' : '1px solid rgba(255,255,255,0.12)',
-                      background: config.gender === 'nu' ? '#db2777' : 'rgba(255,255,255,0.04)',
-                      color: '#fff',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Nữ Tiên Tử
-                  </button>
-                </div>
+        {/* PHẦN NỘI DUNG CUỘN (SCROLLABLE CONTROLS) */}
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 6 }}>
+          {/* ─── STEP 1: MASTER CHARACTER TURNAROUND CONTROLS ──────── */}
+          {workflowTab === 'step1_master' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Step Guide Banner */}
+              <div style={{ background: 'rgba(2, 132, 199, 0.12)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(2, 132, 199, 0.35)', fontSize: 11.5, color: '#e0f2fe', lineHeight: 1.5 }}>
+                🌟 <b>Tạo bảng vẽ tổng thể nhân vật hoàn chỉnh trên Nền Trắng Studio</b> (Mặt, Mắt, Mũi, Miệng, Đạo bào, Pháp bảo & Mái tóc đồng nhất 5 góc quay). Gõ trực tiếp vào các ô bên dưới để sửa chi tiết nhân vật!
               </div>
 
-              <div>
-                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Phong cách nghệ thuật:</label>
-                <select
-                  value={config.character_style}
-                  onChange={(e) => setConfig((p) => ({ ...p, character_style: e.target.value as any }))}
-                  style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6 }}
-                >
-                  <option value="chibi">🌟 Hoạt Hình Chibi Đáng Yêu (Cute Anime Chibi 2.5D)</option>
-                  <option value="hoat_hinh_3d_trung_quoc">🐉 Hoạt Hình 3D Trung Quốc (3D Donghua)</option>
-                  <option value="tu_tien_manhua">Tu Tiên / Manhua Trung Quốc</option>
-                  <option value="kiem_hiep">Kiếm Hiệp / Cổ Trang Wuxia</option>
-                  <option value="anime_action">Anime Action Nhật Bản</option>
-                  <option value="cyberpunk_anime">Cyberpunk Anime</option>
-                  <option value="custom">✍️ Tự Nhập Phong Cách Khác (Custom)...</option>
-                </select>
-                {config.character_style === 'custom' && (
+              {/* Gender & Art Style */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Giới tính:</label>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setConfig((p) => ({ ...p, gender: 'nam' }))}
+                      style={{
+                        flex: 1,
+                        height: 36,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: config.gender === 'nam' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.12)',
+                        background: config.gender === 'nam' ? '#0284c7' : 'rgba(255,255,255,0.04)',
+                        color: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Nam
+                    </button>
+                    <button
+                      onClick={() => setConfig((p) => ({ ...p, gender: 'nu' }))}
+                      style={{
+                        flex: 1,
+                        height: 36,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: config.gender === 'nu' ? '1px solid #f472b6' : '1px solid rgba(255,255,255,0.12)',
+                        background: config.gender === 'nu' ? '#db2777' : 'rgba(255,255,255,0.04)',
+                        color: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Nữ
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>🎨 Phong cách nghệ thuật:</label>
                   <input
                     type="text"
-                    value={config.custom_character_style || ''}
-                    onChange={(e) => setConfig((p) => ({ ...p, custom_character_style: e.target.value }))}
-                    placeholder="VD: Dark Fantasy Manhwa, Genshin 2.5D..."
-                    style={{ width: '100%', marginTop: 6, height: 34, padding: '5px 10px', fontSize: 11.5, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 6 }}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Five Senses & Facial Features */}
-            <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Eye size={14} /> Khuôn Mặt & Ngũ Quan {config.character_style === 'chibi' ? '(Phong Cách Chibi Kawaii)' : '(Mắt, Mũi, Miệng)'}:
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Dáng Mắt & Thần thái:</label>
-                  <select
-                    value={config.eye_shape || (config.character_style === 'chibi' ? 'chibi_sparkling_starry' : 'sharp_phoenix')}
-                    onChange={(e) => setConfig((p) => ({ ...p, eye_shape: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    {config.character_style === 'chibi' ? (
-                      <>
-                        <option value="chibi_sparkling_starry">🌟 Mắt tròn to long lanh ánh sao</option>
-                        <option value="chibi_happy_crescent">💖 Mắt cười híp cong lưỡi liềm</option>
-                        <option value="chibi_pouty_teary">🥺 Mắt ươn ướt cún con dễ thương</option>
-                        <option value="large_clear">👀 Mắt to trong veo sáng ngời</option>
-                        <option value="custom">✍️ Tự Nhập Dáng Mắt Khác...</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="sharp_phoenix">Mắt phượng sắc lạnh</option>
-                        <option value="cold_swordsman">Mắt kiếm khách kiên định</option>
-                        <option value="large_clear">Mắt trong sáng tinh anh</option>
-                        <option value="fox_alluring">Mắt hồ ly quyến rũ</option>
-                        <option value="custom">✍️ Tự Nhập Dáng Mắt Khác...</option>
-                      </>
-                    )}
-                  </select>
-                  {config.eye_shape === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_eye_shape || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_eye_shape: e.target.value }))}
-                      placeholder="VD: Mắt rồng uy nghiêm, Mắt trái tim..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Màu Tròng Mắt:</label>
-                  <select
-                    value={config.eye_color || 'azure_blue'}
-                    onChange={(e) => setConfig((p) => ({ ...p, eye_color: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    {config.character_style === 'chibi' ? (
-                      <>
-                        <option value="azure_blue">💎 Xanh lam ngọc phát sáng</option>
-                        <option value="chibi_sweet_pink">🍓 Hồng dâu tây kẹo ngọt</option>
-                        <option value="golden_amber">🍯 Vàng mật ong hổ phách</option>
-                        <option value="emerald_green">🍃 Xanh ngọc lục bảo</option>
-                        <option value="obsidian_black">🖤 Đen tuyền búp bê</option>
-                        <option value="custom">✍️ Tự Nhập Màu Mắt Khác...</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="azure_blue">Xanh lam ngọc phát sáng</option>
-                        <option value="golden_amber">Vàng hổ phách tiên linh</option>
-                        <option value="crimson_red">Đỏ rực hỏa nhãn</option>
-                        <option value="emerald_green">Xanh lục bích</option>
-                        <option value="obsidian_black">Đen tuyền sâu thẳm</option>
-                        <option value="custom">✍️ Tự Nhập Màu Mắt Khác...</option>
-                      </>
-                    )}
-                  </select>
-                  {config.eye_color === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_eye_color || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_eye_color: e.target.value }))}
-                      placeholder="VD: Tím tử lôi dạ quang..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Sống Mũi:</label>
-                  <select
-                    value={config.nose_shape || (config.character_style === 'chibi' ? 'chibi_tiny_dot' : 'straight_high_bridge')}
-                    onChange={(e) => setConfig((p) => ({ ...p, nose_shape: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    {config.character_style === 'chibi' ? (
-                      <>
-                        <option value="chibi_tiny_dot">👃 Mũi chấm nhỏ xíu đáng yêu</option>
-                        <option value="chibi_no_nose">🚫 Ẩn mũi (Chibi cổ điển không vẽ mũi)</option>
-                        <option value="small_delicate">👃 Mũi nhỏ nhắn nhẹ nhàng</option>
-                        <option value="custom">✍️ Tự Nhập Dáng Mũi Khác...</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="straight_high_bridge">Sống mũi thẳng cao thanh tú</option>
-                        <option value="sharp_defined">Mũi sắc nét góc cạnh</option>
-                        <option value="small_delicate">Mũi nhỏ nhắn nhẹ nhàng</option>
-                        <option value="custom">✍️ Tự Nhập Dáng Mũi Khác...</option>
-                      </>
-                    )}
-                  </select>
-                  {config.nose_shape === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_nose_shape || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_nose_shape: e.target.value }))}
-                      placeholder="VD: Mũi cao lai Tây..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Khẩu Hình / Nụ Cười:</label>
-                  <select
-                    value={config.mouth_style || (config.character_style === 'chibi' ? 'chibi_cat_mouth' : 'confident_smirk')}
-                    onChange={(e) => setConfig((p) => ({ ...p, mouth_style: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    {config.character_style === 'chibi' ? (
-                      <>
-                        <option value="chibi_cat_mouth">😺 Miệng mèo tinh nghịch :3</option>
-                        <option value="chibi_surprised_o">👄 Miệng chữ O ngơ ngác đáng yêu</option>
-                        <option value="chibi_puffed_cheek">🍡 Phồng má ngậm bánh bao</option>
-                        <option value="chibi_big_smile">😄 Cười tít mắt hớn hở</option>
-                        <option value="custom">✍️ Tự Nhập Khẩu Hình Khác...</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="confident_smirk">Cười nhếch tự tin</option>
-                        <option value="gentle_smile">Nụ cười dịu dàng</option>
-                        <option value="battle_roar">Nghiêm nghị tập trung</option>
-                        <option value="custom">✍️ Tự Nhập Khẩu Hình Khác...</option>
-                      </>
-                    )}
-                  </select>
-                  {config.mouth_style === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_mouth_style || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_mouth_style: e.target.value }))}
-                      placeholder="VD: Cắn môi đăm chiêu..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Costume & Robes */}
-            <div style={{ background: 'rgba(168, 85, 247, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Shirt size={14} /> Trang Phục & Đạo Bào:
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Kiểu Đạo Bào:</label>
-                  <select
-                    value={config.costume_style || 'dao_bao_tien_hiep'}
-                    onChange={(e) => setConfig((p) => ({ ...p, costume_style: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    {config.character_style === 'chibi' ? (
-                      <>
-                        <option value="dao_bao_tien_hiep">Đạo bào mini tay thụng bồng bềnh</option>
-                        <option value="bach_y_tien_tu">Bạch y tiểu tiên nữ đáng yêu</option>
-                        <option value="kiem_khach_ao_vai">Tiểu kiếm khách áo vải</option>
-                        <option value="hac_y_ma_dao">Tiểu ma đầu hắc y tinh quái</option>
-                        <option value="hoang_toc_kim_bao">Tiểu hoàng tử / công chúa kim bào</option>
-                        <option value="custom">✍️ Tự Nhập Kiểu Trang Phục Khác...</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="dao_bao_tien_hiep">Đạo bào tu tiên thướt tha</option>
-                        <option value="kiem_khach_ao_vai">Kiếm khách áo vải phong trần</option>
-                        <option value="hac_y_ma_dao">Hắc y ma đạo huyền bí</option>
-                        <option value="bach_y_tien_tu">Bạch y tiên tử thanh khiết</option>
-                        <option value="hoang_toc_kim_bao">Hoàng tộc kim bào quý phái</option>
-                        <option value="custom">✍️ Tự Nhập Kiểu Trang Phục Khác...</option>
-                      </>
-                    )}
-                  </select>
-                  {config.costume_style === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_costume_style || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_costume_style: e.target.value }))}
-                      placeholder="VD: Chiến giáp long lân..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#c084fc', border: '1px solid #c084fc', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Màu sắc & Họa tiết:</label>
-                  <input
-                    type="text"
-                    value={config.costume_color || 'cyan and white with gold accents'}
-                    onChange={(e) => setConfig((p) => ({ ...p, costume_color: e.target.value }))}
-                    placeholder="VD: Lam ngọc viền kim tuyến..."
-                    style={{ width: '100%', height: 34, padding: '5px 10px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6 }}
+                    value={config.character_style || ''}
+                    onChange={(e) => setConfig((p) => ({ ...p, character_style: e.target.value }))}
+                    placeholder="VD: Anime Nhật Bản mắt to sắc nét, Kyoto Animation..."
+                    style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: 6 }}
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Weapon & Prop Item */}
-            <div style={{ background: 'rgba(234, 179, 8, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(234, 179, 8, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: '#facc15', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Shield size={14} /> Pháp Bảo & Đồ Vật Nhân Vật Cầm:
+              {/* Five Senses & Facial Features */}
+              <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Eye size={14} /> Khuôn Mặt & Ngũ Quan (Mắt, Mũi, Miệng):
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Dáng Mắt & Thần thái:</label>
+                    <input
+                      type="text"
+                      value={config.eye_shape || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, eye_shape: e.target.value }))}
+                      placeholder="VD: Mắt anime to tròn long lanh tinh anh..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Màu Tròng Mắt:</label>
+                    <input
+                      type="text"
+                      value={config.eye_color || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, eye_color: e.target.value }))}
+                      placeholder="VD: Xanh lam ngọc phát sáng linh lực..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Sống Mũi:</label>
+                    <input
+                      type="text"
+                      value={config.nose_shape || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, nose_shape: e.target.value }))}
+                      placeholder="VD: Sống mũi thẳng cao thanh tú..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Khẩu Hình / Nụ Cười:</label>
+                    <input
+                      type="text"
+                      value={config.mouth_style || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, mouth_style: e.target.value }))}
+                      placeholder="VD: Cười nhếch môi tự tin..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
+                </div>
               </div>
-              <select
-                value={config.prop_item || 'flying_sword'}
-                onChange={(e) => setConfig((p) => ({ ...p, prop_item: e.target.value as any }))}
-                style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6 }}
-              >
-                <option value="flying_sword">🗡️ Phi Kiếm ngọc bích phát sáng kiếm ý</option>
-                <option value="feather_fan">🪶 Quạt Lông Vũ tiên gia thái cực</option>
-                <option value="talisman_scrolls">📜 Cuộn Bùa Chú phù lục linh quang</option>
-                <option value="gourd_wine">🍶 Hồ Lô Tiên Tửu chứa linh tuyền</option>
-                <option value="jade_hairpin">✨ Trâm Cài Ngọc Bích đính dải lụa</option>
-                <option value="custom">✍️ Tự Nhập Pháp Bảo / Vũ Khí Khác...</option>
-              </select>
-              {config.prop_item === 'custom' && (
+
+              {/* Costume & Robes */}
+              <div style={{ background: 'rgba(168, 85, 247, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Shirt size={14} /> Trang Phục & Đạo Bào:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Kiểu Trang Phục / Đạo Bào:</label>
+                    <input
+                      type="text"
+                      value={config.costume_style || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, costume_style: e.target.value }))}
+                      placeholder="VD: Đạo bào tu tiên thướt tha, tay áo rộng..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Màu sắc & Họa tiết:</label>
+                    <input
+                      type="text"
+                      value={config.costume_color || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, costume_color: e.target.value }))}
+                      placeholder="VD: Xanh lam phối trắng viền chỉ vàng kim..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#38bdf8', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Weapon & Prop Item */}
+              <div style={{ background: 'rgba(234, 179, 8, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(234, 179, 8, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#facc15', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Shield size={14} /> Pháp Bảo & Đồ Vật Nhân Vật Cầm:
+                </div>
                 <input
                   type="text"
-                  value={config.custom_prop_item || ''}
-                  onChange={(e) => setConfig((p) => ({ ...p, custom_prop_item: e.target.value }))}
-                  placeholder="VD: Trường thương rồng bạc, Đàn tranh cổ linh..."
-                  style={{ width: '100%', height: 34, padding: '5px 10px', fontSize: 11.5, background: '#090d16', color: '#facc15', border: '1px solid #facc15', borderRadius: 6 }}
+                  value={config.prop_item || ''}
+                  onChange={(e) => setConfig((p) => ({ ...p, prop_item: e.target.value }))}
+                  placeholder="VD: Phi kiếm phát sáng linh lực lam ngọc, Quạt lông vũ..."
+                  style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11, background: '#090d16', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: 6 }}
                 />
-              )}
-            </div>
+              </div>
 
-            {/* Hair Style for Step 1 */}
-            <div style={{ background: 'rgba(16, 185, 129, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: '#34d399' }}>💇 Kiểu Tóc & Trâm Cài Nhân Vật:</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Độ dài tóc:</label>
-                  <select
-                    value={config.hair_length || 'long_waist'}
-                    onChange={(e) => setConfig((p) => ({ ...p, hair_length: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    <option value="long_waist">Dài ngang lưng</option>
-                    <option value="very_long_flowing">Dài chấm gót tiên hiệp</option>
-                    <option value="medium_shoulder">Ngang vai tỉa tầng</option>
-                    <option value="short">Tóc ngắn cá tính</option>
-                    <option value="custom">✍️ Tự Nhập Độ Dài...</option>
-                  </select>
-                  {config.hair_length === 'custom' && (
+              {/* Hair Style for Step 1 */}
+              <div style={{ background: 'rgba(16, 185, 129, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#34d399' }}>💇 Kiểu Tóc & Trâm Cài Nhân Vật:</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Độ dài tóc:</label>
                     <input
                       type="text"
-                      value={config.custom_hair_length || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_hair_length: e.target.value }))}
-                      placeholder="VD: Cột đuôi ngựa cao..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#34d399', border: '1px solid #34d399', borderRadius: 5 }}
+                      value={config.hair_length || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, hair_length: e.target.value }))}
+                      placeholder="VD: Dài ngang lưng suôn mượt, Đuôi ngựa cao..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
                     />
-                  )}
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Màu sắc tóc:</label>
+                    <input
+                      type="text"
+                      value={config.hair_color || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, hair_color: e.target.value }))}
+                      placeholder="VD: Đen tuyền óng ả, Bạch kim, Xanh lam..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Màu sắc:</label>
-                  <select
-                    value={config.hair_color || 'jet_black'}
-                    onChange={(e) => setConfig((p) => ({ ...p, hair_color: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    <option value="jet_black">Đen tuyền óng ả</option>
-                    <option value="silver_white">Bạch kim (Trắng bạc)</option>
-                    <option value="crimson_red">Đỏ rực hỏa diệm</option>
-                    <option value="azure_blue">Xanh lam ngọc</option>
-                    <option value="golden_blonde">Vàng kim ánh dương</option>
-                    <option value="custom">✍️ Tự Nhập Màu Tóc...</option>
-                  </select>
-                  {config.hair_color === 'custom' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Chất tóc / Xoăn:</label>
                     <input
                       type="text"
-                      value={config.custom_hair_color || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_hair_color: e.target.value }))}
-                      placeholder="VD: Xanh ngọc ombre tím..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#34d399', border: '1px solid #34d399', borderRadius: 5 }}
+                      value={config.hair_texture || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, hair_texture: e.target.value }))}
+                      placeholder="VD: Thẳng mượt như suối lụa, Xoăn sóng bồng bềnh..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
                     />
-                  )}
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Trâm cài / Phụ kiện tóc:</label>
+                    <input
+                      type="text"
+                      value={config.hair_accessories || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, hair_accessories: e.target.value }))}
+                      placeholder="VD: Trâm cài ngọc bích đính dải lụa, Vương miện vàng..."
+                      style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Chất tóc / Xoăn:</label>
-                  <select
-                    value={config.hair_texture || 'straight_silky'}
-                    onChange={(e) => setConfig((p) => ({ ...p, hair_texture: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    <option value="straight_silky">Thẳng mượt suối lụa</option>
-                    <option value="wavy_curls">Xoăn sóng bồng bềnh</option>
-                    <option value="wild_spiky">Đánh rối hoang dã</option>
-                    <option value="custom">✍️ Tự Nhập Chất Tóc...</option>
-                  </select>
-                  {config.hair_texture === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_hair_texture || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_hair_texture: e.target.value }))}
-                      placeholder="VD: Tóc bím dài tiên hiệp..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#34d399', border: '1px solid #34d399', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
+              {/* Aspect Ratio Selector for Step 1 */}
+              {renderAspectRatioSelector()}
+            </div>
+          )}
 
-                <div>
-                  <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 3 }}>Trâm cài / Phụ kiện:</label>
-                  <select
-                    value={config.hair_accessories || 'jade_hairpin'}
-                    onChange={(e) => setConfig((p) => ({ ...p, hair_accessories: e.target.value as any }))}
-                    style={{ width: '100%', height: 34, padding: '5px 8px', fontSize: 11, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-                  >
-                    <option value="jade_hairpin">Trâm cài ngọc / Bạc</option>
-                    <option value="flowing_ribbons">Dải lụa bay bồng bềnh</option>
-                    <option value="golden_crown">Vương miện vàng kim</option>
-                    <option value="none">Không có</option>
-                    <option value="custom">✍️ Tự Nhập Phụ Kiện...</option>
-                  </select>
-                  {config.hair_accessories === 'custom' && (
-                    <input
-                      type="text"
-                      value={config.custom_hair_accessories || ''}
-                      onChange={(e) => setConfig((p) => ({ ...p, custom_hair_accessories: e.target.value }))}
-                      placeholder="VD: Mũ miện đính ngọc..."
-                      style={{ width: '100%', marginTop: 5, height: 32, padding: '4px 8px', fontSize: 11, background: '#090d16', color: '#34d399', border: '1px solid #34d399', borderRadius: 5 }}
-                    />
-                  )}
-                </div>
+          {/* ─── STEP 2: DECOMPOSED PARTS (HAIR, EYES, MOUTH, CLOTHES, ETC.) ─── */}
+          {workflowTab === 'step2_decomposed_parts' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Step Guide Banner */}
+              <div style={{ background: 'rgba(16, 185, 129, 0.12)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)', fontSize: 11.5, color: '#d1fae5', lineHeight: 1.5 }}>
+                ✂️ <b>Bóc tách linh kiện (Tóc, Mắt, Miệng, Đạo bào...) từ nhân vật Bước 1 thành Sprite Sheet đa góc quay</b>. Hệ thống tự động kế thừa đặc tính từ Bước 1 để đảm bảo khi ghép vào Studio sẽ chuẩn khít 100%!
               </div>
-            </div>
-
-            {/* Aspect Ratio Selector for Step 1 */}
-            {renderAspectRatioSelector()}
-          </div>
-        )}
-
-        {/* ─── STEP 2: DECOMPOSED PARTS (HAIR, EYES, MOUTH, CLOTHES, ETC.) ─── */}
-        {workflowTab === 'step2_decomposed_parts' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Step Guide Banner */}
-            <div style={{ background: 'rgba(16, 185, 129, 0.12)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)', fontSize: 11.5, color: '#d1fae5', lineHeight: 1.5 }}>
-              ✂️ <b>Bóc tách linh kiện (Tóc, Mắt, Miệng, Đạo bào...) từ nhân vật Bước 1 thành Sprite Sheet đa góc quay</b>. Hệ thống tự động kế thừa đặc tính từ Bước 1 để đảm bảo khi ghép vào Studio sẽ chuẩn khít 100%!
-            </div>
-            
-            {/* Part Selection */}
-            <div>
-              <label style={{ fontSize: 11.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Chọn linh kiện cần bóc tách:</label>
-              <select
-                value={decomposedPartType}
-                onChange={(e) => setDecomposedPartType(e.target.value as any)}
-                style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#fff', border: '1px solid rgba(52, 211, 153, 0.5)', borderRadius: 6 }}
-              >
-                <option value="hair_multi_angle_grid">💇 Mái Tóc (4 Tầng x 5 Góc Quay)</option>
-                <option value="eyes_grid">👁️ Đôi Mắt & Chớp Mắt (Cảm xúc & Khớp Khung Mắt)</option>
-                <option value="mouth_grid">👄 Khẩu Hình Miệng (Nói Chuyện & Biểu Cảm)</option>
-                <option value="nose_chin_grid">👃 Sống Mũi, Khung Cằm & Vành Tai</option>
-                <option value="costume_grid">👘 Trang Phục / Đạo Bào Rỗng Ruột</option>
-                <option value="weapons_grid">🗡️ Vũ Khí & Pháp Bảo</option>
-                <option value="limbs_hands_grid">💪 Tứ Chi & Bàn Tay Bắt Quyết</option>
-              </select>
-            </div>
-
-            {/* Inherited Character Hair Badge Card (Show only for hair) */}
-            {decomposedPartType === 'hair_multi_angle_grid' && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: 12, borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Layers size={14} /> Đặc Tính Tóc Tự Động Kế Thừa Từ Bước 1:
-                </span>
-                <button
-                  onClick={() => setWorkflowTab('step1_master')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '3px 8px',
-                    fontSize: 10.5,
-                    borderRadius: 4,
-                    border: '1px solid rgba(52, 211, 153, 0.4)',
-                    background: 'rgba(52, 211, 153, 0.15)',
-                    color: '#6ee7b7',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Edit3 size={11} /> Sửa ở Bước 1
-                </button>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Màu sắc tóc:</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#a7f3d0' }}>{inheritedHair.color}</div>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Độ dài tóc:</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#a7f3d0' }}>{inheritedHair.length}</div>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Chất tóc / Dáng:</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#a7f3d0' }}>{inheritedHair.texture}</div>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.35)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Trâm cài / Phụ kiện:</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#a7f3d0' }}>{inheritedHair.acc}</div>
-                </div>
-              </div>
-            </div>
-            )}
-
-            {/* Step 1 Image Reference Link Input */}
-            <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: 12, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Link size={13} /> Link / File Ảnh Nhân Vật Bước 1 (Tùy chọn cho Midjourney --sref):
-              </label>
-              <input
-                type="text"
-                value={referenceImageUrl}
-                onChange={(e) => setReferenceImageUrl(e.target.value)}
-                placeholder="Dán link ảnh nhân vật tạo được từ Bước 1 vào đây..."
-                style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6 }}
-              />
-              <span style={{ fontSize: 10, color: '#94a3b8' }}>
-                💡 Nếu nhập link ảnh, hệ thống sẽ tự động thêm cờ <code>--sref [link]</code> vào cuối prompt Midjourney!
-              </span>
-            </div>
-
-            {/* Aspect Ratio Selector for Step 2 */}
-            {renderAspectRatioSelector()}
-
-            {/* Background Settings */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              
+              {/* Part Selection */}
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
-                  Màu phông nền bóc tách:
-                </label>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Chọn linh kiện cần bóc tách:</label>
+                <select
+                  value={decomposedPartType}
+                  onChange={(e) => setDecomposedPartType(e.target.value as any)}
+                  style={{ width: '100%', height: 36, padding: '6px 10px', fontSize: 11.5, background: '#090d16', color: '#fff', border: '1px solid rgba(52, 211, 153, 0.5)', borderRadius: 6 }}
+                >
+                  <option value="body_turnaround_grid">🥋 Bảng Bóc Tách Toàn Bộ Cơ Thể & Đạo Bào (Full-Body Puppet 20 Linh Kiện - Chuẩn Hoạt Ảnh Trung Quốc)</option>
+                  <option value="hair_multi_angle_grid">💇 Mái Tóc Đa Tầng (3 Dãy x 5 Góc Quay) - Khuyên dùng</option>
+                  <option value="eyes_grid">👀 Đôi Mắt & Chớp Mắt (4 Dãy x 5 Cảm Xúc)</option>
+                  <option value="mouth_grid">👄 Khẩu Hình Miệng & Lip-Sync Nói Chuyện (4 Dãy x 5 Cột)</option>
+                  <option value="nose_chin_grid">👃 Sống Mũi, Cằm Nhọn 90° & Đôi Tai</option>
+                  <option value="costume_grid">🥋 Trang Phục & Đạo Bào Rỗng Ruột</option>
+                  <option value="weapons_grid">🗡️ Pháp Bảo & Vũ Khí Đa Góc</option>
+                  <option value="limbs_hands_grid">🖐️ Tứ Chi & Bàn Tay Bắt Quyết Kiếm Ấn</option>
+                </select>
+              </div>
+
+              {/* Background Type for Extraction */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Phông nền xuất ảnh (Chroma Key):</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <button
                     onClick={() => setConfig((p) => ({ ...p, bg_type: 'chroma_green' }))}
                     style={{
-                      height: 36,
-                      fontSize: 11.5,
+                      padding: '8px 10px',
+                      fontSize: 11,
                       fontWeight: 600,
                       borderRadius: 6,
-                      border: config.bg_type === 'chroma_green' ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.12)',
-                      background: config.bg_type === 'chroma_green' ? 'rgba(34, 197, 94, 0.25)' : 'rgba(0,0,0,0.3)',
+                      border: config.bg_type === 'chroma_green' ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                      background: config.bg_type === 'chroma_green' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.03)',
                       color: config.bg_type === 'chroma_green' ? '#4ade80' : '#94a3b8',
                       cursor: 'pointer',
                     }}
                   >
-                    🟢 Xanh Lá (#00FF00)
+                    🟢 Xanh Lá (Chroma Green)
                   </button>
                   <button
                     onClick={() => setConfig((p) => ({ ...p, bg_type: 'pure_white' }))}
                     style={{
-                      height: 36,
-                      fontSize: 11.5,
+                      padding: '8px 10px',
+                      fontSize: 11,
                       fontWeight: 600,
                       borderRadius: 6,
-                      border: config.bg_type === 'pure_white' ? '1px solid #f8fafc' : '1px solid rgba(255,255,255,0.12)',
-                      background: config.bg_type === 'pure_white' ? 'rgba(248, 250, 252, 0.15)' : 'rgba(0,0,0,0.3)',
-                      color: config.bg_type === 'pure_white' ? '#f8fafc' : '#94a3b8',
+                      border: config.bg_type === 'pure_white' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                      background: config.bg_type === 'pure_white' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
+                      color: config.bg_type === 'pure_white' ? '#7dd3fc' : '#94a3b8',
                       cursor: 'pointer',
                     }}
                   >
                     ⚪ Trắng Tinh (#FFFFFF)
                   </button>
-                  <button
-                    onClick={() => setConfig((p) => ({ ...p, bg_type: 'chroma_gray' }))}
-                    style={{
-                      height: 36,
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: config.bg_type === 'chroma_gray' ? '1px solid #94a3b8' : '1px solid rgba(255,255,255,0.12)',
-                      background: config.bg_type === 'chroma_gray' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(0,0,0,0.3)',
-                      color: config.bg_type === 'chroma_gray' ? '#f8fafc' : '#94a3b8',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    🔘 Xám Đậm (#333333)
-                  </button>
-                  <button
-                    onClick={() => setConfig((p) => ({ ...p, bg_type: 'pure_black' }))}
-                    style={{
-                      height: 36,
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: config.bg_type === 'pure_black' ? '1px solid #475569' : '1px solid rgba(255,255,255,0.12)',
-                      background: config.bg_type === 'pure_black' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0,0,0,0.3)',
-                      color: config.bg_type === 'pure_black' ? '#f8fafc' : '#94a3b8',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ⚫ Đen Tuyền (#000000)
-                  </button>
+                </div>
+              </div>
+
+              {/* Reference Image URL for Consistent Decomposition */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
+                  🔗 Link ảnh nhân vật mẫu Bước 1 (Tùy chọn cho Midjourney --sref):
+                </label>
+                <input
+                  type="text"
+                  value={referenceImageUrl}
+                  onChange={(e) => setReferenceImageUrl(e.target.value)}
+                  placeholder="Dán link ảnh Discord / Web của ảnh Bước 1 vào đây..."
+                  style={{ width: '100%', height: 34, padding: '5px 10px', fontSize: 11, background: '#090d16', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.4)', borderRadius: 6 }}
+                />
+              </div>
+
+              {/* Aspect Ratio Selector for Step 2 */}
+              {renderAspectRatioSelector()}
+            </div>
+          )}
+
+          {/* ─── STEP 3: ACTION KEYFRAMES & STORYTELLING CONTROLS ───── */}
+          {workflowTab === 'step3_actions' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Step Guide Banner */}
+              <div style={{ background: 'rgba(168, 85, 247, 0.12)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.35)', fontSize: 11.5, color: '#f3e8ff', lineHeight: 1.5 }}>
+                ⚔️ <b>Sinh kịch bản chiêu thức, biểu cảm cận cảnh & chuyển cảnh kịch tính 4K</b>. Dán prompt này vào AI để tạo Keyframe cao trào trong video motion comic!
+              </div>
+
+              {/* Action Type Selection */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Thể loại phân cảnh:</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {[
+                    { id: 'combat', label: '⚔️ Chiến Đấu & Tung Chiêu' },
+                    { id: 'emotion', label: '😱 Cận Cảnh Biểu Cảm' },
+                    { id: 'eat', label: '🍵 Ăn Uống & Thưởng Trà' },
+                    { id: 'transition', label: '🌄 Chuyển Cảnh Tiên Cảnh' },
+                  ].map((act) => (
+                    <button
+                      key={act.id}
+                      onClick={() => setActionType(act.id as any)}
+                      style={{
+                        padding: '8px 10px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: actionType === act.id ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.1)',
+                        background: actionType === act.id ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : 'rgba(255,255,255,0.03)',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {act.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Intensity level */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Cường độ hiệu ứng (VFX Intensity):</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['mild', 'intense', 'extreme'] as const).map((lvl) => (
+                    <button
+                      key={lvl}
+                      onClick={() => setActionIntensity(lvl)}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: actionIntensity === lvl ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.1)',
+                        background: actionIntensity === lvl ? '#9333ea' : 'rgba(255,255,255,0.03)',
+                        color: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {lvl === 'mild' ? 'Nhẹ' : lvl === 'intense' ? 'Mạnh' : 'Cực Đại'}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* ─── STEP 3: ACTION SEQUENCES CONTROLS ─────────────────── */}
-        {workflowTab === 'step3_actions' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
-                Loại hành động kịch bản:
-              </label>
-              <select
-                value={actionType}
-                onChange={(e) => setActionType(e.target.value as any)}
-                style={{ width: '100%', height: 38, padding: '6px 10px', fontSize: 12, background: '#090d16', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6 }}
-              >
-                <option value="combat">⚔️ Chiến đấu & Tung chiêu kiếm khí</option>
-                <option value="emotion">😱 Biểu cảm giật mình / Tức giận / Sốc</option>
-                <option value="dialogue">💬 Đối thoại khẩu khí / Nói chuyện</option>
-                <option value="eat">🍵 Ăn uống / Thưởng trà / Thư giãn</option>
-                <option value="transition">🗺️ Chuyển cảnh bản đồ (Map Cut)</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
-                Mức độ uy lực / Cường độ:
-              </label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(['mild', 'intense', 'extreme'] as const).map((lvl) => (
-                  <button
-                    key={lvl}
-                    onClick={() => setActionIntensity(lvl)}
-                    style={{
-                      flex: 1,
-                      height: 36,
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      background: actionIntensity === lvl ? '#a855f7' : 'rgba(255,255,255,0.03)',
-                      color: '#fff',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {lvl === 'mild' ? 'Nhẹ' : lvl === 'intense' ? 'Mạnh' : 'Cực Đại'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* ─── RIGHT: Generated Dual Language Prompt & Copy (60%) ─────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, background: 'rgba(15, 23, 42, 0.7)', padding: 16, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', overflowY: 'auto' }}>
+      {/* ─── RIGHT: Generated Dual Language Prompt & Copy (58%) ─────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, background: 'rgba(15, 23, 42, 0.7)', padding: 16, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', overflowY: 'auto', minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
         {/* Top Header & Copy Action */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Sparkles size={16} />
             {workflowTab === 'step1_master'
               ? '🌟 PROMPT BƯỚC 1: BẢNG THIẾT KẾ NHÂN VẬT GỐC (MASTER 4K)'
@@ -967,52 +674,39 @@ export const AIPromptGenerator2D: React.FC = () => {
               : '⚔️ PROMPT BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG & CHIÊU THỨC (4K)'}
           </div>
 
-          <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.4)', padding: 3, borderRadius: 6 }}>
+          <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.4)', padding: 3, borderRadius: 6, flexWrap: 'wrap' }}>
             <button
               onClick={() => setDisplayLangTab('both')}
-              style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'both' ? '#0284c7' : 'transparent', color: displayLangTab === 'both' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 600 }}
+              style={{ padding: '4px 8px', fontSize: 10.5, borderRadius: 4, border: 'none', background: displayLangTab === 'both' ? '#0284c7' : 'transparent', color: displayLangTab === 'both' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 600 }}
             >
-              Tất cả
+              🌟 Tất cả
+            </button>
+            <button
+              onClick={() => setDisplayLangTab('vietnamese')}
+              style={{ padding: '4px 8px', fontSize: 10.5, borderRadius: 4, border: 'none', background: displayLangTab === 'vietnamese' ? '#0284c7' : 'transparent', color: displayLangTab === 'vietnamese' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
+            >
+              🇻🇳 Tiếng Việt
             </button>
             <button
               onClick={() => setDisplayLangTab('gemini')}
-              style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'gemini' ? '#f59e0b' : 'transparent', color: displayLangTab === 'gemini' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
+              style={{ padding: '4px 8px', fontSize: 10.5, borderRadius: 4, border: 'none', background: displayLangTab === 'gemini' ? '#f59e0b' : 'transparent', color: displayLangTab === 'gemini' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
             >
               🍌 Gemini/LLM
             </button>
             <button
+              onClick={() => setDisplayLangTab('english')}
+              style={{ padding: '4px 8px', fontSize: 10.5, borderRadius: 4, border: 'none', background: displayLangTab === 'english' ? '#0284c7' : 'transparent', color: displayLangTab === 'english' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 600 }}
+            >
+              🌐 Midjourney
+            </button>
+            <button
               onClick={() => setDisplayLangTab('json')}
-              style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'json' ? '#8b5cf6' : 'transparent', color: displayLangTab === 'json' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
+              style={{ padding: '4px 8px', fontSize: 10.5, borderRadius: 4, border: 'none', background: displayLangTab === 'json' ? '#8b5cf6' : 'transparent', color: displayLangTab === 'json' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 700 }}
             >
               📄 JSON
             </button>
-            <button
-              onClick={() => setDisplayLangTab('english')}
-              style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'english' ? '#0284c7' : 'transparent', color: displayLangTab === 'english' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 600 }}
-            >
-              Tiếng Anh
-            </button>
-            <button
-              onClick={() => setDisplayLangTab('vietnamese')}
-              style={{ padding: '4px 10px', fontSize: 11, borderRadius: 4, border: 'none', background: displayLangTab === 'vietnamese' ? '#0284c7' : 'transparent', color: displayLangTab === 'vietnamese' ? '#fff' : '#94a3b8', cursor: 'pointer', fontWeight: 600 }}
-            >
-              Tiếng Việt
-            </button>
           </div>
         </div>
-
-        {/* Workflow Instruction Banner */}
-        {workflowTab === 'step1_master' && (
-          <div style={{ background: 'rgba(2, 132, 199, 0.08)', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(2, 132, 199, 0.25)', fontSize: 11.5, color: '#7dd3fc', lineHeight: 1.5 }}>
-            💡 <b>Hướng dẫn Bước 1:</b> Copy prompt tiếng Anh dán vào <b>Midjourney / Flux</b> HOẶC copy prompt Gemini dán vào <b>Gemini / DALL-E</b> $\to$ Tải ảnh nhân vật về $\to$ Sang Bước 2 để bóc tách!
-          </div>
-        )}
-
-        {workflowTab === 'step2_decomposed_parts' && (
-          <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(34, 197, 94, 0.25)', fontSize: 11.5, color: '#86efac', lineHeight: 1.5 }}>
-            💡 <b>Hướng dẫn Bước 2:</b> Trong Midjourney, thêm cờ <code>--sref [link_ảnh_bước_1]</code> hoặc dán prompt vào Gemini/DALL-E kèm theo ảnh Bước 1 để làm mẫu tham chiếu gốc (Reference Image).
-          </div>
-        )}
 
         {/* Quick Copy Buttons */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1020,6 +714,7 @@ export const AIPromptGenerator2D: React.FC = () => {
             onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptGemini : currentAction.promptVi, 'gemini_copy')}
             style={{
               flex: 1,
+              minWidth: 200,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1036,13 +731,14 @@ export const AIPromptGenerator2D: React.FC = () => {
             }}
           >
             {copiedPrompt === 'gemini_copy' ? <Check size={14} /> : <Copy size={14} />}
-            {copiedPrompt === 'gemini_copy' ? 'Đã Chép Cho LLM!' : '🍌 Sao Chép Cho Gemini / LLM'}
+            {copiedPrompt === 'gemini_copy' ? 'Đã Chép Tiếng Việt!' : '🇻🇳 Chép Prompt Tiếng Việt (AI Tự Hiểu)'}
           </button>
 
           <button
             onClick={() => handleCopy(workflowTab !== 'step3_actions' ? finalFullCopyText : `${currentAction.promptEn}\n\nNegative prompt:\n${currentAction.neg}`, 'full_en')}
             style={{
               flex: 1,
+              minWidth: 200,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1059,16 +755,36 @@ export const AIPromptGenerator2D: React.FC = () => {
             }}
           >
             {copiedPrompt === 'full_en' ? <Check size={14} /> : <Copy size={14} />}
-            {copiedPrompt === 'full_en' ? 'Đã Sao Chép Text!' : '📋 Sao Chép Cho Midjourney'}
+            {copiedPrompt === 'full_en' ? 'Đã Sao Chép Text!' : '🌐 Chép Cho Midjourney / Flux'}
           </button>
         </div>
 
+        {/* Vietnamese Translation & Guide */}
+        {(displayLangTab === 'vietnamese' || displayLangTab === 'both') && (
+          <div style={{ background: '#0b1329', padding: 14, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.3)', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Globe size={13} /> Lệnh Tiếng Việt Tự Nhiên (AI Tự Đọc Hiểu & Thực Thi):
+              </span>
+              <button
+                onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptVietnamese : currentAction.promptVi, 'vi_box')}
+                style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid #38bdf8', cursor: 'pointer' }}
+              >
+                {copiedPrompt === 'vi_box' ? 'Đã Chép!' : 'Chép Đoạn Này'}
+              </button>
+            </div>
+            <pre style={{ fontSize: 11.5, color: '#e2e8f0', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', width: '100%' }}>
+              {workflowTab !== 'step3_actions' ? promptResult.promptVietnamese : currentAction.promptVi}
+            </pre>
+          </div>
+        )}
+
         {/* Gemini Conversational Prompt Box */}
         {(displayLangTab === 'gemini' || displayLangTab === 'both') && (
-          <div style={{ background: '#1c1917', padding: 14, borderRadius: 8, border: '1px solid #f59e0b' }}>
+          <div style={{ background: '#1c1917', padding: 14, borderRadius: 8, border: '1px solid #f59e0b', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={13} /> Lệnh tự nhiên (Dành cho Gemini / ChatGPT / DALL-E 3):
+                <Sparkles size={13} /> Lệnh Đối Thoại Cho Gemini / ChatGPT / DALL-E 3:
               </span>
               <button
                 onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptGemini : currentAction.promptVi, 'gemini_box')}
@@ -1077,18 +793,18 @@ export const AIPromptGenerator2D: React.FC = () => {
                 {copiedPrompt === 'gemini_box' ? 'Đã Chép!' : 'Chép Đoạn Này'}
               </button>
             </div>
-            <pre style={{ fontSize: 11.5, color: '#fde68a', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+            <pre style={{ fontSize: 11.5, color: '#fde68a', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', width: '100%' }}>
               {workflowTab !== 'step3_actions' ? promptResult.promptGemini : currentAction.promptVi}
             </pre>
           </div>
         )}
 
-        {/* JSON Structured Prompt Box */}
+        {/* JSON Structured Prompt Box (Fixed Height 420px, Responsive Width) */}
         {(displayLangTab === 'json' || displayLangTab === 'both') && (
-          <div style={{ background: '#070b14', padding: 14, borderRadius: 8, border: '1px solid #8b5cf6' }}>
+          <div style={{ background: '#070b14', padding: 14, borderRadius: 8, border: '1px solid #8b5cf6', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={13} /> Cấu Trúc JSON Chuẩn Cho AI (LLM / Midjourney / FLUX Prompting):
+                <Sparkles size={13} /> Cấu Trúc JSON Chuẩn Cho AI (Co dãn theo màn hình, Chiều cao 450px):
               </span>
               <button
                 onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.promptJSON : JSON.stringify(currentAction, null, 2), 'json_box')}
@@ -1097,80 +813,43 @@ export const AIPromptGenerator2D: React.FC = () => {
                 {copiedPrompt === 'json_box' ? 'Đã Chép JSON!' : 'Chép JSON'}
               </button>
             </div>
-            <pre style={{ fontSize: 11, color: '#a5f3fc', lineHeight: 1.55, margin: 0, overflowX: 'auto', background: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 6, fontFamily: 'monospace' }}>
+            <pre style={{
+              fontSize: 11,
+              color: '#a5f3fc',
+              lineHeight: 1.55,
+              margin: 0,
+              width: '100%',
+              height: '420px',
+              maxHeight: '450px',
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              boxSizing: 'border-box',
+              background: 'rgba(0,0,0,0.5)',
+              padding: 12,
+              borderRadius: 6,
+              fontFamily: 'monospace'
+            }}>
               {workflowTab !== 'step3_actions' ? promptResult.promptJSON : JSON.stringify(currentAction, null, 2)}
-            </pre>
-          </div>
-        )}
-
-        {/* Vietnamese Translation & Guide */}
-        {(displayLangTab === 'vietnamese' || displayLangTab === 'both') && (
-          <div style={{ background: '#0b1329', padding: 14, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Globe size={13} /> Hướng Dẫn Chi Tiết Tiếng Việt:
-              </span>
-            </div>
-            <pre style={{ fontSize: 11.5, color: '#e2e8f0', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-              {workflowTab !== 'step3_actions' ? promptResult.promptVietnamese : currentAction.promptVi}
             </pre>
           </div>
         )}
 
         {/* English Positive Prompt Box */}
         {(displayLangTab === 'english' || displayLangTab === 'both') && (
-          <div style={{ background: '#090d16', padding: 14, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ background: '#090d16', padding: 14, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>Prompt Tiếng Anh (Cho Midjourney / FLUX / SD - Max 4K):</span>
               <button
                 onClick={() => handleCopy(workflowTab !== 'step3_actions' ? finalPromptEnglish : currentAction.promptEn, 'pos_only')}
-                style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', border: '1px solid #4ade80', cursor: 'pointer' }}
               >
                 {copiedPrompt === 'pos_only' ? 'Đã Chép!' : 'Chép Đoạn Này'}
               </button>
             </div>
-            <p style={{ fontSize: 11.5, color: '#e2e8f0', lineHeight: 1.55, margin: 0, userSelect: 'all', wordBreak: 'break-word' }}>
+            <pre style={{ fontSize: 11, color: '#bbf7d0', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', width: '100%' }}>
               {workflowTab !== 'step3_actions' ? finalPromptEnglish : currentAction.promptEn}
-            </p>
-          </div>
-        )}
-
-        {/* Negative Prompt Box */}
-        {(displayLangTab === 'english' || displayLangTab === 'both') && (
-          <div style={{ background: '#090d16', padding: 14, borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171' }}>Khử Lỗi (Negative Prompt):</span>
-              <button
-                onClick={() => handleCopy(workflowTab !== 'step3_actions' ? promptResult.negativePrompt : currentAction.neg, 'neg_only')}
-                style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}
-              >
-                {copiedPrompt === 'neg_only' ? 'Đã Chép!' : 'Chép Negative'}
-              </button>
-            </div>
-            <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.45, margin: 0, userSelect: 'all' }}>
-              {workflowTab !== 'step3_actions' ? promptResult.negativePrompt : currentAction.neg}
-            </p>
-          </div>
-        )}
-
-        {/* Grid Slicing Specifications */}
-        {workflowTab !== 'step3_actions' && (
-          <div style={{ background: 'rgba(168, 85, 247, 0.08)', padding: 12, borderRadius: 8, border: '1px dashed rgba(168, 85, 247, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 11, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Scissors size={14} /> {promptResult.gridStructureGuide}
-            </div>
-          </div>
-        )}
-
-        {/* Camera Guidelines in Action mode */}
-        {workflowTab === 'step3_actions' && (
-          <div style={{ background: 'rgba(168, 85, 247, 0.1)', padding: 14, borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.3)' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#c084fc', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Camera size={14} /> HƯỚNG DẪN GÓC MÁY & DIỄN HOẠT TRONG STUDIO
-            </div>
-            <p style={{ fontSize: 11.5, color: '#e2e8f0', margin: 0, lineHeight: 1.55 }}>
-              {currentAction.cameraGuide}
-            </p>
+            </pre>
           </div>
         )}
       </div>
