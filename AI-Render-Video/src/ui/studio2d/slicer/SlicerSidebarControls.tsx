@@ -41,8 +41,16 @@ export interface SlicerSidebarControlsProps {
   strokeColorHex?: string;
   setStrokeColorHex?: (hex: string) => void;
   // Despeckle params
-  bgCleanupSubTab: 'chroma' | 'despeckle';
-  setBgCleanupSubTab: (tab: 'chroma' | 'despeckle') => void;
+  bgCleanupSubTab: 'chroma' | 'despeckle' | 'ai_matting';
+  setBgCleanupSubTab: (tab: 'chroma' | 'despeckle' | 'ai_matting') => void;
+  // AI Matting properties
+  aiModel?: string;
+  setAiModel?: (model: string) => void;
+  aiScope?: 'full_image' | 'all' | 'selected';
+  setAiScope?: (scope: 'full_image' | 'all' | 'selected') => void;
+  aiServerStatus?: 'online' | 'offline' | 'checking';
+  onRunAIMatting?: () => void;
+  isAIRunning?: boolean;
   despeckleSize: number;
   setDespeckleSize: (size: number) => void;
   whiteSpeckleSensitivity: number;
@@ -91,6 +99,13 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   setStrokeColorHex,
   bgCleanupSubTab,
   setBgCleanupSubTab,
+  aiModel = 'birefnet-general',
+  setAiModel,
+  aiScope = 'all',
+  setAiScope,
+  aiServerStatus = 'offline',
+  onRunAIMatting,
+  isAIRunning = false,
   despeckleSize,
   setDespeckleSize,
   whiteSpeckleSensitivity,
@@ -382,13 +397,13 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         </div>
 
         {/* Color & Cleanup Sub-tabs */}
-        <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
+        <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
           <button
             onClick={() => setBgCleanupSubTab('chroma')}
             style={{
               flex: 1,
-              padding: '5px',
-              fontSize: 10,
+              padding: '5px 2px',
+              fontSize: 9.5,
               fontWeight: 700,
               borderRadius: 4,
               border: 'none',
@@ -397,14 +412,14 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               cursor: 'pointer',
             }}
           >
-            🎨 1. Tách Màu & Viền
+            🎨 1. Tách Màu
           </button>
           <button
             onClick={() => setBgCleanupSubTab('despeckle')}
             style={{
               flex: 1,
-              padding: '5px',
-              fontSize: 10,
+              padding: '5px 2px',
+              fontSize: 9.5,
               fontWeight: 700,
               borderRadius: 4,
               border: 'none',
@@ -413,7 +428,27 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               cursor: 'pointer',
             }}
           >
-            🧹 2. Khử Rác & Bụi
+            🧹 2. Khử Rác
+          </button>
+          <button
+            onClick={() => setBgCleanupSubTab('ai_matting')}
+            style={{
+              flex: 1.2,
+              padding: '5px 2px',
+              fontSize: 9.5,
+              fontWeight: 700,
+              borderRadius: 4,
+              border: 'none',
+              background: bgCleanupSubTab === 'ai_matting' ? 'linear-gradient(135deg, #8b5cf6, #d946ef)' : 'transparent',
+              color: bgCleanupSubTab === 'ai_matting' ? '#ffffff' : '#c084fc',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+            }}
+          >
+            🤖 3. AI Tách Nền (GPU)
           </button>
         </div>
 
@@ -694,7 +729,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               </div>
             </div>
           </div>
-        ) : (
+        ) : bgCleanupSubTab === 'despeckle' ? (
           /* Sub-tab 2: Despeckle & Noise Filtering */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ background: 'rgba(0,0,0,0.25)', padding: 7, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -755,7 +790,184 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               🏝️ Chỉ giữ cụm linh kiện lớn nhất (Xóa sạch bụi phụ)
             </label>
           </div>
-        )}
+        ) : bgCleanupSubTab === 'ai_matting' ? (
+          /* Sub-tab 3: AI Matting (BiRefNet / RTX 3060) */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Server Status Header */}
+            <div
+              style={{
+                background: aiServerStatus === 'online' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                border: aiServerStatus === 'online' ? '1px solid #22c55e' : '1px solid #ef4444',
+                padding: '6px 8px',
+                borderRadius: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9.5, fontWeight: 700, color: aiServerStatus === 'online' ? '#4ade80' : '#f87171' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: aiServerStatus === 'online' ? '#22c55e' : '#ef4444', display: 'inline-block', boxShadow: aiServerStatus === 'online' ? '0 0 8px #22c55e' : 'none' }}></span>
+                {aiServerStatus === 'online' ? 'GPU CUDA Sẵn Sàng (RTX 3060)' : 'Chưa Khởi Động Server AI Local'}
+              </div>
+              <span style={{ fontSize: 8.5, color: '#94a3b8' }}>:5000</span>
+            </div>
+
+            {/* Local Environment & Model Path Info Badge */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '5px 8px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5 }}>
+                <span style={{ color: '#94a3b8' }}>📁 Môi trường Python:</span>
+                <span style={{ color: '#38bdf8', fontWeight: 700 }}>.venv (Cục bộ dự án)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5 }}>
+                <span style={{ color: '#94a3b8' }}>🧠 Thư mục Model:</span>
+                <span style={{ color: '#4ade80', fontWeight: 700 }}>./models/ai_matting/</span>
+              </div>
+            </div>
+
+            {/* Model Selection */}
+            <div>
+              <div style={{ fontSize: 9.5, color: '#c084fc', marginBottom: 4, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Sparkles size={12} /> Chọn Model AI Chuyên Dụng:
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {[
+                  { id: 'isnet-anime', name: '🌸 ISNet-Anime', desc: 'Chuyên bóc tách Anime, 2D Sprite & Lineart (Nhanh nhất 0.15s)', tag: '⚡ Siêu Nhanh • 0.15s' },
+                  { id: 'birefnet-general', name: '🌟 BiRefNet General', desc: 'SOTA 2025 - Chuẩn từng sợi tóc & viền mềm mại', tag: '💎 Chi Tiết Cực Cao' },
+                  { id: 'u2net', name: '⚡ U2Net Standard', desc: 'Bóc tách nền tổng quát cân bằng', tag: '⚡ 0.15s' },
+                  { id: 'birefnet-portrait', name: '👑 BiRefNet Portrait', desc: 'Chuyên chân dung, mái tóc & trang phục tinh xảo', tag: 'Chân Dung' },
+                ].map((m) => (
+                  <div
+                    key={m.id}
+                    onClick={() => setAiModel && setAiModel(m.id)}
+                    style={{
+                      background: aiModel === m.id ? 'rgba(168, 85, 247, 0.25)' : 'rgba(0,0,0,0.3)',
+                      border: aiModel === m.id ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.06)',
+                      borderRadius: 5,
+                      padding: '5px 7px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: aiModel === m.id ? '#f3e8ff' : '#cbd5e1' }}>{m.name}</span>
+                      <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: aiModel === m.id ? '#9333ea' : 'rgba(255,255,255,0.1)', color: '#fff' }}>{m.tag}</span>
+                    </div>
+                    <div style={{ fontSize: 8.5, color: aiModel === m.id ? '#d8b4fe' : '#64748b' }}>{m.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scope Selection */}
+            <div>
+              <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 4, fontWeight: 700 }}>Phạm Vi Xử Lý:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button
+                  onClick={() => setAiScope && setAiScope('full_image')}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    borderRadius: 5,
+                    border: aiScope === 'full_image' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                    background: aiScope === 'full_image' ? 'rgba(168, 85, 247, 0.3)' : 'rgba(0,0,0,0.3)',
+                    color: aiScope === 'full_image' ? '#f3e8ff' : '#cbd5e1',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    🖼️ Toàn Bộ Ảnh Gốc (Full Image)
+                  </span>
+                  <span style={{ fontSize: 8.5, padding: '1px 5px', borderRadius: 3, background: '#9333ea', color: '#fff' }}>⚡ 1 Lần • Nhanh nhất</span>
+                </button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={() => setAiScope && setAiScope('all')}
+                    style={{
+                      flex: 1,
+                      padding: '5px 3px',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      borderRadius: 4,
+                      border: aiScope === 'all' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                      background: aiScope === 'all' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(0,0,0,0.3)',
+                      color: aiScope === 'all' ? '#f3e8ff' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🧩 Từng Ô ({totalCellCount} Ô)
+                  </button>
+                  <button
+                    onClick={() => setAiScope && setAiScope('selected')}
+                    style={{
+                      flex: 1,
+                      padding: '5px 3px',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      borderRadius: 4,
+                      border: aiScope === 'selected' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                      background: aiScope === 'selected' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(0,0,0,0.3)',
+                      color: aiScope === 'selected' ? '#f3e8ff' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🎯 Ô Đang Chọn
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Run AI Button */}
+            <button
+              onClick={onRunAIMatting}
+              disabled={isAIRunning}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                fontSize: 11,
+                fontWeight: 800,
+                borderRadius: 6,
+                background: isAIRunning
+                  ? 'rgba(255,255,255,0.1)'
+                  : 'linear-gradient(135deg, #9333ea 0%, #d946ef 100%)',
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.3)',
+                cursor: isAIRunning ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                boxShadow: '0 3px 12px rgba(147, 51, 234, 0.45)',
+                marginTop: 2,
+              }}
+            >
+              {isAIRunning ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" /> Đang chạy Model AI GPU...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} /> 🚀 TÁCH NỀN BẰNG MODEL AI (GPU)
+                </>
+              )}
+            </button>
+
+            {/* Quick guide to start server */}
+            {aiServerStatus !== 'online' && (
+              <div style={{ background: 'rgba(0,0,0,0.4)', padding: 7, borderRadius: 5, border: '1px dashed #a855f7', fontSize: 8.5, color: '#d8b4fe' }}>
+                <div style={{ fontWeight: 700, marginBottom: 3, color: '#f3e8ff' }}>💡 Cách chạy Server AI trên máy:</div>
+                <div>1. Nhấp đúp vào file: <code style={{ background: '#1e1b4b', padding: '1px 4px', borderRadius: 3, color: '#38bdf8' }}>run_ai_matting_server.bat</code> trong thư mục dự án.</div>
+                <div>2. Hoặc chạy lệnh terminal: <code style={{ background: '#1e1b4b', padding: '1px 4px', borderRadius: 3, color: '#38bdf8' }}>python server_ai_matting.py</code></div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* ========================================================

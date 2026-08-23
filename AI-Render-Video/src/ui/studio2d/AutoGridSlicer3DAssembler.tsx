@@ -52,7 +52,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [feather, setFeather] = useState<number>(1);
   const [strokeWidth, setStrokeWidth] = useState<number>(0);
   const [strokeColorHex, setStrokeColorHex] = useState<string>('#000000');
-  const [bgCleanupSubTab, setBgCleanupSubTab] = useState<'chroma' | 'despeckle'>('chroma');
+  const [bgCleanupSubTab, setBgCleanupSubTab] = useState<'chroma' | 'despeckle' | 'ai_matting'>('chroma');
+  const [aiModel, setAiModel] = useState<string>('birefnet-general');
+  const [aiScope, setAiScope] = useState<'full_image' | 'all' | 'selected'>('full_image');
+  const [aiServerStatus, setAiServerStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+  const [isAIRunning, setIsAIRunning] = useState<boolean>(false);
   const [despeckleSize, setDespeckleSize] = useState<number>(18);
   const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(45);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
@@ -83,6 +87,26 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [assemblySuccess, setAssemblySuccess] = useState<boolean>(false);
+
+
+  // Auto-check AI Server status on mount and when tab changes
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:5000/api/status', { method: 'GET' });
+        if (res.ok) {
+          setAiServerStatus('online');
+        } else {
+          setAiServerStatus('offline');
+        }
+      } catch (e) {
+        setAiServerStatus('offline');
+      }
+    };
+    checkServer();
+    const interval = setInterval(checkServer, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 3D Engine State
   const [activeAngleInfo, setActiveAngleInfo] = useState<AngleDetectionResult>({
@@ -467,6 +491,251 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     setIsEraserOpen(true);
   };
 
+
+  // AI Matting Handler (BiRefNet / ISNet-Anime on GPU)
+  const handleRunAIMatting = async () => {
+    const img = loadedImageRef.current;
+    if (!img) {
+      alert('Vui lòng tải ảnh Sprite Sheet lên trước khi bóc tách!');
+      return;
+    }
+
+    // Ping server check
+    try {
+      const ping = await fetch('http://127.0.0.1:5000/api/status');
+      if (!ping.ok) throw new Error('offline');
+    } catch {
+      alert('Chưa kết nối được Server AI! Vui lòng khởi động file "run_ai_matting_server.bat" hoặc chạy lệnh "python server_ai_matting.py" trong thư mục dự án.');
+      return;
+    }
+
+    setIsAIRunning(true);
+
+    // ==========================================
+    // MODE 1: TÁCH NỀN TOÀN BỘ ẢNH GỐC (FULL IMAGE)
+    // ==========================================
+    if (aiScope === 'full_image') {
+      try {
+        const fullCanvas = document.createElement('canvas');
+        fullCanvas.width = img.width;
+        fullCanvas.height = img.height;
+        const fCtx = fullCanvas.getContext('2d');
+        if (!fCtx) throw new Error('Không thể tạo canvas');
+        fCtx.drawImage(img, 0, 0);
+        const fullDataUrl = fullCanvas.toDataURL('image/png');
+
+        const response = await fetch('http://127.0.0.1:5000/api/remove-bg', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: fullDataUrl,
+            model: aiModel,
+            alpha_matting: false,
+          }),
+        });
+
+        const data = await response.json();
+        if (!data.success || !data.result) {
+          throw new Error(data.error || 'AI Server không trả về kết quả');
+        }
+
+        const cleanFullImg = new Image();
+        await new Promise<void>((resolve, reject) => {
+          cleanFullImg.onload = () => resolve();
+          cleanFullImg.onerror = reject;
+          cleanFullImg.src = data.result;
+        });
+
+        loadedImageRef.current = cleanFullImg;
+        setUserUploadedImageUrl(data.result);
+
+        const pad = Math.max(0, paddingInset);
+        const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
+        const nextResults = new Map<string, string>();
+
+        for (const cell of currentCategory.cells) {
+          if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) continue;
+
+          const rawX0 = colDividers[cell.col];
+          const rawY0 = rowDividers[cell.row];
+          const rawW = colDividers[cell.col + 1] - rawX0;
+          const rawH = rowDividers[cell.row + 1] - rawY0;
+          const x0 = rawX0 + pad;
+          const y0 = rawY0 + pad;
+          const w = Math.max(10, rawW - pad * 2);
+          const h = Math.max(10, rawH - pad * 2);
+
+          const cellCanvas = document.createElement('canvas');
+          cellCanvas.width = w;
+          cellCanvas.height = h;
+          const cCtx = cellCanvas.getContext('2d');
+          if (!cCtx) continue;
+          cCtx.drawImage(cleanFullImg, x0, y0, w, h, 0, 0, w, h);
+          const cellDataUrl = cellCanvas.toDataURL('image/png');
+
+          const key = `${cell.row}_${cell.col}`;
+          nextResults.set(key, cellDataUrl);
+          slicedCanvasesRef.current.set(key, cellCanvas);
+
+          if (cell.partSlot) {
+            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
+            if (!updatedAssembly.parts[cell.partSlot]) {
+              updatedAssembly.parts[cell.partSlot] = {
+                path: cellDataUrl,
+                offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
+                scale: [1, 1],
+                rotation: 0,
+                pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
+                flipX: false,
+                flipY: false,
+                z_index: hierarchy?.defaultZ ?? 1,
+                z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
+                opacity: 1,
+                angles: {},
+              };
+            }
+            const part = updatedAssembly.parts[cell.partSlot]!;
+            if (cell.angle === 'front' || cell.col === 0) {
+              part.path = cellDataUrl;
+            }
+            if (cell.angle) {
+              if (!part.angles) part.angles = {};
+              part.angles[cell.angle] = cellDataUrl;
+            }
+          }
+        }
+
+        setSlicedResults(nextResults);
+        setHasExplicitlySliced(true);
+        setPreviewDisplayMode('transparent');
+        setAssemblySuccess(true);
+        onApplyAssembly(updatedAssembly);
+        if (threeEngineRef.current) {
+          threeEngineRef.current.setAssembly(updatedAssembly);
+        }
+        redrawCanvas();
+        return;
+      } catch (err: any) {
+        console.error('Full AI Matting error:', err);
+        alert('Có lỗi xảy ra khi bóc tách toàn bộ ảnh: ' + (err.message || err));
+        return;
+      } finally {
+        setIsAIRunning(false);
+      }
+    }
+
+    // ==========================================
+    // MODE 2: TÁCH THEO TỪNG Ô / Ô ĐANG CHỌN
+    // ==========================================
+    const targetCells = (aiScope === 'selected' && selectedCell)
+      ? [selectedCell]
+      : currentCategory.cells;
+
+    const pad = Math.max(0, paddingInset);
+    const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
+    const nextResults = new Map(slicedResults);
+
+    try {
+      for (let i = 0; i < targetCells.length; i++) {
+        const cell = targetCells[i];
+        if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) continue;
+
+        const rawX0 = colDividers[cell.col];
+        const rawY0 = rowDividers[cell.row];
+        const rawW = colDividers[cell.col + 1] - rawX0;
+        const rawH = rowDividers[cell.row + 1] - rawY0;
+        const x0 = rawX0 + pad;
+        const y0 = rawY0 + pad;
+        const w = Math.max(10, rawW - pad * 2);
+        const h = Math.max(10, rawH - pad * 2);
+
+        // Crop cell to base64
+        const cellCanvas = document.createElement('canvas');
+        cellCanvas.width = w;
+        cellCanvas.height = h;
+        const ctx = cellCanvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
+        const inputDataUrl = cellCanvas.toDataURL('image/png');
+
+        // Call AI Matting API
+        const response = await fetch('http://127.0.0.1:5000/api/remove-bg', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: inputDataUrl,
+            model: aiModel,
+            alpha_matting: false,
+          }),
+        });
+
+        const data = await response.json();
+        if (data.success && data.result) {
+          const key = `${cell.row}_${cell.col}`;
+          nextResults.set(key, data.result);
+
+          // Update cached canvas
+          const pImg = new Image();
+          await new Promise<void>((resolve) => {
+            pImg.onload = () => {
+              const c = document.createElement('canvas');
+              c.width = w;
+              c.height = h;
+              const cCtx = c.getContext('2d');
+              if (cCtx) cCtx.drawImage(pImg, 0, 0, w, h);
+              slicedCanvasesRef.current.set(key, c);
+              resolve();
+            };
+            pImg.src = data.result;
+          });
+
+          // Map to 3D Assembly
+          if (cell.partSlot) {
+            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
+            if (!updatedAssembly.parts[cell.partSlot]) {
+              updatedAssembly.parts[cell.partSlot] = {
+                path: data.result,
+                offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
+                scale: [1, 1],
+                rotation: 0,
+                pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
+                flipX: false,
+                flipY: false,
+                z_index: hierarchy?.defaultZ ?? 1,
+                z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
+                opacity: 1,
+                angles: {},
+              };
+            }
+            const part = updatedAssembly.parts[cell.partSlot]!;
+            if (cell.angle === 'front' || cell.col === 0) {
+              part.path = data.result;
+            }
+            if (cell.angle) {
+              if (!part.angles) part.angles = {};
+              part.angles[cell.angle] = data.result;
+            }
+          }
+        }
+      }
+
+      setSlicedResults(nextResults);
+      setHasExplicitlySliced(true);
+      setPreviewDisplayMode('transparent');
+      setAssemblySuccess(true);
+      onApplyAssembly(updatedAssembly);
+      if (threeEngineRef.current) {
+        threeEngineRef.current.setAssembly(updatedAssembly);
+      }
+      redrawCanvas();
+    } catch (err: any) {
+      console.error('AI Matting error:', err);
+      alert('Có lỗi xảy ra khi bóc tách bằng AI: ' + (err.message || err));
+    } finally {
+      setIsAIRunning(false);
+    }
+  };
+
   // Auto Slice & Assemble Algorithm using High-Performance Chroma & Despeckle Processor
   const handleAutoSliceAndAssemble = useCallback((overrides?: Partial<Parameters<typeof processCellChromaAndDespeckle>[3]>) => {
     const img = loadedImageRef.current;
@@ -737,6 +1006,13 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setStrokeColorHex={setStrokeColorHex}
           bgCleanupSubTab={bgCleanupSubTab}
           setBgCleanupSubTab={setBgCleanupSubTab}
+          aiModel={aiModel}
+          setAiModel={setAiModel}
+          aiScope={aiScope}
+          setAiScope={setAiScope}
+          aiServerStatus={aiServerStatus}
+          onRunAIMatting={handleRunAIMatting}
+          isAIRunning={isAIRunning}
           despeckleSize={despeckleSize}
           setDespeckleSize={setDespeckleSize}
           whiteSpeckleSensitivity={whiteSpeckleSensitivity}
