@@ -28,8 +28,8 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
 
   // Background removal / chroma threshold parameters
   const [isRemoveBgActive, setIsRemoveBgActive] = useState<boolean>(true);
-  const [tolerance, setTolerance] = useState<number>(35); // Color threshold tolerance 0-100
-  const [feather, setFeather] = useState<number>(2); // Edge smoothing px
+  const [tolerance, setTolerance] = useState<number>(1); // Color threshold tolerance 0-100 (Default: 1px)
+  const [feather, setFeather] = useState<number>(0); // Edge smoothing px (Default: 0px)
   const [keyColor, setKeyColor] = useState<string>('#ffffff'); // Default pure white background
   const [brightness, setBrightness] = useState<number>(100);
   const [contrast, setContrast] = useState<number>(100);

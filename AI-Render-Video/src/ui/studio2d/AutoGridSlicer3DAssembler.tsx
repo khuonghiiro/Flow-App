@@ -52,10 +52,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
   const [isEyedropperActive, setIsEyedropperActive] = useState<boolean>(false);
   const [eyedropperHoverColor, setEyedropperHoverColor] = useState<{ hex: string; r: number; g: number; b: number; x: number; y: number } | null>(null);
-  const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('outer_only');
-  const [tolerance, setTolerance] = useState<number>(38);
-  const [feather, setFeather] = useState<number>(1);
-  const [shadowRetention, setShadowRetention] = useState<number>(0);
+  const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('all');
+  const [tolerance, setTolerance] = useState<number>(1);
+  const [feather, setFeather] = useState<number>(0);
+  const [shadowRetention, setShadowRetention] = useState<number>(100);
   const [strokeWidth, setStrokeWidth] = useState<number>(0);
   const [strokeColorHex, setStrokeColorHex] = useState<string>('#000000');
   const [bgCleanupSubTab, setBgCleanupSubTab] = useState<'chroma' | 'despeckle' | 'ai_matting'>('chroma');
@@ -655,13 +655,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       processCellChromaAndDespeckle(ctx, img.width, img.height, {
         keyColorType: keyColorType,
         keyColorHex: keyColorHex,
-        isolationMode: 'outer_only', // Guarantees eye whites & inner white clothes are 100% preserved!
-        tolerance: tolerance || 38,
-        feather: feather || 1,
+        isolationMode: isolationMode || 'all',
+        tolerance: tolerance !== undefined ? tolerance : 1,
+        feather: feather !== undefined ? feather : 0,
+        shadowRetention: shadowRetention !== undefined ? shadowRetention : 100,
         strokeWidth: strokeWidth || 0,
         strokeColorHex: strokeColorHex || '#000000',
-        despeckleSize: despeckleSize || 18,
-        whiteSpeckleSensitivity: whiteSpeckleSensitivity || 45,
+        despeckleSize: despeckleSize || 0,
+        whiteSpeckleSensitivity: whiteSpeckleSensitivity || 0,
         keepLargestIslandOnly: keepLargestIslandOnly || false,
       });
 

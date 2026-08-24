@@ -87,7 +87,7 @@ export function processCellChromaAndDespeckle(
     // Strict White Background: ALL 3 channels (R, G, B) must be very bright (>= 235..248)
     // Blue/Cyan eye sparkles have low R (50..180) -> NEVER MATCHED!
     // Skin tone has lower G & B (G < 225, B < 210) -> NEVER MATCHED!
-    const tolFactor = Math.max(5, Math.min(60, options.tolerance || 38));
+    const tolFactor = Math.max(1, Math.min(60, options.tolerance !== undefined ? options.tolerance : 1));
     const whiteMinChannel = Math.max(220, 255 - Math.round(tolFactor * 0.45)); // e.g. 255 - 17 = 238
 
     for (let i = 0; i < totalPixels; i++) {
@@ -108,9 +108,9 @@ export function processCellChromaAndDespeckle(
     // Strict Chroma Green: Green must dominate BOTH Red and Blue
     // Dark Lineart Protection: Thin eyebrows, eyelashes, tears, eyeliner have R,B ~ 0 and low G (0..90).
     // They must NEVER be treated as green background!
-    const tolFactor = Math.max(5, Math.min(80, options.tolerance || 38));
-    const greenDiffMin = Math.max(16, 42 - Math.round(tolFactor * 0.35)); // e.g. 29
-    const minGreenBrightness = Math.max(105, 155 - Math.round(tolFactor * 0.5)); // e.g. 136
+    const tolFactor = Math.max(1, Math.min(80, options.tolerance !== undefined ? options.tolerance : 1));
+    const greenDiffMin = Math.max(12, 42 - Math.round(tolFactor * 0.35));
+    const minGreenBrightness = Math.max(100, 155 - Math.round(tolFactor * 0.5));
 
     for (let i = 0; i < totalPixels; i++) {
       const p = i * 4;
@@ -132,7 +132,7 @@ export function processCellChromaAndDespeckle(
 
       if (g >= minGreenBrightness && (g - Math.max(r, b)) >= greenDiffMin) {
         isKeyPixel[i] = 1;
-      } else if (g > Math.max(r, b) && (g - Math.max(r, b)) >= 18) {
+      } else if (g > Math.max(r, b) && (g - Math.max(r, b)) >= 15) {
         // Soft shadow & translucent region on green background
         isKeyPixel[i] = 1;
       }
@@ -143,7 +143,7 @@ export function processCellChromaAndDespeckle(
     const tR = parseInt(hex.slice(0, 2), 16) || 0;
     const tG = parseInt(hex.slice(2, 4), 16) || 255;
     const tB = parseInt(hex.slice(4, 6), 16) || 0;
-    const maxThreshold = ((options.tolerance || 38) / 100) * 200;
+    const maxThreshold = (((options.tolerance !== undefined ? options.tolerance : 1)) / 100) * 200;
 
     for (let i = 0; i < totalPixels; i++) {
       const p = i * 4;
@@ -233,7 +233,7 @@ export function processCellChromaAndDespeckle(
   }
 
   // Apply transparency to outer background with Physical Soft Shadow & Translucent Silk Unmixing
-  const shadowRetention = Math.max(0, Math.min(100, options.shadowRetention || 0));
+  const shadowRetention = Math.max(0, Math.min(100, options.shadowRetention !== undefined ? options.shadowRetention : 100));
 
   for (let i = 0; i < totalPixels; i++) {
     const p = i * 4;

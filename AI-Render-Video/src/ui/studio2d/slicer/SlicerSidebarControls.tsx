@@ -119,7 +119,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   setTolerance,
   feather,
   setFeather,
-  shadowRetention = 0,
+  shadowRetention = 100,
   setShadowRetention,
   strokeWidth = 0,
   setStrokeWidth,
@@ -776,7 +776,31 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
             {/* Isolation Mode Buttons - Synchronized height: 30px */}
             <div>
               <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 4, fontWeight: 600 }}>Phạm vi bóc tách:</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 5 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 5 }}>
+                <button
+                  onClick={() => {
+                    setIsolationMode('all');
+                    if (onCommitSliderChange) onCommitSliderChange({ isolationMode: 'all' });
+                  }}
+                  style={{
+                    height: 30,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    borderRadius: 5,
+                    border: isolationMode === 'all' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                    background: isolationMode === 'all' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0,0,0,0.3)',
+                    color: isolationMode === 'all' ? '#38bdf8' : '#94a3b8',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    boxSizing: 'border-box',
+                  }}
+                  title="Tách toàn bộ mọi khoảng màu trùng khớp trên toàn bộ ô/ảnh"
+                >
+                  🌐 Tách toàn bộ
+                </button>
                 <button
                   onClick={() => {
                     setIsolationMode('outer_only');
@@ -800,30 +824,6 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   title="Chỉ tách nền viền ngoài, bảo vệ tròng mắt trắng/quần áo bên trong"
                 >
                   🔲 Tách viền ngoài
-                </button>
-                <button
-                  onClick={() => {
-                    setIsolationMode('all');
-                    if (onCommitSliderChange) onCommitSliderChange({ isolationMode: 'all' });
-                  }}
-                  style={{
-                    height: 30,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    borderRadius: 5,
-                    border: isolationMode === 'all' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                    background: isolationMode === 'all' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(0,0,0,0.3)',
-                    color: isolationMode === 'all' ? '#38bdf8' : '#94a3b8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    boxSizing: 'border-box',
-                  }}
-                  title="Tách toàn bộ mọi khoảng màu trùng khớp"
-                >
-                  🌐 Tách toàn bộ
                 </button>
               </div>
             </div>
@@ -856,7 +856,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   style={{ flex: 1, accentColor: '#38bdf8' }}
                 />
                 <div style={{ display: 'flex', gap: 3 }}>
-                  {[25, 38, 55].map((val) => (
+                  {[1, 25, 50].map((val) => (
                     <button
                       key={val}
                       onClick={() => { setTolerance(val); if (onCommitSliderChange) onCommitSliderChange({ tolerance: val }); }}
@@ -968,7 +968,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                     {[
                       { val: 0, label: 'Tắt' },
                       { val: 50, label: '50%' },
-                      { val: 80, label: '80%' },
+                      { val: 100, label: '100%' },
                     ].map((item) => (
                       <button
                         key={item.val}
