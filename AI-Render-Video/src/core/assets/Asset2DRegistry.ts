@@ -170,13 +170,23 @@ export const PART_HIERARCHY_CONFIG: Record<
   ban_tay_trai: { label: 'Bàn Tay Trái', defaultZ: 5, defaultZDepth3D: 7, defaultPivot: [0.5, 0.2], defaultOffset: [-70, 50] },
   dau: { label: 'Đầu & Cằm', defaultZ: 6, defaultZDepth3D: 8, defaultPivot: [0.5, 0.85], defaultOffset: [0, -100] },
   khuon_mat: { label: 'Khuôn Mặt', defaultZ: 7, defaultZDepth3D: 9, defaultPivot: [0.5, 0.5], defaultOffset: [0, -135] },
-  mat: { label: 'Mắt (Chớp/Mở)', defaultZ: 8, defaultZDepth3D: 10, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
-  mui: { label: 'Mũi', defaultZ: 8, defaultZDepth3D: 11, defaultPivot: [0.5, 0.5], defaultOffset: [0, -125] },
+  khuon_mat_no_face: { label: 'Mặt Trần (No Face)', defaultZ: 7, defaultZDepth3D: 9, defaultPivot: [0.5, 0.5], defaultOffset: [0, -135] },
+  mat: { label: 'Đôi Mắt Tổng Hợp', defaultZ: 8, defaultZDepth3D: 10, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
+  trong_trang: { label: 'Tròng Trắng (Sclera)', defaultZ: 7.5, defaultZDepth3D: 9.5, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
+  trong_den_iris: { label: 'Mống Mắt & Con Ngươi (Iris)', defaultZ: 8, defaultZDepth3D: 10, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
+  diem_sang_mat: { label: 'Điểm Sáng / Highlight Mắt', defaultZ: 8.5, defaultZDepth3D: 10.2, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
+  mi_mat: { label: 'Mi Mắt & Chớp Mắt', defaultZ: 9, defaultZDepth3D: 10.8, defaultPivot: [0.5, 0.5], defaultOffset: [0, -140] },
+  long_may: { label: 'Lông Mày', defaultZ: 8, defaultZDepth3D: 10.5, defaultPivot: [0.5, 0.5], defaultOffset: [0, -145] },
+  mui: { label: 'Sống Mũi', defaultZ: 8, defaultZDepth3D: 11, defaultPivot: [0.5, 0.5], defaultOffset: [0, -125] },
+  doi_tai: { label: 'Đôi Tai', defaultZ: 7, defaultZDepth3D: 8.5, defaultPivot: [0.5, 0.5], defaultOffset: [0, -135] },
+  mui_tai: { label: 'Mũi & Đôi Tai', defaultZ: 8, defaultZDepth3D: 11, defaultPivot: [0.5, 0.5], defaultOffset: [0, -125] },
   mieng: { label: 'Miệng (Khẩu hình)', defaultZ: 8, defaultZDepth3D: 10, defaultPivot: [0.5, 0.5], defaultOffset: [0, -110] },
   toc_truoc: { label: 'Tóc Mái Trước', defaultZ: 9, defaultZDepth3D: 12, defaultPivot: [0.5, 0.1], defaultOffset: [0, -170] },
   canh_tay_phai: { label: 'Cánh Tay Phải', defaultZ: 10, defaultZDepth3D: 5, defaultPivot: [0.2, 0.15], defaultOffset: [55, -60] },
   cang_tay_phai: { label: 'Cẳng Tay Phải', defaultZ: 10, defaultZDepth3D: 6, defaultPivot: [0.2, 0.2], defaultOffset: [65, 10] },
   ban_tay_phai: { label: 'Bàn Tay Phải', defaultZ: 10, defaultZDepth3D: 7, defaultPivot: [0.5, 0.2], defaultOffset: [70, 50] },
+  tay_chan: { label: 'Tứ Chi & Bàn Tay', defaultZ: 10, defaultZDepth3D: 7, defaultPivot: [0.5, 0.2], defaultOffset: [0, 20] },
+  ao_choang: { label: 'Áo Choàng / Tà Áo', defaultZ: 1, defaultZDepth3D: 0.5, defaultPivot: [0.5, 0.1], defaultOffset: [0, 20] },
   vu_khi: { label: 'Vũ Khí / Pháp Bảo', defaultZ: 11, defaultZDepth3D: 13, defaultPivot: [0.5, 0.2], defaultOffset: [72, 35] },
 };
 
@@ -641,11 +651,9 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
   const styleTextEn =
     config.character_style === 'custom' && config.custom_character_style?.trim()
       ? config.custom_character_style.trim()
-      : config.character_style === 'auto_detect'
-      ? 'clean 2D anime character turnaround sprite sheet style, vibrant colors, large sparkling expressive eyes, clear distinct outlines, high quality digital illustration'
       : config.character_style === 'chibi'
-      ? 'cute 2D anime chibi character artstyle, adorable 2-head to 3-head body proportions, giant sparkling expressive anime eyes, chubby cheeks, soft cute face, clean bold outlines, vibrant flat cel shading'
-      : 'authentic modern Japanese anime character artstyle, Kyoto Animation and Ufotable aesthetic, giant expressive sparkling anime eyes, crisp clean anime lineart, beautiful expressive facial features, flat cel shading';
+      ? 'cute 2D anime chibi character artstyle, adorable 2-head to 3-head kawaii proportions, giant sparkling expressive anime eyes, chubby cheeks, soft cute face, clean bold outlines, vibrant flat cel shading, authentic Japanese chibi anime illustration'
+      : 'masterpiece 2D Japanese anime character artstyle, Kyoto Animation and Ufotable aesthetic, large gorgeous sparkling expressive anime eyes, detailed pupil reflections with multiple light sparkles, clean thick anime lash lines, aesthetic beautiful anime facial proportions, delicate cute anime nose and mouth, sharp crisp anime lineart, flat vibrant cel shading, high quality digital anime illustration';
 
   const styleLabelVi = getStyleLabel(config.character_style, config.custom_character_style);
 
@@ -675,35 +683,36 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
 
     const genderTextEn = isChibi
       ? isMale
-        ? 'cute adorable anime chibi boy character, giant sparkling anime eyes, compact kawaii proportions, 2.5 heads tall'
-        : 'cute adorable anime chibi girl fairy, giant sparkling anime eyes, compact kawaii proportions, 2.5 heads tall'
+        ? 'cute adorable anime chibi boy protagonist, giant sparkling anime eyes, compact kawaii proportions, 2.5 heads tall'
+        : 'cute adorable anime chibi girl fairy heroine, giant sparkling anime eyes, compact kawaii proportions, 2.5 heads tall'
       : isMale
-      ? 'handsome attractive Japanese anime male protagonist, large clear anime eyes'
-      : 'beautiful charming Japanese anime female heroine, large gorgeous sparkling anime eyes';
+      ? 'handsome attractive 2D Japanese anime male protagonist, large clear expressive anime eyes with sparkling highlights, aesthetic sharp anime jawline, beautiful facial features'
+      : 'beautiful charming 2D Japanese anime female heroine, large gorgeous sparkling expressive anime eyes with shining reflections, delicate cute anime features';
 
     promptEnglish = [
-      `masterpiece, best quality, ultra detailed 4k resolution, full body and upper body multi-angle character model sheet of ONE SINGLE character`,
+      `masterpiece, best quality, ultra detailed 4k resolution, authentic 2D Japanese anime character turnaround model sheet of ONE SINGLE character`,
       styleTextEn,
-      `consistent character depicted from 5 angles: front view, 45 degree three-quarter view, 90 degree side profile, 135 degree back three-quarter view, 180 degree rear back view, plus top-down bird's-eye head crown view`,
-      `${genderTextEn}, extremely handsome/gorgeous, beautiful facial structure, consistent facial features: ${eyeShapeInfo.en} with glowing ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}, clean defined ears`,
+      `consistent 2D anime character depicted from 5 angles: 0° front view, 45° three-quarter view, 90° side profile, 135° back three-quarter view, 180° rear back view, plus top-down bird's-eye head crown view`,
+      `${genderTextEn}, extremely handsome/gorgeous, beautiful aesthetic anime facial structure, consistent facial features: ${eyeShapeInfo.en} with glowing ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}, clean defined ears`,
       `attire: ${costumeInfo.en}, color theme: ${costumeColorVi}, wide flowing sleeves, flutter ribbons in breeze`,
       `accessories and weapons: ${propInfo.en}`,
       `hairstyle: ${hairColInfo.en} ${hairLenInfo.en}, ${hairTexInfo.en}, styled with ${hairAccInfo.en}`,
       'solid pure clean white studio background #FFFFFF with high contrast character silhouette, zero clutter, no background scenery',
-      `uniform soft studio lighting, crisp cinematic shading, character concept turnaround sheet`,
-      `--ar ${ar} --no text typography letters font words labels captions numbers writing watermark signature logo characters subtitle calligraphy heading title annotations alphabet stamp frame border-text`,
+      `uniform soft studio lighting, crisp cinematic shading, 2D anime cel shaded character concept turnaround sheet`,
+      `strictly NO realistic human face, strictly NO small realistic eyes, strictly NO 3D CGI render, strictly NO photorealism`,
+      `--ar ${ar} --no realistic human face small realistic eyes realistic eyes 3d cgi render photorealism live-action western comic ugly anatomy deformed face muddy colors bad eyes realistic skin texture realistic wrinkles dull eyes pores text typography letters font words labels captions numbers writing watermark signature logo characters subtitle calligraphy heading title annotations alphabet stamp frame border-text`,
     ].join(', ');
 
-    promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET) 】
-• Phong cách: ${styleLabelVi} (Mắt to tròn long lanh, nét vẽ anime sắc sảo)
-• Nhân vật: ${isMale ? 'Nam' : 'Nữ'} (${isChibi ? 'Chibi đáng yêu 2.5 đầu' : 'Anime chuẩn nét đẹp'})
+    promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT ANIME GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET - 16:9) 】
+• Phong cách: Anime 2D chuẩn Nhật Bản (Kyoto Animation / Ufotable) — Mắt to tròn long lanh có điểm sáng phản chiếu, khuôn mặt thanh tú, nét vẽ 2D sắc nét (Tuyệt đối không vẽ mặt tả thực hay 3D).
+• Nhân vật: ${isMale ? 'Nam hiệp khách' : 'Nữ hiệp sĩ/tiên nữ'} (${isChibi ? 'Chibi đáng yêu 2.5 đầu' : 'Anime chuẩn nét đẹp'})
 • Khuôn mặt & Ngũ quan: Dáng mắt (${eyeShapeInfo.vi}), Màu mắt (${eyeColInfo.vi}), Sống mũi (${noseInfo.vi}), Khẩu hình (${mouthInfo.vi})
 • Trang phục: ${costumeInfo.vi} (Màu sắc & Họa tiết: ${costumeColorVi})
 • Mái tóc: Màu (${hairColInfo.vi}), Độ dài (${hairLenInfo.vi}), Chất tóc (${hairTexInfo.vi}), Phụ kiện/Trâm cài (${hairAccInfo.vi})
 • Pháp bảo / Vật phẩm cầm: ${propInfo.vi}
 • Phông nền: ${bgTextVi}
 • Bố cục 5 góc quay: 0° Chính diện (Front), 45° Nghiêng 3/4 (Three-Quarter), 90° Nhìn ngang (Side Profile), 135° Nghiêng sau, 180° Sau lưng (Back) + 1 góc soi đỉnh đầu (Top-Down).
-• Lệnh điều khiển AI: Hãy vẽ bảng thiết kế mẫu (Model Sheet) của ĐÚNG CÙNG 1 NHÂN VẬT ở tất cả các góc quay trên, giữ nguyên 100% trang phục, kiểu tóc và khuôn mặt.`;
+• Lệnh điều khiển AI: Vẽ bảng thiết kế mẫu 2D Anime của ĐÚNG CÙNG 1 NHÂN VẬT ở tất cả các góc quay trên, giữ nguyên 100% trang phục, kiểu tóc và tỷ lệ khuôn mặt.`;
 
     promptJSON = JSON.stringify({
       project: 'Flow-App 2D Character Generator',
@@ -711,15 +720,15 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
       title: isChibi
         ? 'Bảng Thiết Kế Nhân Vật Hoạt Hình Chibi 5 Góc Quay (Chibi Turnaround Sheet)'
         : 'Bảng Thiết Kế Nhân Vật Anime Nhật Bản 5 Góc Quay (Anime Turnaround Sheet)',
-      art_style: styleLabelVi,
+      art_style: '2D Japanese Anime Cel Shading (Kyoto Animation / Ufotable)',
       resolution: '4K Ultra High Definition (3840x2160)',
-      aspect_ratio: ar === '16:9' ? '16:9 Landscape Model Sheet' : `${ar} Aspect Ratio`,
+      aspect_ratio: '16:9 Landscape Model Sheet',
       background: 'Solid Clean Pure White Studio (#FFFFFF) with high contrast character silhouette',
       character_design: {
-        character_type: isChibi ? 'Chibi Anime Character' : 'Japanese Anime Character',
+        character_type: isChibi ? 'Chibi Anime Character' : '2D Japanese Anime Character',
         gender: isMale ? 'Nam (Male)' : 'Nữ (Female)',
         facial_features: {
-          eyes: `${eyeShapeInfo.vi} (${eyeShapeInfo.en}) - Màu ${eyeColInfo.vi}`,
+          eyes: `Large expressive anime eyes - ${eyeShapeInfo.vi} (${eyeShapeInfo.en}) - Màu ${eyeColInfo.vi}`,
           nose: `${noseInfo.vi} (${noseInfo.en})`,
           mouth: `${mouthInfo.vi} (${mouthInfo.en})`,
           ears: 'Clean natural anime ears'
@@ -744,17 +753,268 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
         '180° Full Back View (Sau lưng toàn cảnh 180 độ)',
         "Top-Down Bird's Eye View (Đỉnh sọ và búi tóc nhìn từ trên xuống)"
       ],
-      instructions_for_ai: 'Generate a consistent turnaround model sheet for the EXACT SAME character across all 5 angles plus 1 top-down head view. Maintain identical costume, hair, and facial proportions across all angles.',
-      negative_prompt: 'text, letters, words, labels, watermark, deformed anatomy, extra limbs, bad proportions, blurry, 3D clay render, photorealistic realism',
+      instructions_for_ai: 'Generate an authentic 2D anime turnaround model sheet for the EXACT SAME character across all 5 angles plus 1 top-down head view. Maintain large expressive sparkling anime eyes, clean lineart, flat cel shading, and identical costume and hair across all angles.',
+      negative_prompt: 'realistic human face, small realistic eyes, realistic eyes, 3D CGI render, photorealism, live-action, western comic style, ugly anatomy, deformed face, muddy colors, bad eyes, realistic skin texture, realistic wrinkles, dull eyes, pores, text, labels, watermark, signature',
     }, null, 2);
 
-    const negativePrompt = 'text, letters, words, labels, watermark, signature, deformed anatomy, extra limbs, bad proportions, blurry, 3D clay render, photorealistic realism';
+    const negativePrompt = 'realistic human face, small realistic eyes, realistic eyes, 3D CGI render, photorealism, live-action, western comic style, ugly anatomy, deformed face, muddy colors, bad eyes, realistic skin texture, realistic wrinkles, dull eyes, pores, text, letters, words, labels, watermark, signature, bad proportions, blurry';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
-    const promptGemini = `Hãy đóng vai họa sĩ thiết kế nhân vật Anime 2D chuyên nghiệp.\nTạo một bảng vẽ mẫu nhân vật (Character Turnaround Model Sheet) gồm 5 góc quay (Chính diện 0°, Nghiêng 45°, Góc ngang 90°, Nghiêng sau 135°, Sau lưng 180° và Đỉnh đầu):\n- Phong cách: ${styleLabelVi} (Mắt to tròn long lanh có điểm sáng phản chiếu, nét vẽ anime sắc sảo).\n- Nhân vật: ${isMale ? 'Nam' : 'Nữ'} (${isChibi ? 'Chibi đáng yêu 2.5 đầu' : 'Anime chuẩn tỷ lệ đẹp'}), thần thái ${mouthInfo.vi}, mắt ${eyeShapeInfo.vi} màu ${eyeColInfo.vi}.\n- Mái tóc: Màu ${hairColInfo.vi}, độ dài ${hairLenInfo.vi}, kiểu ${hairTexInfo.vi}, phụ kiện ${hairAccInfo.vi}.\n- Trang phục: ${costumeInfo.vi}, tông màu: ${costumeColorVi}.\n- Phụ kiện/Vũ khí: ${propInfo.vi}.\n- Nền: ${bgTextVi}, không vẽ cảnh vật rườm rà.\n- Yêu cầu kỹ thuật: Tỷ lệ ${config.aspect_ratio || '16:9'}, độ phân giải 4K sắc nét, các góc quay phải thể hiện ĐÚNG CÙNG MỘT NHÂN VẬT (đồng nhất khuôn mặt, kiểu tóc và trang phục). Không chèn chữ, số hay watermark.`;
+    const promptGemini = `Hãy đóng vai họa sĩ thiết kế nhân vật Anime 2D hàng đầu của Nhật Bản (Kyoto Animation / Ufotable).\nTạo bảng vẽ mẫu nhân vật 2D Anime (Character Turnaround Model Sheet 16:9) gồm 5 góc quay (Chính diện 0°, Nghiêng 45°, Góc ngang 90°, Nghiêng sau 135°, Sau lưng 180° và Đỉnh đầu):\n- Phong cách: 2D Anime Nhật Bản đích thực, MẮT TO TRÒN LONG LANH có nhiều đốm sáng phản chiếu, đường viền mí mắt sắc nét, sống mũi nhỏ thanh tú, nét vẽ 2D phẳng (Cel shading), TUYỆT ĐỐI KHÔNG VẼ TẢ THỰC, KHÔNG 3D.\n- Nhân vật: ${isMale ? 'Nam hiệp khách tuấn tú' : 'Nữ hiệp sĩ/tiên nữ xinh đẹp'}, thần thái ${mouthInfo.vi}, mắt to ${eyeShapeInfo.vi} màu ${eyeColInfo.vi}.\n- Mái tóc: Màu ${hairColInfo.vi}, độ dài ${hairLenInfo.vi}, kiểu ${hairTexInfo.vi}, phụ kiện ${hairAccInfo.vi}.\n- Trang phục: ${costumeInfo.vi}, tông màu: ${costumeColorVi}.\n- Phụ kiện/Vũ khí: ${propInfo.vi}.\n- Nền: ${bgTextVi}, không vẽ cảnh vật rườm rà.\n- Yêu cầu kỹ thuật: Tỷ lệ 16:9, độ phân giải 4K sắc nét, các góc quay phải thể hiện ĐÚNG CÙNG MỘT NHÂN VẬT. Không chèn chữ hay watermark.`;
     return { promptEnglish, promptVietnamese, promptJSON, promptGemini, gridStructureGuide, negativePrompt, fullCopyText };
   }
 
-    // 1. HAIR MULTI-ANGLE GRID (BÓC TÁCH THEO ĐỘ SÂU Z-INDEX & 5 GÓC QUAY CINEMATIC)
+  // 1. CINEMATIC SINGLE PART 6-ANGLE GRID (2 ROWS x 3 COLS - 16:9)
+  if (
+    sheet === 'cinematic_single_part_2x3' ||
+    sheet === 'cinematic_single_part_2x2' ||
+    sheet === 'modular_bangs_3x1' ||
+    sheet === 'modular_bangs_2x2' ||
+    sheet === 'modular_backhair_3x1' ||
+    sheet === 'modular_backhair_2x2' ||
+    sheet === 'modular_torso_armor_3x1' ||
+    sheet === 'modular_weapon_2x2'
+  ) {
+    const ar = config.aspect_ratio || '16:9';
+    const isBangs = config.part_type === 'toc_truoc';
+    const isBackHair = config.part_type === 'toc_sau';
+    const isEyes = config.part_type === 'mat';
+    const isSclera = config.part_type === 'trong_trang';
+    const isIris = config.part_type === 'trong_den_iris';
+    const isHighlight = config.part_type === 'diem_sang_mat';
+    const isEyelids = config.part_type === 'mi_mat';
+    const isEyebrows = config.part_type === 'long_may';
+    const isNose = config.part_type === 'mui';
+    const isEars = config.part_type === 'doi_tai' || config.part_type === 'mui_tai';
+    const isMouth = config.part_type === 'mieng';
+    const isNoFace = config.part_type === 'khuon_mat_no_face' || config.part_type === 'khuon_mat';
+    const isTorso = config.part_type === 'than_co_ban';
+    const isUpperArmL = config.part_type === 'canh_tay_trai';
+    const isForearmL = config.part_type === 'cang_tay_trai';
+    const isHandL = config.part_type === 'ban_tay_trai';
+    const isUpperArmR = config.part_type === 'canh_tay_phai';
+    const isForearmR = config.part_type === 'cang_tay_phai';
+    const isHandR = config.part_type === 'ban_tay_phai';
+    const isThighL = config.part_type === 'dui_trai';
+    const isShinL = config.part_type === 'cang_chan_trai';
+    const isThighR = config.part_type === 'dui_phai';
+    const isShinR = config.part_type === 'cang_chan_phai';
+    const isCloak = config.part_type === 'ao_choang' || config.part_type === 'trang_phuc';
+
+    let partNameVi = 'Mái Tóc Trước';
+    let cellRow1En = '';
+    let cellRow2En = '';
+    let cellRow1Vi = '';
+    let cellRow2Vi = '';
+
+    if (isBangs) {
+      partNameVi = 'Mái Tóc Trước (Front Bangs)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front symmetric fringe bangs framing brow; Col 2: 45° Three-Quarter bangs curved around brow; Col 3: 90° Side Profile thin front fringe slice`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle top-down view showing bangs roots cascading down onto forehead; Col 2: 👑 Low Angle dramatic upward view from chin showing inner underside of bangs flicking upward; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL / ZERO BANGS because forehead is 100% hidden behind head)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Mái trước đối xứng ôm trán)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Mái trước xoay chéo theo góc mặt)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Lát cắt mỏng của mái trước nhìn từ vành tai)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (High Angle: Thấy chân tóc từ đỉnh đầu đổ xuống trán)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Low Angle: Thấy mặt trong và ngọn tóc hất bồng bềnh)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ TÓC MÁI vì đầu quay lưng 180° mái trước bị khuất hoàn toàn)`;
+    } else if (isBackHair) {
+      partNameVi = 'Suối Tóc Sau Lưng (Back Hair Mantle)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front view back hair cascading over both shoulders with hollow face opening in center; Col 2: 45° Three-Quarter flowing hair shifted over shoulder; Col 3: 90° Side Profile rear cranial dome & S-curved hair volume`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle top-down view showing full crown hair dome radiating down; Col 2: 👑 Low Angle dramatic upward view showing billowing long hair flowing dramatically upward; Col 3: 🌅 180° Full Rear Back View covering back directly`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Suối tóc sau buông 2 bên vai, khoảng giữa rỗng để ghép mặt)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Suối tóc sau buông lệch vai)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Nửa sau vòm đầu và suối tóc uốn chữ S)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Vòm tóc đỉnh đầu nhìn từ trên cao rủ xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Suối tóc dài bay bồng bềnh dốc lên trên uy dũng)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Toàn bộ suối tóc phủ kín lưng 180° trực diện)`;
+    } else if (isIris) {
+      partNameVi = 'Mống Mắt & Con Ngươi Màu (Iris & Pupil Layer - Dễ Dàng Thay Màu)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front symmetrical vibrant colored anime irises with dark pupils and subtle luminous inner gradients (${eyeColInfo.en}), strictly NO eyelids, NO eyelashes, NO white sclera; Col 2: 45° Three-Quarter angled irises; Col 3: 90° Side Profile thin convex iris disc`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle irises looking upward; Col 2: 👑 Low Angle irises looking down; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL / ZERO IRIS)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (2 Mống mắt tròn có màu ${eyeColInfo.vi} sắc nét & con ngươi đồng tử, KHÔNG LÔNG MI, KHÔNG TRÒNG TRẮNG để dễ thay màu mắt)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Mống mắt xoay 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Đĩa mống mắt cong nhìn ngang vành tai)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Con ngươi ngước lên trên nhìn camera)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Con ngươi liếc xuống uy nghiêm)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ TRÒNG MẮT)`;
+    } else if (isSclera) {
+      partNameVi = 'Tròng Trắng / Hốc Mắt Lót (Sclera Base Layer)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front pure smooth white sclera eye socket shape with soft top ambient shadow, strictly NO iris, NO pupil, NO eyelashes; Col 2: 45° Three-Quarter sclera base; Col 3: 90° Side Profile sclera slice`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle sclera looking up; Col 2: 👑 Low Angle sclera from below; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (2 Hốc tròng trắng mịn màng làm nền lót, bóng đổ nhẹ mí trên, KHÔNG MỐNG MẮT, KHÔNG LÔNG MI)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Tròng trắng xoay nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Tròng trắng nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Tròng trắng nhìn từ trên)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Tròng trắng nhìn từ dưới)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ TRÒNG TRẮNG)`;
+    } else if (isHighlight) {
+      partNameVi = 'Điểm Sáng / Highlight Mắt Lấp Lánh (Eye Sparkles & Highlights)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front crisp pure white circular & starburst eye reflection glints; Col 2: 45° Three-Quarter angled glints; Col 3: 90° Side Profile glint dot`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle glints top; Col 2: 👑 Low Angle glints bottom; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Các đốm sáng trắng tròn & ngôi sao lấp lánh phản chiếu ánh sáng linh hoạt bật/tắt)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Đốm sáng xoay nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Chấm sáng nhỏ nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Điểm sáng nhìn từ trên)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Điểm sáng nhìn từ dưới)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG)`;
+    } else if (isEyes) {
+      partNameVi = 'Đôi Mắt Tổng Hợp (Full Eyes with Iris & Sclera)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front symmetrical large sparkling anime eyes; Col 2: 45° Three-Quarter eyes (far eye slightly smaller); Col 3: 90° Side Profile single anime eye`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle pupils looking up; Col 2: 👑 Low Angle sharp confident pupils looking down; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL / ZERO EYES)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (2 mắt to tròn mở to nhìn thẳng, có điểm sáng phản chiếu)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (2 mắt xoay theo góc mặt nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (1 mắt đơn nhìn ngang vành tai)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Đồng tử ngước nhẹ lên trên nhìn camera)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Đồng tử nhìn xuống dưới uy nghiêm)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ MẮT)`;
+    } else if (isEyelids) {
+      partNameVi = 'Mi Mắt & Chớp Mắt (Eyelids & Blink Keyframes)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front 3-stage blink eyelids (Open 100%, Half-closed 50%, Closed curved smile 100%); Col 2: 45° Three-Quarter angled blink eyelids; Col 3: 90° Side Profile eyelash line`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle eyelids looking up; Col 2: 👑 Low Angle downward eyelids; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Bộ 3 trạng thái mí mắt: Mở to 100%, Mí khép hờ 50%, Nhắm tịt 100% đường cong cười)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Mi mắt xoay nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Đường viền lông mi nhìn từ vành tai)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Mi mắt nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Đường mi mắt dưới hất lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ MI MẮT)`;
+    } else if (isEyebrows) {
+      partNameVi = 'Cặp Lông Mày (Eyebrows Only)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front swordsman eyebrows; Col 2: 45° Three-Quarter angled eyebrows; Col 3: 90° Side Profile single eyebrow contour`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle furrowed eyebrows looking up; Col 2: 👑 Low Angle sharp resolute battle eyebrows; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (2 lông mày sắc nét thanh tú)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Lông mày phối cảnh nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (1 lông mày đơn nhìn từ bên sườn trán)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Lông mày nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Lông mày nhíu sắc bén oai nghiêm)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ LÔNG MÀY)`;
+    } else if (isNose) {
+      partNameVi = 'Sống Mũi (Nose Only)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front delicate small anime nose dot/shadow; Col 2: 45° Three-Quarter angled nose bridge; Col 3: 90° Side Profile sharp anime nose contour`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle nose top-down view; Col 2: 👑 Low Angle nostrils upward view; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Chấm mũi nhỏ thanh tú)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Sống mũi nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Sống mũi nhọn thanh tú góc ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Sống mũi nhìn chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Đầu mũi thanh từ dưới hất lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ MŨI)`;
+    } else if (isEars) {
+      partNameVi = 'Đôi Tai (Ears Only)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front 2 symmetrical anime ears; Col 2: 45° Three-Quarter single ear; Col 3: 90° Side Profile full side ear with earlobes`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle ears seen from top; Col 2: 👑 Low Angle earlobes seen from below; Col 3: 🌅 180° Rear Back View rear curve of 2 ears`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (2 vành tai đối xứng 2 bên)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (1 vành tai xoay nghiêng)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Vành tai đầy đủ nhìn ngang vành tai)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Đỉnh vành tai nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Dái tai nhìn từ dưới lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Mặt sau 2 vành tai)`;
+    } else if (isMouth) {
+      partNameVi = 'Khẩu Hình Miệng & Cười (Mouth & Lips)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front gentle confident smile lip line; Col 2: 45° Three-Quarter speaking mouth; Col 3: 90° Side Profile lips`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle mouth viewed from above; Col 2: 👑 Low Angle shouting battle mouth looking up; Col 3: 🌅 180° Rear Back View (EMPTY HOLLOW CELL)`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Môi cười nhếch nhẹ tự tin)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Khẩu hình miệng xoay nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Môi nhìn ngang từ bên má)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Môi nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Khẩu hình miệng thét gầm tung chiêu hất lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Ô RỖNG KHÔNG CÓ MIỆNG)`;
+    } else if (isNoFace) {
+      partNameVi = 'Khuôn Mặt Trần Không Ngũ Quan (Blank Face Base - No Face)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front smooth blank anime face shape with V-line jaw, strictly no eyes, no nose, no mouth; Col 2: 45° Three-Quarter blank head base; Col 3: 90° Side Profile blank head silhouette`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle top-down blank forehead & chin; Col 2: 👑 Low Angle jawline and chin contour looking up; Col 3: 🌅 180° Rear Back View blank rear neck & cranial base`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Khuôn mặt trần da trắng mịn, cằm V-line, KHÔNG MẮT MŨI MIỆNG)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Khuôn mặt trần xoay 45° ôm xương hàm)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Khuôn mặt trần nhìn ngang vành tai)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Vòm trán và cằm thu ngắn nhìn từ trên xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Đường viền xương hàm và cằm dưới hất lên trời)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Sau gáy và vòm sọ sau đầu)`;
+    } else if (isTorso) {
+      partNameVi = 'Thân Ngực & Eo (Torso & Chest Armor - No Limbs)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front torso armor chest & waist only, strictly no arms, no legs, no head; Col 2: 45° Three-Quarter torso armor; Col 3: 90° Side Profile torso armor`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle torso armor looking down at chest & collar; Col 2: 👑 Low Angle heroic torso looking up from waist; Col 3: 🌅 180° Full Rear Back Armor Mantle`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Thân áo giáp ngực & eo, KHÔNG TAY CHÂN, KHÔNG ĐẦU)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Thân áo giáp xoay chéo 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Thân áo giáp nhìn từ bên sườn)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Cầu vai và vòm ngực nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Thân áo giáp oai phong từ eo hất lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Mặt sau lưng áo giáp)`;
+    } else if (isUpperArmL || isUpperArmR) {
+      const isL = isUpperArmL;
+      partNameVi = isL ? 'Cánh Tay Trái - Bắp Tay (Left Upper Arm: Vai → Khuỷu)' : 'Cánh Tay Phải - Bắp Tay (Right Upper Arm: Vai → Khuỷu)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front ${isL ? 'left' : 'right'} upper bicep arm sleeve segment; Col 2: 45° Three-Quarter upper arm; Col 3: 90° Side Profile upper arm`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle upper arm from shoulder; Col 2: 👑 Low Angle upper arm from elbow; Col 3: 🌅 180° Rear Back View upper arm from back`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Khớp bắp tay từ bả vai đến khuỷu tay)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Bắp tay xoay nghiêng 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Bắp tay nhìn từ bên ngoài)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Cầu vai chúc xuống khuỷu tay)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Bắp tay nhìn từ khuỷu tay hất lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Mặt sau bắp tay)`;
+    } else if (isForearmL || isForearmR) {
+      const isL = isForearmL;
+      partNameVi = isL ? 'Cẳng Tay Trái (Left Forearm: Khuỷu → Cổ tay)' : 'Cẳng Tay Phải (Right Forearm: Khuỷu → Cổ tay)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front ${isL ? 'left' : 'right'} forearm sleeve segment; Col 2: 45° Three-Quarter forearm; Col 3: 90° Side Profile forearm`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle forearm; Col 2: 👑 Low Angle forearm; Col 3: 🌅 180° Rear Back View forearm`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Khớp cẳng tay từ khuỷu tay đến cổ tay)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Cẳng tay xoay 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Cẳng tay nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Cẳng tay nhìn từ trên xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Cẳng tay nhìn từ cổ tay dốc lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Mặt sau cẳng tay)`;
+    } else if (isHandL || isHandR) {
+      const isL = isHandL;
+      partNameVi = isL ? 'Bàn Tay Trái (Left Hand & Palm)' : 'Bàn Tay Phải (Right Hand & Palm)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front ${isL ? 'left' : 'right'} open palm / sword seal hand; Col 2: 45° Three-Quarter angled hand; Col 3: 90° Side Profile hand`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle hand top-down; Col 2: 👑 Low Angle hand reaching forward; Col 3: 🌅 180° Rear Back View back of hand`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Bàn tay xòe/bắt quyết kiếm ấn)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Bàn tay xoay chéo 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Cạnh bàn tay nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Bàn tay nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Bàn tay vươn về phía trước tung chưởng)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Mu bàn tay nhìn từ phía sau)`;
+    } else if (isThighL || isThighR) {
+      const isL = isThighL;
+      partNameVi = isL ? 'Đùi Trái (Left Thigh: Hông → Gối)' : 'Đùi Phải (Right Thigh: Hông → Gối)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front ${isL ? 'left' : 'right'} thigh segment; Col 2: 45° Three-Quarter thigh; Col 3: 90° Side Profile thigh`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle thigh; Col 2: 👑 Low Angle thigh; Col 3: 🌅 180° Rear Back View thigh`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Khớp đùi từ hông đến đầu gối)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Đùi xoay 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Đùi nhìn từ bên hông)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Đùi nhìn từ trên xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Đùi nhìn từ đầu gối hất lên)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Mặt sau đùi)`;
+    } else if (isShinL || isShinR) {
+      const isL = isShinL;
+      partNameVi = isL ? 'Cẳng Chân & Giày Trái (Left Shin & Boot: Gối → Gót)' : 'Cẳng Chân & Giày Phải (Right Shin & Boot: Gối → Gót)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front ${isL ? 'left' : 'right'} shin and armored boot; Col 2: 45° Three-Quarter shin & boot; Col 3: 90° Side Profile shin & boot`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle shin & boot; Col 2: 👑 Low Angle shin & boot; Col 3: 🌅 180° Rear Back View shin & boot`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Cẳng chân và ủng giáp từ đầu gối xuống bàn chân)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Cẳng chân và ủng xoay 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Ủng giáp nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Ủng chân nhìn từ trên chúc xuống)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Ủng chân đứng vững chãi nhìn từ mặt đất)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Gót ủng và bắp chuối sau)`;
+    } else if (isCloak) {
+      partNameVi = 'Áo Choàng / Tà Áo Bay (Cape & Robe Flow)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front cape shoulders flow; Col 2: 45° Three-Quarter cape; Col 3: 90° Side Profile flowing cape`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle cape from top; Col 2: 👑 Low Angle billowing cape; Col 3: 🌅 180° Full Rear Back Cape covering back`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Tà áo choàng buông 2 bên vai)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Áo choàng bay lệch vai 45°)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Áo choàng bay về sau nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Vòm áo choàng xòe rộng từ trên)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Tà áo choàng bay phần phật dốc lên trời)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Toàn bộ áo choàng phủ kín lưng)`;
+    } else {
+      partNameVi = 'Vũ Khí & Pháp Bảo (Weapons & Props)';
+      cellRow1En = `[ROW 1 - EYE LEVEL]: Col 1: 0° Front weapon upright; Col 2: 45° Three-Quarter angled weapon; Col 3: 90° Side Profile thin blade edge`;
+      cellRow2En = `[ROW 2 - DYNAMIC CINEMATICS]: Col 1: 🦅 High Angle weapon pointing downward; Col 2: 👑 Low Angle dramatic glowing weapon thrusting upward; Col 3: 🌅 180° Sheathed weapon worn on back`;
+      cellRow1Vi = `🔹 HÀNG 1 (Góc Ngang Tầm Mắt & Xoay Nghiêng):\n     - Ô [0, 0]: 1. Chính diện 0° (Vũ khí cầm thẳng)\n     - Ô [0, 1]: 2. Nghiêng 3/4 (45°) (Vũ khí xoay chéo thế thủ)\n     - Ô [0, 2]: 3. Nhìn ngang 90° (Cạnh mỏng lưỡi kiếm nhìn ngang)`;
+      cellRow2Vi = `🔹 HÀNG 2 (Góc Máy Điện Ảnh Đột Phá):\n     - Ô [1, 0]: 4. 🦅 Trên cao nhìn xuống (Mũi kiếm hướng xuống từ trên cao)\n     - Ô [1, 1]: 5. 👑 Dưới hất lên (Kiếm khí phát sáng hướng lên trời)\n     - Ô [1, 2]: 6. 🌅 Sau lưng 180° (Bao kiếm đeo sau lưng)`;
+    }
+
+    const partDescEn =
+      isBangs
+        ? `pure front fringe bangs floating alone, ${hairColInfo.en} hair, ${hairTexInfo.en}`
+        : isBackHair
+        ? `pure flowing back hair mantle, ${hairColInfo.en} hair, ${hairLenInfo.en}`
+        : isIris
+        ? `isolated vibrant colored anime irises and dark pupils without sclera: ${eyeColInfo.en}`
+        : isSclera
+        ? `isolated smooth white anime sclera eye socket shape without iris`
+        : isHighlight
+        ? `isolated pure white sparkling glints and star highlights for anime eyes`
+        : isEyes
+        ? `isolated anime full eyes: ${eyeShapeInfo.en}, ${eyeColInfo.en}`
+        : isEyelids
+        ? `isolated anime eyelid blinking keyframes (open, half-closed, closed smile)`
+        : isEyebrows
+        ? `isolated anime eyebrows pair`
+        : isNose
+        ? `isolated anime small nose bridge: ${noseInfo.en}`
+        : isEars
+        ? `isolated anime ears pair`
+        : isMouth
+        ? `isolated anime lips and mouth: ${mouthInfo.en}`
+        : isNoFace
+        ? `blank anime face shape mannequin head base, pure clean skin, strictly NO facial features, NO eyes, NO nose, NO mouth`
+        : isTorso
+        ? `costume and armor torso chest only, strictly NO limbs: ${costumeInfo.en}, ${costumeColorVi}`
+        : isUpperArmL || isUpperArmR
+        ? `isolated upper arm bicep limb segment: ${costumeColorVi}`
+        : isForearmL || isForearmR
+        ? `isolated forearm limb segment: ${costumeColorVi}`
+        : isHandL || isHandR
+        ? `isolated anime hand and palm gesture`
+        : isThighL || isThighR
+        ? `isolated thigh leg limb segment: ${costumeColorVi}`
+        : isShinL || isShinR
+        ? `isolated shin and armored boot segment: ${costumeColorVi}`
+        : isCloak
+        ? `isolated flowing cape and back robes: ${costumeColorVi}`
+        : `weapon and prop: ${propInfo.en}`;
+
+    promptEnglish = [
+      `masterpiece, best quality, ultra detailed 4k resolution, ${ar} aspect ratio modular 2D anime sprite sheet layout`,
+      `consistent 6-angle cinematic model sheet of ONE SINGLE ISOLATED 2D anime component (${partDescEn}) on ${bgPromptColorEn}`,
+      `strictly isolated 2D anime component only, headless floating asset, ${isNoFace ? 'strictly no eyes no nose no mouth' : 'strictly no extra body parts'}, zero background clutter`,
+      `organized in a clean 2-row by 3-column grid with generous safety margins:`,
+      cellRow1En,
+      cellRow2En,
+      `CRITICAL SCALE & HEIGHT RULE: Sprites in Col 1 (0°), Col 2 (45°), Col 3 (90°) in Row 1 AND Col 3 (180°) in Row 2 MUST share EXACT SAME VERTICAL HEIGHT, SAME SCALE and BASELINE ALIGNMENT`,
+      `PERSPECTIVE EXCEPTION: Row 2 Col 1 (High Angle) is naturally foreshortened from top-down, Row 2 Col 2 (Low Angle) is naturally foreshortened tapering upward`,
+      styleTextEn,
+      bgTextEn,
+      `crisp clean hard-edge sticker cutout, unlit flat matte 2D anime cel shading, zero background color bleeding, zero green fringe, --ar ${ar}`,
+    ].join(', ');
+
+    promptVietnamese = `【 BẢNG SPRITE 6 GÓC QUAY ĐIỆN ẢNH CHO 1 CHI TIẾT (TỶ LỆ ${ar}) 】
+• Chi tiết bóc tách: ${partNameVi} (${partDescEn})
+• Phông nền: ${bgTextVi}
+• Bố cục 6 ô chuẩn điện ảnh (2 Hàng × 3 Cột):
+${cellRow1Vi}
+${cellRow2Vi}
+
+⚠️ QUY TẮC BẮT BUỘC VỀ ĐỘ CAO VẬT THỂ (SCALE & HEIGHT CONSISTENCY):
+1. Chi tiết ở các góc tầm mắt (Chính diện 0°, Nghiêng 45°, Ngang 90°, Sau lưng 180°) BẮT BUỘC PHẢI CÓ CÙNG ĐỘ CAO VÀ KÍCH THƯỚC (Consistent Height & Baseline).
+2. Ngoại lệ góc phối cảnh:
+   - Góc 4 (🦅 Trên cao xuống): Chiều cao tự nhiên bị thu ngắn lại do phối cảnh nhìn dốc từ trên xuống (Foreshortening).
+   - Góc 5 (👑 Dưới hất lên): Chiều cao tự nhiên bị kéo dốc lên do phối cảnh máy quay đặt dưới đất.
+3. Nếu ở góc sau lưng 180° chi tiết bị khuất (như Mái tóc trước, Đôi mắt, Khẩu hình miệng, Sống mũi) $\to$ ĐỂ TRỐNG Ô RỖNG HOẶC ĐỂ NỀN XANH TRẦN ĐỂ KHÔNG BỊ DÍNH RÁC.`;
+
+
+    const promptGemini = `Hãy tạo prompt sinh ảnh AI cho bảng bóc tách 6 góc quay điện ảnh tỉ lệ ${ar} của một linh kiện duy nhất (${partNameVi}):\n- Bố cục 2 Hàng × 3 Cột: Hàng 1 gồm Chính diện 0°, Nghiêng 45°, Ngang 90°. Hàng 2 gồm Trên cao nhìn xuống (High Angle), Dưới hất lên (Low Angle), Sau lưng 180°.\n- Yêu cầu kích thước: Tất cả các góc 0°, 45°, 90°, 180° phải CÙNG ĐỘ CAO VÀ TỶ LỆ KÍCH THƯỚC (ngoại trừ góc Trên cao xuống và Dưới hất lên có chiều cao thay đổi tự nhiên theo phối cảnh).\n- Lưu ý ô khuất: Nếu chi tiết không nhìn thấy được ở góc sau lưng 180° (như Mái trước), hãy để ô rỗng hoặc nền phẳng.\n- Nền: ${bgTextVi}, viền sắc nét không lem màu.`;
+
+    gridStructureGuide = `📐 Khung Cắt ${ar}: Lưới 2 Hàng × 3 Cột chuẩn điện ảnh (6 ô rộng 341x512px), tự động đồng bộ chiều cao cho Tab 1 Cắt Lưới.`;
+
+    const negativePrompt =
+      'human face, skin, extra limbs, text, labels, watermark, blurry, inconsistent height on 0-45-90-180 angles, green halo, glowing outline';
+    const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
+
+    return { promptEnglish, promptVietnamese, promptJSON: '', promptGemini, gridStructureGuide, negativePrompt, fullCopyText };
+  }
+
+  // 2. HAIR MULTI-ANGLE GRID (LEGACY BÓC TÁCH THEO ĐỘ SÂU Z-INDEX & 5 GÓC QUAY CINEMATIC)
   if (sheet === 'hair_multi_angle_grid') {
     const ar = config.aspect_ratio || '16:9';
 

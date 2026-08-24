@@ -3,23 +3,33 @@
 export type Character2DPartType =
   | 'dau'
   | 'khuon_mat'
+  | 'khuon_mat_no_face'
   | 'mat'
-  | 'mieng'
+  | 'trong_trang'
+  | 'trong_den_iris'
+  | 'diem_sang_mat'
+  | 'mi_mat'
+  | 'long_may'
   | 'mui'
+  | 'doi_tai'
+  | 'mui_tai'
+  | 'mieng'
   | 'toc_truoc'
   | 'toc_sau'
   | 'than_co_ban'
   | 'canh_tay_trai'
-  | 'canh_tay_phai'
   | 'cang_tay_trai'
-  | 'cang_tay_phai'
   | 'ban_tay_trai'
+  | 'canh_tay_phai'
+  | 'cang_tay_phai'
   | 'ban_tay_phai'
+  | 'tay_chan'
   | 'dui_trai'
-  | 'dui_phai'
   | 'cang_chan_trai'
+  | 'dui_phai'
   | 'cang_chan_phai'
   | 'trang_phuc'
+  | 'ao_choang'
   | 'vu_khi';
 
 export type Character2DAngle =
@@ -31,14 +41,17 @@ export type Character2DAngle =
   | 'back_three_quarter_right'// 225 deg
   | 'profile_right'          // 270 deg (Nhìn thẳng tai phải)
   | 'three_quarter_right'    // 315 deg
-  | 'top_down'                // Đỉnh đầu 0°
+  | 'top_down'                // Đỉnh đầu 0° / High Angle
   | 'top_down_three_quarter_left' // Đỉnh đầu 45°
   | 'top_down_profile_left'       // Đỉnh đầu 90° (Ngang tai)
   | 'top_down_back_three_quarter_left' // Đỉnh đầu 135°
   | 'top_down_back'               // Đỉnh đầu 180°
   | 'top_down_back_three_quarter_right' // Đỉnh đầu 225°
   | 'top_down_profile_right'      // Đỉnh đầu 270°
-  | 'top_down_three_quarter_right'; // Đỉnh đầu 315°
+  | 'top_down_three_quarter_right' // Đỉnh đầu 315°
+  | 'low_angle_front'             // Góc dưới hất lên 0° (Uy nghiêm)
+  | 'low_angle_three_quarter_left' // Góc dưới hất lên 45°
+  | 'low_angle_profile_left';     // Góc dưới nhìn ngang 90°
 
 export type Character2DAngleSet = Partial<Record<Character2DAngle, string>>;
 
@@ -218,6 +231,14 @@ export interface StandardCropPreset {
 
 export interface AIPartPromptConfig {
   sheet_type?:
+    | 'cinematic_single_part_2x3'
+    | 'cinematic_single_part_2x2'
+    | 'modular_bangs_3x1'
+    | 'modular_bangs_2x2'
+    | 'modular_backhair_3x1'
+    | 'modular_backhair_2x2'
+    | 'modular_torso_armor_3x1'
+    | 'modular_weapon_2x2'
     | 'hair_multi_angle_grid'
     | 'eyes_grid'
     | 'mouth_grid'
@@ -226,7 +247,8 @@ export interface AIPartPromptConfig {
     | 'weapons_grid'
     | 'limbs_hands_grid'
     | 'body_turnaround_grid'
-    | 'single_part';
+    | 'single_part'
+    | string;
   part_type: Character2DPartType | 'map_layer' | 'combat_scene';
   character_style: string;
   custom_character_style?: string;

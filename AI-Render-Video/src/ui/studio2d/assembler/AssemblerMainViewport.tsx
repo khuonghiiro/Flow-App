@@ -248,17 +248,19 @@ export const AssemblerMainViewport: React.FC<AssemblerMainViewportProps> = ({
       const newOffsetX = Math.round(dragStartRef.current.initialOffset[0] + dx / scaleAdj);
       const newOffsetY = Math.round(dragStartRef.current.initialOffset[1] + dy / scaleAdj);
 
-      const curPart = assembly.parts[selectedSlot] || {};
-      onChangeAssembly({
-        ...assembly,
-        parts: {
-          ...assembly.parts,
-          [selectedSlot]: {
-            ...curPart,
-            offset: [newOffsetX, newOffsetY],
+      const curPart = assembly.parts[selectedSlot];
+      if (curPart) {
+        onChangeAssembly({
+          ...assembly,
+          parts: {
+            ...assembly.parts,
+            [selectedSlot]: {
+              ...curPart,
+              offset: [newOffsetX, newOffsetY],
+            },
           },
-        },
-      });
+        });
+      }
     }
   };
 

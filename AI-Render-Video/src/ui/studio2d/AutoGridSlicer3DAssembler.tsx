@@ -45,8 +45,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   externalImageUrl,
   externalCategoryId,
 }) => {
-  // Slicing & Category Configuration
-  const [selectedCatId, setSelectedCatId] = useState<string>(externalCategoryId || 'hair_multi_angle_grid');
+  // Slicing & Category Configuration (Default to modern Cinematic 6-Angle Grid for single components)
+  const [selectedCatId, setSelectedCatId] = useState<string>(externalCategoryId || 'cinematic_single_part_2x3');
   const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi' | 'irregular_ai'>('chibi');
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');

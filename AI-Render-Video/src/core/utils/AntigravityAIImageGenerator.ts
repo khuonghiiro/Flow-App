@@ -8,7 +8,7 @@ export interface AIGenerationOptions {
   prompt: string;
   negativePrompt?: string;
   bgType?: 'chroma_green' | 'pure_white';
-  aspectRatio?: '1:1' | '3:4' | '9:16';
+  aspectRatio?: '1:1' | '3:4' | '16:9' | '9:16' | string;
   style?: string;
   seed?: number;
 }

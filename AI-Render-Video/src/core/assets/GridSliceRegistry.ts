@@ -23,6 +23,41 @@ export interface GridCategoryDefinition {
 
 export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
   {
+    id: 'cinematic_single_part_2x3',
+    label: '🎬 [CHUẨN ĐIỆN ẢNH] 6 Góc Quay Anime 1 Chi Tiết (2 Hàng × 3 Cột)',
+    icon: 'Sparkles',
+    rows: 2,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Trọn bộ 6 góc quay tiêu chuẩn của phim hoạt hình: Tầm mắt 0°, Nghiêng 45°, Ngang 90°, Trên cao nhìn xuống (High Angle), Dưới hất lên (Low Angle), Phía sau lưng (180°). Mỗi ô 341x512px siêu nét!',
+    cells: [
+      // Hàng 0: Tầm Mắt & Góc Nghiêng
+      { row: 0, col: 0, label: '1. Chính Diện 0° (Eye Level)', partSlot: 'toc_truoc', angle: 'front', description: 'Góc nhìn ngang tầm mắt chuẩn đối thoại' },
+      { row: 0, col: 1, label: '2. Nghiêng 3/4 (45°)', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Góc quay 3/4 khuôn mặt anime' },
+      { row: 0, col: 2, label: '3. Nhìn Ngang 90° (Profile)', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Góc nhìn nghiêng hoàn toàn bên tai' },
+
+      // Hàng 1: Góc Máy Điện Ảnh Đột Phá
+      { row: 1, col: 0, label: '4. 🦅 Trên Cao Xuống (High Angle)', partSlot: 'dau', angle: 'top_down', description: 'Máy quay từ trên cao nhìn xuống (cúi đầu, yếu thế, góc nhìn từ trên trời)' },
+      { row: 1, col: 1, label: '5. 👑 Dưới Hất Lên (Low Angle)', partSlot: 'toc_truoc', angle: 'low_angle_front', description: 'Máy quay đặt thấp dưới đất hất lên (uy nghiêm, hùng dũng, tung chiêu)' },
+      { row: 1, col: 2, label: '6. 🌅 Sau Lưng 180° (Back View)', partSlot: 'toc_sau', angle: 'back', description: 'Góc nhìn từ sau gáy lưng nhân vật (Over-the-shoulder)' },
+    ],
+  },
+  {
+    id: 'cinematic_single_part_2x2',
+    label: '🎬 [TINH GỌN HD] 4 Góc Quay Trọng Tâm (2 Hàng × 2 Cột) - Ô Vuông 512x512',
+    icon: 'Maximize2',
+    rows: 2,
+    cols: 2,
+    defaultKeyColor: '#00ff00',
+    description: '4 góc quay quan trọng nhất với ô vuông chuẩn 512x512px: Chính diện 0°, Nghiêng 45°, Trên cao nhìn xuống (High Angle), Dưới hất lên (Low Angle).',
+    cells: [
+      { row: 0, col: 0, label: '1. Chính Diện 0°', partSlot: 'toc_truoc', angle: 'front', description: 'Góc thẳng tầm mắt' },
+      { row: 0, col: 1, label: '2. Nghiêng 3/4 (45°)', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Góc nghiêng 45°' },
+      { row: 1, col: 0, label: '3. 🦅 Trên Cao Nhìn Xuống', partSlot: 'dau', angle: 'top_down', description: 'Góc máy từ trên cao soi xuống' },
+      { row: 1, col: 1, label: '4. 👑 Dưới Hất Lên (Low Angle)', partSlot: 'toc_truoc', angle: 'low_angle_front', description: 'Góc máy từ dưới mặt đất ngước lên' },
+    ],
+  },
+  {
     id: 'single_full_image',
     label: '🖼️ Ảnh Đơn Hoàn Chỉnh (TẮT KHUNG LƯỚI - 1 Ảnh Duy Nhất)',
     icon: 'Maximize2',
@@ -39,6 +74,93 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
         angle: 'front',
         description: 'Toàn bộ bức ảnh hoàn chỉnh (100% width x 100% height)',
       },
+    ],
+  },
+  {
+    id: 'modular_bangs_3x1',
+    label: '✂️ [NGUYÊN LIỆU ĐƠN] Mái Tóc Trước (1 Hàng × 3 Cột) - Ô Cao Thoáng 341x1024',
+    icon: 'Scissors',
+    rows: 1,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Chỉ gồm 3 ô dáng đứng siêu nét (341x1024px) chứa riêng Mái tóc trước trán ở 3 góc: Chính diện 0°, Nghiêng 45°, Ngang 90°.',
+    cells: [
+      { row: 0, col: 0, label: 'Mái Trước 0° (Chính Diện)', partSlot: 'toc_truoc', angle: 'front', description: 'Mái trước nhìn thẳng' },
+      { row: 0, col: 1, label: 'Mái Trước 45° (Nghiêng 3/4)', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Mái trước nghiêng 45°' },
+      { row: 0, col: 2, label: 'Mái Trước 90° (Ngang Profile)', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước nhìn ngang 90°' },
+    ],
+  },
+  {
+    id: 'modular_bangs_2x2',
+    label: '✂️ [NGUYÊN LIỆU ĐƠN] Mái Tóc & Tóc Mai Vuông HD (2 Hàng × 2 Cột) - Ô Vuông 512x512',
+    icon: 'Maximize2',
+    rows: 2,
+    cols: 2,
+    defaultKeyColor: '#00ff00',
+    description: '4 ô vuông siêu nét chuẩn 512x512px chứa Mái trước (0°, 45°, 90°) và Lọn tóc mai ôm má.',
+    cells: [
+      { row: 0, col: 0, label: 'Mái Trước 0°', partSlot: 'toc_truoc', angle: 'front', description: 'Mái trước nhìn thẳng 0°' },
+      { row: 0, col: 1, label: 'Mái Trước 45°', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Mái trước nghiêng 45°' },
+      { row: 1, col: 0, label: 'Mái Trước 90°', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước nhìn ngang 90°' },
+      { row: 1, col: 1, label: 'Tóc Mai 0°/45°', partSlot: 'khuon_mat', angle: 'front', description: 'Lọn tóc mai 2 bên má' },
+    ],
+  },
+  {
+    id: 'modular_backhair_3x1',
+    label: '🌊 [NGUYÊN LIỆU ĐƠN] Suối Tóc Sau Lưng (1 Hàng × 3 Cột) - Ô Dài 341x1024',
+    icon: 'Scissors',
+    rows: 1,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Dành riêng cho suối tóc dài sau lưng buông qua vai (0°, 45°, 90°). Chiều cao 1024px bao trọn suối tóc dài nhất.',
+    cells: [
+      { row: 0, col: 0, label: 'Tóc Sau 0° (Buông Vai)', partSlot: 'toc_sau', angle: 'front', description: 'Tóc sau buông vai nhìn từ trước' },
+      { row: 0, col: 1, label: 'Tóc Sau 45° (Lệch Vai)', partSlot: 'toc_sau', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Tóc sau xoay nghiêng 45°' },
+      { row: 0, col: 2, label: 'Tóc Sau 90° (Uốn Lượn)', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Tóc sau nhìn ngang 90°' },
+    ],
+  },
+  {
+    id: 'modular_backhair_2x2',
+    label: '🌊 [NGUYÊN LIỆU ĐƠN] Tóc Sau & Đỉnh Đầu Vuông HD (2 Hàng × 2 Cột) - Ô 512x512',
+    icon: 'Maximize2',
+    rows: 2,
+    cols: 2,
+    defaultKeyColor: '#00ff00',
+    description: '4 ô vuông siêu nét 512x512px chứa Suối tóc sau lưng (90°, 135°, 180°) và Đỉnh chỏm đầu / búi tóc.',
+    cells: [
+      { row: 0, col: 0, label: 'Tóc Sau 90°', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Tóc sau nhìn ngang 90°' },
+      { row: 0, col: 1, label: 'Tóc Sau 135°', partSlot: 'toc_sau', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Tóc sau nghiêng sau 135°' },
+      { row: 1, col: 0, label: 'Tóc Sau 180° (Sau Lưng)', partSlot: 'toc_sau', angle: 'back', description: 'Toàn cảnh tóc sau lưng 180°' },
+      { row: 1, col: 1, label: 'Đỉnh Đầu / Búi Tóc', partSlot: 'dau', angle: 'top_down', description: 'Đỉnh đầu hoặc búi tóc trâm cài' },
+    ],
+  },
+  {
+    id: 'modular_torso_armor_3x1',
+    label: '🛡️ [NGUYÊN LIỆU ĐƠN] Thân & Áo Giáp (1 Hàng × 3 Cột) - Ô 341x1024',
+    icon: 'Layers',
+    rows: 1,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Chỉ chứa riêng bộ áo giáp / trang phục thân nhân vật ở 3 góc xoay: 0° (chính diện), 45° (nghiêng), 90° (ngang).',
+    cells: [
+      { row: 0, col: 0, label: 'Áo Giáp 0° (Chính Diện)', partSlot: 'than_co_ban', angle: 'front', description: 'Áo giáp thân trước' },
+      { row: 0, col: 1, label: 'Áo Giáp 45° (Nghiêng 3/4)', partSlot: 'than_co_ban', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Áo giáp nghiêng 45°' },
+      { row: 0, col: 2, label: 'Áo Giáp 90° (Ngang Profile)', partSlot: 'than_co_ban', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Áo giáp nhìn ngang 90°' },
+    ],
+  },
+  {
+    id: 'modular_weapon_2x2',
+    label: '⚔️ [NGUYÊN LIỆU ĐƠN] Vũ Khí & Tay Cầm Kiếm (2 Hàng × 2 Cột) - Ô 512x512',
+    icon: 'Sparkles',
+    rows: 2,
+    cols: 2,
+    defaultKeyColor: '#00ff00',
+    description: '4 ô vuông siêu nét chứa Trường kiếm, Khiên hộ thể, Cánh tay cầm kiếm hoặc Trượng phép thuật.',
+    cells: [
+      { row: 0, col: 0, label: 'Kiếm 0° (Cầm Thẳng)', partSlot: 'vu_khi', angle: 'front', description: 'Vũ khí tư thế nhìn thẳng' },
+      { row: 0, col: 1, label: 'Kiếm 45° (Thế Thủ Chéo)', partSlot: 'vu_khi', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Vũ khí xoay góc 45°' },
+      { row: 1, col: 0, label: 'Kiếm 90° (Chém Ngang)', partSlot: 'vu_khi', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Vũ khí nhìn ngang 90°' },
+      { row: 1, col: 1, label: 'Khiên / Hiệu Ứng Phép', partSlot: 'ban_tay_trai', angle: 'front', description: 'Khiên hộ thể hoặc hiệu ứng sáng' },
     ],
   },
   {
@@ -77,6 +199,94 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
       { row: 3, col: 2, label: 'Tóc Mai 90° (Vành Tai Nhìn Ngang)', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai cong ôm vành tai nhìn từ phía tai 90°' },
       { row: 3, col: 3, label: 'Tóc Mai 135° (Sau Tai Chéo)', partSlot: 'khuon_mat', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Lọn tóc sau tai 135°' },
       { row: 3, col: 4, label: 'Tóc Gáy 180° (Chân Gáy Sau Lưng)', partSlot: 'khuon_mat', angle: 'back', description: 'Lọn tóc tơ chân gáy sau lưng 180°' },
+    ],
+  },
+  {
+    id: 'hair_front_half_hd',
+    label: '✨ [GÓI 1 HD] Tóc Nửa Trước (0° ➔ 45° ➔ 90°) - Độ Nét Cao 2X',
+    icon: 'Sparkles',
+    rows: 4,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Chỉ chia 3 cột (0°, 45°, 90°) để tối ưu hóa độ phân giải từng ô lớn hơn 170%, siêu nét từng sợi tóc trước khi quay sang góc sau.',
+    cells: [
+      { row: 0, col: 0, label: 'Mái Trước 0°', partSlot: 'toc_truoc', angle: 'front', description: 'Mái trước nhìn thẳng' },
+      { row: 0, col: 1, label: 'Mái Trước 45°', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Mái trước nghiêng 45°' },
+      { row: 0, col: 2, label: 'Mái Trước 90°', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước nhìn ngang 90°' },
+
+      { row: 1, col: 0, label: 'Đỉnh Đầu 0°', partSlot: 'dau', angle: 'top_down', description: 'Đỉnh đầu 0°' },
+      { row: 1, col: 1, label: 'Đỉnh Đầu 45°', partSlot: 'dau', angle: 'top_down_three_quarter_left', mirrorAngle: 'top_down_three_quarter_right', description: 'Đỉnh đầu 45°' },
+      { row: 1, col: 2, label: 'Đỉnh Đầu 90°', partSlot: 'dau', angle: 'top_down_profile_left', mirrorAngle: 'top_down_profile_right', description: 'Đỉnh đầu 90°' },
+
+      { row: 2, col: 0, label: 'Tóc Sau 0° (Vai)', partSlot: 'toc_sau', angle: 'front', description: 'Tóc sau buông vai nhìn thẳng' },
+      { row: 2, col: 1, label: 'Tóc Sau 45°', partSlot: 'toc_sau', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Tóc sau nghiêng 45°' },
+      { row: 2, col: 2, label: 'Tóc Sau 90°', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Tóc sau nhìn ngang 90°' },
+
+      { row: 3, col: 0, label: 'Tóc Mai 0°', partSlot: 'khuon_mat', angle: 'front', description: 'Lọn tóc mai 0°' },
+      { row: 3, col: 1, label: 'Tóc Mai 45°', partSlot: 'khuon_mat', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Lọn tóc mai 45°' },
+      { row: 3, col: 2, label: 'Tóc Mai 90°', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai 90°' },
+    ],
+  },
+  {
+    id: 'hair_back_half_hd',
+    label: '✨ [GÓI 2 HD] Tóc Nửa Sau (90° ➔ 135° ➔ 180°) - Độ Nét Cao 2X',
+    icon: 'Sparkles',
+    rows: 4,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Chỉ chia 3 cột (90°, 135°, 180°) cho ảnh 2 để tối ưu hóa chi tiết lưng và suối tóc sau gáy với độ nét tối đa.',
+    cells: [
+      { row: 0, col: 0, label: 'Mái Trước 90°', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước nhìn ngang 90°' },
+      { row: 0, col: 1, label: 'Mái Trước 135°', partSlot: 'toc_truoc', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Mái trước sau chéo 135°' },
+      { row: 0, col: 2, label: 'Mái Trước 180°', partSlot: 'toc_truoc', angle: 'back', description: 'Mái trước sau lưng 180°' },
+
+      { row: 1, col: 0, label: 'Đỉnh Đầu 90°', partSlot: 'dau', angle: 'top_down_profile_left', mirrorAngle: 'top_down_profile_right', description: 'Đỉnh đầu 90°' },
+      { row: 1, col: 1, label: 'Đỉnh Đầu 135°', partSlot: 'dau', angle: 'top_down_back_three_quarter_left', mirrorAngle: 'top_down_back_three_quarter_right', description: 'Đỉnh đầu 135°' },
+      { row: 1, col: 2, label: 'Đỉnh Đầu 180°', partSlot: 'dau', angle: 'top_down_back', description: 'Đỉnh đầu 180°' },
+
+      { row: 2, col: 0, label: 'Tóc Sau 90°', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Tóc sau 90°' },
+      { row: 2, col: 1, label: 'Tóc Sau 135°', partSlot: 'toc_sau', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Tóc sau 135°' },
+      { row: 2, col: 2, label: 'Tóc Sau 180°', partSlot: 'toc_sau', angle: 'back', description: 'Tóc sau phủ kín lưng 180°' },
+
+      { row: 3, col: 0, label: 'Tóc Mai 90°', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Lọn tóc mai 90°' },
+      { row: 3, col: 1, label: 'Tóc Mai 135°', partSlot: 'khuon_mat', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Lọn tóc mai 135°' },
+      { row: 3, col: 2, label: 'Tóc Gáy 180°', partSlot: 'khuon_mat', angle: 'back', description: 'Tóc tơ gáy 180°' },
+    ],
+  },
+  {
+    id: 'hair_focus_front_4k',
+    label: '🔍 [GÓI 3 SIÊU NÉT 4K] Mái Trước & Tóc Mai (2 Dãy × 3 Cột)',
+    icon: 'Maximize2',
+    rows: 2,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Chỉ gồm 6 ô cực lớn (Mái trước 0°, 45°, 90° và Tóc mai 0°, 45°, 90°). Mỗi ô chiếm tới 341x512px cho độ sắc nét tối đa.',
+    cells: [
+      { row: 0, col: 0, label: 'Mái Trước 0°', partSlot: 'toc_truoc', angle: 'front', description: 'Mái trước 0°' },
+      { row: 0, col: 1, label: 'Mái Trước 45°', partSlot: 'toc_truoc', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Mái trước 45°' },
+      { row: 0, col: 2, label: 'Mái Trước 90°', partSlot: 'toc_truoc', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Mái trước 90°' },
+
+      { row: 1, col: 0, label: 'Tóc Mai 0°', partSlot: 'khuon_mat', angle: 'front', description: 'Tóc mai 0°' },
+      { row: 1, col: 1, label: 'Tóc Mai 45°', partSlot: 'khuon_mat', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Tóc mai 45°' },
+      { row: 1, col: 2, label: 'Tóc Mai 90°', partSlot: 'khuon_mat', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Tóc mai 90°' },
+    ],
+  },
+  {
+    id: 'hair_focus_back_4k',
+    label: '🔍 [GÓI 4 SIÊU NÉT 4K] Suối Tóc Sau Lưng (2 Dãy × 3 Cột)',
+    icon: 'Maximize2',
+    rows: 2,
+    cols: 3,
+    defaultKeyColor: '#00ff00',
+    description: 'Chỉ gồm 6 ô cực lớn cho suối tóc sau lưng (0°, 45°, 90°, 135°, 180°). Từng sợi tóc tơ đều được lưu giữ rõ nét.',
+    cells: [
+      { row: 0, col: 0, label: 'Tóc Sau 0°', partSlot: 'toc_sau', angle: 'front', description: 'Tóc sau nhìn thẳng' },
+      { row: 0, col: 1, label: 'Tóc Sau 45°', partSlot: 'toc_sau', angle: 'three_quarter_left', mirrorAngle: 'three_quarter_right', description: 'Tóc sau 45°' },
+      { row: 0, col: 2, label: 'Tóc Sau 90°', partSlot: 'toc_sau', angle: 'profile_left', mirrorAngle: 'profile_right', description: 'Tóc sau 90°' },
+
+      { row: 1, col: 0, label: 'Tóc Sau 135°', partSlot: 'toc_sau', angle: 'back_three_quarter_left', mirrorAngle: 'back_three_quarter_right', description: 'Tóc sau 135°' },
+      { row: 1, col: 1, label: 'Tóc Sau 180°', partSlot: 'toc_sau', angle: 'back', description: 'Tóc sau 180°' },
+      { row: 1, col: 2, label: 'Đỉnh Đầu 180°', partSlot: 'dau', angle: 'top_down_back', description: 'Đỉnh đầu 180°' },
     ],
   },
   {
@@ -280,58 +490,45 @@ export const generateDemoGridSpriteSheet = (
 
       // Render distinct stylized hair shapes depending on row & angle
       let hairShape = '';
-      if (row === 0) {
-        // Front Bangs at various angles (0°, 45°, 90°, 135°, 180°)
-        if (col === 0) {
-          // Front 0°: Symmetric bangs
-          hairShape = `
-            <path d="M ${cx - 70} ${cy - 40} Q ${cx} ${cy - 65} ${cx + 70} ${cy - 40} Q ${cx + 60} ${cy + 15} ${cx + 40} ${cy + 45} Q ${cx + 10} ${cy + 10} ${cx} ${cy + 35} Q ${cx - 10} ${cy + 10} ${cx - 40} ${cy + 45} Q ${cx - 60} ${cy + 15} ${cx - 70} ${cy - 40} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
-            <path d="M ${cx - 30} ${cy - 25} Q ${cx} ${cy - 45} ${cx + 30} ${cy - 25} Q ${cx + 10} ${cy + 5} ${cx} ${cy + 25} Z" fill="${isChibi ? '#fbbf24' : '#4338ca'}" opacity="0.6"/>
-            <path d="M ${cx - 50} ${cy - 30} Q ${cx} ${cy - 50} ${cx + 50} ${cy - 30}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
-          `;
-        } else if (col === 1) {
-          // 45° 3/4 View: Shifted bangs
-          hairShape = `
-            <path d="M ${cx - 60} ${cy - 40} Q ${cx - 10} ${cy - 65} ${cx + 65} ${cy - 35} Q ${cx + 70} ${cy + 20} ${cx + 50} ${cy + 50} Q ${cx + 20} ${cy + 15} ${cx + 5} ${cy + 38} Q ${cx - 15} ${cy + 15} ${cx - 45} ${cy + 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
-            <path d="M ${cx - 30} ${cy - 25} Q ${cx + 5} ${cy - 45} ${cx + 45} ${cy - 20}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
-          `;
-        } else if (col === 2) {
-          // 90° Profile: Side view of bangs
-          hairShape = `
-            <path d="M ${cx - 30} ${cy - 45} Q ${cx + 20} ${cy - 60} ${cx + 45} ${cy - 35} Q ${cx + 65} ${cy + 10} ${cx + 55} ${cy + 50} Q ${cx + 30} ${cy + 25} ${cx + 20} ${cy + 40} Q ${cx + 5} ${cy + 15} ${cx - 20} ${cy + 5} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
-            <path d="M ${cx - 10} ${cy - 30} Q ${cx + 25} ${cy - 45} ${cx + 40} ${cy - 25}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
-          `;
-        } else if (col === 3) {
-          // 135° Back 3/4
-          hairShape = `
-            <path d="M ${cx - 50} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 40} Q ${cx + 45} ${cy + 10} ${cx + 25} ${cy + 35} Q ${cx - 10} ${cy + 5} ${cx - 45} ${cy + 15} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
-          `;
-        } else {
-          // 180° Full Back
-          hairShape = `
-            <path d="M ${cx - 55} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 45} Q ${cx + 45} ${cy + 5} ${cx + 20} ${cy + 25} Q ${cx} ${cy + 10} ${cx - 20} ${cy + 25} Q ${cx - 45} ${cy + 5} ${cx - 55} ${cy - 45} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
-          `;
-        }
-      } else if (row === 1) {
-        // Crown / Top Bun
+      if (c.angle === 'front' || (row === 0 && col === 0)) {
+        // Front 0°: Symmetric bangs
         hairShape = `
-          <ellipse cx="${cx}" cy="${cy - 20}" rx="38" ry="30" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
-          <path d="M ${cx - 25} ${cy - 20} Q ${cx} ${cy - 35} ${cx + 25} ${cy - 20}" stroke="${hairHighlight}" stroke-width="3" fill="none"/>
-          <rect x="${cx - 12}" y="${cy + 5}" width="24" height="12" rx="4" fill="#d97706"/>
-          <path d="M ${cx - 40} ${cy + 10} L ${cx + 40} ${cy + 10}" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+          <path d="M ${cx - 75} ${cy - 40} Q ${cx} ${cy - 70} ${cx + 75} ${cy - 40} Q ${cx + 65} ${cy + 20} ${cx + 45} ${cy + 55} Q ${cx + 10} ${cy + 15} ${cx} ${cy + 45} Q ${cx - 10} ${cy + 15} ${cx - 45} ${cy + 55} Q ${cx - 65} ${cy + 20} ${cx - 75} ${cy - 40} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 35} ${cy - 25} Q ${cx} ${cy - 50} ${cx + 35} ${cy - 25} Q ${cx + 10} ${cy + 10} ${cx} ${cy + 30} Z" fill="${isChibi ? '#fbbf24' : '#4338ca'}" opacity="0.6"/>
+          <path d="M ${cx - 55} ${cy - 30} Q ${cx} ${cy - 55} ${cx + 55} ${cy - 30}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
         `;
-      } else if (row === 2) {
-        // Back Long Flowing Hair
+      } else if (c.angle === 'three_quarter_left' || (row === 0 && col === 1)) {
+        // 45° 3/4 View: Shifted bangs
         hairShape = `
-          <path d="M ${cx - 65} ${cy - 50} Q ${cx} ${cy - 40} ${cx + 65} ${cy - 50} Q ${cx + 75} ${cy + 20} ${cx + 50} ${cy + 85} Q ${cx} ${cy + 95} ${cx - 50} ${cy + 85} Q ${cx - 75} ${cy + 20} ${cx - 65} ${cy - 50} Z" fill="${backHairColor}" stroke="${backHairStroke}" stroke-width="3"/>
-          <path d="M ${cx - 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx - 15} ${cy + 80}" stroke="${isChibi ? '#fde047' : '#64748b'}" stroke-width="3" stroke-linecap="round" fill="none"/>
-          <path d="M ${cx + 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx + 15} ${cy + 80}" stroke="${isChibi ? '#fde047' : '#64748b'}" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M ${cx - 65} ${cy - 40} Q ${cx - 10} ${cy - 70} ${cx + 70} ${cy - 35} Q ${cx + 75} ${cy + 25} ${cx + 55} ${cy + 60} Q ${cx + 20} ${cy + 20} ${cx + 5} ${cy + 48} Q ${cx - 15} ${cy + 20} ${cx - 50} ${cy + 40} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 35} ${cy - 25} Q ${cx + 5} ${cy - 50} ${cx + 50} ${cy - 20}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
+        `;
+      } else if (c.angle === 'profile_left' || (row === 0 && col === 2)) {
+        // 90° Profile: Side view of bangs
+        hairShape = `
+          <path d="M ${cx - 35} ${cy - 50} Q ${cx + 25} ${cy - 65} ${cx + 50} ${cy - 35} Q ${cx + 70} ${cy + 15} ${cx + 60} ${cy + 60} Q ${cx + 35} ${cy + 30} ${cx + 25} ${cy + 50} Q ${cx + 5} ${cy + 20} ${cx - 25} ${cy + 10} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 15} ${cy - 30} Q ${cx + 30} ${cy - 50} ${cx + 45} ${cy - 25}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
+        `;
+      } else if (c.angle === 'top_down' || (row === 1 && col === 0)) {
+        // High Angle (Góc từ trên cao nhìn xuống)
+        hairShape = `
+          <ellipse cx="${cx}" cy="${cy}" rx="70" ry="50" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+          <ellipse cx="${cx}" cy="${cy - 10}" rx="30" ry="20" fill="${isChibi ? '#fbbf24' : '#4338ca'}" opacity="0.6"/>
+          <path d="M ${cx - 50} ${cy} Q ${cx} ${cy - 30} ${cx + 50} ${cy}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <circle cx="${cx}" cy="${cy - 5}" r="8" fill="#d97706"/>
+        `;
+      } else if (c.angle === 'low_angle_front' || (row === 1 && col === 1)) {
+        // Low Angle (Góc dưới hất nhìn lên - Uy nghi, tà tóc hất bồng bềnh)
+        hairShape = `
+          <path d="M ${cx - 85} ${cy + 30} Q ${cx} ${cy - 60} ${cx + 85} ${cy + 30} Q ${cx + 60} ${cy + 65} ${cx + 30} ${cy + 75} Q ${cx} ${cy + 50} ${cx - 30} ${cy + 75} Q ${cx - 60} ${cy + 65} ${cx - 85} ${cy + 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 60} ${cy - 10} Q ${cx} ${cy - 45} ${cx + 60} ${cy - 10}" stroke="${hairHighlight}" stroke-width="5" stroke-linecap="round" fill="none"/>
         `;
       } else {
-        // Sideburns
+        // 180° Back View (Góc sau gáy lưng)
         hairShape = `
-          <path d="M ${cx - 40} ${cy - 40} Q ${cx - 50} ${cy} ${cx - 35} ${cy + 45} Q ${cx - 30} ${cy + 10} ${cx - 32} ${cy - 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="2"/>
-          <path d="M ${cx + 40} ${cy - 40} Q ${cx + 50} ${cy} ${cx + 35} ${cy + 45} Q ${cx + 30} ${cy + 10} ${cx + 32} ${cy - 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="2"/>
+          <path d="M ${cx - 70} ${cy - 50} Q ${cx} ${cy - 70} ${cx + 70} ${cy - 50} Q ${cx + 80} ${cy + 25} ${cx + 55} ${cy + 90} Q ${cx} ${cy + 100} ${cx - 55} ${cy + 90} Q ${cx - 80} ${cy + 25} ${cx - 70} ${cy - 50} Z" fill="${backHairColor}" stroke="${backHairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 35} ${cy - 20} Q ${cx} ${cy + 40} ${cx - 20} ${cy + 85}" stroke="${isChibi ? '#fde047' : '#64748b'}" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M ${cx + 35} ${cy - 20} Q ${cx} ${cy + 40} ${cx + 20} ${cy + 85}" stroke="${isChibi ? '#fde047' : '#64748b'}" stroke-width="3" stroke-linecap="round" fill="none"/>
         `;
       }
 

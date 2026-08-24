@@ -36,7 +36,7 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
     'Nữ hiệp sĩ anime tóc đỏ rực rỡ, áo giáp bạc ánh kim, kiếm phát sáng, mắt xanh biếc'
   );
   const [bgType, setBgType] = useState<'chroma_green' | 'pure_white'>('chroma_green');
-  const [aspectRatio, setAspectRatio] = useState<'1:1' | '3:4' | '9:16'>('1:1');
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '1:1' | '3:4' | '9:16'>('16:9');
   const [statusMessage, setStatusMessage] = useState<string>('');
 
   // Handle File Upload from computer
@@ -103,7 +103,7 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
               width: 26,
               height: 26,
               borderRadius: 6,
-              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+              background: 'linear-gradient(135deg, #0284c7, #2563eb)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -116,10 +116,10 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
           </div>
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: '#f8fafc' }}>
-              Tạo & Chọn Nhân Vật Gốc
+              Tạo Nhân Vật Gốc Bằng AI
             </div>
             <div style={{ fontSize: 9.5, color: '#94a3b8' }}>
-              Prompt AI sinh nhân vật hoặc tải ảnh có sẵn
+              Gõ mô tả hoặc tải ảnh từ máy tính
             </div>
           </div>
         </div>
@@ -127,13 +127,13 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 5,
+            gap: 4,
             padding: '4px 8px',
             borderRadius: 5,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: '#38bdf8',
-            fontSize: 10,
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#cbd5e1',
+            fontSize: 10.5,
             fontWeight: 600,
             cursor: 'pointer',
           }}
@@ -185,11 +185,11 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
           />
         </div>
 
-        {/* Generation Options Row */}
+        {/* Options Row: Background & Aspect Ratio */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <div>
             <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 3 }}>
-              Màu nền (Chroma Key):
+              Màu nền tách phông:
             </label>
             <select
               value={bgType}
@@ -228,6 +228,7 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
                 fontSize: 10.5,
               }}
             >
+              <option value="16:9">16:9 Rộng Ngang (Chuẩn Sprite Điện Ảnh)</option>
               <option value="1:1">1:1 Vuông (Square)</option>
               <option value="3:4">3:4 Chân dung (Portrait)</option>
               <option value="9:16">9:16 Toàn thân (Full Body)</option>
