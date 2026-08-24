@@ -24,7 +24,7 @@ export interface SlicerSidebarControlsProps {
   onSelectCatId: (id: string) => void;
   userUploadedImageUrl: string | null;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onResetToDemoImage: (key?: 'default' | 'chibi') => void;
+  onResetToDemoImage: (key?: 'default' | 'chibi' | 'irregular_ai') => void;
   onClearImage?: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   isEyedropperActive?: boolean;
@@ -334,7 +334,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         </button>
 
         {/* Row 4: Demo Samples & Clear Actions (Synchronized height: 28px) */}
-        <div style={{ display: 'grid', gridTemplateColumns: userUploadedImageUrl ? '1fr 1fr 1fr' : '1fr 1fr', gap: 5 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: userUploadedImageUrl ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 5 }}>
           <button
             onClick={() => onResetToDemoImage('chibi')}
             style={{
@@ -376,7 +376,29 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
             }}
             title="Dùng ảnh mẫu tóc Kiếm Khách"
           >
-            🗡️ Mẫu Kiếm Khách
+            🗡️ Kiếm Khách
+          </button>
+
+          <button
+            onClick={() => onResetToDemoImage('irregular_ai' as any)}
+            style={{
+              height: 28,
+              fontSize: 10,
+              fontWeight: 700,
+              borderRadius: 5,
+              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(139, 92, 246, 0.25))',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              boxSizing: 'border-box',
+            }}
+            title="Nạp ảnh Sprite Sheet bị lệch lề AI để kiểm tra thuật toán Auto-Fit tự căn khung"
+          >
+            🎯 Test Lệch AI
           </button>
 
           {userUploadedImageUrl && onClearImage && (

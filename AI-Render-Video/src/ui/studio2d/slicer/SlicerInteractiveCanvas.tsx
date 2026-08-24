@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Layers, ZoomIn } from 'lucide-react';
+import { Eye, Layers, ZoomIn, Target, Grid } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../core/assets/GridSliceRegistry';
 
 interface SlicerInteractiveCanvasProps {
@@ -13,6 +13,8 @@ interface SlicerInteractiveCanvasProps {
   onTogglePreviewDisplayMode?: (mode: 'transparent' | 'original') => void;
   hasExplicitlySliced: boolean;
   currentCategory: GridCategoryDefinition;
+  onAutoFitGrid?: () => void;
+  onResetUniformGrid?: () => void;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onDoubleClick: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -31,6 +33,8 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   onTogglePreviewDisplayMode,
   hasExplicitlySliced,
   currentCategory,
+  onAutoFitGrid,
+  onResetUniformGrid,
   onMouseDown,
   onDoubleClick,
   onMouseMove,
@@ -67,53 +71,104 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
           <Layers size={13} /> {currentCategory.id === 'single_full_image' ? '🖼️ Chế độ ảnh đơn (Đã tắt khung lưới)' : `Khung lưới cắt (${currentCategory.rows} hàng × ${currentCategory.cols} cột)`}
         </div>
 
-        {/* Preview Mode Toggle */}
-        <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
-          <button
-            onClick={() => handleModeClick('transparent')}
-            disabled={!hasImage}
-            style={{
-              padding: '4px 9px',
-              fontSize: 10,
-              fontWeight: 600,
-              borderRadius: 4,
-              background: previewDisplayMode === 'transparent' ? '#0284c7' : 'transparent',
-              color: previewDisplayMode === 'transparent' ? '#ffffff' : hasImage ? '#94a3b8' : '#475569',
-              border: previewDisplayMode === 'transparent' ? '1px solid #38bdf8' : '1px solid transparent',
-              cursor: hasImage ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              boxShadow: previewDisplayMode === 'transparent' ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
-              transition: 'all 0.15s ease',
-            }}
-            title="Xem kết quả sau khi đã bóc tách nền (trong suốt)"
-          >
-            <Layers size={12} /> 🏁 Đã tách nền
-          </button>
+        {/* Action Controls: Auto-Fit + Reset Uniform + Preview Mode Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {currentCategory.id !== 'single_full_image' && (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={onAutoFitGrid}
+                disabled={!hasImage}
+                style={{
+                  padding: '4px 9px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(139, 92, 246, 0.3))',
+                  color: hasImage ? '#38bdf8' : '#475569',
+                  border: '1px solid rgba(56, 189, 248, 0.35)',
+                  cursor: hasImage ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  boxShadow: hasImage ? '0 0 8px rgba(56, 189, 248, 0.2)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Tự động quét và căn chỉnh các đường lưới ôm khớp khít từng linh kiện theo ảnh AI"
+              >
+                <Target size={11} /> 🎯 Tự Căn Khung (Auto-Fit)
+              </button>
 
-          <button
-            onClick={() => handleModeClick('original')}
-            disabled={!hasImage}
-            style={{
-              padding: '4px 9px',
-              fontSize: 10,
-              fontWeight: 600,
-              borderRadius: 4,
-              background: previewDisplayMode === 'original' && hasImage ? '#0284c7' : 'transparent',
-              color: hasImage ? (previewDisplayMode === 'original' ? '#ffffff' : '#94a3b8') : '#475569',
-              border: previewDisplayMode === 'original' && hasImage ? '1px solid #38bdf8' : '1px solid transparent',
-              cursor: hasImage ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              boxShadow: previewDisplayMode === 'original' && hasImage ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
-              transition: 'all 0.15s ease',
-            }}
-            title="Xem bức ảnh gốc ban đầu"
-          >
-            <Eye size={12} /> 👁️ Ảnh gốc
-          </button>
+              <button
+                onClick={onResetUniformGrid}
+                disabled={!hasImage}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  borderRadius: 4,
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: hasImage ? '#94a3b8' : '#475569',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  cursor: hasImage ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title="Đặt lại các ô lưới chia đều nhau theo chiều ngang và dọc"
+              >
+                <Grid size={11} /> 📐 Lưới Đều
+              </button>
+            </div>
+          )}
+
+          {/* Preview Mode Toggle */}
+          <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
+            <button
+              onClick={() => handleModeClick('transparent')}
+              disabled={!hasImage}
+              style={{
+                padding: '4px 9px',
+                fontSize: 10,
+                fontWeight: 600,
+                borderRadius: 4,
+                background: previewDisplayMode === 'transparent' ? '#0284c7' : 'transparent',
+                color: previewDisplayMode === 'transparent' ? '#ffffff' : hasImage ? '#94a3b8' : '#475569',
+                border: previewDisplayMode === 'transparent' ? '1px solid #38bdf8' : '1px solid transparent',
+                cursor: hasImage ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: previewDisplayMode === 'transparent' ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title="Xem kết quả sau khi đã bóc tách nền (trong suốt)"
+            >
+              <Layers size={12} /> 🏁 Đã tách nền
+            </button>
+
+            <button
+              onClick={() => handleModeClick('original')}
+              disabled={!hasImage}
+              style={{
+                padding: '4px 9px',
+                fontSize: 10,
+                fontWeight: 600,
+                borderRadius: 4,
+                background: previewDisplayMode === 'original' && hasImage ? '#0284c7' : 'transparent',
+                color: hasImage ? (previewDisplayMode === 'original' ? '#ffffff' : '#94a3b8') : '#475569',
+                border: previewDisplayMode === 'original' && hasImage ? '1px solid #38bdf8' : '1px solid transparent',
+                cursor: hasImage ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: previewDisplayMode === 'original' && hasImage ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title="Xem bức ảnh gốc ban đầu"
+            >
+              <Eye size={12} /> 👁️ Ảnh gốc
+            </button>
+          </div>
         </div>
       </div>
 

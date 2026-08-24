@@ -21,6 +21,7 @@ import { CharacterAssetCatalogModal } from './CharacterAssetCatalogModal';
 import { MultiAngleTunerModal } from './MultiAngleTunerModal';
 import { saveCustomResourceKit } from '../../core/assets/CharacterKitStorage';
 import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
+import { detectAndFitGridDividers } from '../../core/utils/GridAutoFitDetector';
 import { PART_HIERARCHY_CONFIG } from '../../core/assets/Asset2DRegistry';
 
 // Subcomponents
@@ -33,16 +34,20 @@ interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
   onApplyAssembly: (updatedAssembly: Character2DAssembly) => void;
   onSwitchToAssemblyTab?: () => void;
+  externalImageUrl?: string | null;
+  externalCategoryId?: string;
 }
 
 export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps> = ({
   currentAssembly,
   onApplyAssembly,
   onSwitchToAssemblyTab,
+  externalImageUrl,
+  externalCategoryId,
 }) => {
   // Slicing & Category Configuration
-  const [selectedCatId, setSelectedCatId] = useState<string>('hair_multi_angle_grid');
-  const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi'>('chibi');
+  const [selectedCatId, setSelectedCatId] = useState<string>(externalCategoryId || 'hair_multi_angle_grid');
+  const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi' | 'irregular_ai'>('chibi');
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
   const [isEyedropperActive, setIsEyedropperActive] = useState<boolean>(false);
@@ -98,6 +103,21 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const interval = setInterval(checkServer, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Listen to external image transferred from Tab 0 (Antigravity Decomposer)
+  useEffect(() => {
+    if (externalImageUrl) {
+      setUserUploadedImageUrl(externalImageUrl);
+      setHasExplicitlySliced(false);
+      setSlicedResults(new Map());
+      slicedCanvasesRef.current.clear();
+      setPreviewDisplayMode('original');
+      setAssemblySuccess(false);
+      if (externalCategoryId) {
+        setSelectedCatId(externalCategoryId);
+      }
+    }
+  }, [externalImageUrl, externalCategoryId]);
 
   // 3D Engine State
   const [activeAngleInfo, setActiveAngleInfo] = useState<AngleDetectionResult>({
@@ -160,6 +180,37 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     setRowDividers(rowsArr);
   }, []);
 
+  // Smart Content-Aware Auto-Fit Grid Dividers for AI-generated Sprite Sheets
+  const autoFitDividers = useCallback(
+    (img: HTMLImageElement, cols: number, rows: number, keyType = keyColorType, keyHex = keyColorHex) => {
+      if (cols <= 1 && rows <= 1) {
+        initUniformDividers(img.width, img.height, cols, rows);
+        return;
+      }
+      try {
+        const result = detectAndFitGridDividers(img, cols, rows, keyType, keyHex);
+        setColDividers(result.colDividers);
+        setRowDividers(result.rowDividers);
+      } catch (err) {
+        console.warn('AutoFit grid detection failed, using uniform grid:', err);
+        initUniformDividers(img.width, img.height, cols, rows);
+      }
+    },
+    [keyColorType, keyColorHex, initUniformDividers]
+  );
+
+  const handleAutoFitGrid = useCallback(() => {
+    const img = loadedImage || loadedImageRef.current;
+    if (!img) return;
+    autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
+  }, [loadedImage, currentCategory, keyColorType, keyColorHex, autoFitDividers]);
+
+  const handleResetUniformGrid = useCallback(() => {
+    const img = loadedImage || loadedImageRef.current;
+    if (!img) return;
+    initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
+  }, [loadedImage, currentCategory, initUniformDividers]);
+
   // Initialize 3D Engine
   useEffect(() => {
     if (threeContainerRef.current && !threeEngineRef.current) {
@@ -215,7 +266,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     img.onload = () => {
       loadedImageRef.current = img;
       setLoadedImage(img);
-      initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
+      // Auto-fit grid to match AI sprite dimensions and content gutters
+      autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
       setPreviewDisplayMode('original');
       setHasExplicitlySliced(false);
       slicedCanvasesRef.current.clear();
@@ -236,14 +288,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const cat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
     const img = loadedImage || loadedImageRef.current;
     if (img) {
-      initUniformDividers(img.width, img.height, cat.cols, cat.rows);
+      autoFitDividers(img, cat.cols, cat.rows, keyColorType, keyColorHex);
     }
     setSelectedCell(null);
     setHasExplicitlySliced(false);
     slicedCanvasesRef.current.clear();
     setSlicedResults(new Map());
     setPreviewDisplayMode('original');
-  }, [loadedImage, initUniformDividers]);
+  }, [loadedImage, autoFitDividers, keyColorType, keyColorHex]);
 
   // Redraw Canvas & Grid Dividers
   const redrawCanvas = useCallback((modeOverride?: 'transparent' | 'original') => {
@@ -1231,9 +1283,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             }
           }}
           onResetToDemoImage={(key = 'chibi') => {
-            setActiveDemoKey(key);
+            if (key === 'irregular_ai') {
+              setSelectedCatId('chibi_3x3');
+              setUserUploadedImageUrl('/demo_ai_irregular_spritesheet.png');
+              setHasExplicitlySliced(false);
+              setSlicedResults(new Map());
+              slicedCanvasesRef.current.clear();
+              setPreviewDisplayMode('original');
+              setAssemblySuccess(false);
+              return;
+            }
+            setActiveDemoKey(key as any);
             const bg = keyColorType === 'pure_white' ? 'pure_white' : 'chroma_green';
-            const demoUrl = generateDemoGridSpriteSheet(currentCategory.id, bg, key);
+            const demoUrl = generateDemoGridSpriteSheet(currentCategory.id, bg, key as any);
             setUserUploadedImageUrl(demoUrl);
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
@@ -1342,6 +1404,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             onTogglePreviewDisplayMode={handleTogglePreviewDisplayMode}
             hasExplicitlySliced={hasExplicitlySliced}
             currentCategory={currentCategory}
+            onAutoFitGrid={handleAutoFitGrid}
+            onResetUniformGrid={handleResetUniformGrid}
             onMouseDown={handleCanvasMouseDown}
             onDoubleClick={handleCanvasDoubleClick}
             onMouseMove={handleCanvasMouseMove}

@@ -7,6 +7,7 @@ import {
   Clapperboard,
   X,
   Grid,
+  Bot,
 } from 'lucide-react';
 import { ImageSegmenterCropper } from './ImageSegmenterCropper';
 import { AIPromptGenerator2D } from './AIPromptGenerator2D';
@@ -14,6 +15,7 @@ import { Character2DAssembler } from './Character2DAssembler';
 import { AutoGridSlicer3DAssembler } from './AutoGridSlicer3DAssembler';
 import { Map2DAssembler } from './Map2DAssembler';
 import { ActionSequence2DDirector } from './ActionSequence2DDirector';
+import { AIAntigravityDecomposerPanel } from './agent/AIAntigravityDecomposerPanel';
 import {
   Character2DAssembly,
   Character2DPartType,
@@ -34,7 +36,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'character' | 'grid_slicer' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -44,6 +46,10 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   const [mapPreset, setMapPreset] = useState<Map2DPreset>(
     DEFAULT_SAMPLE_MAPS_2D[0]
   );
+
+  // Transferred Sprite Sheet from Tab 0 (Antigravity AI Agent)
+  const [transferredSpriteSheetUrl, setTransferredSpriteSheetUrl] = useState<string | null>(null);
+  const [transferredCategoryId, setTransferredCategoryId] = useState<string | undefined>(undefined);
 
   if (!isOpen) return null;
 
@@ -301,6 +307,8 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               currentAssembly={characterAssembly}
               onApplyAssembly={setCharacterAssembly}
               onSwitchToAssemblyTab={() => setActiveTab('character')}
+              externalImageUrl={transferredSpriteSheetUrl}
+              externalCategoryId={transferredCategoryId}
             />
           )}
 
