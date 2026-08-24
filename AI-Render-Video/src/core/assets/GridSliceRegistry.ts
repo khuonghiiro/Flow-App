@@ -24,6 +24,25 @@ export interface GridCategoryDefinition {
 
 export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
   {
+    id: 'single_full_image',
+    label: '🖼️ Ảnh Đơn Hoàn Chỉnh (TẮT KHUNG LƯỚI - 1 Ảnh Duy Nhất)',
+    icon: 'Maximize2',
+    rows: 1,
+    cols: 1,
+    defaultKeyColor: '#ffffff',
+    description: 'Tắt hoàn toàn logic chia khung lưới. Coi toàn bộ bức ảnh tải lên là 1 vật thể/linh kiện đơn nhất hoàn chỉnh 100%, không bị cắt nhỏ.',
+    cells: [
+      {
+        row: 0,
+        col: 0,
+        label: 'Toàn Bộ Ảnh Hoàn Chỉnh (Full Single Image)',
+        partSlot: 'than_co_ban',
+        angle: 'front',
+        description: 'Toàn bộ bức ảnh hoàn chỉnh (100% width x 100% height)',
+      },
+    ],
+  },
+  {
     id: 'hair_multi_angle_grid',
     label: '💇 Bảng Tóc Đa Góc (4 Dãy × 5 Cột)',
     icon: 'Scissors',

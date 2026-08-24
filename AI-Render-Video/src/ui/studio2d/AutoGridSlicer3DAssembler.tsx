@@ -311,15 +311,17 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       }
     };
 
-    colDividers.forEach((x, c) => {
-      const isBorder = c === 0 || c === colDividers.length - 1;
-      drawDualDashLine(x, 0, x, canvas.height, isBorder);
-    });
+    if (currentCategory.id !== 'single_full_image') {
+      colDividers.forEach((x, c) => {
+        const isBorder = c === 0 || c === colDividers.length - 1;
+        drawDualDashLine(x, 0, x, canvas.height, isBorder);
+      });
 
-    rowDividers.forEach((y, r) => {
-      const isBorder = r === 0 || r === rowDividers.length - 1;
-      drawDualDashLine(0, y, canvas.width, y, isBorder);
-    });
+      rowDividers.forEach((y, r) => {
+        const isBorder = r === 0 || r === rowDividers.length - 1;
+        drawDualDashLine(0, y, canvas.width, y, isBorder);
+      });
+    }
     ctx.setLineDash([]);
     ctx.lineDashOffset = 0;
 
@@ -491,6 +493,121 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     setIsEraserOpen(true);
   };
 
+
+  // Pure In-Browser Client-Side Fast BFS Matting (0 Server Required, 10ms, Zero VRAM, Protects Eye Whites)
+  const handleFastBFSMatting = useCallback(() => {
+    const img = loadedImageRef.current;
+    if (!img) return;
+
+    setIsProcessing(true);
+    try {
+      // 1. Create canvas for full image
+      const fullCanvas = document.createElement('canvas');
+      fullCanvas.width = img.width;
+      fullCanvas.height = img.height;
+      const ctx = fullCanvas.getContext('2d');
+      if (!ctx) {
+        setIsProcessing(false);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0);
+
+      // 2. Run pure client-side Smart BFS Floodfill
+      processCellChromaAndDespeckle(ctx, img.width, img.height, {
+        keyColorType: keyColorType,
+        keyColorHex: keyColorHex,
+        isolationMode: 'outer_only', // Guarantees eye whites & inner white clothes are 100% preserved!
+        tolerance: tolerance || 38,
+        feather: feather || 1,
+        strokeWidth: strokeWidth || 0,
+        strokeColorHex: strokeColorHex || '#000000',
+        despeckleSize: despeckleSize || 18,
+        whiteSpeckleSensitivity: whiteSpeckleSensitivity || 45,
+        keepLargestIslandOnly: keepLargestIslandOnly || false,
+      });
+
+      const cleanDataUrl = fullCanvas.toDataURL('image/png');
+      const cleanImg = new Image();
+      cleanImg.onload = () => {
+        loadedImageRef.current = cleanImg;
+        setLoadedImage(cleanImg);
+        setUserUploadedImageUrl(cleanDataUrl);
+
+        // Slice cells
+        const pad = Math.max(0, paddingInset);
+        const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
+        const nextResults = new Map<string, string>();
+
+        for (const cell of currentCategory.cells) {
+          if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) continue;
+
+          const rawX0 = colDividers[cell.col];
+          const rawY0 = rowDividers[cell.row];
+          const rawW = colDividers[cell.col + 1] - rawX0;
+          const rawH = rowDividers[cell.row + 1] - rawY0;
+          const x0 = rawX0 + pad;
+          const y0 = rawY0 + pad;
+          const w = Math.max(10, rawW - pad * 2);
+          const h = Math.max(10, rawH - pad * 2);
+
+          const cellCanvas = document.createElement('canvas');
+          cellCanvas.width = w;
+          cellCanvas.height = h;
+          const cCtx = cellCanvas.getContext('2d');
+          if (!cCtx) continue;
+          cCtx.drawImage(cleanImg, x0, y0, w, h, 0, 0, w, h);
+          const cellDataUrl = cellCanvas.toDataURL('image/png');
+
+          const key = `${cell.row}_${cell.col}`;
+          nextResults.set(key, cellDataUrl);
+          slicedCanvasesRef.current.set(key, cellCanvas);
+
+          if (cell.partSlot) {
+            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
+            if (!updatedAssembly.parts[cell.partSlot]) {
+              updatedAssembly.parts[cell.partSlot] = {
+                path: cellDataUrl,
+                offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
+                scale: [1, 1],
+                rotation: 0,
+                pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
+                flipX: false,
+                flipY: false,
+                z_index: hierarchy?.defaultZ ?? 1,
+                z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
+                opacity: 1,
+                angles: {},
+              };
+            }
+            const part = updatedAssembly.parts[cell.partSlot]!;
+            if (cell.angle === 'front' || cell.col === 0) {
+              part.path = cellDataUrl;
+            }
+            if (cell.angle) {
+              if (!part.angles) part.angles = {};
+              part.angles[cell.angle] = cellDataUrl;
+            }
+          }
+        }
+
+        setSlicedResults(nextResults);
+        setHasExplicitlySliced(true);
+        setPreviewDisplayMode('transparent');
+        setAssemblySuccess(true);
+        onApplyAssembly(updatedAssembly);
+        if (threeEngineRef.current) {
+          threeEngineRef.current.setAssembly(updatedAssembly);
+        }
+        redrawCanvas();
+        setIsProcessing(false);
+      };
+      cleanImg.src = cleanDataUrl;
+    } catch (err: any) {
+      console.error('Fast BFS Matting error:', err);
+      setIsProcessing(false);
+    }
+  }, [keyColorType, keyColorHex, tolerance, feather, strokeWidth, strokeColorHex, despeckleSize, whiteSpeckleSensitivity, keepLargestIslandOnly, paddingInset, currentAssembly, currentCategory, colDividers, rowDividers, onApplyAssembly, redrawCanvas]);
 
   // AI Matting Handler (BiRefNet / ISNet-Anime on GPU)
   const handleRunAIMatting = async () => {
@@ -1012,6 +1129,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setAiScope={setAiScope}
           aiServerStatus={aiServerStatus}
           onRunAIMatting={handleRunAIMatting}
+          onRunFastBFSMatting={handleFastBFSMatting}
           isAIRunning={isAIRunning}
           despeckleSize={despeckleSize}
           setDespeckleSize={setDespeckleSize}

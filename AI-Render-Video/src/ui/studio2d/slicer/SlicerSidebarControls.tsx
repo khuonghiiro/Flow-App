@@ -50,6 +50,7 @@ export interface SlicerSidebarControlsProps {
   setAiScope?: (scope: 'full_image' | 'all' | 'selected') => void;
   aiServerStatus?: 'online' | 'offline' | 'checking';
   onRunAIMatting?: () => void;
+  onRunFastBFSMatting?: () => void;
   isAIRunning?: boolean;
   despeckleSize: number;
   setDespeckleSize: (size: number) => void;
@@ -105,6 +106,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   setAiScope,
   aiServerStatus = 'offline',
   onRunAIMatting,
+  onRunFastBFSMatting,
   isAIRunning = false,
   despeckleSize,
   setDespeckleSize,
@@ -160,7 +162,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Layers size={14} color="#38bdf8" /> 1. BẢNG LINH KIỆN CẦN CẮT
+            <Layers size={14} color="#38bdf8" /> 1. CHẾ ĐỘ XỬ LÝ ẢNH
           </div>
           <span
             style={{
@@ -168,13 +170,63 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               fontWeight: 700,
               padding: '2px 6px',
               borderRadius: 4,
-              background: 'rgba(56, 189, 248, 0.15)',
-              color: '#38bdf8',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
+              background: selectedCatId === 'single_full_image' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(56, 189, 248, 0.15)',
+              color: selectedCatId === 'single_full_image' ? '#4ade80' : '#38bdf8',
+              border: selectedCatId === 'single_full_image' ? '1px solid #22c55e' : '1px solid rgba(56, 189, 248, 0.3)',
             }}
           >
-            {currentCat.rows} Hàng × {currentCat.cols} Cột • {currentCat.cells.length} Ô
+            {selectedCatId === 'single_full_image' ? '🖼️ 1 Ảnh Đơn Hoàn Chỉnh' : `${currentCat.rows} Hàng × ${currentCat.cols} Cột`}
           </span>
+        </div>
+
+        {/* Nút Bật / Tắt Khung Lưới (Toggle Single Image vs Grid Slicer) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+          <button
+            onClick={() => onSelectCatId('single_full_image')}
+            style={{
+              padding: '7px 4px',
+              fontSize: 10,
+              fontWeight: 800,
+              borderRadius: 6,
+              border: selectedCatId === 'single_full_image' ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+              background: selectedCatId === 'single_full_image' ? 'linear-gradient(135deg, #15803d, #166534)' : 'rgba(0,0,0,0.3)',
+              color: selectedCatId === 'single_full_image' ? '#ffffff' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              boxShadow: selectedCatId === 'single_full_image' ? '0 2px 8px rgba(34, 197, 94, 0.4)' : 'none',
+            }}
+            title="Tắt khung lưới, xử lý toàn bộ bức ảnh tải lên như 1 vật thể hoàn chỉnh"
+          >
+            🖼️ ẢNH ĐƠN (TẮT LƯỚI)
+          </button>
+          <button
+            onClick={() => {
+              if (selectedCatId === 'single_full_image') {
+                onSelectCatId('hair_multi_angle_grid');
+              }
+            }}
+            style={{
+              padding: '7px 4px',
+              fontSize: 10,
+              fontWeight: 800,
+              borderRadius: 6,
+              border: selectedCatId !== 'single_full_image' ? '1.5px solid #0284c7' : '1px solid rgba(255,255,255,0.1)',
+              background: selectedCatId !== 'single_full_image' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'rgba(0,0,0,0.3)',
+              color: selectedCatId !== 'single_full_image' ? '#ffffff' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              boxShadow: selectedCatId !== 'single_full_image' ? '0 2px 8px rgba(2, 132, 199, 0.4)' : 'none',
+            }}
+            title="Bật khung lưới để cắt ảnh Sprite Sheet thành nhiều ô"
+          >
+            🔲 CẮT LƯỚI SPRITE
+          </button>
         </div>
 
         {/* Dropdown Category Selector */}
@@ -542,6 +594,32 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Nút Tách Nền Siêu Tốc BFS (Chạy Trực Tiếp Không Cần Server) */}
+            <button
+              onClick={onRunFastBFSMatting}
+              disabled={isProcessing}
+              style={{
+                width: '100%',
+                padding: '9px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                borderRadius: 6,
+                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                color: '#ffffff',
+                border: '1px solid rgba(56, 189, 248, 0.5)',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                boxShadow: '0 3px 10px rgba(2, 132, 199, 0.4)',
+              }}
+              title="Tách sạch nền 100% bằng thuật toán BFS loang từ viền, bảo vệ tròng trắng mắt và quần áo trắng, không cần bật Server Python"
+            >
+              <Sparkles size={14} />
+              ⚡ TÁCH NỀN SMART BFS (TRỰC TIẾP TRÊN TRÌNH DUYỆT)
+            </button>
 
             {/* Isolation Mode */}
             <div>
@@ -921,6 +999,37 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Nút Tách Nền Smart BFS Client-Side (Thay thế khi không muốn bật Server) */}
+            <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '7px 8px', borderRadius: 6, border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Sparkles size={12} /> ⚡ Chạy Ngay Trên Trình Duyệt (Không Cần Bật Server):
+              </div>
+              <div style={{ fontSize: 8.5, color: '#94a3b8', lineHeight: 1.4 }}>
+                Thuật toán loang từ viền ngoài vào trong (Perimeter BFS), bảo vệ 100% tròng trắng mắt & răng không bị thủng, xử lý trong 0.01s.
+              </div>
+              <button
+                onClick={onRunFastBFSMatting}
+                disabled={isProcessing}
+                style={{
+                  width: '100%',
+                  padding: '7px 10px',
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  borderRadius: 5,
+                  background: 'linear-gradient(135deg, #0284c7, #02537e)',
+                  color: '#fff',
+                  border: '1px solid #38bdf8',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                }}
+              >
+                ⚡ Bóc Tách BFS Trực Tiếp (0.01s • 0% VRAM)
+              </button>
             </div>
 
             {/* Run AI Button */}

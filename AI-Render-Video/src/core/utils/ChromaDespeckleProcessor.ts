@@ -31,54 +31,111 @@ export function processCellChromaAndDespeckle(
   const data = imgData.data;
   const totalPixels = width * height;
 
-  // 1. Resolve Target Key Color RGB
-  let targetR = 0, targetG = 255, targetB = 0;
-  if (options.keyColorType === 'pure_white') {
-    targetR = 255; targetG = 255; targetB = 255;
-  } else if (options.keyColorType === 'custom') {
-    const hex = options.keyColorHex.replace('#', '');
-    targetR = parseInt(hex.slice(0, 2), 16) || 0;
-    targetG = parseInt(hex.slice(2, 4), 16) || 255;
-    targetB = parseInt(hex.slice(4, 6), 16) || 0;
+  // 1. Auto-detect Background Color from 4 Corners & Borders if needed
+  let sampleR = 0, sampleG = 0, sampleB = 0, sampleCount = 0;
+  const sampleIndices = [
+    0, // Top-left
+    Math.min(totalPixels - 1, width - 1), // Top-right
+    Math.min(totalPixels - 1, (height - 1) * width), // Bottom-left
+    Math.min(totalPixels - 1, (height - 1) * width + width - 1), // Bottom-right
+    Math.min(totalPixels - 1, Math.floor(width / 2)), // Top-mid
+    Math.min(totalPixels - 1, (height - 1) * width + Math.floor(width / 2)), // Bottom-mid
+    Math.min(totalPixels - 1, Math.floor(height / 2) * width), // Left-mid
+    Math.min(totalPixels - 1, Math.floor(height / 2) * width + width - 1), // Right-mid
+  ];
+
+  for (const sIdx of sampleIndices) {
+    const p = sIdx * 4;
+    if (data[p + 3] >= 50) {
+      sampleR += data[p];
+      sampleG += data[p + 1];
+      sampleB += data[p + 2];
+      sampleCount++;
+    }
   }
 
-  const maxMetric = 441.67;
-  const threshold = (options.tolerance / 100) * maxMetric;
-  const isGreenKey = options.keyColorType === 'chroma_green' || (targetG > targetR + 40 && targetG > targetB + 40);
+  const avgR = sampleCount > 0 ? sampleR / sampleCount : 255;
+  const avgG = sampleCount > 0 ? sampleG / sampleCount : 255;
+  const avgB = sampleCount > 0 ? sampleB / sampleCount : 255;
 
-  // 2. Classify raw key matches per pixel
+  const isCornerPureWhite = avgR > 215 && avgG > 215 && avgB > 215;
+  const isCornerGreen = avgG > 90 && (avgG - Math.max(avgR, avgB)) > 25;
+
+  // Resolve Effective Mode
+  let effectiveMode = options.keyColorType;
+  if (options.keyColorType === 'chroma_green' && isCornerPureWhite) {
+    // User loaded a white image but keyColorType was left on chroma_green: auto-correct to pure_white!
+    effectiveMode = 'pure_white';
+  } else if (options.keyColorType === 'pure_white' && isCornerGreen) {
+    // User loaded a green image but keyColorType was pure_white: auto-correct to chroma_green!
+    effectiveMode = 'chroma_green';
+  }
+
+  // 2. Classify key pixels with strict channel protection (Prevents punching holes into cyan/blue/amber eyes)
   const isKeyPixel = new Uint8Array(totalPixels);
 
-  for (let i = 0; i < totalPixels; i++) {
-    const p = i * 4;
-    const a = data[p + 3];
-    if (a < 15) {
-      isKeyPixel[i] = 1;
-      continue;
-    }
-    const r = data[p];
-    const g = data[p + 1];
-    const b = data[p + 2];
+  if (effectiveMode === 'pure_white') {
+    // Strict White Background: ALL 3 channels (R, G, B) must be very bright (>= 235..248)
+    // Blue/Cyan eye sparkles have low R (50..180) -> NEVER MATCHED!
+    // Skin tone has lower G & B (G < 225, B < 210) -> NEVER MATCHED!
+    const tolFactor = Math.max(5, Math.min(60, options.tolerance || 38));
+    const whiteMinChannel = Math.max(220, 255 - Math.round(tolFactor * 0.45)); // e.g. 255 - 17 = 238
 
-    let metric = 0;
-    if (isGreenKey) {
-      const dist = Math.sqrt(r * r + (g - 255) * (g - 255) + b * b);
-      const greenDom = Math.max(0, g - Math.max(r, b));
-      metric = Math.max(0, dist - greenDom * 0.95);
-    } else if (options.keyColorType === 'pure_white') {
-      const dist = Math.sqrt((r - 255) * (r - 255) + (g - 255) * (g - 255) + (b - 255) * (b - 255));
-      const brightness = Math.min(r, Math.min(g, b));
-      metric = Math.max(0, dist - (brightness > 190 ? (brightness - 190) * 0.7 : 0));
-    } else {
-      metric = Math.sqrt(
-        Math.pow(r - targetR, 2) +
-        Math.pow(g - targetG, 2) +
-        Math.pow(b - targetB, 2)
-      );
-    }
+    for (let i = 0; i < totalPixels; i++) {
+      const p = i * 4;
+      if (data[p + 3] < 15) {
+        isKeyPixel[i] = 1;
+        continue;
+      }
+      const r = data[p];
+      const g = data[p + 1];
+      const b = data[p + 2];
 
-    if (metric <= threshold) {
-      isKeyPixel[i] = 1;
+      if (r >= whiteMinChannel && g >= whiteMinChannel && b >= whiteMinChannel) {
+        isKeyPixel[i] = 1;
+      }
+    }
+  } else if (effectiveMode === 'chroma_green') {
+    // Strict Chroma Green: Green must dominate BOTH Red and Blue
+    // Cyan/Blue eyes have Blue >= Green -> NEVER MATCHED!
+    const tolFactor = Math.max(5, Math.min(80, options.tolerance || 38));
+    const greenDiffMin = Math.max(18, 45 - Math.round(tolFactor * 0.35)); // e.g. 32
+
+    for (let i = 0; i < totalPixels; i++) {
+      const p = i * 4;
+      if (data[p + 3] < 15) {
+        isKeyPixel[i] = 1;
+        continue;
+      }
+      const r = data[p];
+      const g = data[p + 1];
+      const b = data[p + 2];
+
+      if (g > 95 && (g - Math.max(r, b)) >= greenDiffMin) {
+        isKeyPixel[i] = 1;
+      }
+    }
+  } else {
+    // Custom Hex Color
+    const hex = options.keyColorHex.replace('#', '');
+    const tR = parseInt(hex.slice(0, 2), 16) || 0;
+    const tG = parseInt(hex.slice(2, 4), 16) || 255;
+    const tB = parseInt(hex.slice(4, 6), 16) || 0;
+    const maxThreshold = ((options.tolerance || 38) / 100) * 200;
+
+    for (let i = 0; i < totalPixels; i++) {
+      const p = i * 4;
+      if (data[p + 3] < 15) {
+        isKeyPixel[i] = 1;
+        continue;
+      }
+      const r = data[p];
+      const g = data[p + 1];
+      const b = data[p + 2];
+      const dist = Math.sqrt((r - tR) * (r - tR) + (g - tG) * (g - tG) + (b - tB) * (b - tB));
+      if (dist <= maxThreshold) {
+        isKeyPixel[i] = 1;
+      }
     }
   }
 
@@ -86,10 +143,10 @@ export function processCellChromaAndDespeckle(
   const isTransparent = new Uint8Array(totalPixels);
 
   if (options.isolationMode === 'outer_only') {
-    // BFS Flood Fill from the 4 outer borders and pre-existing transparent areas
+    // BFS Flood Fill strictly starting from the 4 outer perimeter edges
     const queue: number[] = [];
 
-    // Pre-seed with any existing transparent pixels (for cumulative / multi-pass keying)
+    // Pre-seed existing transparent pixels
     for (let i = 0; i < totalPixels; i++) {
       if (data[i * 4 + 3] < 15) {
         isTransparent[i] = 1;
@@ -97,7 +154,7 @@ export function processCellChromaAndDespeckle(
       }
     }
 
-    // Top & Bottom edges
+    // Top & Bottom perimeter edges
     for (let x = 0; x < width; x++) {
       const topIdx = x;
       const bottomIdx = (height - 1) * width + x;
@@ -111,7 +168,7 @@ export function processCellChromaAndDespeckle(
       }
     }
 
-    // Left & Right edges
+    // Left & Right perimeter edges
     for (let y = 0; y < height; y++) {
       const leftIdx = y * width;
       const rightIdx = y * width + (width - 1);
@@ -146,7 +203,6 @@ export function processCellChromaAndDespeckle(
       }
     }
   } else {
-    // Mode "all": remove all key pixels everywhere (inside and outside)
     for (let i = 0; i < totalPixels; i++) {
       if (isKeyPixel[i]) {
         isTransparent[i] = 1;
@@ -154,7 +210,7 @@ export function processCellChromaAndDespeckle(
     }
   }
 
-  // Apply initial transparency
+  // Apply transparency to outer background
   for (let i = 0; i < totalPixels; i++) {
     if (isTransparent[i]) {
       data[i * 4 + 3] = 0;
@@ -221,7 +277,7 @@ export function processCellChromaAndDespeckle(
           data[p + 3] = Math.round(data[p + 3] * smoothAlpha);
 
           // Green despill on remaining soft edge pixels
-          if (isGreenKey) {
+          if (effectiveMode === 'chroma_green') {
             const r = data[p], g = data[p + 1], b = data[p + 2];
             const maxRB = Math.max(r, b);
             if (g > maxRB) {
