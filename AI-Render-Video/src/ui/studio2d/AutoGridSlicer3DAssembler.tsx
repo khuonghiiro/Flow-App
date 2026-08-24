@@ -50,6 +50,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('outer_only');
   const [tolerance, setTolerance] = useState<number>(38);
   const [feather, setFeather] = useState<number>(1);
+  const [shadowRetention, setShadowRetention] = useState<number>(0);
   const [strokeWidth, setStrokeWidth] = useState<number>(0);
   const [strokeColorHex, setStrokeColorHex] = useState<string>('#000000');
   const [bgCleanupSubTab, setBgCleanupSubTab] = useState<'chroma' | 'despeckle' | 'ai_matting'>('chroma');
@@ -57,10 +58,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [aiScope, setAiScope] = useState<'full_image' | 'all' | 'selected'>('full_image');
   const [aiServerStatus, setAiServerStatus] = useState<'online' | 'offline' | 'checking'>('checking');
   const [isAIRunning, setIsAIRunning] = useState<boolean>(false);
-  const [despeckleSize, setDespeckleSize] = useState<number>(18);
-  const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(45);
+  const [despeckleSize, setDespeckleSize] = useState<number>(0);
+  const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(0);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
   const [isCumulativeProcessing, setIsCumulativeProcessing] = useState<boolean>(false);
+
+  // Advanced Despeckle, Color Defringe & Edge Smoothing states
+  const [eyedropperTarget, setEyedropperTarget] = useState<'chroma' | 'fringe'>('chroma');
+  const [cleanupMode, setCleanupMode] = useState<'all' | 'defringe' | 'smooth' | 'despeckle'>('all');
+  const [fringeColorType, setFringeColorType] = useState<'chroma_green' | 'pure_white' | 'pure_black' | 'custom'>('chroma_green');
+  const [fringeColorHex, setFringeColorHex] = useState<string>('#00ff00');
+  const [defringeStrength, setDefringeStrength] = useState<number>(60);
+  const [edgeChoke, setEdgeChoke] = useState<number>(0);
+  const [edgeSmooth, setEdgeSmooth] = useState<number>(2);
 
   // Sync snapshot when cumulative mode is toggled
   const toggleCumulativeProcessing = (enabled: boolean) => {
@@ -199,7 +209,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     }
   }, [currentAssembly]);
 
-  // Load Sprite Sheet Image
+  // Load Sprite Sheet Image (Only runs when uploaded image URL actually changes)
   useEffect(() => {
     if (!userUploadedImageUrl) {
       loadedImageRef.current = null;
@@ -237,10 +247,25 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     };
 
     img.src = userUploadedImageUrl;
-  }, [userUploadedImageUrl, currentCategory, initUniformDividers]);
+  }, [userUploadedImageUrl]);
+
+  // Handle Category / Mode Switching (Single Image vs Grid Sprite)
+  const handleSelectCatId = useCallback((newCatId: string) => {
+    setSelectedCatId(newCatId);
+    const cat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
+    const img = loadedImage || loadedImageRef.current;
+    if (img) {
+      initUniformDividers(img.width, img.height, cat.cols, cat.rows);
+    }
+    setSelectedCell(null);
+    setHasExplicitlySliced(false);
+    slicedCanvasesRef.current.clear();
+    setSlicedResults(new Map());
+    setPreviewDisplayMode('original');
+  }, [loadedImage, initUniformDividers]);
 
   // Redraw Canvas & Grid Dividers
-  const redrawCanvas = useCallback(() => {
+  const redrawCanvas = useCallback((modeOverride?: 'transparent' | 'original') => {
     const canvas = imageCanvasRef.current;
     const img = loadedImage || loadedImageRef.current;
     if (!canvas || !img) return;
@@ -255,7 +280,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (previewDisplayMode === 'transparent' && hasExplicitlySliced) {
+    const effectiveMode = modeOverride ?? previewDisplayMode;
+
+    if (effectiveMode === 'transparent' && (hasExplicitlySliced || slicedCanvasesRef.current.size > 0)) {
       // Checkerboard transparency pattern
       const size = 16;
       for (let x = 0; x < canvas.width; x += size) {
@@ -265,67 +292,82 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         }
       }
 
-      currentCategory.cells.forEach((cell) => {
-        const key = `${cell.row}_${cell.col}`;
-        const cellCanvas = slicedCanvasesRef.current.get(key);
-        if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+      if (currentCategory.id === 'single_full_image') {
+        const singleCanvas = slicedCanvasesRef.current.get('0_0');
+        if (singleCanvas) {
           const pad = Math.max(0, paddingInset);
-          const rawX0 = colDividers[cell.col];
-          const rawY0 = rowDividers[cell.row];
-          const rawW = colDividers[cell.col + 1] - rawX0;
-          const rawH = rowDividers[cell.row + 1] - rawY0;
-          const x0 = rawX0 + pad;
-          const y0 = rawY0 + pad;
-          const w = Math.max(10, rawW - pad * 2);
-          const h = Math.max(10, rawH - pad * 2);
-          ctx.drawImage(cellCanvas, x0, y0, w, h);
+          const x0 = pad;
+          const y0 = pad;
+          const w = Math.max(10, canvas.width - pad * 2);
+          const h = Math.max(10, canvas.height - pad * 2);
+          ctx.drawImage(singleCanvas, x0, y0, w, h);
         }
-      });
+      } else {
+        currentCategory.cells.forEach((cell) => {
+          const key = `${cell.row}_${cell.col}`;
+          const cellCanvas = slicedCanvasesRef.current.get(key);
+          if (cellCanvas) {
+            const pad = Math.max(0, paddingInset);
+            let x0 = 0, y0 = 0, w = canvas.width, h = canvas.height;
+            if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+              const rawX0 = colDividers[cell.col];
+              const rawY0 = rowDividers[cell.row];
+              const rawW = colDividers[cell.col + 1] - rawX0;
+              const rawH = rowDividers[cell.row + 1] - rawY0;
+              x0 = rawX0 + pad;
+              y0 = rawY0 + pad;
+              w = Math.max(10, rawW - pad * 2);
+              h = Math.max(10, rawH - pad * 2);
+            }
+            ctx.drawImage(cellCanvas, x0, y0, w, h);
+          }
+        });
+      }
     } else {
       ctx.drawImage(img, 0, 0);
     }
 
-    // Draw Grid Lines (Alternating Black & White Dashes for 100% Contrast on Any Background)
-    const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
-      if (isBorder) {
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([]);
-        ctx.strokeStyle = '#000000';
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = '#38bdf8';
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      } else {
-        // Pass 1: Solid Black Base Dash
-        ctx.lineWidth = 2.0;
-        ctx.strokeStyle = '#000000';
-        ctx.setLineDash([6, 6]);
-        ctx.lineDashOffset = 0;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-
-        // Pass 2: Interleaved White Dash
-        ctx.lineWidth = 2.0;
-        ctx.strokeStyle = '#ffffff';
-        ctx.setLineDash([6, 6]);
-        ctx.lineDashOffset = 6;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-    };
-
+    // Draw Grid Lines (ONLY when NOT single full image)
     if (currentCategory.id !== 'single_full_image') {
+      const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
+        if (isBorder) {
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([]);
+          ctx.strokeStyle = '#000000';
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+
+          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        } else {
+          // Pass 1: Solid Black Base Dash
+          ctx.lineWidth = 2.0;
+          ctx.strokeStyle = '#000000';
+          ctx.setLineDash([6, 6]);
+          ctx.lineDashOffset = 0;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+
+          // Pass 2: Interleaved White Dash
+          ctx.lineWidth = 2.0;
+          ctx.strokeStyle = '#ffffff';
+          ctx.setLineDash([6, 6]);
+          ctx.lineDashOffset = 6;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+      };
+
       colDividers.forEach((x, c) => {
         const isBorder = c === 0 || c === colDividers.length - 1;
         drawDualDashLine(x, 0, x, canvas.height, isBorder);
@@ -335,30 +377,30 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         const isBorder = r === 0 || r === rowDividers.length - 1;
         drawDualDashLine(0, y, canvas.width, y, isBorder);
       });
-    }
-    ctx.setLineDash([]);
-    ctx.lineDashOffset = 0;
-
-    // Highlight Selected Cell with High-Contrast Dual Stroke
-    if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
-      const x0 = colDividers[selectedCell.col];
-      const y0 = rowDividers[selectedCell.row];
-      const w = colDividers[selectedCell.col + 1] - x0;
-      const h = rowDividers[selectedCell.row + 1] - y0;
-
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
-      ctx.fillRect(x0, y0, w, h);
-
-      // Outer black border
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3.5;
       ctx.setLineDash([]);
-      ctx.strokeRect(x0, y0, w, h);
+      ctx.lineDashOffset = 0;
 
-      // Inner glowing cyan border
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2.0;
-      ctx.strokeRect(x0, y0, w, h);
+      // Highlight Selected Cell with High-Contrast Dual Stroke
+      if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
+        const x0 = colDividers[selectedCell.col];
+        const y0 = rowDividers[selectedCell.row];
+        const w = colDividers[selectedCell.col + 1] - x0;
+        const h = rowDividers[selectedCell.row + 1] - y0;
+
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+        ctx.fillRect(x0, y0, w, h);
+
+        // Outer black border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3.5;
+        ctx.setLineDash([]);
+        ctx.strokeRect(x0, y0, w, h);
+
+        // Inner glowing cyan border
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.0;
+        ctx.strokeRect(x0, y0, w, h);
+      }
     }
   }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults, paddingInset]);
 
@@ -382,12 +424,20 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       if (ctx && mouseX >= 0 && mouseX < canvas.width && mouseY >= 0 && mouseY < canvas.height) {
         const pixel = ctx.getImageData(Math.floor(mouseX), Math.floor(mouseY), 1, 1).data;
         const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
-        setKeyColorType('custom');
-        setKeyColorHex(hex);
         setIsEyedropperActive(false);
         setEyedropperHoverColor(null);
-        if (hasExplicitlySliced) {
-          handleAutoSliceAndAssemble({ keyColorType: 'custom', keyColorHex: hex });
+        if (eyedropperTarget === 'fringe') {
+          setFringeColorType('custom');
+          setFringeColorHex(hex);
+          if (hasExplicitlySliced) {
+            handleAutoSliceAndAssemble({ fringeColorType: 'custom', fringeColorHex: hex });
+          }
+        } else {
+          setKeyColorType('custom');
+          setKeyColorHex(hex);
+          if (hasExplicitlySliced) {
+            handleAutoSliceAndAssemble({ keyColorType: 'custom', keyColorHex: hex });
+          }
         }
       }
       return;
@@ -915,6 +965,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
     const effTol = overrides?.tolerance !== undefined ? overrides.tolerance : tolerance;
     const effFeather = overrides?.feather !== undefined ? overrides.feather : feather;
+    const effShadowRetention = overrides?.shadowRetention !== undefined ? overrides.shadowRetention : shadowRetention;
     const effStrokeW = overrides?.strokeWidth !== undefined ? overrides.strokeWidth : strokeWidth;
     const effStrokeColor = overrides?.strokeColorHex !== undefined ? overrides.strokeColorHex : strokeColorHex;
     const effKeyType = overrides?.keyColorType !== undefined ? overrides.keyColorType : keyColorType;
@@ -923,6 +974,20 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const effDespeckle = overrides?.despeckleSize !== undefined ? overrides.despeckleSize : despeckleSize;
     const effWhiteSens = overrides?.whiteSpeckleSensitivity !== undefined ? overrides.whiteSpeckleSensitivity : whiteSpeckleSensitivity;
     const effKeepLargest = overrides?.keepLargestIslandOnly !== undefined ? overrides.keepLargestIslandOnly : keepLargestIslandOnly;
+    const effFringeType = overrides?.fringeColorType !== undefined ? overrides.fringeColorType : fringeColorType;
+    const effFringeHex = overrides?.fringeColorHex !== undefined ? overrides.fringeColorHex : fringeColorHex;
+    const effDefringe = overrides?.defringeStrength !== undefined ? overrides.defringeStrength : defringeStrength;
+    const effChoke = overrides?.edgeChoke !== undefined ? overrides.edgeChoke : edgeChoke;
+    const effSmooth = overrides?.edgeSmooth !== undefined ? overrides.edgeSmooth : edgeSmooth;
+    const effCleanupMode = overrides?.cleanupMode !== undefined ? overrides.cleanupMode : cleanupMode;
+
+    const isDespeckleTab = overrides?.cleanupMode !== undefined || overrides?.defringeStrength !== undefined || overrides?.edgeChoke !== undefined || overrides?.edgeSmooth !== undefined || overrides?.despeckleSize !== undefined || bgCleanupSubTab === 'despeckle';
+    const activeDefringe = isDespeckleTab ? effDefringe : (overrides?.defringeStrength ?? 0);
+    const activeChoke = isDespeckleTab ? effChoke : (overrides?.edgeChoke ?? 0);
+    const activeSmooth = isDespeckleTab ? effSmooth : (overrides?.edgeSmooth ?? 0);
+    const activeDespeckle = isDespeckleTab ? effDespeckle : (overrides?.despeckleSize ?? 0);
+    const activeWhiteSens = isDespeckleTab ? effWhiteSens : (overrides?.whiteSpeckleSensitivity ?? 0);
+    const activeKeepLargest = isDespeckleTab ? effKeepLargest : (overrides?.keepLargestIslandOnly ?? false);
 
     setIsProcessing(true);
     setTimeout(() => {
@@ -930,13 +995,17 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
 
       currentCategory.cells.forEach((cell) => {
-        if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) return;
+        let rawX0 = 0, rawY0 = 0, rawW = img.width, rawH = img.height;
+        if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+          rawX0 = colDividers[cell.col];
+          rawY0 = rowDividers[cell.row];
+          rawW = colDividers[cell.col + 1] - rawX0;
+          rawH = rowDividers[cell.row + 1] - rawY0;
+        } else if (currentCategory.id !== 'single_full_image') {
+          return;
+        }
 
         const pad = Math.max(0, paddingInset);
-        const rawX0 = colDividers[cell.col];
-        const rawY0 = rowDividers[cell.row];
-        const rawW = colDividers[cell.col + 1] - rawX0;
-        const rawH = rowDividers[cell.row + 1] - rawY0;
         const x0 = rawX0 + pad;
         const y0 = rawY0 + pad;
         const w = Math.max(10, rawW - pad * 2);
@@ -959,18 +1028,25 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
         }
 
-        // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with latest effective values
+        // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with strict Tab-Isolated values
         processCellChromaAndDespeckle(ctx, w, h, {
           keyColorType: effKeyType,
           keyColorHex: effKeyHex,
           isolationMode: effIsoMode,
           tolerance: effTol,
           feather: effFeather,
+          shadowRetention: effShadowRetention,
           strokeWidth: effStrokeW,
           strokeColorHex: effStrokeColor,
-          despeckleSize: effDespeckle,
-          whiteSpeckleSensitivity: effWhiteSens,
-          keepLargestIslandOnly: effKeepLargest,
+          despeckleSize: activeDespeckle,
+          whiteSpeckleSensitivity: activeWhiteSens,
+          keepLargestIslandOnly: activeKeepLargest,
+          fringeColorType: effFringeType,
+          fringeColorHex: effFringeHex,
+          defringeStrength: activeDefringe,
+          edgeChoke: activeChoke,
+          edgeSmooth: activeSmooth,
+          cleanupMode: effCleanupMode,
         });
 
         const dataUrl = cellCanvas.toDataURL('image/png');
@@ -1022,7 +1098,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       if (threeEngineRef.current) {
         threeEngineRef.current.setAssembly(updatedAssembly);
       }
-      redrawCanvas();
+      redrawCanvas('transparent');
     }, 20);
   }, [
     currentAssembly,
@@ -1129,6 +1205,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     }
   };
 
+  const handleTogglePreviewDisplayMode = useCallback((mode: 'transparent' | 'original') => {
+    setPreviewDisplayMode(mode);
+    if (mode === 'transparent') {
+      if (!hasExplicitlySliced || slicedCanvasesRef.current.size === 0) {
+        handleAutoSliceAndAssemble();
+      } else {
+        redrawCanvas('transparent');
+      }
+    } else {
+      redrawCanvas('original');
+    }
+  }, [hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
       {/* Main 3-Column Studio Grid: 410px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
@@ -1136,7 +1225,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         {/* Left Column: Slicer Controls & Filters */}
         <SlicerSidebarControls
           selectedCatId={selectedCatId}
-          onSelectCatId={setSelectedCatId}
+          onSelectCatId={handleSelectCatId}
           userUploadedImageUrl={userUploadedImageUrl}
           onFileUpload={(e) => {
             const file = e.target.files?.[0];
@@ -1185,6 +1274,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setTolerance={setTolerance}
           feather={feather}
           setFeather={setFeather}
+          shadowRetention={shadowRetention}
+          setShadowRetention={setShadowRetention}
           strokeWidth={strokeWidth}
           setStrokeWidth={setStrokeWidth}
           strokeColorHex={strokeColorHex}
@@ -1205,6 +1296,23 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setWhiteSpeckleSensitivity={setWhiteSpeckleSensitivity}
           keepLargestIslandOnly={keepLargestIslandOnly}
           setKeepLargestIslandOnly={setKeepLargestIslandOnly}
+          eyedropperTarget={eyedropperTarget}
+          setEyedropperTarget={setEyedropperTarget}
+          cleanupMode={cleanupMode}
+          setCleanupMode={setCleanupMode}
+          fringeColorType={fringeColorType}
+          setFringeColorType={setFringeColorType}
+          fringeColorHex={fringeColorHex}
+          setFringeColorHex={setFringeColorHex}
+          defringeStrength={defringeStrength}
+          setDefringeStrength={setDefringeStrength}
+          edgeChoke={edgeChoke}
+          setEdgeChoke={setEdgeChoke}
+          edgeSmooth={edgeSmooth}
+          setEdgeSmooth={setEdgeSmooth}
+          onRunDespeckleOnly={() => {
+            handleAutoSliceAndAssemble();
+          }}
           isCumulativeProcessing={isCumulativeProcessing}
           setIsCumulativeProcessing={toggleCumulativeProcessing}
           onResetToRawSlices={handleResetToRawSlices}
@@ -1242,9 +1350,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             imageCanvasRef={imageCanvasRef}
             hasImage={!!loadedImage}
             isEyedropperActive={isEyedropperActive}
+            eyedropperTarget={eyedropperTarget}
             eyedropperHoverColor={eyedropperHoverColor}
             previewDisplayMode={previewDisplayMode}
             setPreviewDisplayMode={setPreviewDisplayMode}
+            onTogglePreviewDisplayMode={handleTogglePreviewDisplayMode}
             hasExplicitlySliced={hasExplicitlySliced}
             currentCategory={currentCategory}
             onMouseDown={handleCanvasMouseDown}

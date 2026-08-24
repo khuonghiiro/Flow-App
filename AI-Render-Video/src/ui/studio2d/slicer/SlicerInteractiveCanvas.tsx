@@ -6,9 +6,11 @@ interface SlicerInteractiveCanvasProps {
   imageCanvasRef: React.RefObject<HTMLCanvasElement>;
   hasImage?: boolean;
   isEyedropperActive?: boolean;
+  eyedropperTarget?: 'chroma' | 'fringe';
   eyedropperHoverColor?: { hex: string; r: number; g: number; b: number; x: number; y: number } | null;
   previewDisplayMode: 'transparent' | 'original';
   setPreviewDisplayMode: (mode: 'transparent' | 'original') => void;
+  onTogglePreviewDisplayMode?: (mode: 'transparent' | 'original') => void;
   hasExplicitlySliced: boolean;
   currentCategory: GridCategoryDefinition;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -22,9 +24,11 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   imageCanvasRef,
   hasImage = false,
   isEyedropperActive = false,
+  eyedropperTarget = 'chroma',
   eyedropperHoverColor = null,
   previewDisplayMode,
   setPreviewDisplayMode,
+  onTogglePreviewDisplayMode,
   hasExplicitlySliced,
   currentCategory,
   onMouseDown,
@@ -33,6 +37,14 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   onMouseLeave,
   onMouseUp,
 }) => {
+  const handleModeClick = (mode: 'transparent' | 'original') => {
+    if (onTogglePreviewDisplayMode) {
+      onTogglePreviewDisplayMode(mode);
+    } else {
+      setPreviewDisplayMode(mode);
+    }
+  };
+
   return (
     <div
       style={{
@@ -46,54 +58,61 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
         border: '1px solid rgba(255,255,255,0.08)',
         minHeight: 0,
         overflow: 'hidden',
+        fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
       }}
     >
       {/* Top Canvas Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Layers size={13} /> Khung Lưới Cắt ({currentCategory.rows} Hàng × {currentCategory.cols} Cột)
+          <Layers size={13} /> {currentCategory.id === 'single_full_image' ? '🖼️ Chế độ ảnh đơn (Đã tắt khung lưới)' : `Khung lưới cắt (${currentCategory.rows} hàng × ${currentCategory.cols} cột)`}
         </div>
 
         {/* Preview Mode Toggle */}
         <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
           <button
-            onClick={() => setPreviewDisplayMode('transparent')}
-            disabled={!hasExplicitlySliced || !hasImage}
+            onClick={() => handleModeClick('transparent')}
+            disabled={!hasImage}
             style={{
-              padding: '3px 7px',
-              fontSize: 9.5,
+              padding: '4px 9px',
+              fontSize: 10,
               fontWeight: 600,
               borderRadius: 4,
               background: previewDisplayMode === 'transparent' ? '#0284c7' : 'transparent',
-              color: previewDisplayMode === 'transparent' ? '#ffffff' : hasExplicitlySliced && hasImage ? '#94a3b8' : '#475569',
-              border: 'none',
-              cursor: hasExplicitlySliced && hasImage ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <Layers size={11} /> 🏁 Đã Tách Nền
-          </button>
-
-          <button
-            onClick={() => setPreviewDisplayMode('original')}
-            disabled={!hasImage}
-            style={{
-              padding: '3px 7px',
-              fontSize: 9.5,
-              fontWeight: 600,
-              borderRadius: 4,
-              background: previewDisplayMode === 'original' && hasImage ? '#0284c7' : 'transparent',
-              color: hasImage ? (previewDisplayMode === 'original' ? '#ffffff' : '#94a3b8') : '#475569',
-              border: 'none',
+              color: previewDisplayMode === 'transparent' ? '#ffffff' : hasImage ? '#94a3b8' : '#475569',
+              border: previewDisplayMode === 'transparent' ? '1px solid #38bdf8' : '1px solid transparent',
               cursor: hasImage ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               gap: 4,
+              boxShadow: previewDisplayMode === 'transparent' ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
+              transition: 'all 0.15s ease',
             }}
+            title="Xem kết quả sau khi đã bóc tách nền (trong suốt)"
           >
-            <Eye size={11} /> 👁️ Ảnh Gốc
+            <Layers size={12} /> 🏁 Đã tách nền
+          </button>
+
+          <button
+            onClick={() => handleModeClick('original')}
+            disabled={!hasImage}
+            style={{
+              padding: '4px 9px',
+              fontSize: 10,
+              fontWeight: 600,
+              borderRadius: 4,
+              background: previewDisplayMode === 'original' && hasImage ? '#0284c7' : 'transparent',
+              color: hasImage ? (previewDisplayMode === 'original' ? '#ffffff' : '#94a3b8') : '#475569',
+              border: previewDisplayMode === 'original' && hasImage ? '1px solid #38bdf8' : '1px solid transparent',
+              cursor: hasImage ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              boxShadow: previewDisplayMode === 'original' && hasImage ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+            title="Xem bức ảnh gốc ban đầu"
+          >
+            <Eye size={12} /> 👁️ Ảnh gốc
           </button>
         </div>
       </div>
@@ -123,10 +142,10 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               left: '50%',
               transform: 'translateX(-50%)',
               background: 'rgba(15, 23, 42, 0.94)',
-              border: '1.5px solid #f59e0b',
+              border: eyedropperTarget === 'fringe' ? '1.5px solid #10b981' : '1.5px solid #f59e0b',
               borderRadius: 20,
               padding: '5px 14px',
-              color: '#fef08a',
+              color: eyedropperTarget === 'fringe' ? '#a7f3d0' : '#fef08a',
               fontSize: 10.5,
               fontWeight: 600,
               boxShadow: '0 4px 20px rgba(0,0,0,0.7), 0 0 12px rgba(245,158,11,0.3)',
@@ -138,7 +157,11 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
             }}
           >
-            <span>🎯 Chế độ hút màu: Rê chuột lên ảnh và nhấp chuột để chọn mã màu nền</span>
+            <span>
+              {eyedropperTarget === 'fringe'
+                ? '🎯 Chế độ hút màu viền rác: Rê chuột và nhấp vào vùng viền sượng/sạn để chọn màu khử'
+                : '🎯 Chế độ hút màu nền: Rê chuột lên ảnh và nhấp chuột để chọn mã màu nền cần tách'}
+            </span>
           </div>
         )}
 
