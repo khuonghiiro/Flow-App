@@ -22,7 +22,7 @@ import { MultiAngleTunerModal } from './MultiAngleTunerModal';
 import { saveCustomResourceKit } from '../../core/assets/CharacterKitStorage';
 import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
 import { detectAndFitGridDividers } from '../../core/utils/GridAutoFitDetector';
-import { PART_HIERARCHY_CONFIG } from '../../core/assets/Asset2DRegistry';
+import { PART_HIERARCHY_CONFIG, parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Asset2DRegistry';
 
 // Subcomponents
 import { SlicerSidebarControls } from './slicer/SlicerSidebarControls';
@@ -115,6 +115,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   // User upload & Slicing state
   const [userUploadedImageUrl, setUserUploadedImageUrl] = useState<string | null>(null);
+  const [uploadedFileMetadata, setUploadedFileMetadata] = useState<ParsedPartFilenameInfo | null>(null);
   const [slicedResults, setSlicedResults] = useState<Map<string, string>>(new Map());
   const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -148,6 +149,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   // Listen to external image transferred from Tab 0 (Antigravity Decomposer)
   useEffect(() => {
     if (externalImageUrl) {
+      const meta = parsePartFilename(externalImageUrl);
+      setUploadedFileMetadata(meta);
       setUserUploadedImageUrl(externalImageUrl);
       setHasExplicitlySliced(false);
       setSlicedResults(new Map());
@@ -1572,6 +1575,52 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
+      {/* Smart Metadata Auto-Recognition Banner */}
+      {uploadedFileMetadata && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '5px 12px',
+            background: 'linear-gradient(90deg, rgba(2, 132, 199, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%)',
+            borderRadius: 6,
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            fontSize: 11,
+            color: '#e0f2fe',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 800, color: '#38bdf8' }}>🏷️ TỰ ĐỘNG NHẬN DIỆN TỆP:</span>
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                color: '#fff',
+                padding: '2px 8px',
+                borderRadius: 4,
+                fontWeight: 700,
+                fontSize: 11,
+              }}
+            >
+              {uploadedFileMetadata.part_name} ({uploadedFileMetadata.part_id})
+            </span>
+            <span style={{ color: '#bae6fd' }}>
+              • Góc quay: <b style={{ color: '#fff' }}>{uploadedFileMetadata.angle_name}</b>
+            </span>
+            <span style={{ color: '#cbd5e1' }}>
+              • Nhóm: <b style={{ color: '#a78bfa' }}>{uploadedFileMetadata.group_name}</b>
+            </span>
+            <span style={{ color: '#cbd5e1' }}>
+              • Thứ tự Z-Index: <b style={{ color: '#34d399' }}>Lớp {uploadedFileMetadata.z_index}</b>
+            </span>
+          </div>
+          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>
+            Tên tệp chuẩn: {uploadedFileMetadata.save_filename}
+          </span>
+        </div>
+      )}
+
       {/* Main 3-Column Studio Grid: 410px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '410px 1fr 380px', gap: 10, minHeight: 0 }}>
         {/* Left Column: Slicer Controls & Filters */}
@@ -1586,6 +1635,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             const file = e.target.files?.[0];
             if (file) {
               pushUndoState('Tải ảnh mới');
+              const meta = parsePartFilename(file.name);
+              setUploadedFileMetadata(meta);
               const url = URL.createObjectURL(file);
               setUserUploadedImageUrl(url);
               setHasExplicitlySliced(false);

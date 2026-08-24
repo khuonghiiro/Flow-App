@@ -96,6 +96,10 @@ export const AIPromptGenerator2D: React.FC = () => {
   const [step2Angle, setStep2Angle] = useState<'front' | 'three_quarter' | 'profile_side' | 'back' | 'high_angle' | 'low_angle'>('front');
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
 
+  // Banana Pro JSON options
+  const [includeBasePrompt, setIncludeBasePrompt] = useState<boolean>(true);
+  const [jsonExportScope, setJsonExportScope] = useState<'component_all_angles' | 'single_angle' | 'group_all_parts'>('component_all_angles');
+
   // Master Character & Part Config State
   const [config, setConfig] = useState<AIPartPromptConfig>({
     workflow_step: 'step1_master_character',
@@ -164,9 +168,45 @@ export const AIPromptGenerator2D: React.FC = () => {
       workflowTab === 'step2_decomposed_parts' && step2Layout === 'single_isolated_1x1'
         ? '1:1'
         : '16:9',
+    include_base_prompt: includeBasePrompt,
+    json_scope: jsonExportScope === 'single_angle' ? 'single_angle' : 'all_angles',
   };
 
   const promptResult: AIPromptResult = buildAIPromptForPart(effectiveConfig);
+
+  const activeGroup = CHARACTER_PART_GROUPS.find((g) => g.items.some((it) => it.id === selectedTag)) || CHARACTER_PART_GROUPS[0];
+
+  const getGroupBananaProJSON = () => {
+    const groupPrompts: any[] = [];
+    activeGroup.items.forEach((item) => {
+      const itemConfig: AIPartPromptConfig = {
+        ...effectiveConfig,
+        part_type: item.id,
+        json_scope: 'all_angles',
+      };
+      const res = buildAIPromptForPart(itemConfig);
+      try {
+        const parsed = JSON.parse(res.promptJSON);
+        if (Array.isArray(parsed.prompts)) {
+          groupPrompts.push(...parsed.prompts);
+        }
+      } catch (e) {
+        // ignore
+      }
+    });
+
+    const baseRef = buildAIPromptForPart({ ...effectiveConfig, part_type: selectedTag, include_base_prompt: true }).promptJSON;
+    let baseText = '';
+    try {
+      const parsed = JSON.parse(baseRef);
+      baseText = parsed.base_prompt || '';
+    } catch (e) {}
+
+    if (includeBasePrompt && baseText) {
+      return JSON.stringify({ base_prompt: baseText, prompts: groupPrompts }, null, 2);
+    }
+    return JSON.stringify({ prompts: groupPrompts }, null, 2);
+  };
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -217,7 +257,12 @@ export const AIPromptGenerator2D: React.FC = () => {
   const getActivePromptText = () => {
     if (workflowTab === 'step3_actions') return currentAction.promptVi;
     if (promptFormatTab === 'en') return promptResult.promptEnglish;
-    if (promptFormatTab === 'json') return promptResult.promptJSON;
+    if (promptFormatTab === 'json') {
+      if (workflowTab === 'step2_decomposed_parts' && jsonExportScope === 'group_all_parts') {
+        return getGroupBananaProJSON();
+      }
+      return promptResult.promptJSON;
+    }
     return promptResult.promptVietnamese;
   };
 
@@ -850,85 +895,237 @@ export const AIPromptGenerator2D: React.FC = () => {
               : '⚔️ BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG 4K'}
           </div>
 
-          {/* Language Switcher */}
+          {/* Language & Format Switcher */}
           {workflowTab !== 'step3_actions' && (
-            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 2, borderRadius: 6 }}>
-              <button
-                onClick={() => setPromptFormatTab('en')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Character Limit Badge for Banana Pro (<4000 chars) */}
+              <div
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
                   padding: '3px 8px',
-                  fontSize: 10.5,
+                  borderRadius: 6,
+                  fontSize: 10,
                   fontWeight: 700,
-                  borderRadius: 4,
-                  border: 'none',
-                  background: promptFormatTab === 'en' ? '#0284c7' : 'transparent',
-                  color: promptFormatTab === 'en' ? '#fff' : '#94a3b8',
-                  cursor: 'pointer',
+                  background: getActivePromptText().length <= 4000 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.2)',
+                  border: getActivePromptText().length <= 4000 ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid #ef4444',
+                  color: getActivePromptText().length <= 4000 ? '#4ade80' : '#f87171',
                 }}
+                title="Giới hạn ký tự tối đa của Banana Pro là 4000 ký tự"
               >
-                🇺🇸 Tiếng Anh (Chuẩn AI)
-              </button>
-              <button
-                onClick={() => setPromptFormatTab('vi')}
-                style={{
-                  padding: '3px 8px',
-                  fontSize: 10.5,
-                  fontWeight: 700,
-                  borderRadius: 4,
-                  border: 'none',
-                  background: promptFormatTab === 'vi' ? '#0284c7' : 'transparent',
-                  color: promptFormatTab === 'vi' ? '#fff' : '#94a3b8',
-                  cursor: 'pointer',
-                }}
-              >
-                🇻🇳 Tiếng Việt
-              </button>
-              <button
-                onClick={() => setPromptFormatTab('json')}
-                style={{
-                  padding: '3px 8px',
-                  fontSize: 10.5,
-                  fontWeight: 700,
-                  borderRadius: 4,
-                  border: 'none',
-                  background: promptFormatTab === 'json' ? '#0284c7' : 'transparent',
-                  color: promptFormatTab === 'json' ? '#fff' : '#94a3b8',
-                  cursor: 'pointer',
-                }}
-              >
-                ⚙️ JSON
-              </button>
+                <span>🍌 Banana Pro:</span>
+                <span>{getActivePromptText().length.toLocaleString()} / 4,000 ký tự</span>
+                <span>{getActivePromptText().length <= 4000 ? '✅' : '⚠️ Quá tải'}</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: 3, background: 'rgba(255,255,255,0.05)', padding: 2, borderRadius: 6 }}>
+                <button
+                  onClick={() => setPromptFormatTab('en')}
+                  style={{
+                    padding: '3px 7px',
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: promptFormatTab === 'en' ? '#0284c7' : 'transparent',
+                    color: promptFormatTab === 'en' ? '#fff' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🇺🇸 Tiếng Anh
+                </button>
+                <button
+                  onClick={() => setPromptFormatTab('vi')}
+                  style={{
+                    padding: '3px 7px',
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: promptFormatTab === 'vi' ? '#0284c7' : 'transparent',
+                    color: promptFormatTab === 'vi' ? '#fff' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🇻🇳 Tiếng Việt
+                </button>
+                <button
+                  onClick={() => setPromptFormatTab('json')}
+                  style={{
+                    padding: '3px 7px',
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: promptFormatTab === 'json' ? '#0284c7' : 'transparent',
+                    color: promptFormatTab === 'json' ? '#fff' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🍌 JSON Banana Pro
+                </button>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Big Copy Button */}
-        <button
-          onClick={() => handleCopy(getActivePromptText(), 'main_copy')}
-          style={{
-            width: '100%',
-            height: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            fontSize: 13,
-            fontWeight: 800,
-            borderRadius: 8,
-            background: copiedPrompt === 'main_copy' ? '#22c55e' : 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
-            marginBottom: 12,
-            transition: 'all 0.2s',
-          }}
-        >
-          {copiedPrompt === 'main_copy' ? <Check size={18} /> : <Copy size={18} />}
-          {copiedPrompt === 'main_copy'
-            ? '✓ ĐÃ SAO CHÉP PROMPT!'
-            : `📋 SAO CHÉP PROMPT ${promptFormatTab === 'en' ? 'TIẾNG ANH (DÁN VÀO MIDJOURNEY / SD / GEMINI)' : promptFormatTab === 'vi' ? 'TIẾNG VIỆT' : 'JSON'}`}
-        </button>
+        {/* Banana Pro Control Toolbar (Base Prompt Checkbox & Scope Selector) */}
+        {workflowTab !== 'step3_actions' && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 8,
+              padding: '6px 10px',
+              background: 'rgba(2, 132, 199, 0.08)',
+              borderRadius: 8,
+              border: '1px solid rgba(56, 189, 248, 0.2)',
+              marginBottom: 10,
+            }}
+          >
+            {/* Base Prompt Checkbox Toggle */}
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 700,
+                color: includeBasePrompt ? '#38bdf8' : '#94a3b8',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+              title="Nếu bạn đã tải ảnh nhân vật gốc lên Banana Pro làm reference, có thể bỏ tích để chỉ copy danh sách prompts giúp tiết kiệm ký tự"
+            >
+              <input
+                type="checkbox"
+                checked={includeBasePrompt}
+                onChange={(e) => setIncludeBasePrompt(e.target.checked)}
+                style={{ cursor: 'pointer', accentColor: '#0284c7' }}
+              />
+              <span>{includeBasePrompt ? '✅ Kèm "base_prompt" làm chuẩn' : '⚡ Bỏ "base_prompt" (Chỉ copy prompts)'}</span>
+            </label>
+
+            {/* Scope Switcher (For Step 2) */}
+            {workflowTab === 'step2_decomposed_parts' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600 }}>Phạm vi xuất:</span>
+                <button
+                  onClick={() => setJsonExportScope('component_all_angles')}
+                  style={{
+                    padding: '3px 7px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: jsonExportScope === 'component_all_angles' ? '#0284c7' : 'rgba(255,255,255,0.06)',
+                    color: jsonExportScope === 'component_all_angles' ? '#fff' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                  title="Xuất tất cả góc quay (0°, 45°, 90°, 180°, High/Low Angle) của linh kiện đang chọn"
+                >
+                  🎯 Tất cả góc linh kiện
+                </button>
+                <button
+                  onClick={() => setJsonExportScope('group_all_parts')}
+                  style={{
+                    padding: '3px 7px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: jsonExportScope === 'group_all_parts' ? '#8b5cf6' : 'rgba(255,255,255,0.06)',
+                    color: jsonExportScope === 'group_all_parts' ? '#fff' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                  title="Xuất trọn bộ tất cả linh kiện trong nhóm hiện tại"
+                >
+                  📦 Toàn bộ nhóm
+                </button>
+                {step2Layout === 'single_isolated_1x1' && (
+                  <button
+                    onClick={() => setJsonExportScope('single_angle')}
+                    style={{
+                      padding: '3px 7px',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      borderRadius: 4,
+                      border: 'none',
+                      background: jsonExportScope === 'single_angle' ? '#0284c7' : 'rgba(255,255,255,0.06)',
+                      color: jsonExportScope === 'single_angle' ? '#fff' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                    title="Chỉ xuất 1 góc quay đang chọn"
+                  >
+                    🔍 1 Góc đơn
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Copy Buttons Row */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          {/* Main Copy Button */}
+          <button
+            onClick={() => handleCopy(getActivePromptText(), 'main_copy')}
+            style={{
+              flex: 1,
+              height: 42,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              fontSize: 12.5,
+              fontWeight: 800,
+              borderRadius: 8,
+              background: copiedPrompt === 'main_copy' ? '#22c55e' : 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+              transition: 'all 0.2s',
+            }}
+          >
+            {copiedPrompt === 'main_copy' ? <Check size={18} /> : <Copy size={18} />}
+            {copiedPrompt === 'main_copy'
+              ? '✓ ĐÃ SAO CHÉP PROMPT!'
+              : `📋 SAO CHÉP ${promptFormatTab === 'en' ? 'PROMPT TIẾNG ANH (MIDJOURNEY / SD / GEMINI)' : promptFormatTab === 'vi' ? 'PROMPT TIẾNG VIỆT' : 'JSON BANANA PRO'}`}
+          </button>
+
+          {/* Quick Group Copy Button (Step 2) */}
+          {workflowTab === 'step2_decomposed_parts' && (
+            <button
+              onClick={() => handleCopy(getGroupBananaProJSON(), 'group_copy')}
+              style={{
+                height: 42,
+                padding: '0 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 800,
+                borderRadius: 8,
+                background: copiedPrompt === 'group_copy' ? '#22c55e' : 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+              }}
+              title="Sao chép toàn bộ JSON của nhóm linh kiện này cho Banana Pro"
+            >
+              {copiedPrompt === 'group_copy' ? <Check size={16} /> : <Copy size={16} />}
+              {copiedPrompt === 'group_copy' ? '✓ ĐÃ SAO CHÉP NHÓM!' : `📦 SAO CHÉP CẢ NHÓM (${activeGroup.items.length} CHI TIẾT)`}
+            </button>
+          )}
+        </div>
 
         {/* Prompt Content Box */}
         <div

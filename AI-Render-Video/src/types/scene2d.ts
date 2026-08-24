@@ -295,6 +295,9 @@ export interface AIPartPromptConfig {
   // Weapon specific
   weapon_type?: string;
   weapon_element?: string;
+  // Banana Pro options
+  include_base_prompt?: boolean;
+  json_scope?: 'single_angle' | 'all_angles' | 'all_group_parts';
 }
 
 

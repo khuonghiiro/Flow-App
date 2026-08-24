@@ -705,278 +705,160 @@ export const buildAIPromptForPart = (config: AIPartPromptConfig): AIPromptResult
     const artStyleEn = config.custom_character_style?.trim() || config.character_style?.trim() || 'Chinese Guoman / 国漫 Xianxia Chibi';
     const artStyleVi = styleLabelVi;
 
-    promptEnglish = `Create a professional **2D ${artStyleEn} character turnaround model sheet** featuring **ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER**.
+    const baseDescEn = `2D ${artStyleEn} character turnaround sheet, ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color: ${costumeColorVi}), weapon: ${propInfo.en}, flat ${bgPromptColorEn} background, clean anime lineart, cel shading, zero shadows, no text, no borders --ar 16:9`;
 
-The entire sheet must show the exact same character consistently from different camera angles.
+    promptEnglish = `masterpiece, best quality, ultra detailed, 2D ${artStyleEn} character turnaround sheet, ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER.
 
-## CHARACTER PARAMETERS — USER DEFINED
+CHARACTER SPECIFICATIONS:
+- Gender: ${genderLabelEn}
+- Art Style: ${artStyleEn}
+- Proportion: ${bodyPropInfo.en}
+- Eyes: ${eyeShapeInfo.en}, ${eyeColInfo.en}
+- Nose & Mouth: ${noseInfo.en}, ${mouthInfo.en}
+- Hairstyle: ${hairTexInfo.en}, ${hairColInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}
+- Costume: ${costumeInfo.en} (Color: ${costumeColorVi})
+- Weapon / Props: ${propInfo.en}
 
-Generate the character strictly according to the following user-defined parameters:
+TURNAROUND 5-VIEW SEQUENCE (16:9 Canvas):
+1. VIEW 1 — FRONT (0°): Direct frontal view, full body from head to feet.
+2. VIEW 2 — THREE-QUARTER (45°): 45-degree angle showing face depth and shoulder.
+3. VIEW 3 — SIDE PROFILE (90°): 90-degree clean side silhouette and nose profile.
+4. VIEW 4 — REAR THREE-QUARTER (135°): 135-degree angle showing back sash and rear hair.
+5. VIEW 5 — BACK (180°): Full rear view showing back hair mantle and robe spine.
++ TOP-DOWN REFERENCE: One smaller top-down view showing head crown and parting.
 
-### Gender
-${genderLabelEn}
+CONSISTENCY & RESTRICTIONS:
+- 100% identical character rotated around vertical axis.
+- Clean 2D anime lineart, flat cel shading, readable silhouettes for 2D rigging.
+- Flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background with zero shadows.
+- STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.
 
-### Art Style
-${artStyleEn}
-
-### Body / Proportion
-${bodyPropInfo.en}
-
-### Face
-* Eyes: ${eyeShapeInfo.en}
-* Eye Color: ${eyeColInfo.en}
-* Nose: ${noseInfo.en}
-* Mouth / Expression: ${mouthInfo.en}
-
-### Hair
-* Hair Color: ${hairColInfo.en}
-* Hairstyle: ${hairTexInfo.en}
-* Hair Length: ${hairLenInfo.en}
-* Hair Accessories: ${hairAccInfo.en}
-
-### Clothing & Costumes
-${costumeInfo.en} (Color Palette: ${costumeColorVi})
-
-### Weapon & Props
-${propInfo.en}
-
-These parameters are the **authoritative character design specifications**.
-Do not replace, reinterpret, redesign or contradict any user-defined parameter.
-All parameters must remain consistent across every turnaround angle.
-
----
-
-## TURNAROUND STRUCTURE
-
-Create a **16:9 horizontal character model sheet**.
-
-Arrange **five large full-body views in one horizontal row**, evenly spaced:
-
-**VIEW 1 — FRONT (0°)**
-Exact frontal view of the character.
-Camera positioned directly in front of the character.
-Show the complete face, hairstyle, body, sleeves, costume and feet.
-
----
-
-**VIEW 2 — THREE-QUARTER (45°)**
-Character rotated approximately 45 degrees.
-Show the depth of the face, hair, shoulders, sleeves and costume.
-Maintain the exact same facial proportions and hairstyle.
-
----
-
-**VIEW 3 — SIDE PROFILE (90°)**
-Exact 90-degree side profile.
-Clearly show the forehead, nose, lips, chin, neck, chest silhouette and hair profile.
-Do not alter the face shape.
-
----
-
-**VIEW 4 — REAR THREE-QUARTER (135°)**
-Character rotated approximately 135 degrees.
-Clearly show the back structure of the hairstyle, shoulders, sleeves, sash and costume.
-Maintain the same hair length and costume structure.
-
----
-
-**VIEW 5 — BACK (180°)**
-Exact 180-degree rear view.
-Show the complete back of the character.
-Clearly show the rear hairstyle, long hair, back of the costume, waist sash and ornaments.
-
----
-
-## TOP-DOWN REFERENCE
-
-Add **one smaller Top-Down reference view** positioned separately above or below the five main views.
-Camera looks down slightly from above the character.
-The purpose of this view is to clearly show:
-* Top of the head
-* Hair crown
-* Hair arrangement
-* Hair ornaments
-* Shoulder structure
-* Upper costume structure
-
-This Top-Down view is a secondary reference and must remain smaller than the five main turnaround views.
-
----
-
-## STRICT CHARACTER CONSISTENCY
-
-The **FRONT VIEW is the MASTER CHARACTER REFERENCE**.
-Generate every other view by rotating the exact same character.
-This is NOT multiple different character designs.
-
-Maintain 100% consistency of:
-* Face shape
-* Head shape
-* Eye shape
-* Eye size
-* Eye color
-* Eyebrow shape
-* Eyebrow color
-* Hair color
-* Hair length
-* Hair volume
-* Hair silhouette
-* Hair ornaments
-* Body proportions
-* Costume design
-* Sleeve shape
-* Waist sash
-* Decorative ribbons
-* Jade ornaments
-* Silver ornaments
-* Color palette
-* Art style
-
-The character must look like the **same person physically rotated around a fixed vertical axis**.
-Do not invent new details when changing the viewing angle.
-Do not change the hairstyle.
-Do not change the costume.
-Do not change the proportions.
-Do not change the facial structure.
-
----
-
-## CHARACTER MODEL SHEET STYLE
-
-High-quality 2D animation character design (${artStyleEn}).
-Clean precise line art.
-Controlled cel shading.
-Soft highlights.
-Readable silhouette.
-Clear separation between hair, face, body and clothing.
-Hair and clothing shapes should be suitable for future **2D layer separation, rigging and motion comic animation**.
-Avoid excessive micro-details that would make the character difficult to separate into animation layers.
-
----
-
-## COMPOSITION
-
-16:9 horizontal canvas.
-Five main full-body character views arranged in a clean horizontal sequence: **Front (0°) → 45° → Side (90°) → 135° → Back (180°)**.
-Each character has equal scale.
-Large clear spacing between each character.
-No overlapping characters.
-All five main characters completely visible from head to feet.
-Top-Down reference smaller and clearly separated from the main turnaround row.
-Professional character production sheet composition.
-
----
-
-## BACKGROUND
-
-Use a completely flat, uniform **${bgPromptColorEn} background**.
-The entire background must be exactly the same color.
-No gradient.
-No texture.
-No environment.
-No scenery.
-No floor.
-No objects.
-No shadows projected onto the background.
-
----
-
-## ABSOLUTE IMAGE RESTRICTIONS
-
-**NO TEXT**
-**NO LETTERS**
-**NO NUMBERS**
-**NO WORDS**
-**NO LABELS**
-**NO CAPTIONS**
-**NO TITLES**
-**NO CHARACTER NAMES**
-**NO ANGLE INDICATORS**
-**NO ARROWS**
-**NO WATERMARK**
-**NO LOGO**
-**NO SYMBOLS**
-
-The final image must contain **ONLY the character views and the uniform ${bgPromptColorEn} background**.
-Do not render any written information anywhere in the image.
-The angle descriptions above are **instructions for the AI only and must never appear visually inside the generated image**.
-
----
-
-## FINAL QUALITY TARGET
-
-Professional production-ready **${artStyleEn} character turnaround sheet**, showing one perfectly consistent character from five rotation angles (Front → 45° → Side → 135° → Back) plus one smaller top-down reference.
-The result must prioritize **character identity consistency, hairstyle consistency, costume consistency, body proportion consistency and clean readable silhouettes** over unnecessary decorative details.`;
+--ar 16:9`;
 
     promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET - 16:9) 】
 
 ════════════════════════════════════════════════════════════
-1. THUỘC TÍNH NHÂN VẬT (LẤY TRỰC TIẾP TỪ GIAO DIỆN UI):
+1. THUỘC TÍNH NHÂN VẬT:
 ════════════════════════════════════════════════════════════
-• Giới tính: ${genderLabelVi}
-• Phong cách nghệ thuật: ${artStyleVi}
-• Tỷ lệ cơ thể (Body Proportion): ${bodyPropInfo.vi}
-• Khuôn mặt & Ngũ quan:
-  - Dáng mắt: ${eyeShapeInfo.vi}
-  - Màu mắt: ${eyeColInfo.vi}
-  - Sống mũi: ${noseInfo.vi}
-  - Khẩu hình & Thần thái: ${mouthInfo.vi}
-• Mái tóc:
-  - Màu tóc: ${hairColInfo.vi}
-  - Kiểu tóc: ${hairTexInfo.vi}
-  - Độ dài tóc: ${hairLenInfo.vi}
-  - Phụ kiện trâm cài: ${hairAccInfo.vi}
-• Trang phục: ${costumeInfo.vi} (Màu sắc & Họa tiết: ${costumeColorVi})
-• Pháp bảo / Vũ khí: ${propInfo.vi}
+• Giới tính: ${genderLabelVi} | Phong cách: ${artStyleVi} | Tỷ lệ: ${bodyPropInfo.vi}
+• Khuôn mặt: Mắt ${eyeShapeInfo.vi} (${eyeColInfo.vi}), mũi ${noseInfo.vi}, miệng ${mouthInfo.vi}
+• Mái tóc: ${hairColInfo.vi}, ${hairTexInfo.vi}, ${hairLenInfo.vi} (${hairAccInfo.vi})
+• Trang phục: ${costumeInfo.vi} (Màu sắc: ${costumeColorVi})
+• Vũ khí / Pháp bảo: ${propInfo.vi}
 
 ════════════════════════════════════════════════════════════
-2. QUY TẮC BỐ CỤC 5 GÓC XOAY & RENDER (CỐ ĐỊNH CHUẨN XUẤT BẢN):
+2. BỐ CỤC 5 GÓC XOAY TOÀN THÂN (16:9):
 ════════════════════════════════════════════════════════════
-• Chuỗi 5 góc xoay toàn thân (Từ trái sang phải):
-  1. Front (0° Chính diện): Góc nhìn chuẩn mẫu tham chiếu chính.
-  2. 45° (Nghiêng 3/4): Thấy độ sâu khuôn mặt, tóc mai và vai.
-  3. Side (90° Nhìn ngang): Thấy sống mũi, cằm, vành tai và dáng tóc sau.
-  4. 135° (Nghiêng sau): Thấy tà áo choàng, thắt lưng và búi tóc sau gáy.
-  5. Back (180° Sau lưng): Thấy toàn bộ suối tóc và lưng áo.
-• Góc phụ Đỉnh Đầu (Top-Down Reference):
-  - 1 hình nhỏ bổ sung soi đỉnh đầu từ trên chúc xuống để thấy đường rẽ ngôi, búi tóc và cầu vai.
-• Tính Đồng Nhất 100% (Strict Consistency):
-  - Cùng 1 nhân vật duy nhất được xoay trục 360°, giữ nguyên 100% khuôn mặt, kiểu tóc, trang phục và tỷ lệ cơ thể.
-• Phông nền: ${bgTextVi}.
-• CẤM TUYỆT ĐỐI (Strict Negative):
-  - KHÔNG CHỮ, KHÔNG SỐ, KHÔNG NHÃN DÁN (NO TEXT/LABELS), KHÔNG ĐƯỜNG KẺ KHUNG ĐEN, KHÔNG WATERMARK.`;
+1. Front (0° Chính diện): Mẫu tham chiếu chính, toàn thân thẳng góc máy.
+2. 45° (Nghiêng 3/4): Thấy độ sâu khuôn mặt, tóc mai và vai.
+3. Side (90° Nhìn ngang): Thấy sống mũi, cằm, vành tai và dáng suối tóc.
+4. 135° (Nghiêng sau): Thấy tà áo choàng, thắt lưng và búi tóc sau gáy.
+5. Back (180° Sau lưng): Thấy toàn bộ suối tóc và lưng áo.
++ Góc phụ Đỉnh Đầu (Top-Down): Soi đỉnh đầu từ trên xuống thấy đường rẽ ngôi và trâm cài.
 
-    promptJSON = JSON.stringify({
-      project: 'Flow-App 2D Character Generator',
-      workflow_step: 'Step 1 - Master Character Turnaround Reference Sheet',
-      character_parameters: {
-        gender: genderLabelEn,
-        art_style: artStyleEn,
-        body_proportion: bodyPropInfo.en,
-        facial_features: {
-          eyes: eyeShapeInfo.en,
-          eye_color: eyeColInfo.en,
-          nose: noseInfo.en,
-          mouth: mouthInfo.en,
-        },
-        hair: {
-          color: hairColInfo.en,
-          style: hairTexInfo.en,
-          length: hairLenInfo.en,
-          accessories: hairAccInfo.en,
-        },
-        clothing: `${costumeInfo.en} (${costumeColorVi})`,
-        weapon: propInfo.en,
+• Nền: ${bgTextVi}.
+• CẤM: KHÔNG CHỮ, KHÔNG SỐ, KHÔNG NHÃN DÁN, KHÔNG ĐƯỜNG KẺ KHUNG ĐEN, KHÔNG WATERMARK.`;
+
+    const step1Prompts = [
+      {
+        name: 'master_000_front',
+        part_id: 'master_character',
+        part_name: 'Nhân Vật Gốc Toàn Thân',
+        group_id: 'step1_master',
+        group_name: 'Bảng Xoay Nhân Vật Gốc',
+        angle: '0° Front (Chính diện)',
+        angle_id: '000_front',
+        angle_deg: 0,
+        z_index: 0,
+        save_filename: 'master_000_front.png',
+        view_desc: 'Góc nhìn chính diện 0° toàn thân làm chuẩn tham chiếu chính',
+        prompt: `0° front view of the character, facing camera, full body, head to feet, clear eyes and bangs, uniform solid ${bgPromptColorEn} background --ar 16:9`,
+        count: 4,
       },
-      fixed_turnaround_rules: {
-        aspect_ratio: '16:9',
-        rotation_sequence: ['0° Front', '45° Three-Quarter', '90° Side Profile', '135° Rear Three-Quarter', '180° Back'],
-        top_down_reference: 'Top-down head crown view',
-        background: bgPromptColorHex,
-        consistency_rule: 'Front view is master reference, 100% identical character rotated around vertical axis',
-        restrictions: 'Strictly NO text, NO labels, NO watermark, NO grid lines',
+      {
+        name: 'master_045_three_quarter',
+        part_id: 'master_character',
+        part_name: 'Nhân Vật Gốc Toàn Thân',
+        group_id: 'step1_master',
+        group_name: 'Bảng Xoay Nhân Vật Gốc',
+        angle: '45° Three-Quarter (Nghiêng 3/4)',
+        angle_id: '045_three_quarter',
+        angle_deg: 45,
+        z_index: 0,
+        save_filename: 'master_045_three_quarter.png',
+        view_desc: 'Góc xoay 45° hiển thị độ sâu ngũ quan, tóc mai và vai',
+        prompt: `45° three-quarter angle view of the exact same character, depth of face and hair, uniform solid ${bgPromptColorEn} background --ar 16:9`,
+        count: 2,
       },
-    }, null, 2);
+      {
+        name: 'master_090_side',
+        part_id: 'master_character',
+        part_name: 'Nhân Vật Gốc Toàn Thân',
+        group_id: 'step1_master',
+        group_name: 'Bảng Xoay Nhân Vật Gốc',
+        angle: '90° Side Profile (Nhìn ngang)',
+        angle_id: '090_side',
+        angle_deg: 90,
+        z_index: 0,
+        save_filename: 'master_090_side.png',
+        view_desc: 'Góc nhìn ngang 90° thấy sống mũi, cằm, tai và dáng suối tóc',
+        prompt: `90° side profile view of the exact same character, clean facial silhouette and spine posture, uniform solid ${bgPromptColorEn} background --ar 16:9`,
+        count: 2,
+      },
+      {
+        name: 'master_135_rear',
+        part_id: 'master_character',
+        part_name: 'Nhân Vật Gốc Toàn Thân',
+        group_id: 'step1_master',
+        group_name: 'Bảng Xoay Nhân Vật Gốc',
+        angle: '135° Rear Three-Quarter (Nghiêng sau)',
+        angle_id: '135_rear',
+        angle_deg: 135,
+        z_index: 0,
+        save_filename: 'master_135_rear.png',
+        view_desc: 'Góc xoay 135° thấy tà áo sau, thắt lưng và búi tóc',
+        prompt: `135° rear three-quarter view of the exact same character, back of hair bun and sash, uniform solid ${bgPromptColorEn} background --ar 16:9`,
+        count: 1,
+      },
+      {
+        name: 'master_180_back',
+        part_id: 'master_character',
+        part_name: 'Nhân Vật Gốc Toàn Thân',
+        group_id: 'step1_master',
+        group_name: 'Bảng Xoay Nhân Vật Gốc',
+        angle: '180° Back (Sau lưng)',
+        angle_id: '180_back',
+        angle_deg: 180,
+        z_index: 0,
+        save_filename: 'master_180_back.png',
+        view_desc: 'Góc sau lưng 180° thấy trọn vẹn suối tóc và lưng áo',
+        prompt: `180° rear back view of the exact same character, complete back hair mantle and costume spine, uniform solid ${bgPromptColorEn} background --ar 16:9`,
+        count: 1,
+      },
+      {
+        name: 'master_top_down',
+        part_id: 'master_character',
+        part_name: 'Nhân Vật Gốc Toàn Thân',
+        group_id: 'step1_master',
+        group_name: 'Bảng Xoay Nhân Vật Gốc',
+        angle: 'Top-Down (Đỉnh đầu)',
+        angle_id: 'top_down',
+        angle_deg: 90,
+        z_index: 0,
+        save_filename: 'master_top_down.png',
+        view_desc: 'Góc phụ soi đỉnh đầu từ trên xuống thấy đường rẽ ngôi và trâm cài',
+        prompt: `Top-down view looking downward at the character head crown, hair parting and hair accessories, uniform solid ${bgPromptColorEn} background --ar 16:9`,
+        count: 1,
+      },
+    ];
+
+    promptJSON = JSON.stringify(
+      config.include_base_prompt === false
+        ? { prompts: step1Prompts }
+        : { base_prompt: baseDescEn, prompts: step1Prompts },
+      null,
+      2
+    );
 
     const negativePrompt = 'realistic human face, small realistic eyes, 3D CGI render, photorealism, live-action, western comic style, ugly anatomy, deformed face, muddy colors, bad eyes, realistic skin texture, realistic wrinkles, dull eyes, pores, text, letters, words, labels, watermark, signature, bad proportions, divider lines, grid frames';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
@@ -1012,6 +894,10 @@ The result must prioritize **character identity consistency, hairstyle consisten
       includedGeometry: string[];
       excludedGeometry: string[];
       rearVisibility: 'visible' | 'hidden' | 'conditional';
+      groupId: string;
+      groupNameVi: string;
+      zIndex: number;
+      filePrefix: string;
     }
 
     let comp: Asset2DComponentDef;
@@ -1052,6 +938,10 @@ In Cell [1,2] (180° Rear Back), because the front bangs are physically located 
             'body',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 50,
+          filePrefix: '05_toc_truoc',
         };
         break;
 
@@ -1087,6 +977,10 @@ DO NOT include any front bangs, front fringe, forehead locks, forehead skin, or 
             'mannequin head base',
           ],
           rearVisibility: 'visible',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 10,
+          filePrefix: '01_toc_sau',
         };
         break;
 
@@ -1129,6 +1023,10 @@ Pure clean porcelain skin mannequin base for assembling modular eyes, nose, mout
             'body',
           ],
           rearVisibility: 'visible',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 30,
+          filePrefix: '03_khuon_mat',
         };
         break;
 
@@ -1157,6 +1055,10 @@ In Cell [1,2] (180° Rear Back), the eyes are 100% occluded, so Cell [1,2] MUST 
             'hair',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 42,
+          filePrefix: '04a_trong_den_iris',
         };
         break;
 
@@ -1186,6 +1088,10 @@ In Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN 
             'hair',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 41,
+          filePrefix: '04b_trong_trang',
         };
         break;
 
@@ -1213,6 +1119,10 @@ In Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN 
             'hair',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 43,
+          filePrefix: '04c_diem_sang_mat',
         };
         break;
 
@@ -1242,6 +1152,10 @@ In Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN 
             'hair',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 44,
+          filePrefix: '04d_mi_mat',
         };
         break;
 
@@ -1269,6 +1183,10 @@ In Cell [1,2] (180° Rear Back), the eyebrows are 100% occluded, so Cell [1,2] M
             'head',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 45,
+          filePrefix: '04e_long_may',
         };
         break;
 
@@ -1297,6 +1215,10 @@ In Cell [1,2] (180° Rear Back), the nose is 100% occluded, so Cell [1,2] MUST R
             'head',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 35,
+          filePrefix: '04f_mui',
         };
         break;
 
@@ -1320,6 +1242,10 @@ In Cell [1,2] (180° Rear Back), the nose is 100% occluded, so Cell [1,2] MUST R
             'body',
           ],
           rearVisibility: 'visible',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 26,
+          filePrefix: '04g_doi_tai',
         };
         break;
 
@@ -1349,6 +1275,10 @@ In Cell [1,2] (180° Rear Back), the mouth is 100% occluded, so Cell [1,2] MUST 
             'head',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 36,
+          filePrefix: '04h_mieng',
         };
         break;
 
@@ -1378,6 +1308,10 @@ In Cell [1,2] (180° Rear Back), the eyes are 100% occluded, so Cell [1,2] MUST 
             'head',
           ],
           rearVisibility: 'hidden',
+          groupId: '01_head_face',
+          groupNameVi: 'Khuôn Mặt & Ngũ Quan',
+          zIndex: 40,
+          filePrefix: '04_ngu_quan_mat',
         };
         break;
 
@@ -1405,6 +1339,10 @@ DO NOT include head, neck, arms, sleeves, hands, legs, feet, or flowing cape!`,
             'flowing cape',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 20,
+          filePrefix: '02_than_co_ban',
         };
         break;
 
@@ -1430,6 +1368,10 @@ DO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
             'weapon',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 21,
+          filePrefix: '02a_canh_tay_trai',
         };
         break;
 
@@ -1453,6 +1395,10 @@ DO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
             'weapon',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 22,
+          filePrefix: '02b_cang_tay_trai',
         };
         break;
 
@@ -1475,6 +1421,10 @@ DO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
             'weapon',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 23,
+          filePrefix: '02c_ban_tay_trai',
         };
         break;
 
@@ -1500,6 +1450,10 @@ DO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
             'weapon',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 19,
+          filePrefix: '02d_canh_tay_phai',
         };
         break;
 
@@ -1523,6 +1477,10 @@ DO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
             'weapon',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 18,
+          filePrefix: '02e_cang_tay_phai',
         };
         break;
 
@@ -1545,6 +1503,10 @@ DO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
             'weapon',
           ],
           rearVisibility: 'visible',
+          groupId: '02_torso_arms',
+          groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+          zIndex: 17,
+          filePrefix: '02f_ban_tay_phai',
         };
         break;
 
@@ -1568,6 +1530,10 @@ DO NOT include torso, pelvis, shin, boot, or foot!`,
             'foot',
           ],
           rearVisibility: 'visible',
+          groupId: '03_legs_feet',
+          groupNameVi: 'Khớp Xương Chân & Giày',
+          zIndex: 15,
+          filePrefix: '03a_dui_trai',
         };
         break;
 
@@ -1590,6 +1556,10 @@ DO NOT include thigh, hip, torso, or right leg!`,
             'right leg',
           ],
           rearVisibility: 'visible',
+          groupId: '03_legs_feet',
+          groupNameVi: 'Khớp Xương Chân & Giày',
+          zIndex: 16,
+          filePrefix: '03b_cang_chan_trai',
         };
         break;
 
@@ -1613,6 +1583,10 @@ DO NOT include torso, pelvis, shin, boot, or foot!`,
             'foot',
           ],
           rearVisibility: 'visible',
+          groupId: '03_legs_feet',
+          groupNameVi: 'Khớp Xương Chân & Giày',
+          zIndex: 13,
+          filePrefix: '03c_dui_phai',
         };
         break;
 
@@ -1635,6 +1609,10 @@ DO NOT include thigh, hip, torso, or left leg!`,
             'left leg',
           ],
           rearVisibility: 'visible',
+          groupId: '03_legs_feet',
+          groupNameVi: 'Khớp Xương Chân & Giày',
+          zIndex: 14,
+          filePrefix: '03d_cang_chan_phai',
         };
         break;
 
@@ -1661,6 +1639,10 @@ DO NOT include character body, chest, arms, hands, legs, or head!`,
             'character body',
           ],
           rearVisibility: 'visible',
+          groupId: '04_props_costumes',
+          groupNameVi: 'Trang Phục Bay & Vũ Khí',
+          zIndex: 8,
+          filePrefix: '06a_ao_choang',
         };
         break;
 
@@ -1685,6 +1667,10 @@ DO NOT include character, hands, arms, body, or scenery!`,
             'background scenery',
           ],
           rearVisibility: 'visible',
+          groupId: '04_props_costumes',
+          groupNameVi: 'Trang Phục Bay & Vũ Khí',
+          zIndex: 60,
+          filePrefix: '06_vu_khi',
         };
         break;
     }
@@ -1700,83 +1686,68 @@ DO NOT include character, hands, arms, body, or scenery!`,
       .filter(Boolean)
       .join('\n');
 
-    const negativePartConstraintsFormatted = [
-      'STRICT EXCLUSION RULES:',
-      ...comp.excludedGeometry.map((item) => `- DO NOT INCLUDE ${item}`),
-    ].join('\n');
+    const baseRefPrompt = `2D ${artStyleEn} character asset: ${config.gender === 'nam' ? 'Male' : 'Female'}, ${bodyPropInfo.en}, hair (${hairColInfo.en}, ${hairTexInfo.en}), costume (${costumeInfo.en}, color: ${costumeColorVi}), solid ${bgPromptColorEn} background, crisp 2D anime lineart, cel shading, zero shadows`;
 
     // ──────────────────────────────────────────────────────────────────────────
     // A. DẠNG 1:1 ẢNH ĐƠN SIÊU NÉT (SINGLE ISOLATED 1:1 ASSET — NO GRID, MAX DETAIL)
     // ──────────────────────────────────────────────────────────────────────────
     if (sheet === 'single_isolated_1x1' || sheet === 'single_part' || config.aspect_ratio === '1:1') {
       const angle = config.view_angle || 'front';
-      let angleLabelVi = 'Chính diện 0° (Front View)';
-      let angleLabelEn = 'Orthographic Front 0° eye-level frontal view';
+      let angleLabelVi = '0° Chính diện (Front 0°)';
+      let angleLabelEn = 'Orthographic Front 0° view';
       let angleDescEn = 'Camera directly facing the front of the isolated component';
 
       if (angle === 'three_quarter' || angle === '45' || angle === 'three_quarter_45') {
-        angleLabelVi = 'Nghiêng 3/4 45° (Three-Quarter View)';
-        angleLabelEn = 'Orthographic Three-Quarter 45-degree angle view';
+        angleLabelVi = '45° Nghiêng 3/4 (Three-Quarter 45°)';
+        angleLabelEn = 'Orthographic Three-Quarter 45° view';
         angleDescEn = 'Camera rotated 45 degrees showing three-quarter depth';
       } else if (angle === 'profile_side' || angle === '90' || angle === 'side_90') {
-        angleLabelVi = 'Nhìn ngang 90° (Side Profile View)';
-        angleLabelEn = 'Orthographic Side Profile 90-degree view';
+        angleLabelVi = '90° Nhìn ngang (Side Profile 90°)';
+        angleLabelEn = 'Orthographic Side Profile 90° view';
         angleDescEn = 'Camera rotated 90 degrees showing clean side silhouette';
       } else if (angle === 'back' || angle === '180' || angle === 'rear_180') {
-        angleLabelVi = 'Sau lưng 180° (Rear Back View)';
-        angleLabelEn = 'Orthographic Rear Back 180-degree view';
+        angleLabelVi = '180° Sau lưng (Rear Back 180°)';
+        angleLabelEn = 'Orthographic Rear Back 180° view';
         angleDescEn = comp.rearVisibility === 'hidden'
           ? 'Pure empty space (hidden from behind)'
           : 'Camera directly facing the rear back of the component';
       } else if (angle === 'high_angle' || angle === 'top_down') {
         angleLabelVi = 'Trên cao nhìn xuống (High Angle)';
-        angleLabelEn = 'Cinematic High-Angle top-down perspective view';
+        angleLabelEn = 'Cinematic High-Angle top-down view';
         angleDescEn = 'Camera positioned elevated above looking downward at the component';
       } else if (angle === 'low_angle' || angle === 'bottom_up') {
         angleLabelVi = 'Dưới hất lên (Low Angle)';
-        angleLabelEn = 'Cinematic Low-Angle bottom-up perspective view';
+        angleLabelEn = 'Cinematic Low-Angle bottom-up view';
         angleDescEn = 'Camera positioned below looking upward at the component';
       }
 
       if (comp.rearVisibility === 'hidden' && (angle === 'back' || angle === '180' || angle === 'rear_180')) {
         promptEnglish = `masterpiece, 4k resolution, 1:1 aspect ratio, pure solid chroma green background #00FF00, blank empty canvas, no objects, no characters --ar 1:1`;
-        promptVietnamese = `【 ẢNH ĐƠN 1:1 — GÓC SAU LƯNG 180°: CHI TIẾT BỊ KHUẤT HOÀN TOÀN 】\n• Linh kiện: ${comp.nameVi}\n• Góc quay: Sau lưng 180°\n• Trạng thái: Bị khuất 100% khi nhìn từ sau lưng $\to$ Không cần tạo ảnh cho góc này (hoặc để nền xanh trần #00FF00).`;
+        promptVietnamese = `【 ẢNH ĐƠN 1:1 — GÓC SAU LƯNG 180°: CHI TIẾT BỊ KHUẤT HOÀN TOÀN 】\n• Linh kiện: ${comp.nameVi}\n• Góc quay: Sau lưng 180°\n• Trạng thái: Bị khuất 100% khi nhìn từ sau lưng ➔ Không cần tạo ảnh cho góc này (hoặc để nền xanh trần #00FF00).`;
       } else {
         promptEnglish = `masterpiece, best quality, ultra detailed, 4k resolution, 1:1 square aspect ratio,
 
 ONE SINGLE ISOLATED 2D ANIME COMPONENT — SINGLE VIEW (${angleLabelEn.toUpperCase()}):
 ${comp.titleEn}
 
-${comp.summaryEn ? comp.summaryEn : ''}
-
 CAMERA ANGLE:
-${angleLabelEn}
-${angleDescEn}
+${angleLabelEn} — ${angleDescEn}
 
 Include ONLY:
 ${comp.includedGeometry.map((item) => `- ${item}`).join('\n')}
 
 DO NOT include:
-${comp.excludedGeometry.map((item) => `- ${item}`).join('\n')}
+${comp.excludedGeometry.slice(0, 10).map((item) => `- ${item}`).join('\n')}
 
-STRICT SINGLE ASSET ISOLATION (ZERO GRID LINES, ZERO BORDERS):
-- This canvas contains EXACTLY ONE isolated 2D component centered cleanly on the screen.
-- Absolutely NO full character, NO full body, NO head, NO face silhouette unless specified.
-- Absolutely NO other body parts, NO extra limbs, NO adjacent hair layers.
-- Absolutely NO multiple views, NO turnaround, NO extra drawings, NO duplicate drawings.
-- Absolutely NO comic panels, NO box frames, NO grid lines, NO borders, NO divider lines.
-
-ART STYLE:
-${artStyleEn}
-2D anime / Chinese Guoman character asset.
-Clean professional lineart, sharp silhouette, flat matte colors, hard cel shading, no painterly, no 3D render appearance.
-
-BACKGROUND:
-${bgPromptColorEn} (${bgPromptColorHex})
-Solid flat uniform single color background. Zero gradients, zero shadows, zero floor, zero textures, zero color spill.
+STRICT ISOLATION RULES:
+- Exactly ONE isolated 2D component centered cleanly on screen.
+- Absolutely NO full character, NO full body, NO face, NO head silhouette unless specified.
+- Absolutely NO multiple views, NO comic panels, NO box frames, NO grid lines, NO borders.
+- Art Style: ${artStyleEn}. Clean crisp anime lineart, flat matte cel shading.
+- Background: ${bgPromptColorEn} (${bgPromptColorHex}) solid flat uniform color, zero shadows.
 
 NEGATIVE PROMPT:
-full character, full body, head, face, extra limbs, multiple views, turnaround, comic panels, grid lines, borders, frames, divider lines, text, letters, numbers, watermark, signature, blurry, 3D CGI render, glow, rim light, color spill
+full character, full body, head, face, extra limbs, multiple views, turnaround, comic panels, grid lines, borders, frames, divider lines, text, letters, numbers, watermark, blurry, 3D CGI render, glow
 
 --ar 1:1`;
 
@@ -1791,29 +1762,134 @@ full character, full body, head, face, extra limbs, multiple views, turnaround, 
 • Thuộc tính bao gồm:
 ${comp.includedGeometry.map((g) => `   + ${g}`).join('\n')}
 • Thành phần LOẠI TRỪ TUYỆT ĐỐI:
-${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
+${comp.excludedGeometry.slice(0, 8).map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
 
 ════════════════════════════════════════════════════════════
 2. ƯU ĐIỂM DẠNG 1:1:
 ════════════════════════════════════════════════════════════
-✅ 100% Canvas tập trung vào đúng 1 chi tiết $\to$ Độ phân giải 4K sắc nét nhất, không bị mất nét sợi tóc.
-✅ TUYỆT ĐỐI KHÔNG BỊ DÍNH ĐƯỜNG KẺ LƯỚI HAY KHUNG CHIA Ô ĐEN.
-✅ Tải về nạp vào Tab 1 Cắt Ảnh Đơn bấm "Xóa Nền Tự Động" là lấy sạch 100% chi tiết!`;
+✅ 100% Canvas tập trung vào đúng 1 chi tiết ➔ Độ phân giải 4K sắc nét nhất.
+✅ TUYỆT ĐỐI KHÔNG BỊ DÍNH ĐƯỜNG KẺ LƯỚI HAY KHUNG CHIA Ô ĐEN.`;
       }
 
-      promptJSON = JSON.stringify(
+      const allComponentAnglesPrompts = [
         {
-          project: 'Flow-App 2D Motion Comic Engine',
-          workflow_step: 'Step 2 - Single 1:1 Isolated Asset Decomposition',
-          component: {
-            id: comp.id,
-            name_vi: comp.nameVi,
-            title_en: comp.titleEn,
-            angle: angleLabelEn,
-            aspect_ratio: '1:1',
-            background: bgPromptColorHex,
-          },
+          name: `${comp.filePrefix}_000_front`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '0° Front (Chính diện)',
+          angle_id: '000_front',
+          angle_deg: 0,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_000_front.png`,
+          view_desc: 'Góc chính diện 0° lơ lửng độc lập',
+          prompt: `0° front view of isolated ${comp.titleEn}. Include ONLY: ${comp.includedGeometry.join(', ')}. Zero face, zero body, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 4,
         },
+        {
+          name: `${comp.filePrefix}_045_three_quarter`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '45° Three-Quarter (Nghiêng 3/4)',
+          angle_id: '045_three_quarter',
+          angle_deg: 45,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_045_three_quarter.png`,
+          view_desc: 'Góc nghiêng 3/4 45 độ',
+          prompt: `45° three-quarter view of isolated ${comp.titleEn}, depth and curve silhouette, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 2,
+        },
+        {
+          name: `${comp.filePrefix}_090_side`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '90° Side Profile (Nhìn ngang)',
+          angle_id: '090_side',
+          angle_deg: 90,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_090_side.png`,
+          view_desc: 'Góc nhìn ngang 90 độ',
+          prompt: `90° side profile view of isolated ${comp.titleEn}, clean side silhouette, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 2,
+        },
+        {
+          name: `${comp.filePrefix}_high_angle`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: 'High Angle (Trên cao nhìn xuống)',
+          angle_id: 'high_angle_top',
+          angle_deg: 90,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_high_angle_top.png`,
+          view_desc: 'Góc quay trên cao nhìn chúc xuống',
+          prompt: `High-angle top-down perspective view of isolated ${comp.titleEn}, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 1,
+        },
+        {
+          name: `${comp.filePrefix}_low_angle`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: 'Low Angle (Dưới hất lên)',
+          angle_id: 'low_angle_bottom',
+          angle_deg: 90,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_low_angle_bottom.png`,
+          view_desc: 'Góc quay dưới hất ngược lên',
+          prompt: `Low-angle bottom-up perspective view of isolated ${comp.titleEn}, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 1,
+        },
+        {
+          name: `${comp.filePrefix}_180_back`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '180° Back (Sau lưng)',
+          angle_id: '180_back',
+          angle_deg: 180,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_180_back.png`,
+          view_desc: comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Góc nhìn từ sau lưng',
+          prompt: comp.rearVisibility === 'hidden'
+            ? `pure empty solid ${bgPromptColorEn} background #00FF00, blank empty canvas --ar 1:1`
+            : `180° rear back view of isolated ${comp.titleEn}, rear back texture, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 1,
+        },
+      ];
+
+      const step2Prompts = config.json_scope === 'single_angle'
+        ? [
+            {
+              name: `${comp.filePrefix}_${angle}`,
+              part_id: comp.id,
+              part_name: comp.nameVi,
+              group_id: comp.groupId,
+              group_name: comp.groupNameVi,
+              angle: angleLabelVi,
+              angle_id: angle,
+              angle_deg: angle === 'three_quarter' ? 45 : angle === 'profile_side' ? 90 : angle === 'back' ? 180 : 0,
+              z_index: comp.zIndex,
+              save_filename: `${comp.filePrefix}_${angle}.png`,
+              view_desc: angleDescEn,
+              prompt: `masterpiece, 4k, 1:1 square, isolated ${comp.titleEn}, angle: ${angleLabelEn}. Include ONLY: ${comp.includedGeometry.join(', ')}. DO NOT include: ${comp.excludedGeometry.slice(0, 8).join(', ')}. Solid uniform ${bgPromptColorEn} background, clean lineart, flat cel shading, zero shadows, no text, no borders --ar 1:1`,
+              count: 4,
+            },
+          ]
+        : allComponentAnglesPrompts;
+
+      promptJSON = JSON.stringify(
+        config.include_base_prompt === false
+          ? { prompts: step2Prompts }
+          : { base_prompt: baseRefPrompt, prompts: step2Prompts },
         null,
         2
       );
@@ -1841,18 +1917,16 @@ ${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
     if (sheet === 'seamless_turnaround_1x4' || sheet === 'modular_bangs_3x1' || sheet === 'modular_backhair_3x1' || sheet === 'modular_torso_armor_3x1') {
       promptEnglish = `masterpiece, best quality, ultra detailed, 4k resolution, 16:9 aspect ratio,
 
-SEAMLESS 4-VIEW HORIZONTAL ROTATION SEQUENCE OF ONE SINGLE ISOLATED 2D ANIME COMPONENT:
+SEAMLESS 4-VIEW HORIZONTAL ROTATION SEQUENCE OF ONE SINGLE ISOLATED 2D COMPONENT:
 ${comp.titleEn}
 
-${comp.summaryEn ? comp.summaryEn : ''}
-
-Four continuous turnaround views arranged side-by-side in one single horizontal row across the canvas on an open seamless background:
+Four continuous turnaround views arranged side-by-side in one horizontal row on an open seamless background:
 1. Front 0° View (Orthographic frontal view)
 2. Three-Quarter 45° View (Orthographic 45-degree angle)
 3. Side Profile 90° View (Orthographic 90-degree side silhouette)
 4. Rear Back 180° View (${
         comp.rearVisibility === 'hidden'
-          ? 'EMPTY SPACE: Pure empty chroma green since this component is front-only'
+          ? 'EMPTY SPACE: Pure empty chroma green since front-only component'
           : 'Exact rear view showing back details'
       })
 
@@ -1860,21 +1934,14 @@ Include ONLY:
 ${comp.includedGeometry.map((item) => `- ${item}`).join('\n')}
 
 DO NOT include:
-${comp.excludedGeometry.map((item) => `- ${item}`).join('\n')}
+${comp.excludedGeometry.slice(0, 10).map((item) => `- ${item}`).join('\n')}
 
-CRITICAL LAYOUT RESTRICTIONS (SEAMLESS HORIZONTAL SEQUENCE):
-- All 4 views must share the EXACT SAME vertical height, scale, and baseline.
-- Arranged on an open seamless solid green background with generous natural spacing between views.
-- ABSOLUTELY NO GRID LINES, NO BOX FRAMES, NO COMIC PANELS, NO DIVIDER BORDERS, NO SEPARATORS.
+LAYOUT RESTRICTIONS:
+- All 4 views share the same height and baseline on open seamless background.
+- ABSOLUTELY NO GRID LINES, NO BOX FRAMES, NO COMIC PANELS, NO DIVIDER BORDERS.
 - Pure isolated component only, NO character body, NO face, NO head.
-
-ART STYLE:
-${artStyleEn}
-2D anime / Chinese Guoman character asset. Clean crisp lineart, flat cel shading.
-
-BACKGROUND:
-${bgPromptColorEn} (${bgPromptColorHex})
-Solid flat uniform single color background. Zero shadows, zero gradients.
+- Art Style: ${artStyleEn}. Clean anime lineart, flat cel shading.
+- Background: ${bgPromptColorEn} (${bgPromptColorHex}) solid flat uniform color.
 
 NEGATIVE PROMPT:
 grid lines, divider lines, panel borders, box frames, comic panels, full character, full body, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow
@@ -1887,22 +1954,79 @@ grid lines, divider lines, panel borders, box frames, comic panels, full charact
 1. LINH KIỆN BÓC TÁCH:
 ════════════════════════════════════════════════════════════
 • Linh kiện: ${comp.nameVi}
-• Bố cục: 4 góc dàn ngang trên 1 hàng (0° Front $\to$ 45° Nghiêng $\to$ 90° Ngang $\to$ 180° Sau lưng)
+• Bố cục: 4 góc dàn ngang trên 1 hàng (0° Front ➔ 45° Nghiêng ➔ 90° Ngang ➔ 180° Sau lưng)
 • Tiêu đề định danh: ${comp.titleEn}
 • Nền: Phẳng 1 màu ${bgTextVi}, không có khung hay đường kẻ ngăn cách!`;
 
-      promptJSON = JSON.stringify(
+      const horizontal1x4Prompts = [
         {
-          project: 'Flow-App 2D Motion Comic Engine',
-          workflow_step: 'Step 2 - Seamless Horizontal 1x4 Turnaround',
-          component: {
-            id: comp.id,
-            name_vi: comp.nameVi,
-            layout: '1x4 Horizontal Sequence',
-            aspect_ratio: '16:9',
-            background: bgPromptColorHex,
-          },
+          name: `${comp.filePrefix}_000_front`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '0° Front (Chính diện)',
+          angle_id: '000_front',
+          angle_deg: 0,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_000_front.png`,
+          view_desc: 'Góc chính diện 0° lơ lửng độc lập',
+          prompt: `0° front view of isolated ${comp.titleEn}. Include ONLY: ${comp.includedGeometry.join(', ')}. Zero face, zero body, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 4,
         },
+        {
+          name: `${comp.filePrefix}_045_three_quarter`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '45° Three-Quarter (Nghiêng 3/4)',
+          angle_id: '045_three_quarter',
+          angle_deg: 45,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_045_three_quarter.png`,
+          view_desc: 'Góc nghiêng 3/4 45 độ',
+          prompt: `45° three-quarter view of isolated ${comp.titleEn}, depth and curve silhouette, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 2,
+        },
+        {
+          name: `${comp.filePrefix}_090_side`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '90° Side Profile (Nhìn ngang)',
+          angle_id: '090_side',
+          angle_deg: 90,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_090_side.png`,
+          view_desc: 'Góc nhìn ngang 90 độ',
+          prompt: `90° side profile view of isolated ${comp.titleEn}, clean side silhouette, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 2,
+        },
+        {
+          name: `${comp.filePrefix}_180_back`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '180° Back (Sau lưng)',
+          angle_id: '180_back',
+          angle_deg: 180,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_180_back.png`,
+          view_desc: comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Góc nhìn từ sau lưng',
+          prompt: comp.rearVisibility === 'hidden'
+            ? `pure empty solid ${bgPromptColorEn} background #00FF00, blank empty canvas --ar 1:1`
+            : `180° rear back view of isolated ${comp.titleEn}, rear back texture, solid ${bgPromptColorEn} background --ar 1:1`,
+          count: 1,
+        },
+      ];
+
+      promptJSON = JSON.stringify(
+        config.include_base_prompt === false
+          ? { prompts: horizontal1x4Prompts }
+          : { base_prompt: baseRefPrompt, prompts: horizontal1x4Prompts },
         null,
         2
       );
@@ -1954,15 +2078,8 @@ CRITICAL SEAMLESS LAYOUT RULES:
 - Generous open spacing between sprites.
 - All turnaround views share the same height and baseline.
 - Pure isolated component only. DO NOT generate full character.
-
-ART STYLE:
-${artStyleEn}
-2D anime / Chinese Guoman character asset.
-Clean professional lineart, sharp clean silhouette, hard-edge cel shading, flat matte colors.
-
-BACKGROUND:
-${bgPromptColorEn} (${bgPromptColorHex})
-Solid flat uniform single color background. Zero gradients, zero shadows, zero floor, zero textures, zero color spill.
+- Art Style: ${artStyleEn}. Clean professional lineart, hard-edge cel shading, flat matte colors.
+- Background: ${bgPromptColorEn} (${bgPromptColorHex}) solid flat uniform single color, zero shadows.
 
 NEGATIVE PROMPT:
 grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, head, face, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow, rim light
@@ -2002,26 +2119,105 @@ ${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
 • Đã xóa toàn bộ từ khóa kích hoạt đường kẻ ô của AI.
 • Phông nền: ${bgTextVi}.`;
 
-    promptJSON = JSON.stringify(
+    const multiAngle2x3Prompts = [
       {
-        project: 'Flow-App 2D Motion Comic Engine',
-        workflow_step: 'Step 2 - Modular 2D Sprite Sheet Decomposition',
-        component: {
-          id: comp.id,
-          name_vi: comp.nameVi,
-          title_en: comp.titleEn,
-          included_geometry: comp.includedGeometry,
-          excluded_geometry: comp.excludedGeometry,
-          art_style: artStyleEn,
-          rear_visibility: comp.rearVisibility,
-        },
-        grid_spec: {
-          canvas_aspect_ratio: '16:9',
-          rows: 2,
-          cols: 3,
-          background: bgPromptColorHex,
-        },
+        name: `${comp.filePrefix}_000_front`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: '0° Front (Chính diện)',
+        angle_id: '000_front',
+        angle_deg: 0,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_000_front.png`,
+        view_desc: 'Hàng trên Ô 1: Góc chính diện 0° lơ lửng độc lập',
+        prompt: `0° front view of isolated ${comp.titleEn}. Include ONLY: ${comp.includedGeometry.join(', ')}. Zero face, zero body, solid ${bgPromptColorEn} background --ar 1:1`,
+        count: 4,
       },
+      {
+        name: `${comp.filePrefix}_045_three_quarter`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: '45° Three-Quarter (Nghiêng 3/4)',
+        angle_id: '045_three_quarter',
+        angle_deg: 45,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_045_three_quarter.png`,
+        view_desc: 'Hàng trên Ô 2: Góc nghiêng 3/4 45 độ',
+        prompt: `45° three-quarter view of isolated ${comp.titleEn}, depth and curve silhouette, solid ${bgPromptColorEn} background --ar 1:1`,
+        count: 2,
+      },
+      {
+        name: `${comp.filePrefix}_090_side`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: '90° Side Profile (Nhìn ngang)',
+        angle_id: '090_side',
+        angle_deg: 90,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_090_side.png`,
+        view_desc: 'Hàng trên Ô 3: Góc nhìn ngang 90 độ',
+        prompt: `90° side profile view of isolated ${comp.titleEn}, side silhouette, solid ${bgPromptColorEn} background --ar 1:1`,
+        count: 2,
+      },
+      {
+        name: `${comp.filePrefix}_high_angle`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: 'High Angle (Trên cao nhìn xuống)',
+        angle_id: 'high_angle_top',
+        angle_deg: 90,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_high_angle_top.png`,
+        view_desc: 'Hàng dưới Ô 4: Góc quay trên cao nhìn chúc xuống',
+        prompt: `High-angle top-down perspective view of isolated ${comp.titleEn}, solid ${bgPromptColorEn} background --ar 1:1`,
+        count: 1,
+      },
+      {
+        name: `${comp.filePrefix}_low_angle`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: 'Low Angle (Dưới hất lên)',
+        angle_id: 'low_angle_bottom',
+        angle_deg: 90,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_low_angle_bottom.png`,
+        view_desc: 'Hàng dưới Ô 5: Góc quay dưới hất ngược lên',
+        prompt: `Low-angle bottom-up perspective view of isolated ${comp.titleEn}, solid ${bgPromptColorEn} background --ar 1:1`,
+        count: 1,
+      },
+      {
+        name: `${comp.filePrefix}_180_back`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: '180° Rear Back (Sau lưng)',
+        angle_id: '180_back',
+        angle_deg: 180,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_180_back.png`,
+        view_desc: comp.rearVisibility === 'hidden' ? 'Hàng dưới Ô 6: Bị khuất hoàn toàn (ô rỗng)' : 'Hàng dưới Ô 6: Mặt sau chi tiết',
+        prompt: comp.rearVisibility === 'hidden'
+          ? `pure empty solid ${bgPromptColorEn} background #00FF00, blank empty canvas --ar 1:1`
+          : `180° rear back view of isolated ${comp.titleEn}, rear back texture, solid ${bgPromptColorEn} background --ar 1:1`,
+        count: 1,
+      },
+    ];
+
+    promptJSON = JSON.stringify(
+      config.include_base_prompt === false
+        ? { prompts: multiAngle2x3Prompts }
+        : { base_prompt: baseRefPrompt, prompts: multiAngle2x3Prompts },
       null,
       2
     );
@@ -2117,7 +2313,7 @@ ${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
     promptJSON = JSON.stringify(jsonSpec, null, 2);
 
     promptVietnamese = `【 BẢNG SPRITE LINH KIỆN TÓC 3 DÃY × 5 GÓC QUAY CHUẨN ĐIỆN ẢNH (TỶ LỆ ${ar}) 】
-• Mục tiêu: Bóc tách mái tóc thành 3 tầng độ sâu Z-Index đồng bộ xoay 360° (Mái trước $\to$ Tóc mai $\to$ Tóc sau lưng) để ghép khớp 100% vào nhân vật mà không bị phụ kiện thừa.
+• Mục tiêu: Bóc tách mái tóc thành 3 tầng độ sâu Z-Index đồng bộ xoay 360° (Mái trước → Tóc mai → Tóc sau lưng) để ghép khớp 100% vào nhân vật mà không bị phụ kiện thừa.
 • Mái tóc: Tóc ${hairColInfo.vi}, ${hairLenInfo.vi}, ${hairTexInfo.vi}${hairAccInfo.vi !== 'Không có' ? `, Phụ kiện (${hairAccInfo.vi})` : ''}.
 • Phông nền: ${bgTextVi}.
 • ⚠️ YÊU CẦU ĐẶC BIỆT CHỐNG DÍNH MÀU NỀN VÀO VIỀN TÓC (ANTI-COLOR-SPILL):
@@ -2446,3 +2642,150 @@ Hãy sinh ra bức ảnh với tỷ lệ ${config.aspect_ratio || '16:9'} bám s
     fullCopyText,
   };
 };
+
+/**
+ * Metadata info extracted when parsing an asset image filename
+ */
+export interface ParsedPartFilenameInfo {
+  part_id: string;
+  part_name: string;
+  group_id: string;
+  group_name: string;
+  angle_id: string;
+  angle_name: string;
+  angle_deg: number;
+  z_index: number;
+  is_master_character: boolean;
+  save_filename: string;
+}
+
+/**
+ * Parses an asset image filename to auto-detect its character part, angle, z_index, and group
+ * @param filename - e.g. "05_toc_truoc_000_front.png", "toc_sau_180_back.jpg", "master_045_three_quarter.png"
+ */
+export function parsePartFilename(filename: string): ParsedPartFilenameInfo | null {
+  if (!filename) return null;
+  const cleanName = filename.toLowerCase().replace(/\.[a-zA-Z0-9]+$/, '');
+
+  // Check master character turnaround
+  if (cleanName.includes('master') || cleanName.includes('character_turnaround')) {
+    let angle_deg = 0;
+    let angle_id = '000_front';
+    let angle_name = '0° Front (Chính diện)';
+
+    if (cleanName.includes('045') || cleanName.includes('three_quarter') || cleanName.includes('45')) {
+      angle_deg = 45;
+      angle_id = '045_three_quarter';
+      angle_name = '45° Three-Quarter (Nghiêng 3/4)';
+    } else if (cleanName.includes('090') || cleanName.includes('side') || cleanName.includes('90')) {
+      angle_deg = 90;
+      angle_id = '090_side';
+      angle_name = '90° Side Profile (Nhìn ngang)';
+    } else if (cleanName.includes('135') || cleanName.includes('rear_three_quarter')) {
+      angle_deg = 135;
+      angle_id = '135_rear';
+      angle_name = '135° Rear Three-Quarter (Nghiêng sau)';
+    } else if (cleanName.includes('180') || cleanName.includes('back')) {
+      angle_deg = 180;
+      angle_id = '180_back';
+      angle_name = '180° Back (Sau lưng)';
+    } else if (cleanName.includes('top') || cleanName.includes('dinh_dau')) {
+      angle_deg = 90;
+      angle_id = 'top_down';
+      angle_name = 'Top-Down (Đỉnh đầu)';
+    }
+
+    return {
+      part_id: 'master_character',
+      part_name: 'Nhân Vật Gốc Toàn Thân',
+      group_id: 'step1_master',
+      group_name: 'Bảng Xoay Nhân Vật Gốc',
+      angle_id,
+      angle_name,
+      angle_deg,
+      z_index: 0,
+      is_master_character: true,
+      save_filename: `master_${angle_id}.png`,
+    };
+  }
+
+  const partMap: Record<
+    string,
+    { part_id: string; part_name: string; group_id: string; group_name: string; z_index: number; filePrefix: string }
+  > = {
+    toc_truoc: { part_id: 'toc_truoc', part_name: 'Mái Tóc Trước', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 50, filePrefix: '05_toc_truoc' },
+    toc_sau: { part_id: 'toc_sau', part_name: 'Suối Tóc Sau Lưng', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 10, filePrefix: '01_toc_sau' },
+    khuon_mat: { part_id: 'khuon_mat_no_face', part_name: 'Khuôn Mặt Trần', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 30, filePrefix: '03_khuon_mat' },
+    trong_den: { part_id: 'trong_den_iris', part_name: 'Mống Mắt (Iris)', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 42, filePrefix: '04a_trong_den_iris' },
+    trong_trang: { part_id: 'trong_trang', part_name: 'Tròng Trắng (Sclera)', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 41, filePrefix: '04b_trong_trang' },
+    diem_sang: { part_id: 'diem_sang_mat', part_name: 'Điểm Sáng Mắt', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 43, filePrefix: '04c_diem_sang_mat' },
+    mi_mat: { part_id: 'mi_mat', part_name: 'Mi Mắt & Chớp Mắt', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 44, filePrefix: '04d_mi_mat' },
+    long_may: { part_id: 'long_may', part_name: 'Cặp Lông Mày', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 45, filePrefix: '04e_long_may' },
+    mui: { part_id: 'mui', part_name: 'Sống Mũi', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 35, filePrefix: '04f_mui' },
+    doi_tai: { part_id: 'doi_tai', part_name: 'Đôi Tai', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 26, filePrefix: '04g_doi_tai' },
+    mieng: { part_id: 'mieng', part_name: 'Khẩu Hình Miệng', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 36, filePrefix: '04h_mieng' },
+    ngu_quan: { part_id: 'mat', part_name: 'Đôi Mắt & Ngũ Quan', group_id: '01_head_face', group_name: 'Khuôn Mặt & Ngũ Quan', z_index: 40, filePrefix: '04_ngu_quan_mat' },
+    than_co_ban: { part_id: 'than_co_ban', part_name: 'Thân Đạo Bào Hanfu', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 20, filePrefix: '02_than_co_ban' },
+    canh_tay_trai: { part_id: 'canh_tay_trai', part_name: 'Cánh Tay Trái', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 21, filePrefix: '02a_canh_tay_trai' },
+    cang_tay_trai: { part_id: 'cang_tay_trai', part_name: 'Cẳng Tay Trái', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 22, filePrefix: '02b_cang_tay_trai' },
+    ban_tay_trai: { part_id: 'ban_tay_trai', part_name: 'Bàn Tay Trái', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 23, filePrefix: '02c_ban_tay_trai' },
+    canh_tay_phai: { part_id: 'canh_tay_phai', part_name: 'Cánh Tay Phải', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 19, filePrefix: '02d_canh_tay_phai' },
+    cang_tay_phai: { part_id: 'cang_tay_phai', part_name: 'Cẳng Tay Phải', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 18, filePrefix: '02e_cang_tay_phai' },
+    ban_tay_phai: { part_id: 'ban_tay_phai', part_name: 'Bàn Tay Phải', group_id: '02_torso_arms', group_name: 'Khớp Xương Thân & Cánh Tay', z_index: 17, filePrefix: '02f_ban_tay_phai' },
+    dui_trai: { part_id: 'dui_trai', part_name: 'Đùi Trái', group_id: '03_legs_feet', group_name: 'Khớp Xương Chân & Giày', z_index: 15, filePrefix: '03a_dui_trai' },
+    cang_chan_trai: { part_id: 'cang_chan_trai', part_name: 'Cẳng Chân & Ủng Trái', group_id: '03_legs_feet', group_name: 'Khớp Xương Chân & Giày', z_index: 16, filePrefix: '03b_cang_chan_trai' },
+    dui_phai: { part_id: 'dui_phai', part_name: 'Đùi Phải', group_id: '03_legs_feet', group_name: 'Khớp Xương Chân & Giày', z_index: 13, filePrefix: '03c_dui_phai' },
+    cang_chan_phai: { part_id: 'cang_chan_phai', part_name: 'Cẳng Chân & Ủng Phải', group_id: '03_legs_feet', group_name: 'Khớp Xương Chân & Giày', z_index: 14, filePrefix: '03d_cang_chan_phai' },
+    ao_choang: { part_id: 'ao_choang', part_name: 'Áo Choàng / Tà Áo Bay', group_id: '04_props_costumes', group_name: 'Trang Phục Bay & Vũ Khí', z_index: 8, filePrefix: '06a_ao_choang' },
+    vu_khi: { part_id: 'vu_khi', part_name: 'Phi Kiếm / Vũ Khí', group_id: '04_props_costumes', group_name: 'Trang Phục Bay & Vũ Khí', z_index: 60, filePrefix: '06_vu_khi' },
+  };
+
+  for (const [key, meta] of Object.entries(partMap)) {
+    if (cleanName.includes(key)) {
+      let angle_deg = 0;
+      let angle_id = '000_front';
+      let angle_name = '0° Front (Chính diện)';
+
+      if (cleanName.includes('045') || cleanName.includes('three_quarter') || cleanName.includes('45')) {
+        angle_deg = 45;
+        angle_id = '045_three_quarter';
+        angle_name = '45° Three-Quarter (Nghiêng 3/4)';
+      } else if (cleanName.includes('090') || cleanName.includes('side') || cleanName.includes('90')) {
+        angle_deg = 90;
+        angle_id = '090_side';
+        angle_name = '90° Side Profile (Nhìn ngang)';
+      } else if (cleanName.includes('135') || cleanName.includes('rear_three_quarter')) {
+        angle_deg = 135;
+        angle_id = '135_rear';
+        angle_name = '135° Rear Three-Quarter (Nghiêng sau)';
+      } else if (cleanName.includes('180') || cleanName.includes('back')) {
+        angle_deg = 180;
+        angle_id = '180_back';
+        angle_name = '180° Back (Sau lưng)';
+      } else if (cleanName.includes('high_angle') || cleanName.includes('top')) {
+        angle_deg = 90;
+        angle_id = 'high_angle_top';
+        angle_name = 'High Angle (Trên cao nhìn xuống)';
+      } else if (cleanName.includes('low_angle') || cleanName.includes('bottom')) {
+        angle_deg = 90;
+        angle_id = 'low_angle_bottom';
+        angle_name = 'Low Angle (Dưới hất lên)';
+      }
+
+      return {
+        part_id: meta.part_id,
+        part_name: meta.part_name,
+        group_id: meta.group_id,
+        group_name: meta.group_name,
+        z_index: meta.z_index,
+        angle_id,
+        angle_name,
+        angle_deg,
+        is_master_character: false,
+        save_filename: `${meta.filePrefix}_${angle_id}.png`,
+      };
+    }
+  }
+
+  return null;
+}
