@@ -543,6 +543,46 @@ export function processCellChromaAndDespeckle(
     }
   }
 
+  // 8. Auto Chromatic Reconstruction & Smart Despill for Green Cast Removal
+  // Automatically restores natural warm/neutral tones on eyebrows, eyelashes, hair, skin, and clothing borders
+  if (effectiveMode === 'chroma_green') {
+    for (let i = 0; i < totalPixels; i++) {
+      const p = i * 4;
+      if (data[p + 3] > 0) {
+        const r = data[p];
+        const g = data[p + 1];
+        const b = data[p + 2];
+        const maxRB = Math.max(r, b);
+        const avgRB = Math.round((r + b) / 2);
+
+        // Case 1: Dark Lineart / Eyebrows / Eyelashes / Hair (maxRB < 95 or Lum < 80)
+        if (maxRB < 95 && g > maxRB) {
+          const greenExcess = g - maxRB;
+          if (r >= b) {
+            // Warm brown/chestnut -> boost R slightly to recover rich warmth
+            data[p] = Math.min(255, r + Math.round(greenExcess * 0.35));
+            data[p + 1] = Math.min(data[p], Math.round(avgRB * 0.95));
+          } else {
+            // Charcoal / Black / Navy
+            data[p + 1] = Math.round(avgRB * 0.9);
+          }
+        }
+        // Case 2: Skin Tones (R is high, G was contaminated to exceed R or close to R)
+        else if (r > 120 && r > b) {
+          const maxAllowedG = Math.round(r * 0.82 + b * 0.12);
+          if (g > maxAllowedG) {
+            data[p + 1] = maxAllowedG;
+            data[p] = Math.min(255, r + 4);
+          }
+        }
+        // Case 3: General Subjects (Clothing, Eyes, Accessories with green spill)
+        else if (g > maxRB) {
+          data[p + 1] = Math.round(maxRB * 0.92);
+        }
+      }
+    }
+  }
+
   // Put image data back
   ctx.putImageData(imgData, 0, 0);
 }
