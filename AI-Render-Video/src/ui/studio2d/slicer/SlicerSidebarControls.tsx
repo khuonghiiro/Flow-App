@@ -65,8 +65,8 @@ export interface SlicerSidebarControlsProps {
   keepLargestIslandOnly: boolean;
   setKeepLargestIslandOnly: (keep: boolean) => void;
   // Advanced Despeckle & Edge Cleanup properties
-  eyedropperTarget?: 'chroma' | 'fringe';
-  setEyedropperTarget?: (target: 'chroma' | 'fringe') => void;
+  eyedropperTarget?: 'chroma' | 'fringe' | 'smooth';
+  setEyedropperTarget?: (target: 'chroma' | 'fringe' | 'smooth') => void;
   cleanupMode?: 'all' | 'defringe' | 'smooth' | 'despeckle';
   setCleanupMode?: (mode: 'all' | 'defringe' | 'smooth' | 'despeckle') => void;
   fringeColorType?: 'chroma_green' | 'pure_white' | 'pure_black' | 'custom';
@@ -79,6 +79,10 @@ export interface SlicerSidebarControlsProps {
   setEdgeChoke?: (val: number) => void;
   edgeSmooth?: number;
   setEdgeSmooth?: (val: number) => void;
+  smoothColorType?: 'black' | 'white' | 'auto' | 'custom';
+  setSmoothColorType?: (type: 'black' | 'white' | 'auto' | 'custom') => void;
+  smoothColorHex?: string;
+  setSmoothColorHex?: (hex: string) => void;
   onRunDespeckleOnly?: () => void;
   // Slicing & Actions
   // Cumulative / Multi-Pass mode & Apply as Base
@@ -149,12 +153,16 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   setFringeColorType,
   fringeColorHex = '#00ff00',
   setFringeColorHex,
-  defringeStrength = 60,
+  defringeStrength = 0,
   setDefringeStrength,
   edgeChoke = 0,
   setEdgeChoke,
-  edgeSmooth = 2,
+  edgeSmooth = 0,
   setEdgeSmooth,
+  smoothColorType = 'black',
+  setSmoothColorType,
+  smoothColorHex = '#000000',
+  setSmoothColorHex,
   onRunDespeckleOnly,
   isCumulativeProcessing = false,
   setIsCumulativeProcessing,
@@ -1335,7 +1343,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                 {/* Edge Choke Slider */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#cbd5e1', marginBottom: 2 }}>
-                    <span style={{ fontWeight: 600, color: '#38bdf8' }} title="Lấn vào mép trong để xén sạch răng cưa hoặc viền màu bám dính">
+                    <span style={{ fontWeight: 600, color: '#38bdf8' }} title="Xóa lùi N lớp pixel từ viền vào trong (theo phạm vi bóc tách: cả viền trong lỗ & viền ngoài nếu chọn 'Tách toàn bộ')">
                       ✂️ Gọt lùi viền sượng (Edge Choke):
                     </span>
                     <span style={{ color: '#38bdf8', fontWeight: 700 }}>{edgeChoke}px</span>
@@ -1344,7 +1352,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                     <input
                       type="range"
                       min="0"
-                      max="5"
+                      max="10"
                       step="1"
                       value={edgeChoke}
                       onChange={(e) => setEdgeChoke && setEdgeChoke(parseInt(e.target.value))}
@@ -1359,14 +1367,14 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                       style={{ flex: 1, accentColor: '#38bdf8' }}
                     />
                     <div style={{ display: 'flex', gap: 2 }}>
-                      {[0, 1, 2].map((v) => (
+                      {[0, 1, 2, 3, 5].map((v) => (
                         <button
                           key={v}
                           onClick={() => {
                             if (setEdgeChoke) setEdgeChoke(v);
                             if (onCommitSliderChange) onCommitSliderChange({ edgeChoke: v });
                           }}
-                          style={{ height: 20, padding: '0 6px', fontSize: 8.5, fontWeight: 600, background: edgeChoke === v ? '#0284c7' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}
+                          style={{ height: 20, padding: '0 5px', fontSize: 8.5, fontWeight: 600, background: edgeChoke === v ? '#0284c7' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}
                         >
                           {v}px
                         </button>
@@ -1375,10 +1383,163 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                   </div>
                 </div>
 
+                {/* Edge Smooth Color Selector */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(56,189,248,0.15)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: '#38bdf8' }}>🎨 Màu viền làm mịn:</span>
+                    <span style={{ fontSize: 8.5, color: '#94a3b8' }}>
+                      {smoothColorType === 'black' ? 'Màu Đen (#000000)' : smoothColorType === 'white' ? 'Màu Trắng (#FFFFFF)' : smoothColorType === 'auto' ? 'Tự động lấy màu gốc' : smoothColorHex}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
+                    <button
+                      onClick={() => {
+                        if (setSmoothColorType) setSmoothColorType('black');
+                        if (onCommitSliderChange) onCommitSliderChange({ smoothColorType: 'black' });
+                      }}
+                      style={{
+                        padding: '4px 2px',
+                        fontSize: 9,
+                        fontWeight: smoothColorType === 'black' ? 700 : 500,
+                        borderRadius: 4,
+                        background: smoothColorType === 'black' ? '#0f172a' : 'rgba(255,255,255,0.05)',
+                        color: smoothColorType === 'black' ? '#38bdf8' : '#94a3b8',
+                        border: smoothColorType === 'black' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#000000', border: '1px solid #64748b' }} />
+                      Đen
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (setSmoothColorType) setSmoothColorType('white');
+                        if (onCommitSliderChange) onCommitSliderChange({ smoothColorType: 'white' });
+                      }}
+                      style={{
+                        padding: '4px 2px',
+                        fontSize: 9,
+                        fontWeight: smoothColorType === 'white' ? 700 : 500,
+                        borderRadius: 4,
+                        background: smoothColorType === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)',
+                        color: smoothColorType === 'white' ? '#ffffff' : '#94a3b8',
+                        border: smoothColorType === 'white' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ffffff', border: '1px solid #cbd5e1' }} />
+                      Trắng
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (setSmoothColorType) setSmoothColorType('auto');
+                        if (onCommitSliderChange) onCommitSliderChange({ smoothColorType: 'auto' });
+                      }}
+                      style={{
+                        padding: '4px 2px',
+                        fontSize: 9,
+                        fontWeight: smoothColorType === 'auto' ? 700 : 500,
+                        borderRadius: 4,
+                        background: smoothColorType === 'auto' ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.05)',
+                        color: smoothColorType === 'auto' ? '#38bdf8' : '#94a3b8',
+                        border: smoothColorType === 'auto' ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <span>🎨</span>
+                      Màu gốc
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (setSmoothColorType) setSmoothColorType('custom');
+                        if (onCommitSliderChange) onCommitSliderChange({ smoothColorType: 'custom', smoothColorHex });
+                      }}
+                      style={{
+                        padding: '4px 2px',
+                        fontSize: 9,
+                        fontWeight: smoothColorType === 'custom' ? 700 : 500,
+                        borderRadius: 4,
+                        background: smoothColorType === 'custom' ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.05)',
+                        color: smoothColorType === 'custom' ? '#c084fc' : '#94a3b8',
+                        border: smoothColorType === 'custom' ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: smoothColorHex || '#a855f7', border: '1px solid #fff' }} />
+                      Tùy chọn
+                    </button>
+                  </div>
+
+                  {smoothColorType === 'custom' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                      <input
+                        type="color"
+                        value={smoothColorHex || '#000000'}
+                        onChange={(e) => {
+                          if (setSmoothColorHex) setSmoothColorHex(e.target.value);
+                          if (onCommitSliderChange) onCommitSliderChange({ smoothColorType: 'custom', smoothColorHex: e.target.value });
+                        }}
+                        style={{ width: 26, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent' }}
+                      />
+                      <input
+                        type="text"
+                        value={smoothColorHex || '#000000'}
+                        onChange={(e) => {
+                          if (setSmoothColorHex) setSmoothColorHex(e.target.value);
+                          if (e.target.value.length === 7 && onCommitSliderChange) {
+                            onCommitSliderChange({ smoothColorType: 'custom', smoothColorHex: e.target.value });
+                          }
+                        }}
+                        style={{ flex: 1, height: 22, padding: '0 6px', fontSize: 9.5, fontFamily: 'monospace', background: '#0f172a', color: '#38bdf8', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4 }}
+                      />
+                      <button
+                        onClick={() => {
+                          if (setEyedropperTarget) setEyedropperTarget('smooth');
+                          if (setIsEyedropperActive) setIsEyedropperActive(!isEyedropperActive);
+                        }}
+                        style={{
+                          height: 22,
+                          padding: '0 6px',
+                          fontSize: 9,
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          background: isEyedropperActive && eyedropperTarget === 'smooth' ? '#fbbf24' : 'rgba(56,189,248,0.15)',
+                          color: isEyedropperActive && eyedropperTarget === 'smooth' ? '#000' : '#38bdf8',
+                          border: isEyedropperActive && eyedropperTarget === 'smooth' ? '1px solid #fbbf24' : '1px solid rgba(56,189,248,0.3)',
+                          cursor: 'pointer',
+                        }}
+                        title="Nhấp chuột lên ảnh để hút màu viền mong muốn"
+                      >
+                        {isEyedropperActive && eyedropperTarget === 'smooth' ? '🎯 Đang hút...' : '💧 Hút màu'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Edge Smooth Slider */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#cbd5e1', marginBottom: 2 }}>
-                    <span style={{ fontWeight: 600, color: '#38bdf8' }} title="Khử bậc thang pixel, tạo đường bao viền mềm mại tự nhiên">
+                    <span style={{ fontWeight: 600, color: '#38bdf8' }} title="Bổ sung N lớp pixel viền dạng gradient đậm đến nhạt dần theo % theo màu đã chọn (lan tỏa ra ngoài lấp đầy răng cưa như Photoshop, theo phạm vi bóc tách)">
                       ✨ Làm mịn & Khử răng cưa viền:
                     </span>
                     <span style={{ color: '#38bdf8', fontWeight: 700 }}>{edgeSmooth}px</span>
@@ -1402,14 +1563,14 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
                       style={{ flex: 1, accentColor: '#38bdf8' }}
                     />
                     <div style={{ display: 'flex', gap: 2 }}>
-                      {[0, 2, 5].map((v) => (
+                      {[0, 1, 2, 3, 5].map((v) => (
                         <button
                           key={v}
                           onClick={() => {
                             if (setEdgeSmooth) setEdgeSmooth(v);
                             if (onCommitSliderChange) onCommitSliderChange({ edgeSmooth: v });
                           }}
-                          style={{ height: 20, padding: '0 6px', fontSize: 8.5, fontWeight: 600, background: edgeSmooth === v ? '#0284c7' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}
+                          style={{ height: 20, padding: '0 5px', fontSize: 8.5, fontWeight: 600, background: edgeSmooth === v ? '#0284c7' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}
                         >
                           {v}px
                         </button>

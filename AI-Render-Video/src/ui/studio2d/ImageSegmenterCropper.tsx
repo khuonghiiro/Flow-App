@@ -11,6 +11,8 @@ import {
   Eye,
   Layers,
   Save,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { Character2DPartType, StandardCropPreset } from '../../types/scene2d';
 import { STANDARD_CROP_PRESETS } from '../../core/assets/Asset2DRegistry';
@@ -34,6 +36,14 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
   const [brightness, setBrightness] = useState<number>(100);
   const [contrast, setContrast] = useState<number>(100);
 
+  // Zoom and Pan states
+  const [zoom, setZoom] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
+  const viewportRef = useRef<HTMLDivElement>(null);
+
   // Crop rectangle state [x, y, width, height] in source image pixels
   const [cropRect, setCropRect] = useState<{ x: number; y: number; w: number; h: number }>({
     x: 50,
@@ -47,10 +57,147 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
   const [previewResult, setPreviewResult] = useState<string | null>(null);
   const [appliedSuccess, setAppliedSuccess] = useState<boolean>(false);
 
+  // Undo / Redo history for single image cropper
+  const [undoStack, setUndoStack] = useState<{
+    cropRect: { x: number; y: number; w: number; h: number };
+    isRemoveBgActive: boolean;
+    tolerance: number;
+    feather: number;
+    keyColor: string;
+    brightness: number;
+    contrast: number;
+  }[]>([]);
+  const [redoStack, setRedoStack] = useState<{
+    cropRect: { x: number; y: number; w: number; h: number };
+    isRemoveBgActive: boolean;
+    tolerance: number;
+    feather: number;
+    keyColor: string;
+    brightness: number;
+    contrast: number;
+  }[]>([]);
+
+  const pushCropUndo = useCallback(() => {
+    setUndoStack((prev) => [
+      ...prev.slice(-25),
+      { cropRect, isRemoveBgActive, tolerance, feather, keyColor, brightness, contrast },
+    ]);
+    setRedoStack([]);
+  }, [cropRect, isRemoveBgActive, tolerance, feather, keyColor, brightness, contrast]);
+
+  const handleCropUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const target = undoStack[undoStack.length - 1];
+    setRedoStack((r) => [
+      ...r,
+      { cropRect, isRemoveBgActive, tolerance, feather, keyColor, brightness, contrast },
+    ]);
+    setUndoStack((u) => u.slice(0, u.length - 1));
+    setCropRect(target.cropRect);
+    setIsRemoveBgActive(target.isRemoveBgActive);
+    setTolerance(target.tolerance);
+    setFeather(target.feather);
+    setKeyColor(target.keyColor);
+    setBrightness(target.brightness);
+    setContrast(target.contrast);
+  }, [undoStack, cropRect, isRemoveBgActive, tolerance, feather, keyColor, brightness, contrast]);
+
+  const handleCropRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const target = redoStack[redoStack.length - 1];
+    setUndoStack((u) => [
+      ...u,
+      { cropRect, isRemoveBgActive, tolerance, feather, keyColor, brightness, contrast },
+    ]);
+    setRedoStack((r) => r.slice(0, r.length - 1));
+    setCropRect(target.cropRect);
+    setIsRemoveBgActive(target.isRemoveBgActive);
+    setTolerance(target.tolerance);
+    setFeather(target.feather);
+    setKeyColor(target.keyColor);
+    setBrightness(target.brightness);
+    setContrast(target.contrast);
+  }, [redoStack, cropRect, isRemoveBgActive, tolerance, feather, keyColor, brightness, contrast]);
+
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
   const resultCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
+
+  // Keyboard shortcut listener (Space for Pan, Ctrl+Z for Undo, Ctrl+Y for Redo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+
+      if (e.code === 'Space' && !e.repeat && !isInput) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !isInput) {
+        e.preventDefault();
+        if (e.shiftKey) handleCropRedo();
+        else handleCropUndo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y') && !isInput) {
+        e.preventDefault();
+        handleCropRedo();
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [handleCropUndo, handleCropRedo]);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!viewportRef.current) return;
+
+    const cRect = viewportRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - (cRect.left + cRect.width / 2);
+    const mouseY = e.clientY - (cRect.top + cRect.height / 2);
+
+    const zoomFactor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
+    const newZoom = Math.max(0.5, Math.min(8, Math.round(zoom * zoomFactor * 100) / 100));
+
+    if (newZoom === zoom) return;
+
+    const scaleRatio = newZoom / zoom;
+    const newPanX = mouseX - (mouseX - panOffset.x) * scaleRatio;
+    const newPanY = mouseY - (mouseY - panOffset.y) * scaleRatio;
+
+    setZoom(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
+  };
+
+  const handleContainerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button === 1 || e.button === 2 || isSpacePressed) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+    }
+  };
+
+  const handleContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning) {
+      setPanOffset({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y,
+      });
+    }
+  };
+
+  const handleContainerMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+    }
+  };
 
   // Load initial demo image if none loaded
   useEffect(() => {
@@ -357,6 +504,11 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
 
       {/* ─── CENTER COLUMN: Interactive Cropping Area ────────────────── */}
       <div
+        ref={viewportRef}
+        onWheel={handleWheel}
+        onMouseDown={handleContainerMouseDown}
+        onMouseMove={handleContainerMouseMove}
+        onMouseUp={handleContainerMouseUp}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -368,9 +520,76 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
           position: 'relative',
           overflow: 'hidden',
           padding: 16,
+          cursor: isSpacePressed
+            ? isPanning
+              ? 'grabbing'
+              : 'grab'
+            : 'default',
         }}
       >
-        <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%' }}>
+        {/* Top Floating Zoom Controls Bar */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            zIndex: 30,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 6,
+            padding: '2px 6px',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <button
+            onClick={() => {
+              const newZ = Math.max(0.5, Math.round((zoom / 1.2) * 10) / 10);
+              setZoom(newZ);
+            }}
+            style={{ padding: '3px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            title="Thu nhỏ (-)"
+          >
+            <ZoomOut size={12} />
+          </button>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', minWidth: 38, textAlign: 'center', fontFamily: 'monospace' }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            onClick={() => {
+              const newZ = Math.min(8, Math.round((zoom * 1.2) * 10) / 10);
+              setZoom(newZ);
+            }}
+            style={{ padding: '3px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            title="Phóng to (+)"
+          >
+            <ZoomIn size={12} />
+          </button>
+          <button
+            onClick={() => {
+              setZoom(1);
+              setPanOffset({ x: 0, y: 0 });
+            }}
+            style={{ padding: '2px 5px', fontSize: 9.5, fontWeight: 600, borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}
+            title="Khôi phục 100%"
+          >
+            100%
+          </button>
+        </div>
+
+        {/* Scaled and Translated Canvas Container */}
+        <div
+          style={{
+            position: 'relative',
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+            transformOrigin: 'center center',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            transition: isPanning ? 'none' : 'transform 0.05s ease-out',
+          }}
+        >
           {/* Main Processing Canvas with Checkerboard Background for Alpha Preview */}
           <canvas
             ref={imageCanvasRef}
@@ -412,6 +631,30 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Floating Zoom & Pan Guide Badge */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 5,
+            padding: '3px 8px',
+            fontSize: 9.5,
+            color: '#94a3b8',
+            backdropFilter: 'blur(6px)',
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <span>🖱️ Cuộn chuột để Zoom</span>
+          <span>•</span>
+          <span>✋ Giữ Space để kéo</span>
         </div>
 
         {/* Sliders for precise manual Box placement */}

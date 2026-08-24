@@ -30,6 +30,40 @@ import { SlicerCellAdjustmentBar } from './slicer/SlicerCellAdjustmentBar';
 import { SlicerInteractiveCanvas } from './slicer/SlicerInteractiveCanvas';
 import { Slicer3DTurntablePreview } from './slicer/Slicer3DTurntablePreview';
 
+export interface SlicerHistorySnapshot {
+  timestamp: number;
+  label?: string;
+  userUploadedImageUrl: string | null;
+  selectedCatId: string;
+  keyColorType: 'chroma_green' | 'pure_white' | 'custom';
+  keyColorHex: string;
+  isolationMode: 'all' | 'outer_only';
+  tolerance: number;
+  feather: number;
+  shadowRetention: number;
+  strokeWidth: number;
+  strokeColorHex: string;
+  bgCleanupSubTab: 'chroma' | 'despeckle' | 'ai_matting';
+  cleanupMode: 'all' | 'defringe' | 'smooth' | 'despeckle';
+  fringeColorType: 'chroma_green' | 'pure_white' | 'pure_black' | 'custom';
+  fringeColorHex: string;
+  defringeStrength: number;
+  edgeChoke: number;
+  edgeSmooth: number;
+  smoothColorType?: 'black' | 'white' | 'auto' | 'custom';
+  smoothColorHex?: string;
+  despeckleSize: number;
+  whiteSpeckleSensitivity: number;
+  keepLargestIslandOnly: boolean;
+  paddingInset: number;
+  colDividers: number[];
+  rowDividers: number[];
+  slicedResults: [string, string][];
+  previewDisplayMode: 'transparent' | 'original';
+  hasExplicitlySliced: boolean;
+  currentAssembly: Character2DAssembly;
+}
+
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
   onApplyAssembly: (updatedAssembly: Character2DAssembly) => void;
@@ -67,14 +101,16 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(0);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
 
-  // Advanced Despeckle, Color Defringe & Edge Smoothing states
-  const [eyedropperTarget, setEyedropperTarget] = useState<'chroma' | 'fringe'>('chroma');
+  // Advanced Despeckle, Color Defringe & Edge Smoothing states (Default 0 so Tab 2 never affects Tab 1 until adjusted)
+  const [eyedropperTarget, setEyedropperTarget] = useState<'chroma' | 'fringe' | 'smooth'>('chroma');
   const [cleanupMode, setCleanupMode] = useState<'all' | 'defringe' | 'smooth' | 'despeckle'>('all');
   const [fringeColorType, setFringeColorType] = useState<'chroma_green' | 'pure_white' | 'pure_black' | 'custom'>('chroma_green');
   const [fringeColorHex, setFringeColorHex] = useState<string>('#00ff00');
-  const [defringeStrength, setDefringeStrength] = useState<number>(60);
+  const [defringeStrength, setDefringeStrength] = useState<number>(0);
   const [edgeChoke, setEdgeChoke] = useState<number>(0);
-  const [edgeSmooth, setEdgeSmooth] = useState<number>(2);
+  const [edgeSmooth, setEdgeSmooth] = useState<number>(0);
+  const [smoothColorType, setSmoothColorType] = useState<'black' | 'white' | 'auto' | 'custom'>('black');
+  const [smoothColorHex, setSmoothColorHex] = useState<string>('#000000');
   const [paddingInset, setPaddingInset] = useState<number>(0);
 
   // User upload & Slicing state
@@ -83,6 +119,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [assemblySuccess, setAssemblySuccess] = useState<boolean>(false);
+
+  // Undo / Redo History Stack (Max 30 snapshots)
+  const [undoStack, setUndoStack] = useState<SlicerHistorySnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<SlicerHistorySnapshot[]>([]);
+  const [historyToast, setHistoryToast] = useState<{ message: string; type: 'undo' | 'redo' } | null>(null);
 
 
   // Auto-check AI Server status on mount and when tab changes
@@ -459,7 +500,13 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
         setIsEyedropperActive(false);
         setEyedropperHoverColor(null);
-        if (eyedropperTarget === 'fringe') {
+        if (eyedropperTarget === 'smooth') {
+          setSmoothColorType('custom');
+          setSmoothColorHex(hex);
+          if (hasExplicitlySliced) {
+            handleAutoSliceAndAssemble({ smoothColorType: 'custom', smoothColorHex: hex });
+          }
+        } else if (eyedropperTarget === 'fringe') {
           setFringeColorType('custom');
           setFringeColorHex(hex);
           if (hasExplicitlySliced) {
@@ -1013,15 +1060,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const effDefringe = overrides?.defringeStrength !== undefined ? overrides.defringeStrength : defringeStrength;
     const effChoke = overrides?.edgeChoke !== undefined ? overrides.edgeChoke : edgeChoke;
     const effSmooth = overrides?.edgeSmooth !== undefined ? overrides.edgeSmooth : edgeSmooth;
+    const effSmoothType = overrides?.smoothColorType !== undefined ? overrides.smoothColorType : smoothColorType;
+    const effSmoothHex = overrides?.smoothColorHex !== undefined ? overrides.smoothColorHex : smoothColorHex;
     const effCleanupMode = overrides?.cleanupMode !== undefined ? overrides.cleanupMode : cleanupMode;
-
-    const isDespeckleTab = overrides?.cleanupMode !== undefined || overrides?.defringeStrength !== undefined || overrides?.edgeChoke !== undefined || overrides?.edgeSmooth !== undefined || overrides?.despeckleSize !== undefined || bgCleanupSubTab === 'despeckle';
-    const activeDefringe = isDespeckleTab ? effDefringe : (overrides?.defringeStrength ?? 0);
-    const activeChoke = isDespeckleTab ? effChoke : (overrides?.edgeChoke ?? 0);
-    const activeSmooth = isDespeckleTab ? effSmooth : (overrides?.edgeSmooth ?? 0);
-    const activeDespeckle = isDespeckleTab ? effDespeckle : (overrides?.despeckleSize ?? 0);
-    const activeWhiteSens = isDespeckleTab ? effWhiteSens : (overrides?.whiteSpeckleSensitivity ?? 0);
-    const activeKeepLargest = isDespeckleTab ? effKeepLargest : (overrides?.keepLargestIslandOnly ?? false);
 
     setIsProcessing(true);
     setTimeout(() => {
@@ -1055,7 +1096,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         // Draw from active base image (with padding inset)
         ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
 
-        // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with strict Tab-Isolated values
+        // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with seamless Tab 1 + Tab 2 combination
         processCellChromaAndDespeckle(ctx, w, h, {
           keyColorType: effKeyType,
           keyColorHex: effKeyHex,
@@ -1065,14 +1106,16 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           shadowRetention: effShadowRetention,
           strokeWidth: effStrokeW,
           strokeColorHex: effStrokeColor,
-          despeckleSize: activeDespeckle,
-          whiteSpeckleSensitivity: activeWhiteSens,
-          keepLargestIslandOnly: activeKeepLargest,
+          despeckleSize: effDespeckle,
+          whiteSpeckleSensitivity: effWhiteSens,
+          keepLargestIslandOnly: effKeepLargest,
           fringeColorType: effFringeType,
           fringeColorHex: effFringeHex,
-          defringeStrength: activeDefringe,
-          edgeChoke: activeChoke,
-          edgeSmooth: activeSmooth,
+          defringeStrength: effDefringe,
+          edgeChoke: effChoke,
+          edgeSmooth: effSmooth,
+          smoothColorType: effSmoothType,
+          smoothColorHex: effSmoothHex,
           cleanupMode: effCleanupMode,
         });
 
@@ -1137,10 +1180,20 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     isolationMode,
     tolerance,
     feather,
+    shadowRetention,
     strokeWidth,
     strokeColorHex,
     despeckleSize,
     whiteSpeckleSensitivity,
+    keepLargestIslandOnly,
+    fringeColorType,
+    fringeColorHex,
+    defringeStrength,
+    edgeChoke,
+    edgeSmooth,
+    smoothColorType,
+    smoothColorHex,
+    cleanupMode,
     paddingInset,
     onApplyAssembly,
     redrawCanvas,
@@ -1262,6 +1315,261 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     }
   }, [hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
 
+  // =========================================================================
+  // UNDO & REDO HISTORY ENGINE (Ctrl + Z / Ctrl + Y)
+  // =========================================================================
+  const takeSnapshot = useCallback((label?: string): SlicerHistorySnapshot => {
+    return {
+      timestamp: Date.now(),
+      label,
+      userUploadedImageUrl,
+      selectedCatId,
+      keyColorType,
+      keyColorHex,
+      isolationMode,
+      tolerance,
+      feather,
+      shadowRetention,
+      strokeWidth,
+      strokeColorHex,
+      bgCleanupSubTab,
+      cleanupMode,
+      fringeColorType,
+      fringeColorHex,
+      defringeStrength,
+      edgeChoke,
+      edgeSmooth,
+      smoothColorType,
+      smoothColorHex,
+      despeckleSize,
+      whiteSpeckleSensitivity,
+      keepLargestIslandOnly,
+      paddingInset,
+      colDividers: [...colDividers],
+      rowDividers: [...rowDividers],
+      slicedResults: Array.from(slicedResults.entries()),
+      previewDisplayMode,
+      hasExplicitlySliced,
+      currentAssembly: JSON.parse(JSON.stringify(currentAssembly)),
+    };
+  }, [
+    userUploadedImageUrl,
+    selectedCatId,
+    keyColorType,
+    keyColorHex,
+    isolationMode,
+    tolerance,
+    feather,
+    shadowRetention,
+    strokeWidth,
+    strokeColorHex,
+    bgCleanupSubTab,
+    cleanupMode,
+    fringeColorType,
+    fringeColorHex,
+    defringeStrength,
+    edgeChoke,
+    edgeSmooth,
+    smoothColorType,
+    smoothColorHex,
+    despeckleSize,
+    whiteSpeckleSensitivity,
+    keepLargestIslandOnly,
+    paddingInset,
+    colDividers,
+    rowDividers,
+    slicedResults,
+    previewDisplayMode,
+    hasExplicitlySliced,
+    currentAssembly,
+  ]);
+
+  const pushUndoState = useCallback((label?: string) => {
+    const snap = takeSnapshot(label);
+    setUndoStack((prev) => {
+      const next = [...prev, snap];
+      if (next.length > 30) next.shift();
+      return next;
+    });
+    setRedoStack([]);
+  }, [takeSnapshot]);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const currentSnap = takeSnapshot('Current');
+    const targetSnap = undoStack[undoStack.length - 1];
+
+    setRedoStack((r) => [...r, currentSnap]);
+    setUndoStack((u) => u.slice(0, u.length - 1));
+
+    if (targetSnap.userUploadedImageUrl !== userUploadedImageUrl) {
+      setUserUploadedImageUrl(targetSnap.userUploadedImageUrl);
+    }
+    setSelectedCatId(targetSnap.selectedCatId);
+    setKeyColorType(targetSnap.keyColorType);
+    setKeyColorHex(targetSnap.keyColorHex);
+    setIsolationMode(targetSnap.isolationMode);
+    setTolerance(targetSnap.tolerance);
+    setFeather(targetSnap.feather);
+    setShadowRetention(targetSnap.shadowRetention);
+    setStrokeWidth(targetSnap.strokeWidth);
+    setStrokeColorHex(targetSnap.strokeColorHex);
+    setBgCleanupSubTab(targetSnap.bgCleanupSubTab);
+    setCleanupMode(targetSnap.cleanupMode);
+    setFringeColorType(targetSnap.fringeColorType);
+    setFringeColorHex(targetSnap.fringeColorHex);
+    setDefringeStrength(targetSnap.defringeStrength);
+    setEdgeChoke(targetSnap.edgeChoke);
+    setEdgeSmooth(targetSnap.edgeSmooth);
+    if (targetSnap.smoothColorType) setSmoothColorType(targetSnap.smoothColorType);
+    if (targetSnap.smoothColorHex) setSmoothColorHex(targetSnap.smoothColorHex);
+    setDespeckleSize(targetSnap.despeckleSize);
+    setWhiteSpeckleSensitivity(targetSnap.whiteSpeckleSensitivity);
+    setKeepLargestIslandOnly(targetLargest => targetSnap.keepLargestIslandOnly);
+    setPaddingInset(targetSnap.paddingInset);
+    setColDividers(targetSnap.colDividers);
+    setRowDividers(targetSnap.rowDividers);
+    setSlicedResults(new Map(targetSnap.slicedResults));
+    setPreviewDisplayMode(targetSnap.previewDisplayMode);
+    setHasExplicitlySliced(targetSnap.hasExplicitlySliced);
+    onApplyAssembly(targetSnap.currentAssembly);
+    if (threeEngineRef.current) {
+      threeEngineRef.current.setAssembly(targetSnap.currentAssembly);
+    }
+
+    setHistoryToast({ message: `↩️ Đã hoàn tác: ${targetSnap.label || 'Thay đổi trước'} (Ctrl+Z)`, type: 'undo' });
+    setTimeout(() => setHistoryToast(null), 2500);
+
+    if (targetSnap.hasExplicitlySliced) {
+      handleAutoSliceAndAssemble({
+        tolerance: targetSnap.tolerance,
+        feather: targetSnap.feather,
+        shadowRetention: targetSnap.shadowRetention,
+        strokeWidth: targetSnap.strokeWidth,
+        strokeColorHex: targetSnap.strokeColorHex,
+        keyColorType: targetSnap.keyColorType,
+        keyColorHex: targetSnap.keyColorHex,
+        isolationMode: targetSnap.isolationMode,
+        despeckleSize: targetSnap.despeckleSize,
+        whiteSpeckleSensitivity: targetSnap.whiteSpeckleSensitivity,
+        keepLargestIslandOnly: targetSnap.keepLargestIslandOnly,
+        fringeColorType: targetSnap.fringeColorType,
+        fringeColorHex: targetSnap.fringeColorHex,
+        defringeStrength: targetSnap.defringeStrength,
+        edgeChoke: targetSnap.edgeChoke,
+        edgeSmooth: targetSnap.edgeSmooth,
+        smoothColorType: targetSnap.smoothColorType,
+        smoothColorHex: targetSnap.smoothColorHex,
+        cleanupMode: targetSnap.cleanupMode,
+      });
+    } else {
+      redrawCanvas(targetSnap.previewDisplayMode);
+    }
+  }, [undoStack, takeSnapshot, userUploadedImageUrl, onApplyAssembly, handleAutoSliceAndAssemble, redrawCanvas]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const currentSnap = takeSnapshot('Current');
+    const targetSnap = redoStack[redoStack.length - 1];
+
+    setUndoStack((u) => [...u, currentSnap]);
+    setRedoStack((r) => r.slice(0, r.length - 1));
+
+    if (targetSnap.userUploadedImageUrl !== userUploadedImageUrl) {
+      setUserUploadedImageUrl(targetSnap.userUploadedImageUrl);
+    }
+    setSelectedCatId(targetSnap.selectedCatId);
+    setKeyColorType(targetSnap.keyColorType);
+    setKeyColorHex(targetSnap.keyColorHex);
+    setIsolationMode(targetSnap.isolationMode);
+    setTolerance(targetSnap.tolerance);
+    setFeather(targetSnap.feather);
+    setShadowRetention(targetSnap.shadowRetention);
+    setStrokeWidth(targetSnap.strokeWidth);
+    setStrokeColorHex(targetSnap.strokeColorHex);
+    setBgCleanupSubTab(targetSnap.bgCleanupSubTab);
+    setCleanupMode(targetSnap.cleanupMode);
+    setFringeColorType(targetSnap.fringeColorType);
+    setFringeColorHex(targetSnap.fringeColorHex);
+    setDefringeStrength(targetSnap.defringeStrength);
+    setEdgeChoke(targetSnap.edgeChoke);
+    setEdgeSmooth(targetSnap.edgeSmooth);
+    if (targetSnap.smoothColorType) setSmoothColorType(targetSnap.smoothColorType);
+    if (targetSnap.smoothColorHex) setSmoothColorHex(targetSnap.smoothColorHex);
+    setDespeckleSize(targetSnap.despeckleSize);
+    setWhiteSpeckleSensitivity(targetSnap.whiteSpeckleSensitivity);
+    setKeepLargestIslandOnly(targetSnap.keepLargestIslandOnly);
+    setPaddingInset(targetSnap.paddingInset);
+    setColDividers(targetSnap.colDividers);
+    setRowDividers(targetSnap.rowDividers);
+    setSlicedResults(new Map(targetSnap.slicedResults));
+    setPreviewDisplayMode(targetSnap.previewDisplayMode);
+    setHasExplicitlySliced(targetSnap.hasExplicitlySliced);
+    onApplyAssembly(targetSnap.currentAssembly);
+    if (threeEngineRef.current) {
+      threeEngineRef.current.setAssembly(targetSnap.currentAssembly);
+    }
+
+    setHistoryToast({ message: `↪️ Đã làm lại: ${targetSnap.label || 'Thao tác tiếp theo'} (Ctrl+Y)`, type: 'redo' });
+    setTimeout(() => setHistoryToast(null), 2500);
+
+    if (targetSnap.hasExplicitlySliced) {
+      handleAutoSliceAndAssemble({
+        tolerance: targetSnap.tolerance,
+        feather: targetSnap.feather,
+        shadowRetention: targetSnap.shadowRetention,
+        strokeWidth: targetSnap.strokeWidth,
+        strokeColorHex: targetSnap.strokeColorHex,
+        keyColorType: targetSnap.keyColorType,
+        keyColorHex: targetSnap.keyColorHex,
+        isolationMode: targetSnap.isolationMode,
+        despeckleSize: targetSnap.despeckleSize,
+        whiteSpeckleSensitivity: targetSnap.whiteSpeckleSensitivity,
+        keepLargestIslandOnly: targetSnap.keepLargestIslandOnly,
+        fringeColorType: targetSnap.fringeColorType,
+        fringeColorHex: targetSnap.fringeColorHex,
+        defringeStrength: targetSnap.defringeStrength,
+        edgeChoke: targetSnap.edgeChoke,
+        edgeSmooth: targetSnap.edgeSmooth,
+        smoothColorType: targetSnap.smoothColorType,
+        smoothColorHex: targetSnap.smoothColorHex,
+        cleanupMode: targetSnap.cleanupMode,
+      });
+    } else {
+      redrawCanvas(targetSnap.previewDisplayMode);
+    }
+  }, [redoStack, takeSnapshot, userUploadedImageUrl, onApplyAssembly, handleAutoSliceAndAssemble, redrawCanvas]);
+
+  // Global Keyboard Listener for Ctrl+Z (Undo) and Ctrl+Y (Redo)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (isEraserOpen || isSaveKitModalOpen || isCatalogOpen || isTunerOpen) return;
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        const activeEl = document.activeElement;
+        if (activeEl instanceof HTMLTextAreaElement || (activeEl instanceof HTMLInputElement && (activeEl.type === 'text' || activeEl.type === 'password'))) {
+          return;
+        }
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+        const activeEl = document.activeElement;
+        if (activeEl instanceof HTMLTextAreaElement || (activeEl instanceof HTMLInputElement && (activeEl.type === 'text' || activeEl.type === 'password'))) {
+          return;
+        }
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [handleUndo, handleRedo, isEraserOpen, isSaveKitModalOpen, isCatalogOpen, isTunerOpen]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
       {/* Main 3-Column Studio Grid: 410px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
@@ -1269,11 +1577,15 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         {/* Left Column: Slicer Controls & Filters */}
         <SlicerSidebarControls
           selectedCatId={selectedCatId}
-          onSelectCatId={handleSelectCatId}
+          onSelectCatId={(catId) => {
+            pushUndoState('Đổi cấu trúc lưới');
+            handleSelectCatId(catId);
+          }}
           userUploadedImageUrl={userUploadedImageUrl}
           onFileUpload={(e) => {
             const file = e.target.files?.[0];
             if (file) {
+              pushUndoState('Tải ảnh mới');
               const url = URL.createObjectURL(file);
               setUserUploadedImageUrl(url);
               setHasExplicitlySliced(false);
@@ -1284,6 +1596,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             }
           }}
           onResetToDemoImage={(key = 'chibi') => {
+            pushUndoState('Nạp ảnh mẫu');
             if (key === 'irregular_ai') {
               setSelectedCatId('chibi_3x3');
               setUserUploadedImageUrl('/demo_ai_irregular_spritesheet.png');
@@ -1305,6 +1618,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             setAssemblySuccess(false);
           }}
           onClearImage={() => {
+            pushUndoState('Xóa ảnh');
             setUserUploadedImageUrl(null);
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
@@ -1338,8 +1652,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           aiScope={aiScope}
           setAiScope={setAiScope}
           aiServerStatus={aiServerStatus}
-          onRunAIMatting={handleRunAIMatting}
-          onRunFastBFSMatting={handleFastBFSMatting}
+          onRunAIMatting={() => {
+            pushUndoState('AI Tách Nền (GPU)');
+            handleRunAIMatting();
+          }}
+          onRunFastBFSMatting={() => {
+            pushUndoState('Smart BFS Tách Nền');
+            handleFastBFSMatting();
+          }}
           isAIRunning={isAIRunning}
           despeckleSize={despeckleSize}
           setDespeckleSize={setDespeckleSize}
@@ -1361,16 +1681,28 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setEdgeChoke={setEdgeChoke}
           edgeSmooth={edgeSmooth}
           setEdgeSmooth={setEdgeSmooth}
+          smoothColorType={smoothColorType}
+          setSmoothColorType={setSmoothColorType}
+          smoothColorHex={smoothColorHex}
+          setSmoothColorHex={setSmoothColorHex}
           onRunDespeckleOnly={() => {
+            pushUndoState('Khử rác viền');
             handleAutoSliceAndAssemble();
           }}
-          onApplyAsNewBaseImage={handleCommitAsNewBase}
+          onApplyAsNewBaseImage={() => {
+            pushUndoState('Ghi đè ảnh gốc mới');
+            handleCommitAsNewBase();
+          }}
           paddingInset={paddingInset}
           setPaddingInset={setPaddingInset}
           isProcessing={isProcessing}
           assemblySuccess={assemblySuccess}
-          onAutoSliceAndAssemble={handleAutoSliceAndAssemble}
+          onAutoSliceAndAssemble={() => {
+            pushUndoState('Bóc tách lưới');
+            handleAutoSliceAndAssemble();
+          }}
           onCommitSliderChange={(overrides) => {
+            pushUndoState('Chỉnh thông số');
             if (hasExplicitlySliced) {
               handleAutoSliceAndAssemble(overrides);
             }
@@ -1390,8 +1722,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             selectedCell={selectedCell}
             slicedCellDataUrl={selectedCell ? slicedResults.get(`${selectedCell.row}_${selectedCell.col}`) : undefined}
             onOpenCellPixelEditor={openCellPixelEditor}
-            onAdjustColWidth={adjustColWidth}
-            onResetAllDividers={resetAllDividers}
+            onAdjustColWidth={(deltaPx) => {
+              pushUndoState('Chỉnh độ rộng cột');
+              adjustColWidth(deltaPx);
+            }}
+            onResetAllDividers={() => {
+              pushUndoState('Đặt lại lưới đều');
+              resetAllDividers();
+            }}
           />
 
           <SlicerInteractiveCanvas
@@ -1405,8 +1743,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             onTogglePreviewDisplayMode={handleTogglePreviewDisplayMode}
             hasExplicitlySliced={hasExplicitlySliced}
             currentCategory={currentCategory}
-            onAutoFitGrid={handleAutoFitGrid}
-            onResetUniformGrid={handleResetUniformGrid}
+            onAutoFitGrid={() => {
+              pushUndoState('Tự động khớp lưới');
+              handleAutoFitGrid();
+            }}
+            onResetUniformGrid={() => {
+              pushUndoState('Đặt lại lưới đều');
+              handleResetUniformGrid();
+            }}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={undoStack.length > 0}
+            canRedo={redoStack.length > 0}
+            historyToast={historyToast}
             onMouseDown={handleCanvasMouseDown}
             onDoubleClick={handleCanvasDoubleClick}
             onMouseMove={handleCanvasMouseMove}
@@ -1446,6 +1795,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           onClose={() => setIsEraserOpen(false)}
           onSave={(editedDataUrl: string) => {
             if (!editingCellDef) return;
+            pushUndoState('Chỉnh sửa pixel ô');
             const key = `${editingCellDef.row}_${editingCellDef.col}`;
             setSlicedResults((prev) => {
               const next = new Map(prev);

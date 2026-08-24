@@ -92,24 +92,26 @@ export const AIPromptGenerator2D: React.FC = () => {
   
   // Selected Tag for Character decomposition
   const [selectedTag, setSelectedTag] = useState<Character2DPartType>('toc_truoc');
+  const [step2Layout, setStep2Layout] = useState<'single_isolated_1x1' | 'seamless_turnaround_1x4' | 'cinematic_single_part_2x3'>('single_isolated_1x1');
+  const [step2Angle, setStep2Angle] = useState<'front' | 'three_quarter' | 'profile_side' | 'back' | 'high_angle' | 'low_angle'>('front');
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
 
   // Master Character & Part Config State
   const [config, setConfig] = useState<AIPartPromptConfig>({
     workflow_step: 'step1_master_character',
-    sheet_type: 'cinematic_single_part_2x3',
+    sheet_type: 'single_isolated_1x1',
     part_type: 'toc_truoc',
     character_style: 'Chinese Guoman / 国漫 Xianxia Chibi',
     custom_character_style: '',
     gender: 'nu',
     body_proportion: 'chibi_2_5',
     custom_body_proportion: '',
-    view_angle: 'all_angles_16_9',
+    view_angle: 'front',
     action_or_expression: 'Mỉm cười thanh tao nhẹ nhàng, thần thái tiên tử bí ẩn',
     color_theme: 'Trắng bạch kim phối tím nhạt viền ngọc bích',
     special_features: 'Linh lực phát sáng nhẹ, tà áo bay phất phơ',
     clean_background: true,
-    aspect_ratio: '16:9',
+    aspect_ratio: '1:1',
     bg_type: 'chroma_green',
     // Five Senses & Facial (Step 1)
     eye_shape: 'Mắt anime to tròn long lanh tinh anh',
@@ -152,9 +154,16 @@ export const AIPromptGenerator2D: React.FC = () => {
         : workflowTab === 'step2_decomposed_parts'
         ? 'step2_decomposed_parts'
         : undefined,
-    sheet_type: workflowTab === 'step1_master' ? 'body_turnaround_grid' : 'cinematic_single_part_2x3',
+    sheet_type:
+      workflowTab === 'step1_master'
+        ? 'body_turnaround_grid'
+        : step2Layout,
     part_type: selectedTag,
-    aspect_ratio: '16:9',
+    view_angle: workflowTab === 'step2_decomposed_parts' && step2Layout === 'single_isolated_1x1' ? step2Angle : config.view_angle,
+    aspect_ratio:
+      workflowTab === 'step2_decomposed_parts' && step2Layout === 'single_isolated_1x1'
+        ? '1:1'
+        : '16:9',
   };
 
   const promptResult: AIPromptResult = buildAIPromptForPart(effectiveConfig);
@@ -551,7 +560,120 @@ export const AIPromptGenerator2D: React.FC = () => {
           {workflowTab === 'step2_decomposed_parts' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ background: 'rgba(16, 185, 129, 0.12)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.35)', fontSize: 11, color: '#d1fae5', lineHeight: 1.4 }}>
-                ✂️ <b>Giải phẫu bóc tách từng khớp xương & ngũ quan thành Bảng 6 Góc Điện Ảnh 16:9</b> để phục vụ gắn xương IK/FK và chuyển động hoạt ảnh mượt mà!
+                ✂️ <b>Giải phẫu bóc tách từng linh kiện & khớp xương</b> phục vụ gắn xương IK/FK và chuyển động hoạt ảnh 2D mượt mà!
+              </div>
+
+              {/* Định dạng Bố Cục Bóc Tách (Layout Mode) */}
+              <div style={{ background: 'rgba(56, 189, 248, 0.05)', padding: 10, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Maximize2 size={13} /> 📐 Bố Cục Xuất Ảnh (Layout Mode):
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 6 }}>
+                  <button
+                    onClick={() => setStep2Layout('single_isolated_1x1')}
+                    style={{
+                      padding: '7px 6px',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      borderRadius: 6,
+                      border: step2Layout === 'single_isolated_1x1' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                      background: step2Layout === 'single_isolated_1x1' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(56, 189, 248, 0.2))' : 'rgba(255,255,255,0.03)',
+                      color: step2Layout === 'single_isolated_1x1' ? '#38bdf8' : '#94a3b8',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span>🖼️ Ảnh Đơn 1:1</span>
+                    <span style={{ fontSize: 9, opacity: 0.85, color: '#4ade80' }}>★ Nét Căng 4K - Không Lưới</span>
+                  </button>
+
+                  <button
+                    onClick={() => setStep2Layout('seamless_turnaround_1x4')}
+                    style={{
+                      padding: '7px 6px',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      borderRadius: 6,
+                      border: step2Layout === 'seamless_turnaround_1x4' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.1)',
+                      background: step2Layout === 'seamless_turnaround_1x4' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(52, 211, 153, 0.2))' : 'rgba(255,255,255,0.03)',
+                      color: step2Layout === 'seamless_turnaround_1x4' ? '#34d399' : '#94a3b8',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span>🎞️ Chuỗi 4 Góc 16:9</span>
+                    <span style={{ fontSize: 9, opacity: 0.85 }}>1 Hàng Liền Mạch</span>
+                  </button>
+
+                  <button
+                    onClick={() => setStep2Layout('cinematic_single_part_2x3')}
+                    style={{
+                      padding: '7px 6px',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      borderRadius: 6,
+                      border: step2Layout === 'cinematic_single_part_2x3' ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.1)',
+                      background: step2Layout === 'cinematic_single_part_2x3' ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(192, 132, 252, 0.2))' : 'rgba(255,255,255,0.03)',
+                      color: step2Layout === 'cinematic_single_part_2x3' ? '#c084fc' : '#94a3b8',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span>🔲 Bảng 6 Góc 16:9</span>
+                    <span style={{ fontSize: 9, opacity: 0.85 }}>Lưới 2×3 Điện Ảnh</span>
+                  </button>
+                </div>
+
+                {/* Nếu chọn Ảnh Đơn 1:1 -> Hiển thị Thanh Chọn Góc Quay Cần Tạo */}
+                {step2Layout === 'single_isolated_1x1' && (
+                  <div style={{ marginTop: 4, paddingTop: 6, borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontSize: 10, color: '#cbd5e1', marginBottom: 4, fontWeight: 700 }}>
+                      🎯 Chọn Góc Quay Cần Tạo (Single Angle):
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                      {[
+                        { id: 'front', label: '0° Chính diện' },
+                        { id: 'three_quarter', label: '45° Nghiêng 3/4' },
+                        { id: 'profile_side', label: '90° Nhìn ngang' },
+                        { id: 'back', label: '180° Sau lưng' },
+                        { id: 'high_angle', label: 'Trên nhìn xuống' },
+                        { id: 'low_angle', label: 'Dưới hất lên' },
+                      ].map((ang) => {
+                        const isAngSel = step2Angle === ang.id;
+                        return (
+                          <button
+                            key={ang.id}
+                            onClick={() => setStep2Angle(ang.id as any)}
+                            style={{
+                              padding: '5px 4px',
+                              fontSize: 10,
+                              fontWeight: 600,
+                              borderRadius: 4,
+                              border: isAngSel ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                              background: isAngSel ? '#0284c7' : 'rgba(255,255,255,0.04)',
+                              color: isAngSel ? '#fff' : '#cbd5e1',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {ang.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Thể Loại Đối Tượng Bóc Tách */}
@@ -599,7 +721,7 @@ export const AIPromptGenerator2D: React.FC = () => {
                               key={tag.id}
                               onClick={() => {
                                 setSelectedTag(tag.id);
-                                setConfig((p) => ({ ...p, part_type: tag.id, sheet_type: 'cinematic_single_part_2x3' }));
+                                setConfig((p) => ({ ...p, part_type: tag.id }));
                               }}
                               style={{
                                 padding: '6px 8px',
@@ -720,7 +842,11 @@ export const AIPromptGenerator2D: React.FC = () => {
             {workflowTab === 'step1_master'
               ? '📋 BƯỚC 1: BẢNG XOAY NHÂN VẬT GỐC (5 GÓC + ĐỈNH ĐẦU)'
               : workflowTab === 'step2_decomposed_parts'
-              ? '✂️ BƯỚC 2: BÓC TÁCH 6 GÓC ĐIỆN ẢNH (2 HÀNG × 3 CỘT — 16:9)'
+              ? step2Layout === 'single_isolated_1x1'
+                ? '✂️ BƯỚC 2: BÓC TÁCH ẢNH ĐƠN 1:1 SIÊU NÉT (KHÔNG LƯỚI)'
+                : step2Layout === 'seamless_turnaround_1x4'
+                ? '✂️ BƯỚC 2: CHUỖI XOAY 4 GÓC 16:9 LIỀN MẠCH (1 HÀNG)'
+                : '✂️ BƯỚC 2: BÓC TÁCH 6 GÓC ĐIỆN ẢNH (2 HÀNG × 3 CỘT — 16:9)'
               : '⚔️ BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG 4K'}
           </div>
 

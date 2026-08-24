@@ -26,8 +26,10 @@ export interface ChromaProcessOptions {
   fringeColorType?: 'chroma_green' | 'pure_white' | 'pure_black' | 'custom';
   fringeColorHex?: string;          // Mã màu viền rác cần khử (ví dụ viền xanh, viền trắng, viền đen)
   defringeStrength?: number;        // Độ mạnh khử viền bám màu: 0 to 100%
-  edgeChoke?: number;               // Gọt lùi viền sượng: 0 to 5 px
-  edgeSmooth?: number;              // Làm mịn & khử răng cưa viền: 0 to 10 px
+  edgeChoke?: number;               // Gọt lùi viền sượng: 0 to 15 px
+  edgeSmooth?: number;              // Làm mịn & khử răng cưa viền: 0 to 15 px
+  smoothColorType?: 'black' | 'white' | 'auto' | 'custom'; // Màu viền mịn: Đen, Trắng, Màu gốc, Tùy chọn
+  smoothColorHex?: string;          // Mã màu viền tùy chọn (mặc định '#000000')
 }
 
 export function processCellChromaAndDespeckle(
@@ -602,6 +604,14 @@ export function processCellChromaAndDespeckle(
  * Eliminates residual colored halo pixels (e.g. green/white/black/custom fringe)
  * and smooths jagged stepped edges ("khử sượng / răng cưa").
  */
+/**
+ * Advanced Edge Choke, Color Defringe & Photoshop-Style Anti-Aliasing Smoothing
+ * 1. Edge Choke: Inward morphological erosion by N pixels (xóa bớt pixel từ viền vào trong).
+ * 2. Color Defringe: Decontaminates residual fringe color along remaining boundary.
+ * 3. Edge Smooth (Photoshop Anti-Aliasing): Outward dilation adding N layers of anti-aliased
+ *    gradient pixels with sampled foreground color from dark/dense to light/faded (bổ sung pixel viền).
+ * Respects isolationMode ('all' = inner holes + outer contour, 'outer_only' = outer border only).
+ */
 export function applyAdvancedEdgeCleanupAndDefringe(
   data: Uint8ClampedArray,
   width: number,
@@ -610,66 +620,109 @@ export function applyAdvancedEdgeCleanupAndDefringe(
 ): void {
   const totalPixels = width * height;
   const defringeStrength = Math.min(100, Math.max(0, options.defringeStrength ?? 60));
-  const edgeChoke = Math.min(5, Math.max(0, options.edgeChoke ?? 0));
-  const edgeSmooth = Math.min(10, Math.max(0, options.edgeSmooth ?? 0));
+  const edgeChoke = Math.min(15, Math.max(0, options.edgeChoke ?? 0));
+  const edgeSmooth = Math.min(15, Math.max(0, options.edgeSmooth ?? 0));
   const fringeType = options.fringeColorType || (options.keyColorType === 'pure_white' ? 'pure_white' : 'chroma_green');
+  const isOuterOnly = options.isolationMode === 'outer_only';
 
-  // 1. Calculate BFS Distance Transform from Transparent Background (alpha <= 15)
-  const edgeDist = new Uint8Array(totalPixels);
-  edgeDist.fill(255);
-  const queue: number[] = [];
-
-  for (let i = 0; i < totalPixels; i++) {
-    if (data[i * 4 + 3] <= 15) {
-      edgeDist[i] = 0;
-      queue.push(i);
+  // 1. Identify Outer Background vs Inner Hole pixels if mode is 'outer_only'
+  const isOuterBg = new Uint8Array(totalPixels);
+  if (isOuterOnly) {
+    const bgQueue: number[] = [];
+    // Seed top and bottom borders
+    for (let x = 0; x < width; x++) {
+      if (data[x * 4 + 3] <= 15) {
+        isOuterBg[x] = 1;
+        bgQueue.push(x);
+      }
+      const bottomIdx = (height - 1) * width + x;
+      if (data[bottomIdx * 4 + 3] <= 15 && !isOuterBg[bottomIdx]) {
+        isOuterBg[bottomIdx] = 1;
+        bgQueue.push(bottomIdx);
+      }
     }
-  }
+    // Seed left and right borders
+    for (let y = 0; y < height; y++) {
+      const leftIdx = y * width;
+      if (data[leftIdx * 4 + 3] <= 15 && !isOuterBg[leftIdx]) {
+        isOuterBg[leftIdx] = 1;
+        bgQueue.push(leftIdx);
+      }
+      const rightIdx = y * width + (width - 1);
+      if (data[rightIdx * 4 + 3] <= 15 && !isOuterBg[rightIdx]) {
+        isOuterBg[rightIdx] = 1;
+        bgQueue.push(rightIdx);
+      }
+    }
 
-  let head = 0;
-  const maxTrackDist = 6;
-  while (head < queue.length) {
-    const cur = queue[head++];
-    const curDist = edgeDist[cur];
-    if (curDist >= maxTrackDist) continue;
-
-    const cx = cur % width;
-    const cy = Math.floor(cur / width);
-
-    const neighbors = [
-      cy > 0 ? (cy - 1) * width + cx : -1,
-      cy < height - 1 ? (cy + 1) * width + cx : -1,
-      cx > 0 ? cy * width + (cx - 1) : -1,
-      cx < width - 1 ? cy * width + (cx + 1) : -1,
-    ];
-
-    for (const n of neighbors) {
-      if (n !== -1 && edgeDist[n] > curDist + 1) {
-        edgeDist[n] = curDist + 1;
-        queue.push(n);
+    let bgHead = 0;
+    while (bgHead < bgQueue.length) {
+      const cur = bgQueue[bgHead++];
+      const cx = cur % width;
+      const cy = Math.floor(cur / width);
+      const neighbors = [
+        cy > 0 ? (cy - 1) * width + cx : -1,
+        cy < height - 1 ? (cy + 1) * width + cx : -1,
+        cx > 0 ? cy * width + (cx - 1) : -1,
+        cx < width - 1 ? cy * width + (cx + 1) : -1,
+      ];
+      for (const n of neighbors) {
+        if (n !== -1 && !isOuterBg[n] && data[n * 4 + 3] <= 15) {
+          isOuterBg[n] = 1;
+          bgQueue.push(n);
+        }
       }
     }
   }
 
-  // 2. Edge Choke: Shave off outermost jagged fringe pixels (protect dark lineart/eyebrows)
+  // 2. Inward Distance Transform for Edge Choke (Gọt lùi viền)
   if (edgeChoke > 0) {
+    const edgeDist = new Uint8Array(totalPixels);
+    edgeDist.fill(255);
+    const queue: number[] = [];
+
+    for (let i = 0; i < totalPixels; i++) {
+      if (data[i * 4 + 3] <= 15) {
+        if (!isOuterOnly || isOuterBg[i]) {
+          edgeDist[i] = 0;
+          queue.push(i);
+        }
+      }
+    }
+
+    let head = 0;
+    while (head < queue.length) {
+      const cur = queue[head++];
+      const curDist = edgeDist[cur];
+      if (curDist >= edgeChoke + 1) continue;
+
+      const cx = cur % width;
+      const cy = Math.floor(cur / width);
+      const neighbors = [
+        cy > 0 ? (cy - 1) * width + cx : -1,
+        cy < height - 1 ? (cy + 1) * width + cx : -1,
+        cx > 0 ? cy * width + (cx - 1) : -1,
+        cx < width - 1 ? cy * width + (cx + 1) : -1,
+      ];
+
+      for (const n of neighbors) {
+        if (n !== -1 && edgeDist[n] > curDist + 1) {
+          edgeDist[n] = curDist + 1;
+          queue.push(n);
+        }
+      }
+    }
+
+    // Erase exactly N pixel layers from the border inward
     for (let i = 0; i < totalPixels; i++) {
       const d = edgeDist[i];
       if (d > 0 && d <= edgeChoke) {
-        const p = i * 4;
-        const r = data[p], g = data[p + 1], b = data[p + 2];
-        const maxRGB = Math.max(r, g, b);
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (maxRGB < 85 || lum < 70) {
-          // Keep thin black lineart/eyebrow strokes!
-          continue;
-        }
-        data[p + 3] = 0;
+        data[i * 4 + 3] = 0;
       }
     }
   }
 
-  // 3. Color Defringe & Decontamination: Target leftover fringe color along border (dist <= 4)
+  // 3. Color Defringe & Decontamination along the remaining boundary
   if (defringeStrength > 0 || options.fringeColorHex) {
     let targetR = 0, targetG = 255, targetB = 0;
     if (fringeType === 'pure_white') {
@@ -688,12 +741,18 @@ export function applyAdvancedEdgeCleanupAndDefringe(
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const pIdx = y * width + x;
-        const d = edgeDist[pIdx];
-        if (d <= edgeChoke || d > 4) continue;
-
         const p = pIdx * 4;
         const a = data[p + 3];
         if (a <= 15) continue;
+
+        // Check if touches transparent boundary
+        const hasTransparentNeighbor =
+          data[((y - 1) * width + x) * 4 + 3] <= 15 ||
+          data[((y + 1) * width + x) * 4 + 3] <= 15 ||
+          data[(y * width + (x - 1)) * 4 + 3] <= 15 ||
+          data[(y * width + (x + 1)) * 4 + 3] <= 15;
+
+        if (!hasTransparentNeighbor) continue;
 
         const r = data[p];
         const g = data[p + 1];
@@ -717,7 +776,6 @@ export function applyAdvancedEdgeCleanupAndDefringe(
             match = Math.min(1, (70 - maxRGB) / 70);
           }
         } else {
-          // Custom color distance
           const dist = Math.sqrt((r - targetR) ** 2 + (g - targetG) ** 2 + (b - targetB) ** 2);
           if (dist < 130) {
             match = Math.max(0, 1 - dist / 130);
@@ -725,18 +783,18 @@ export function applyAdvancedEdgeCleanupAndDefringe(
         }
 
         if (match > 0.15) {
-          // Look for adjacent interior core color (dist >= 3)
+          // Look for adjacent interior core color
           let coreR = 0, coreG = 0, coreB = 0, coreCount = 0;
           for (let dy = -2; dy <= 2; dy++) {
             for (let dx = -2; dx <= 2; dx++) {
               const ny = y + dy;
               const nx = x + dx;
               if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-                const nIdx = ny * width + nx;
-                if (edgeDist[nIdx] >= 3 && data[nIdx * 4 + 3] > 100) {
-                  coreR += data[nIdx * 4];
-                  coreG += data[nIdx * 4 + 1];
-                  coreB += data[nIdx * 4 + 2];
+                const nIdx = (ny * width + nx) * 4;
+                if (data[nIdx + 3] > 180) {
+                  coreR += data[nIdx];
+                  coreG += data[nIdx + 1];
+                  coreB += data[nIdx + 2];
                   coreCount++;
                 }
               }
@@ -753,43 +811,151 @@ export function applyAdvancedEdgeCleanupAndDefringe(
             data[p + 1] = Math.round(g * (1 - effMatch) + avgCoreG * effMatch);
             data[p + 2] = Math.round(b * (1 - effMatch) + avgCoreB * effMatch);
           } else if (fringeType === 'chroma_green') {
-            // Despill green to max(r, b)
             data[p + 1] = Math.round(g * (1 - effMatch) + Math.max(r, b) * effMatch);
           }
-
-          // Soften edge alpha smoothly
-          data[p + 3] = Math.round(a * (1 - effMatch * 0.65));
         }
       }
     }
   }
 
-  // 4. Edge Smoothing / Anti-Aliasing (Khử sượng / răng cưa viền)
+  // 4. Edge Smoothing / Photoshop-Style Outward Anti-Aliasing (Bổ sung pixel viền gradient theo màu chọn)
+  // Expands N layers of anti-aliased gradient pixels into the transparent boundary,
+  // applying chosen border color (Đen, Trắng, Màu gốc, Tùy chọn) with optical smoothstep alpha falloff.
   if (edgeSmooth > 0) {
-    const smoothRadius = Math.min(3, Math.max(1, Math.round(edgeSmooth / 3)));
-    const originalAlpha = new Uint8Array(totalPixels);
-    for (let i = 0; i < totalPixels; i++) originalAlpha[i] = data[i * 4 + 3];
+    const smoothColorType = options.smoothColorType || 'black';
+    const smoothColorHex = options.smoothColorHex || '#000000';
 
-    for (let y = smoothRadius; y < height - smoothRadius; y++) {
-      for (let x = smoothRadius; x < width - smoothRadius; x++) {
+    let customR = 0, customG = 0, customB = 0;
+    if (smoothColorType === 'black') {
+      customR = 0; customG = 0; customB = 0;
+    } else if (smoothColorType === 'white') {
+      customR = 255; customG = 255; customB = 255;
+    } else if (smoothColorType === 'custom') {
+      const hex = smoothColorHex.replace('#', '');
+      if (hex.length === 3) {
+        customR = parseInt(hex[0] + hex[0], 16) || 0;
+        customG = parseInt(hex[1] + hex[1], 16) || 0;
+        customB = parseInt(hex[2] + hex[2], 16) || 0;
+      } else if (hex.length >= 6) {
+        const num = parseInt(hex.slice(0, 6), 16) || 0;
+        customR = (num >> 16) & 255;
+        customG = (num >> 8) & 255;
+        customB = num & 255;
+      }
+    }
+
+    const outDist = new Uint8Array(totalPixels);
+    outDist.fill(255);
+    const nearestOpaque = new Int32Array(totalPixels);
+    nearestOpaque.fill(-1);
+    const outQueue: number[] = [];
+
+    // Seed boundary transparent pixels that touch opaque pixels
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
         const pIdx = y * width + x;
-        const d = edgeDist[pIdx];
-        if (d <= edgeChoke || d > 3) continue;
+        if (data[pIdx * 4 + 3] > 15) continue; // Skip opaque
 
-        let alphaSum = 0;
-        let count = 0;
-        for (let dy = -smoothRadius; dy <= smoothRadius; dy++) {
-          for (let dx = -smoothRadius; dx <= smoothRadius; dx++) {
-            const nIdx = (y + dy) * width + (x + dx);
-            alphaSum += originalAlpha[nIdx];
-            count++;
+        // If 'outer_only' mode, skip inner holes
+        if (isOuterOnly && !isOuterBg[pIdx]) continue;
+
+        // Check 8-neighborhood for closest opaque pixel
+        let bestNeighbor = -1;
+        const neighbors = [
+          y > 0 ? (y - 1) * width + x : -1,
+          y < height - 1 ? (y + 1) * width + x : -1,
+          x > 0 ? y * width + (x - 1) : -1,
+          x < width - 1 ? y * width + (x + 1) : -1,
+          (y > 0 && x > 0) ? (y - 1) * width + (x - 1) : -1,
+          (y > 0 && x < width - 1) ? (y - 1) * width + (x + 1) : -1,
+          (y < height - 1 && x > 0) ? (y + 1) * width + (x - 1) : -1,
+          (y < height - 1 && x < width - 1) ? (y + 1) * width + (x + 1) : -1,
+        ];
+
+        for (const n of neighbors) {
+          if (n !== -1 && data[n * 4 + 3] > 15) {
+            bestNeighbor = n;
+            break;
           }
         }
 
-        const avgA = alphaSum / count;
-        const origA = originalAlpha[pIdx];
-        const blend = Math.min(1, (edgeSmooth / 10) * 0.7);
-        data[pIdx * 4 + 3] = Math.round(origA * (1 - blend) + avgA * blend);
+        if (bestNeighbor !== -1) {
+          outDist[pIdx] = 1;
+          nearestOpaque[pIdx] = bestNeighbor;
+          outQueue.push(pIdx);
+        }
+      }
+    }
+
+    // BFS outward distance propagation up to edgeSmooth radius
+    let outHead = 0;
+    while (outHead < outQueue.length) {
+      const cur = outQueue[outHead++];
+      const curDist = outDist[cur];
+      if (curDist >= edgeSmooth) continue;
+
+      const cx = cur % width;
+      const cy = Math.floor(cur / width);
+      const neighbors = [
+        cy > 0 ? (cy - 1) * width + cx : -1,
+        cy < height - 1 ? (cy + 1) * width + cx : -1,
+        cx > 0 ? cy * width + (cx - 1) : -1,
+        cx < width - 1 ? cy * width + (cx + 1) : -1,
+      ];
+
+      for (const n of neighbors) {
+        if (n !== -1 && data[n * 4 + 3] <= 15 && outDist[n] > curDist + 1) {
+          if (!isOuterOnly || isOuterBg[n]) {
+            outDist[n] = curDist + 1;
+            nearestOpaque[n] = nearestOpaque[cur];
+            outQueue.push(n);
+          }
+        }
+      }
+    }
+
+    // Apply outward anti-aliased gradient pixels with chosen border color
+    for (let i = 0; i < totalPixels; i++) {
+      const d = outDist[i];
+      if (d > 0 && d <= edgeSmooth && nearestOpaque[i] !== -1) {
+        const p = i * 4;
+        const refP = nearestOpaque[i] * 4;
+
+        // Falloff from boundary (step 1 -> max opacity ~75%, step N -> light opacity ~25%)
+        const t = 1 - (d / (edgeSmooth + 1));
+        const smoothFactor = t * t * (3 - 2 * t);
+        const refAlpha = data[refP + 3];
+
+        if (smoothColorType === 'auto') {
+          data[p] = data[refP];
+          data[p + 1] = data[refP + 1];
+          data[p + 2] = data[refP + 2];
+        } else {
+          data[p] = customR;
+          data[p + 1] = customG;
+          data[p + 2] = customB;
+        }
+        data[p + 3] = Math.round(refAlpha * smoothFactor);
+      }
+    }
+
+    // Sub-pixel corner softening on outermost jagged convex tips
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const pIdx = y * width + x;
+        const p = pIdx * 4;
+        if (data[p + 3] <= 15 || outDist[pIdx] !== 255) continue;
+
+        let emptyNeighbors = 0;
+        if (data[((y - 1) * width + x) * 4 + 3] <= 15) emptyNeighbors++;
+        if (data[((y + 1) * width + x) * 4 + 3] <= 15) emptyNeighbors++;
+        if (data[(y * width + (x - 1)) * 4 + 3] <= 15) emptyNeighbors++;
+        if (data[(y * width + (x + 1)) * 4 + 3] <= 15) emptyNeighbors++;
+
+        // If sharp stair corner (2 or more empty sides), subtly smooth to round off the corner
+        if (emptyNeighbors >= 2) {
+          data[p + 3] = Math.round(data[p + 3] * 0.92);
+        }
       }
     }
   }

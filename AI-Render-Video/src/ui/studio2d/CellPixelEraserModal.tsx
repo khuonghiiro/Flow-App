@@ -50,10 +50,33 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
   const [rectSelection, setRectSelection] = useState<{ startX: number; startY: number; currX: number; currY: number } | null>(null);
   const [cursorPos, setCursorPos] = useState<{ imgX: number; imgY: number } | null>(null);
   const [containerMousePos, setContainerMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgDimensionsRef = useRef<{ w: number; h: number }>({ w: 100, h: 100 });
+
+  // Spacebar pan listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isOpen]);
 
   // Photoshop Continuous Stroke Path Buffers
   const strokeInitialImageDataRef = useRef<ImageData | null>(null);
@@ -464,7 +487,7 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1 || e.button === 2 || tool === 'pan' || (e as unknown as { spaceKey?: boolean }).spaceKey) {
+    if (e.button === 1 || e.button === 2 || tool === 'pan' || isSpacePressed) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
@@ -558,8 +581,26 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.5 : -0.5;
-    setZoom((prev) => Math.max(1, Math.min(16, Math.round((prev + delta) * 10) / 10)));
+    if (!containerRef.current) return;
+
+    const cRect = containerRef.current.getBoundingClientRect();
+    // Mouse coordinates relative to container center
+    const mouseX = e.clientX - (cRect.left + cRect.width / 2);
+    const mouseY = e.clientY - (cRect.top + cRect.height / 2);
+
+    // Multiplicative zoom step for buttery smooth zooming
+    const zoomFactor = e.deltaY < 0 ? 1.18 : (1 / 1.18);
+    const newZoom = Math.max(0.5, Math.min(32, Math.round(zoom * zoomFactor * 100) / 100));
+
+    if (newZoom === zoom) return;
+
+    // Shift panOffset so that the pixel under the mouse cursor remains static
+    const scaleRatio = newZoom / zoom;
+    const newPanX = mouseX - (mouseX - panOffset.x) * scaleRatio;
+    const newPanY = mouseY - (mouseY - panOffset.y) * scaleRatio;
+
+    setZoom(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
   };
 
   const handleSaveAndApply = () => {
@@ -919,28 +960,52 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
           {/* Zoom Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.03)', padding: '3px 8px', borderRadius: 6 }}>
             <button
-              onClick={() => setZoom((prev) => Math.max(1, prev - 1))}
+              onClick={() => {
+                const newZ = Math.max(0.5, Math.round((zoom / 1.25) * 10) / 10);
+                setZoom(newZ);
+              }}
               style={{ padding: '3px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', cursor: 'pointer' }}
-              title="Thu nhỏ"
+              title="Thu nhỏ (-)"
             >
               <ZoomOut size={13} />
             </button>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', minWidth: 38, textAlign: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', minWidth: 42, textAlign: 'center', fontFamily: 'monospace' }}>
               {Math.round(zoom * 100)}%
             </span>
             <button
-              onClick={() => setZoom((prev) => Math.min(16, prev + 1))}
+              onClick={() => {
+                const newZ = Math.min(32, Math.round((zoom * 1.25) * 10) / 10);
+                setZoom(newZ);
+              }}
               style={{ padding: '3px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#fff', border: 'none', cursor: 'pointer' }}
-              title="Phóng to"
+              title="Phóng to (+)"
             >
               <ZoomIn size={13} />
             </button>
             <button
               onClick={() => {
-                setZoom(3);
+                setZoom(1);
                 setPanOffset({ x: 0, y: 0 });
               }}
-              style={{ padding: '2px 5px', fontSize: 10, borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              style={{ padding: '2px 6px', fontSize: 10, fontWeight: 600, borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              title="Khôi phục kích thước 100%"
+            >
+              100%
+            </button>
+            <button
+              onClick={() => {
+                if (containerRef.current && imgDimensionsRef.current.w > 0 && imgDimensionsRef.current.h > 0) {
+                  const cRect = containerRef.current.getBoundingClientRect();
+                  const fit = Math.min((cRect.width - 60) / imgDimensionsRef.current.w, (cRect.height - 60) / imgDimensionsRef.current.h);
+                  setZoom(Math.max(0.5, Math.min(10, Math.round(fit * 100) / 100)));
+                  setPanOffset({ x: 0, y: 0 });
+                } else {
+                  setZoom(2.5);
+                  setPanOffset({ x: 0, y: 0 });
+                }
+              }}
+              style={{ padding: '2px 6px', fontSize: 10, fontWeight: 700, borderRadius: 4, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', cursor: 'pointer' }}
+              title="Vừa khít màn hình"
             >
               Fit
             </button>
@@ -1066,7 +1131,17 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: tool === 'brush' ? 'none' : (tool === 'pan' ? (isPanning ? 'grabbing' : 'grab') : 'crosshair'),
+            cursor: isSpacePressed
+              ? isPanning
+                ? 'grabbing'
+                : 'grab'
+              : tool === 'brush'
+              ? 'none'
+              : tool === 'pan'
+              ? isPanning
+                ? 'grabbing'
+                : 'grab'
+              : 'crosshair',
           }}
         >
           {/* Zoomed & Panned Canvas Viewport */}
@@ -1165,11 +1240,12 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
               position: 'absolute',
               bottom: 12,
               left: 14,
+              right: 14,
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              background: 'rgba(15, 23, 42, 0.85)',
-              padding: '6px 12px',
+              justifyContent: 'space-between',
+              background: 'rgba(15, 23, 42, 0.88)',
+              padding: '6px 14px',
               borderRadius: 6,
               border: '1px solid rgba(255, 255, 255, 0.1)',
               fontSize: 11,
@@ -1178,11 +1254,18 @@ export const CellPixelEraserModal: React.FC<CellPixelEraserModalProps> = ({
               pointerEvents: 'none',
             }}
           >
-            <span>Kích thước: <b>{imgDimensionsRef.current.w} × {imgDimensionsRef.current.h}px</b></span>
-            {cursorPos && (
-              <span>Vị trí: <b>X:{cursorPos.imgX}, Y:{cursorPos.imgY}</b></span>
-            )}
-            <span>💡 <i>Kéo chuột xóa mờ mượt mà theo Opacity {opacity}% • Nhả chuột quét lại để tăng độ đậm</i></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span>Kích thước: <b style={{ color: '#f8fafc' }}>{imgDimensionsRef.current.w} × {imgDimensionsRef.current.h}px</b></span>
+              {cursorPos && (
+                <span>Vị trí: <b style={{ color: '#38bdf8' }}>X:{cursorPos.imgX}, Y:{cursorPos.imgY}</b></span>
+              )}
+              <span>Thu phóng: <b style={{ color: '#4ade80' }}>{Math.round(zoom * 100)}%</b></span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#cbd5e1' }}>
+              <span>🖱️ <b>Lăn chuột</b> để Zoom theo vị trí con trỏ</span>
+              <span>•</span>
+              <span>✋ Giữ <b>Space</b> hoặc <b>Chuột giữa</b> để kéo ảnh</span>
+            </div>
           </div>
         </div>
       </div>

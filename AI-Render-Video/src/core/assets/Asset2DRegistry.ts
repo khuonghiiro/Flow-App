@@ -984,8 +984,11 @@ The result must prioritize **character identity consistency, hairstyle consisten
     return { promptEnglish, promptVietnamese, promptJSON, promptGemini, gridStructureGuide, negativePrompt, fullCopyText };
   }
 
-  // 1. MASTER MODULAR 2D SPRITE SHEET 2×3 ARCHITECTURE (EXACTLY 6 CELLS — 2 ROWS × 3 COLS)
+  // 1. MASTER MODULAR 2D SPRITE SHEET 2×3, 1×4 & SINGLE 1:1 ARCHITECTURE
   if (
+    sheet === 'single_isolated_1x1' ||
+    sheet === 'single_part' ||
+    sheet === 'seamless_turnaround_1x4' ||
     sheet === 'cinematic_single_part_2x3' ||
     sheet === 'cinematic_single_part_2x2' ||
     sheet === 'modular_bangs_3x1' ||
@@ -1018,27 +1021,27 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'toc_truoc',
           nameVi: 'Mái Tóc Trước (Front Bangs Fringe)',
-          titleEn: 'ONLY THE FRONT BANGS / FRONT FRINGE HAIR LAYER.',
-          summaryEn: `This component is the hair layer physically located in front of the forehead and face (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}).\nThe front bangs must appear as an independent floating 2D hair layer, completely separated from the rest of the hairstyle.`,
+          titleEn: 'EXCLUSIVELY THE FLOATING FRONT BANGS / FRONT FRINGE HAIR LAYER.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+This component is EXCLUSIVELY the front fringe bangs hair layer physically hovering in front of the forehead and face (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}).
+The front bangs must float as an independent 2D hair cluster, completely separated and severed from the rest of the head, face, and back hair.
+DO NOT attach any back hair, rear hair mantle, ponytail, hair bun, top scalp, or facial skin!
+In Cell [1,2] (180° Rear Back), because the front bangs are physically located on the front of the head and 100% occluded from behind, THIS CELL MUST REMAIN COMPLETELY EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
-            'front fringe strands',
-            'bangs',
-            'fringe locks',
-            'hair strands crossing the forehead',
-            'hair strands that belong to the front-bangs layer',
+            'floating front fringe bangs locks',
+            'hair strands crossing in front of the forehead',
+            'front fringe tips and middle locks belonging strictly to the front-bangs layer',
           ],
           excludedGeometry: [
-            'head',
+            'back hair',
+            'rear hair mantle',
+            'hair falling behind the neck or shoulders',
+            'hair bun on the back of the head',
+            'top scalp hair mass',
+            'head silhouette',
             'face',
             'forehead skin',
             'scalp',
-            'hair crown',
-            'top hair',
-            'side hair',
-            'back hair',
-            'rear hair mantle',
-            'hair behind the head',
-            'hair covering the shoulders',
             'ears',
             'eyebrows',
             'eyes',
@@ -1056,27 +1059,32 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'toc_sau',
           nameVi: 'Suối Tóc Sau Lưng (Back Hair Mantle)',
-          titleEn: 'ONLY THE BACK HAIR MANTLE / REAR HAIR LAYER.',
-          summaryEn: `Include ONLY the hair physically located behind the head (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}).\nThe asset must represent ONLY the independent rear-hair layer.`,
+          titleEn: 'EXCLUSIVELY THE REAR BACK HAIR MANTLE / BACK HAIR VOLUME LAYER.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+The front bangs (mái tóc trước) and facial features have ALREADY been separated into independent layers!
+Therefore, across ALL 6 views (including Front 0°, 45°, 90°, High Angle, Low Angle, and 180° Back), this asset contains ONLY the back hair mass, rear hair bun/crown, and long flowing hair streams behind the back (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}).
+In FRONT (0°) and THREE-QUARTER (45°) views, the front-center area where the face and front bangs belong MUST REMAIN A COMPLETELY HOLLOW / EMPTY GAP for later puppet assembly.
+DO NOT include any front bangs, front fringe, forehead locks, forehead skin, or facial features!`,
           includedGeometry: [
-            'rear hair',
-            'back hair mass',
-            'long hair flowing behind the character',
-            'rear hair strands',
-            'hair falling behind the shoulders',
+            'rear back hair mass',
+            'flowing back hair mantle cascading behind the shoulders and spine',
+            'rear hair bun / hair crown ornaments on the rear of the head',
+            'hollow empty front-center space in front views where face and bangs assemble',
           ],
           excludedGeometry: [
             'front bangs',
             'front fringe',
             'forehead hair',
-            'eyebrows',
-            'face',
+            'front facial hair framing the forehead',
+            'forehead skin',
+            'face silhouette',
             'eyes',
-            'eyelashes',
+            'eyebrows',
             'nose',
             'mouth',
-            'front side locks',
-            'facial hair framing the forehead',
+            'cheeks',
+            'chin',
+            'mannequin head base',
           ],
           rearVisibility: 'visible',
         };
@@ -1087,30 +1095,36 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'khuon_mat_no_face',
           nameVi: 'Khuôn Mặt Trần Không Ngũ Quan (Blank Face Base)',
-          titleEn: 'ONLY THE BLANK SKIN FACE BASE.',
-          summaryEn: 'A single isolated anime face-skin mesh / face silhouette.\nThe result must be a completely blank face with absolutely NO facial features.',
+          titleEn: 'EXCLUSIVELY THE BLANK PORCELAIN FACE SKIN / HEAD BASE (NO HAIR, NO FEATURES).',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+A completely featureless, blank anime head and facial skin silhouette.
+ABSOLUTELY NO hair of any kind (NO front bangs, NO back hair, NO side hair).
+ABSOLUTELY NO facial features (NO eyes, NO eyebrows, NO nose, NO mouth).
+Pure clean porcelain skin mannequin base for assembling modular eyes, nose, mouth and hair layers.`,
           includedGeometry: [
-            'forehead skin',
+            'blank facial skin silhouette',
+            'forehead skin surface',
             'cheeks',
-            'jaw',
+            'jawline',
             'chin',
-            'facial skin surface',
-            'neck connection only if physically inseparable',
+            'neck connection base',
           ],
           excludedGeometry: [
-            'hair',
-            'bangs',
+            'hair of any kind',
+            'front bangs',
+            'front fringe',
             'side hair',
             'back hair',
+            'hair accessories',
             'eyebrows',
             'eyes',
             'eyelashes',
             'iris',
             'pupil',
+            'sclera',
             'nose',
             'mouth',
             'ears',
-            'hair accessories',
             'clothing',
             'body',
           ],
@@ -1122,12 +1136,15 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'trong_den_iris',
           nameVi: 'Mống Mắt & Con Ngươi Màu (Iris & Pupil Layer)',
-          titleEn: 'ONLY THE PAIR OF ANIME IRISES AND PUPILS.',
-          summaryEn: `Isolated pair of anime iris discs and pupils (${eyeColInfo.en}) with internal gradient reflections.`,
+          titleEn: 'EXCLUSIVELY THE PAIR OF ANIME IRISES AND PUPILS.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Isolated pair of floating circular anime iris discs and pupils (${eyeColInfo.en}) with internal color gradient reflections.
+DO NOT include sclera, eyelids, eyelashes, skin, or head!
+In Cell [1,2] (180° Rear Back), the eyes are 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
-            'left circular iris disc and dark pupil',
-            'right circular iris disc and dark pupil',
-            'vibrant internal iris color gradient',
+            'left circular iris disc and pupil',
+            'right circular iris disc and pupil',
+            'internal iris color gradient and luster',
           ],
           excludedGeometry: [
             'sclera',
@@ -1147,8 +1164,11 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'trong_trang',
           nameVi: 'Tròng Trắng / Hốc Mắt (Sclera Base Layer)',
-          titleEn: 'ONLY THE PAIR OF ANIME SCLERA (EYE SOCKET WHITES).',
-          summaryEn: 'Isolated pair of smooth pure white anime sclera base shapes with subtle upper shadow.',
+          titleEn: 'EXCLUSIVELY THE PAIR OF ANIME SCLERA (EYE SOCKET WHITES).',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Isolated pair of smooth pure white anime sclera base shapes with subtle upper socket shadow.
+DO NOT include iris, pupil, highlights, eyelids, face skin, or head!
+In Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
             'left white sclera shape',
             'right white sclera shape',
@@ -1163,6 +1183,7 @@ The result must prioritize **character identity consistency, hairstyle consisten
             'eyebrows',
             'face skin',
             'head',
+            'hair',
           ],
           rearVisibility: 'hidden',
         };
@@ -1172,8 +1193,11 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'diem_sang_mat',
           nameVi: 'Điểm Sáng Mắt (Eye Sparkles & Highlights)',
-          titleEn: 'ONLY THE EYE SPARKLES AND HIGHLIGHT GLINTS.',
-          summaryEn: 'Isolated crisp pure white reflection dots and star glints for anime eyes.',
+          titleEn: 'EXCLUSIVELY THE EYE SPARKLES AND HIGHLIGHT GLINTS.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Isolated crisp pure white reflection dots and star glints for anime eyes.
+DO NOT include iris, pupil, sclera, eyelids, face skin, or head!
+In Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
             'crisp circular white glint spots',
             'starburst highlight glints',
@@ -1184,8 +1208,9 @@ The result must prioritize **character identity consistency, hairstyle consisten
             'pupil',
             'sclera',
             'eyelids',
-            'face',
+            'face skin',
             'head',
+            'hair',
           ],
           rearVisibility: 'hidden',
         };
@@ -1195,8 +1220,11 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'mi_mat',
           nameVi: 'Mi Mắt & Chớp Mắt (Eyelids & Blink Keyframes)',
-          titleEn: 'ONLY THE EYELIDS AND BLINK KEYFRAME CONTOURS.',
-          summaryEn: 'Isolated crisp anime upper/lower eyelid lineart and blinking stages.',
+          titleEn: 'EXCLUSIVELY THE EYELIDS AND BLINK KEYFRAME CONTOURS.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Isolated crisp anime upper/lower eyelid lineart and blinking stages.
+DO NOT include iris, pupil, sclera, eyebrows, nose, face skin, or head!
+In Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
             'upper lash line',
             'lower lash line',
@@ -1209,8 +1237,9 @@ The result must prioritize **character identity consistency, hairstyle consisten
             'sclera',
             'eyebrows',
             'nose',
-            'face',
+            'face skin',
             'head',
+            'hair',
           ],
           rearVisibility: 'hidden',
         };
@@ -1220,19 +1249,21 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'long_may',
           nameVi: 'Cặp Lông Mày (Eyebrows Only)',
-          titleEn: 'ONLY THE TWO EYEBROW HAIR SHAPES.',
-          summaryEn: 'The eyebrows must be isolated as two independent floating 2D elements.',
+          titleEn: 'EXCLUSIVELY THE PAIR OF ANIME EYEBROWS.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Two isolated eyebrow hair strokes floating independently in space.
+DO NOT include forehead skin, DO NOT include eyes, DO NOT include hair, DO NOT include head!
+In Cell [1,2] (180° Rear Back), the eyebrows are 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
-            'left eyebrow',
-            'right eyebrow',
+            'left eyebrow stroke',
+            'right eyebrow stroke',
           ],
           excludedGeometry: [
-            'forehead',
-            'skin',
+            'forehead skin',
+            'face skin',
             'eyes',
             'eyelashes',
             'hair',
-            'face',
             'nose',
             'mouth',
             'head',
@@ -1245,23 +1276,25 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'mui',
           nameVi: 'Sống Mũi (Nose Only)',
-          titleEn: 'ONLY THE NOSE COMPONENT.',
-          summaryEn: `Include only the anime nose shape and its minimal shading required to represent the nose (${noseInfo.en}).\nThe nose must be an isolated independent 2D facial layer.`,
+          titleEn: 'EXCLUSIVELY THE ANIME NOSE BRIDGE AND NOSE TIP.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Include ONLY the delicate anime nose bridge contour and tip (${noseInfo.en}).
+DO NOT include eyes, DO NOT include mouth, DO NOT include chin, DO NOT include cheeks, DO NOT include facial skin outside the nose!
+In Cell [1,2] (180° Rear Back), the nose is 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
-            'nose bridge contour',
-            'nose tip outline and subtle shading dot',
+            'nose bridge contour line',
+            'nose tip outline and subtle minimalist shading dot',
           ],
           excludedGeometry: [
-            'face',
-            'cheeks',
-            'forehead',
             'eyes',
             'eyebrows',
-            'eyelashes',
             'mouth',
+            'chin',
+            'cheeks',
+            'forehead',
+            'facial skin outside the nose',
             'hair',
             'head',
-            'skin outside the nose component',
           ],
           rearVisibility: 'hidden',
         };
@@ -1272,17 +1305,16 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'doi_tai',
           nameVi: 'Đôi Tai (Ears Only)',
-          titleEn: 'ONLY THE PAIR OF ANIME EARS.',
-          summaryEn: 'Isolated pair of anime ears with earlobe contour and inner ear cartilage lines.',
+          titleEn: 'EXCLUSIVELY THE PAIR OF ANIME EARS.',
+          summaryEn: 'Isolated pair of anime ears with earlobe contour and inner ear cartilage lines.\nDO NOT include face skin, hair, head, neck, or body!',
           includedGeometry: [
             'left ear outer and inner cartilage',
             'right ear outer and inner cartilage',
             'earlobes',
           ],
           excludedGeometry: [
-            'face',
+            'face skin',
             'hair',
-            'earrings unless specified',
             'head',
             'neck',
             'body',
@@ -1295,24 +1327,26 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'mieng',
           nameVi: 'Khẩu Hình Miệng (Mouth & Lips)',
-          titleEn: 'ONLY THE MOUTH AND LIP COMPONENT.',
-          summaryEn: `Include only mouth and lip contours (${mouthInfo.en}).\nThe mouth must be an isolated independent 2D facial layer.`,
+          titleEn: 'EXCLUSIVELY THE ANIME MOUTH AND LIP CONTOURS.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Include ONLY the lips and mouth opening contour (${mouthInfo.en}).
+The mouth is an independent floating 2D sticker layer.
+DO NOT include nose, DO NOT include chin, DO NOT include cheeks, DO NOT include surrounding facial skin, DO NOT include head!
+In Cell [1,2] (180° Rear Back), the mouth is 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
-            'upper lip',
-            'lower lip',
-            'mouth opening if specified',
-            'mouth expression shape',
+            'upper lip line and color',
+            'lower lip line and color',
+            'mouth expression contour',
           ],
           excludedGeometry: [
-            'face',
-            'cheeks',
             'nose',
+            'chin',
+            'cheeks',
+            'facial skin surrounding the mouth',
             'eyes',
             'eyebrows',
             'hair',
-            'chin',
             'head',
-            'surrounding skin',
           ],
           rearVisibility: 'hidden',
         };
@@ -1322,24 +1356,24 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'mat',
           nameVi: 'Đôi Mắt Tổng Hợp (Full Anime Eyes)',
-          titleEn: 'ONLY THE COMPLETE PAIR OF ANIME EYES.',
-          summaryEn: `Include complete eye structure (${eyeShapeInfo.en}, ${eyeColInfo.en}).\nThe eyes must be isolated as a single independent facial layer.`,
+          titleEn: 'EXCLUSIVELY THE COMPLETE PAIR OF ANIME EYES.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Include complete pair of anime eyes (${eyeShapeInfo.en}, ${eyeColInfo.en}).
+The eyes must float as an isolated independent 2D sticker layer.
+DO NOT include face skin, forehead, eyebrows, nose, mouth, hair, or head!
+In Cell [1,2] (180° Rear Back), the eyes are 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
           includedGeometry: [
-            'left eye',
-            'right eye',
-            'sclera',
-            'iris',
-            'pupil',
-            'eye shape',
-            'internal eye details and glints',
+            'left eye complete structure (sclera, iris, pupil, lash line)',
+            'right eye complete structure (sclera, iris, pupil, lash line)',
+            'internal eye glints and reflections',
           ],
           excludedGeometry: [
-            'face',
+            'face skin',
             'forehead',
             'eyebrows',
-            'eyelashes extending outside the eye shape',
             'nose',
             'mouth',
+            'cheeks',
             'hair',
             'head',
           ],
@@ -1351,12 +1385,14 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'than_co_ban',
           nameVi: 'Thân Ngực & Eo Áo Giáp (Torso & Chest Armor)',
-          titleEn: 'ONLY THE TORSO AND CHEST OUTFIT SEGMENT.',
-          summaryEn: `Costume chest, waist sash, and collar garment (${costumeInfo.en}, ${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE TORSO AND CHEST OUTFIT SEGMENT.',
+          summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:
+Costume chest tunic, waist sash, and collar garment (${costumeInfo.en}, ${costumeColorVi}).
+DO NOT include head, neck, arms, sleeves, hands, legs, feet, or flowing cape!`,
           includedGeometry: [
             'chest tunic / armor plate',
             'waistband / sash',
-            'upper garment body',
+            'upper torso garment body',
           ],
           excludedGeometry: [
             'head',
@@ -1376,12 +1412,12 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'canh_tay_trai',
           nameVi: 'Cánh Tay Trái - Bắp Tay (Left Upper Arm: Vai → Khuỷu)',
-          titleEn: 'ONLY THE LEFT UPPER ARM SEGMENT FROM SHOULDER TO ELBOW.',
-          summaryEn: `Left upper bicep arm sleeve (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE LEFT UPPER ARM SEGMENT FROM SHOULDER TO ELBOW.',
+          summaryEn: `Left upper bicep arm sleeve segment (${costumeColorVi}).
+DO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
           includedGeometry: [
-            'left upper arm',
-            'sleeve covering the upper arm',
-            'shoulder sleeve connection only where physically inseparable',
+            'left upper arm bicep',
+            'sleeve fabric covering the left upper arm',
           ],
           excludedGeometry: [
             'torso',
@@ -1401,11 +1437,12 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'cang_tay_trai',
           nameVi: 'Cẳng Tay Trái (Left Forearm: Khuỷu → Cổ tay)',
-          titleEn: 'ONLY THE LEFT FOREARM SEGMENT FROM ELBOW TO WRIST.',
-          summaryEn: `Left forearm sleeve and bracer (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE LEFT FOREARM SEGMENT FROM ELBOW TO WRIST.',
+          summaryEn: `Left forearm sleeve and bracer segment (${costumeColorVi}).
+DO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
           includedGeometry: [
             'left forearm',
-            'forearm bracer / cuff / sleeve',
+            'forearm bracer / cuff / sleeve fabric',
           ],
           excludedGeometry: [
             'upper arm',
@@ -1423,19 +1460,19 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'ban_tay_trai',
           nameVi: 'Bàn Tay Trái (Left Hand & Palm)',
-          titleEn: 'ONLY THE LEFT HAND FROM WRIST TO FINGERTIPS.',
-          summaryEn: 'Left hand, palm, and fingers in specified pose.',
+          titleEn: 'EXCLUSIVELY THE LEFT HAND FROM WRIST TO FINGERTIPS.',
+          summaryEn: 'Left hand, palm, and fingers in specified pose.\nDO NOT include forearm, elbow, arm, torso, or weapon!',
           includedGeometry: [
             'left palm',
             'left fingers',
-            'wrist joint line',
+            'wrist joint connection line',
           ],
           excludedGeometry: [
             'forearm',
             'elbow',
             'upper arm',
             'torso',
-            'weapon unless explicitly attached to the hand',
+            'weapon',
           ],
           rearVisibility: 'visible',
         };
@@ -1445,12 +1482,12 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'canh_tay_phai',
           nameVi: 'Cánh Tay Phải - Bắp Tay (Right Upper Arm: Vai → Khuỷu)',
-          titleEn: 'ONLY THE RIGHT UPPER ARM SEGMENT FROM SHOULDER TO ELBOW.',
-          summaryEn: `Right upper bicep arm sleeve (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE RIGHT UPPER ARM SEGMENT FROM SHOULDER TO ELBOW.',
+          summaryEn: `Right upper bicep arm sleeve segment (${costumeColorVi}).
+DO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
           includedGeometry: [
-            'right upper arm',
-            'sleeve covering the upper arm',
-            'shoulder sleeve connection only where physically inseparable',
+            'right upper arm bicep',
+            'sleeve fabric covering the right upper arm',
           ],
           excludedGeometry: [
             'torso',
@@ -1470,11 +1507,12 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'cang_tay_phai',
           nameVi: 'Cẳng Tay Phải (Right Forearm: Khuỷu → Cổ tay)',
-          titleEn: 'ONLY THE RIGHT FOREARM SEGMENT FROM ELBOW TO WRIST.',
-          summaryEn: `Right forearm sleeve and bracer (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE RIGHT FOREARM SEGMENT FROM ELBOW TO WRIST.',
+          summaryEn: `Right forearm sleeve and bracer segment (${costumeColorVi}).
+DO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
           includedGeometry: [
             'right forearm',
-            'forearm bracer / cuff / sleeve',
+            'forearm bracer / cuff / sleeve fabric',
           ],
           excludedGeometry: [
             'upper arm',
@@ -1492,19 +1530,19 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'ban_tay_phai',
           nameVi: 'Bàn Tay Phải (Right Hand & Palm)',
-          titleEn: 'ONLY THE RIGHT HAND FROM WRIST TO FINGERTIPS.',
-          summaryEn: 'Right hand, palm, and fingers in specified pose.',
+          titleEn: 'EXCLUSIVELY THE RIGHT HAND FROM WRIST TO FINGERTIPS.',
+          summaryEn: 'Right hand, palm, and fingers in specified pose.\nDO NOT include forearm, elbow, arm, torso, or weapon!',
           includedGeometry: [
             'right palm',
             'right fingers',
-            'wrist joint line',
+            'wrist joint connection line',
           ],
           excludedGeometry: [
             'forearm',
             'elbow',
             'upper arm',
             'torso',
-            'weapon unless explicitly attached to the hand',
+            'weapon',
           ],
           rearVisibility: 'visible',
         };
@@ -1514,18 +1552,18 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'dui_trai',
           nameVi: 'Đùi Trái (Left Thigh: Hông → Gối)',
-          titleEn: 'ONLY THE LEFT THIGH SEGMENT FROM HIP TO KNEE.',
-          summaryEn: `Left thigh garment/pants limb segment (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE LEFT THIGH SEGMENT FROM HIP TO KNEE.',
+          summaryEn: `Left thigh garment/pants limb segment (${costumeColorVi}).
+DO NOT include torso, pelvis, shin, boot, or foot!`,
           includedGeometry: [
             'left thigh',
-            'pants / fabric covering the thigh',
-            'hip connection boundary',
+            'fabric/pants covering the left thigh',
+            'hip joint connection line',
           ],
           excludedGeometry: [
             'torso',
             'pelvis',
             'shin',
-            'knee armor extension beyond knee',
             'boot',
             'foot',
           ],
@@ -1537,8 +1575,9 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'cang_chan_trai',
           nameVi: 'Cẳng Chân & Giày Ủng Trái (Left Shin & Boot: Gối → Gót)',
-          titleEn: 'ONLY THE LEFT SHIN AND BOOT SEGMENT FROM KNEE TO FOOT.',
-          summaryEn: `Left lower leg and boot (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE LEFT SHIN AND BOOT SEGMENT FROM KNEE TO FOOT.',
+          summaryEn: `Left lower leg and boot (${costumeColorVi}).
+DO NOT include thigh, hip, torso, or right leg!`,
           includedGeometry: [
             'left shin',
             'left boot / footwear',
@@ -1558,18 +1597,18 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'dui_phai',
           nameVi: 'Đùi Phải (Right Thigh: Hông → Gối)',
-          titleEn: 'ONLY THE RIGHT THIGH SEGMENT FROM HIP TO KNEE.',
-          summaryEn: `Right thigh garment/pants limb segment (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE RIGHT THIGH SEGMENT FROM HIP TO KNEE.',
+          summaryEn: `Right thigh garment/pants limb segment (${costumeColorVi}).
+DO NOT include torso, pelvis, shin, boot, or foot!`,
           includedGeometry: [
             'right thigh',
-            'pants / fabric covering the thigh',
-            'hip connection boundary',
+            'fabric/pants covering the right thigh',
+            'hip joint connection line',
           ],
           excludedGeometry: [
             'torso',
             'pelvis',
             'shin',
-            'knee armor extension beyond knee',
             'boot',
             'foot',
           ],
@@ -1581,8 +1620,9 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'cang_chan_phai',
           nameVi: 'Cẳng Chân & Giày Ủng Phải (Right Shin & Boot: Gối → Gót)',
-          titleEn: 'ONLY THE RIGHT SHIN AND BOOT SEGMENT FROM KNEE TO FOOT.',
-          summaryEn: `Right lower leg and boot (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE RIGHT SHIN AND BOOT SEGMENT FROM KNEE TO FOOT.',
+          summaryEn: `Right lower leg and boot (${costumeColorVi}).
+DO NOT include thigh, hip, torso, or left leg!`,
           includedGeometry: [
             'right shin',
             'right boot / footwear',
@@ -1603,8 +1643,9 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'ao_choang',
           nameVi: 'Áo Choàng / Tà Áo Bay (Cape & Robe Flow)',
-          titleEn: 'ONLY THE FLOWING CAPE / MANTLE FABRIC LAYER.',
-          summaryEn: `Flowing cape and fabric ribbons (${costumeColorVi}).`,
+          titleEn: 'EXCLUSIVELY THE FLOWING CAPE / MANTLE FABRIC LAYER.',
+          summaryEn: `Flowing cape and fabric ribbons (${costumeColorVi}).
+DO NOT include character body, chest, arms, hands, legs, or head!`,
           includedGeometry: [
             'back cape drape',
             'flowing ribbon tails',
@@ -1617,6 +1658,7 @@ The result must prioritize **character identity consistency, hairstyle consisten
             'hands',
             'legs',
             'head',
+            'character body',
           ],
           rearVisibility: 'visible',
         };
@@ -1627,8 +1669,9 @@ The result must prioritize **character identity consistency, hairstyle consisten
         comp = {
           id: 'vu_khi',
           nameVi: 'Vũ Khí & Pháp Bảo (Weapons & Props)',
-          titleEn: 'ONLY THE WEAPON / PROP ARTIFACT.',
-          summaryEn: `Isolated weapon artifact (${propInfo.en}).`,
+          titleEn: 'EXCLUSIVELY THE WEAPON / PROP ARTIFACT.',
+          summaryEn: `Isolated weapon artifact (${propInfo.en}).
+DO NOT include character, hands, arms, body, or scenery!`,
           includedGeometry: [
             'blade / weapon body',
             'hilt / handle',
@@ -1639,7 +1682,7 @@ The result must prioritize **character identity consistency, hairstyle consisten
             'hands',
             'arms',
             'body',
-            'background props',
+            'background scenery',
           ],
           rearVisibility: 'visible',
         };
@@ -1662,378 +1705,274 @@ The result must prioritize **character identity consistency, hairstyle consisten
       ...comp.excludedGeometry.map((item) => `- DO NOT INCLUDE ${item}`),
     ].join('\n');
 
-    // Master Modular 2D Sprite Sheet 2x3 Prompt (Exact 6 Cells Only)
+    // ──────────────────────────────────────────────────────────────────────────
+    // A. DẠNG 1:1 ẢNH ĐƠN SIÊU NÉT (SINGLE ISOLATED 1:1 ASSET — NO GRID, MAX DETAIL)
+    // ──────────────────────────────────────────────────────────────────────────
+    if (sheet === 'single_isolated_1x1' || sheet === 'single_part' || config.aspect_ratio === '1:1') {
+      const angle = config.view_angle || 'front';
+      let angleLabelVi = 'Chính diện 0° (Front View)';
+      let angleLabelEn = 'Orthographic Front 0° eye-level frontal view';
+      let angleDescEn = 'Camera directly facing the front of the isolated component';
+
+      if (angle === 'three_quarter' || angle === '45' || angle === 'three_quarter_45') {
+        angleLabelVi = 'Nghiêng 3/4 45° (Three-Quarter View)';
+        angleLabelEn = 'Orthographic Three-Quarter 45-degree angle view';
+        angleDescEn = 'Camera rotated 45 degrees showing three-quarter depth';
+      } else if (angle === 'profile_side' || angle === '90' || angle === 'side_90') {
+        angleLabelVi = 'Nhìn ngang 90° (Side Profile View)';
+        angleLabelEn = 'Orthographic Side Profile 90-degree view';
+        angleDescEn = 'Camera rotated 90 degrees showing clean side silhouette';
+      } else if (angle === 'back' || angle === '180' || angle === 'rear_180') {
+        angleLabelVi = 'Sau lưng 180° (Rear Back View)';
+        angleLabelEn = 'Orthographic Rear Back 180-degree view';
+        angleDescEn = comp.rearVisibility === 'hidden'
+          ? 'Pure empty space (hidden from behind)'
+          : 'Camera directly facing the rear back of the component';
+      } else if (angle === 'high_angle' || angle === 'top_down') {
+        angleLabelVi = 'Trên cao nhìn xuống (High Angle)';
+        angleLabelEn = 'Cinematic High-Angle top-down perspective view';
+        angleDescEn = 'Camera positioned elevated above looking downward at the component';
+      } else if (angle === 'low_angle' || angle === 'bottom_up') {
+        angleLabelVi = 'Dưới hất lên (Low Angle)';
+        angleLabelEn = 'Cinematic Low-Angle bottom-up perspective view';
+        angleDescEn = 'Camera positioned below looking upward at the component';
+      }
+
+      if (comp.rearVisibility === 'hidden' && (angle === 'back' || angle === '180' || angle === 'rear_180')) {
+        promptEnglish = `masterpiece, 4k resolution, 1:1 aspect ratio, pure solid chroma green background #00FF00, blank empty canvas, no objects, no characters --ar 1:1`;
+        promptVietnamese = `【 ẢNH ĐƠN 1:1 — GÓC SAU LƯNG 180°: CHI TIẾT BỊ KHUẤT HOÀN TOÀN 】\n• Linh kiện: ${comp.nameVi}\n• Góc quay: Sau lưng 180°\n• Trạng thái: Bị khuất 100% khi nhìn từ sau lưng $\to$ Không cần tạo ảnh cho góc này (hoặc để nền xanh trần #00FF00).`;
+      } else {
+        promptEnglish = `masterpiece, best quality, ultra detailed, 4k resolution, 1:1 square aspect ratio,
+
+ONE SINGLE ISOLATED 2D ANIME COMPONENT — SINGLE VIEW (${angleLabelEn.toUpperCase()}):
+${comp.titleEn}
+
+${comp.summaryEn ? comp.summaryEn : ''}
+
+CAMERA ANGLE:
+${angleLabelEn}
+${angleDescEn}
+
+Include ONLY:
+${comp.includedGeometry.map((item) => `- ${item}`).join('\n')}
+
+DO NOT include:
+${comp.excludedGeometry.map((item) => `- ${item}`).join('\n')}
+
+STRICT SINGLE ASSET ISOLATION (ZERO GRID LINES, ZERO BORDERS):
+- This canvas contains EXACTLY ONE isolated 2D component centered cleanly on the screen.
+- Absolutely NO full character, NO full body, NO head, NO face silhouette unless specified.
+- Absolutely NO other body parts, NO extra limbs, NO adjacent hair layers.
+- Absolutely NO multiple views, NO turnaround, NO extra drawings, NO duplicate drawings.
+- Absolutely NO comic panels, NO box frames, NO grid lines, NO borders, NO divider lines.
+
+ART STYLE:
+${artStyleEn}
+2D anime / Chinese Guoman character asset.
+Clean professional lineart, sharp silhouette, flat matte colors, hard cel shading, no painterly, no 3D render appearance.
+
+BACKGROUND:
+${bgPromptColorEn} (${bgPromptColorHex})
+Solid flat uniform single color background. Zero gradients, zero shadows, zero floor, zero textures, zero color spill.
+
+NEGATIVE PROMPT:
+full character, full body, head, face, extra limbs, multiple views, turnaround, comic panels, grid lines, borders, frames, divider lines, text, letters, numbers, watermark, signature, blurry, 3D CGI render, glow, rim light, color spill
+
+--ar 1:1`;
+
+        promptVietnamese = `【 ẢNH ĐƠN 1:1 SIÊU NÉT — 1 GÓC QUAY DUY NHẤT (TỶ LỆ 1:1 KHÔNG DÍNH LƯỚI) 】
+
+════════════════════════════════════════════════════════════
+1. LINH KIỆN & GÓC QUAY:
+════════════════════════════════════════════════════════════
+• Linh kiện: ${comp.nameVi}
+• Góc quay lựa chọn: ${angleLabelVi}
+• Tiêu đề định danh: ${comp.titleEn}
+• Thuộc tính bao gồm:
+${comp.includedGeometry.map((g) => `   + ${g}`).join('\n')}
+• Thành phần LOẠI TRỪ TUYỆT ĐỐI:
+${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
+
+════════════════════════════════════════════════════════════
+2. ƯU ĐIỂM DẠNG 1:1:
+════════════════════════════════════════════════════════════
+✅ 100% Canvas tập trung vào đúng 1 chi tiết $\to$ Độ phân giải 4K sắc nét nhất, không bị mất nét sợi tóc.
+✅ TUYỆT ĐỐI KHÔNG BỊ DÍNH ĐƯỜNG KẺ LƯỚI HAY KHUNG CHIA Ô ĐEN.
+✅ Tải về nạp vào Tab 1 Cắt Ảnh Đơn bấm "Xóa Nền Tự Động" là lấy sạch 100% chi tiết!`;
+      }
+
+      promptJSON = JSON.stringify(
+        {
+          project: 'Flow-App 2D Motion Comic Engine',
+          workflow_step: 'Step 2 - Single 1:1 Isolated Asset Decomposition',
+          component: {
+            id: comp.id,
+            name_vi: comp.nameVi,
+            title_en: comp.titleEn,
+            angle: angleLabelEn,
+            aspect_ratio: '1:1',
+            background: bgPromptColorHex,
+          },
+        },
+        null,
+        2
+      );
+
+      const promptGemini = promptVietnamese;
+      gridStructureGuide = `📐 Khung 1:1 vuông: 1 Ảnh đơn siêu nét, tải về bấm Tab 1 Cắt Ảnh Đơn để xóa nền tức thì.`;
+      const negativePrompt =
+        'full character, full body, head, face, extra limbs, multiple views, turnaround, comic panels, grid lines, borders, frames, divider lines, text, letters, numbers, watermark, signature, blurry, 3D CGI render, glow, rim light, color spill';
+      const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
+
+      return {
+        promptEnglish,
+        promptVietnamese,
+        promptJSON,
+        promptGemini,
+        gridStructureGuide,
+        negativePrompt,
+        fullCopyText,
+      };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // B. DẠNG CHUỖI XOAY NGANG 4 GÓC 16:9 (SEAMLESS 1×4 HORIZONTAL TURNAROUND)
+    // ──────────────────────────────────────────────────────────────────────────
+    if (sheet === 'seamless_turnaround_1x4' || sheet === 'modular_bangs_3x1' || sheet === 'modular_backhair_3x1' || sheet === 'modular_torso_armor_3x1') {
+      promptEnglish = `masterpiece, best quality, ultra detailed, 4k resolution, 16:9 aspect ratio,
+
+SEAMLESS 4-VIEW HORIZONTAL ROTATION SEQUENCE OF ONE SINGLE ISOLATED 2D ANIME COMPONENT:
+${comp.titleEn}
+
+${comp.summaryEn ? comp.summaryEn : ''}
+
+Four continuous turnaround views arranged side-by-side in one single horizontal row across the canvas on an open seamless background:
+1. Front 0° View (Orthographic frontal view)
+2. Three-Quarter 45° View (Orthographic 45-degree angle)
+3. Side Profile 90° View (Orthographic 90-degree side silhouette)
+4. Rear Back 180° View (${
+        comp.rearVisibility === 'hidden'
+          ? 'EMPTY SPACE: Pure empty chroma green since this component is front-only'
+          : 'Exact rear view showing back details'
+      })
+
+Include ONLY:
+${comp.includedGeometry.map((item) => `- ${item}`).join('\n')}
+
+DO NOT include:
+${comp.excludedGeometry.map((item) => `- ${item}`).join('\n')}
+
+CRITICAL LAYOUT RESTRICTIONS (SEAMLESS HORIZONTAL SEQUENCE):
+- All 4 views must share the EXACT SAME vertical height, scale, and baseline.
+- Arranged on an open seamless solid green background with generous natural spacing between views.
+- ABSOLUTELY NO GRID LINES, NO BOX FRAMES, NO COMIC PANELS, NO DIVIDER BORDERS, NO SEPARATORS.
+- Pure isolated component only, NO character body, NO face, NO head.
+
+ART STYLE:
+${artStyleEn}
+2D anime / Chinese Guoman character asset. Clean crisp lineart, flat cel shading.
+
+BACKGROUND:
+${bgPromptColorEn} (${bgPromptColorHex})
+Solid flat uniform single color background. Zero shadows, zero gradients.
+
+NEGATIVE PROMPT:
+grid lines, divider lines, panel borders, box frames, comic panels, full character, full body, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow
+
+--ar 16:9`;
+
+      promptVietnamese = `【 CHUỖI XOAY NGANG 4 GÓC LIỀN MẠCH (1 HÀNG 16:9 — KHÔNG DÙNG LƯỚI / KHÔNG KHUNG ĐEN) 】
+
+════════════════════════════════════════════════════════════
+1. LINH KIỆN BÓC TÁCH:
+════════════════════════════════════════════════════════════
+• Linh kiện: ${comp.nameVi}
+• Bố cục: 4 góc dàn ngang trên 1 hàng (0° Front $\to$ 45° Nghiêng $\to$ 90° Ngang $\to$ 180° Sau lưng)
+• Tiêu đề định danh: ${comp.titleEn}
+• Nền: Phẳng 1 màu ${bgTextVi}, không có khung hay đường kẻ ngăn cách!`;
+
+      promptJSON = JSON.stringify(
+        {
+          project: 'Flow-App 2D Motion Comic Engine',
+          workflow_step: 'Step 2 - Seamless Horizontal 1x4 Turnaround',
+          component: {
+            id: comp.id,
+            name_vi: comp.nameVi,
+            layout: '1x4 Horizontal Sequence',
+            aspect_ratio: '16:9',
+            background: bgPromptColorHex,
+          },
+        },
+        null,
+        2
+      );
+
+      const promptGemini = promptVietnamese;
+      gridStructureGuide = `📐 Khung 16:9 1 Hàng: 4 góc dàn ngang tự nhiên, không dính khung lưới.`;
+      const negativePrompt =
+        'grid lines, divider lines, panel borders, box frames, comic panels, full character, full body, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow';
+      const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
+
+      return {
+        promptEnglish,
+        promptVietnamese,
+        promptJSON,
+        promptGemini,
+        gridStructureGuide,
+        negativePrompt,
+        fullCopyText,
+      };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // C. DẠNG BẢNG ĐA GÓC 2×3 CẢI TIẾN (CLEAN MULTI-ANGLE 2×3 SHEET)
+    // ──────────────────────────────────────────────────────────────────────────
     promptEnglish = `masterpiece, best quality, ultra detailed, 4k resolution, 16:9 aspect ratio,
 
-MODULAR 2D ANIME SPRITE SHEET — EXACTLY 6 CELLS ONLY,
-
-ONE SINGLE ISOLATED 2D ANIME COMPONENT:
+MODULAR 2D ANIME SPRITE SHEET — 6 ORTHOGRAPHIC VIEWS ON OPEN SEAMLESS BACKDROP:
 ${partDescriptionFormatted}
 
-The generated image MUST contain exactly **6 sprite views arranged in exactly 2 ROWS × 3 COLUMNS**.
-
-MANDATORY GRID STRUCTURE:
-
-ROW 1:
-CELL [0,0] = FRONT 0°
-CELL [0,1] = THREE-QUARTER 45°
-CELL [0,2] = SIDE PROFILE 90°
-
-ROW 2:
-CELL [1,0] = HIGH ANGLE / TOP-DOWN
-CELL [1,1] = LOW ANGLE / BOTTOM-UP
-CELL [1,2] = REAR BACK 180°
-
-THIS IS AN EXACT 2×3 GRID.
-
-NOT 2×4.
-NOT 3×2.
-NOT 1×6.
-NOT 4×2.
-NOT 8 CELLS.
-NOT EXTRA VIEWS.
-
-There must be **EXACTLY SIX character-component views and no additional view anywhere on the canvas**.
-
-Do not create an additional reference image, enlarged preview, duplicate, thumbnail, close-up, inset or secondary view.
-
----
-
-## CELL POSITION LOCK
-
-The position of each view is fixed.
+The image contains exactly 6 views of the SAME isolated component arranged neatly in 2 rows of 3 views across an open seamless canvas:
 
 TOP ROW:
-[0,0] FRONT
-[0,1] 45° THREE-QUARTER
-[0,2] 90° SIDE
+1. FRONT 0° (Eye-level orthographic front view)
+2. THREE-QUARTER 45° (Eye-level orthographic 45° view)
+3. SIDE PROFILE 90° (Eye-level orthographic 90° side profile)
 
 BOTTOM ROW:
-[1,0] HIGH ANGLE
-[1,1] LOW ANGLE
-[1,2] 180° BACK
-
-Do not change the order.
-
-Do not swap cells.
-
-Do not move a view to another cell.
-
-Do not add views between cells.
-
----
-
-## CELL BOUNDARY
-
-Visually divide the canvas into six equal rectangular regions internally:
-
-3 equal columns × 2 equal rows.
-
-The asset in each cell must remain completely inside its assigned cell.
-
-Every cell must contain at most ONE view.
-
-Do not allow hair, cloth, limbs, accessories or other geometry to cross into another cell.
-
-Do not overlap neighboring cells.
-
-Do not place any object outside the six cells.
-
-IMPORTANT:
-
-The 2×3 grid is a **layout constraint only**.
-
-DO NOT DRAW THE GRID.
-
-DO NOT DRAW CELL BORDERS.
-
-DO NOT DRAW DIVIDER LINES.
-
----
-
-# ROW 1 — STANDARD TURNAROUND
-
-### CELL [0,0] — FRONT 0°
-
-Exact frontal view of the SAME component.
-
-Camera directly facing the component.
-
-### CELL [0,1] — THREE-QUARTER 45°
-
-Exact 45-degree three-quarter view of the SAME component.
-
-### CELL [0,2] — SIDE 90°
-
-Exact 90-degree side profile of the SAME component.
-
----
-
-# ROW 2 — CINEMATIC ANGLES
-
-### CELL [1,0] — HIGH ANGLE
-
-Camera positioned above the SAME component.
-
-Look downward.
-
-Show the visible top surfaces naturally.
-
-Do not redesign or enlarge the component.
-
-### CELL [1,1] — LOW ANGLE
-
-Camera positioned below the SAME component.
-
-Look upward.
-
-Show the visible underside naturally.
-
-Do not redesign or enlarge the component.
-
-### CELL [1,2] — REAR 180°
-
-${
+4. HIGH ANGLE (Top-down view looking down at the component)
+5. LOW ANGLE (Bottom-up view looking up at the component)
+6. REAR BACK 180° (${
   comp.rearVisibility === 'hidden'
-    ? 'This component is physically located on the front of the character and is 100% occluded/invisible from behind. Therefore, THIS CELL MUST REMAIN COMPLETELY EMPTY AND SHOW ONLY PURE CHROMA GREEN (#00FF00). Do NOT invent hidden geometry.'
-    : 'Exact rear view of the SAME component.\n\nShow the physically visible rear geometry.\n\nDo not invent hidden geometry.'
-}
+    ? 'EMPTY SPACE: Pure empty chroma green since front-only component'
+    : 'Exact rear view of the SAME component'
+})
 
----
+CRITICAL SEAMLESS LAYOUT RULES:
+- Arranged on ONE continuous seamless open solid green background.
+- ABSOLUTELY NO GRID LINES, NO BOX FRAMES, NO COMIC PANELS, NO CELL BORDERS, NO BLACK LINES.
+- Generous open spacing between sprites.
+- All turnaround views share the same height and baseline.
+- Pure isolated component only. DO NOT generate full character.
 
-# SAME COMPONENT CONSISTENCY
-
-ALL SIX CELLS MUST REPRESENT THE EXACT SAME PHYSICAL COMPONENT.
-
-Do not create six different versions.
-
-Do not redesign the component.
-
-Do not add new geometry.
-
-Do not remove geometry that should physically remain visible.
-
-Only the camera/view angle changes.
-
-Maintain:
-
-* same shape
-* same dimensions
-* same material
-* same color
-* same texture
-* same thickness
-* same proportions
-* same design
-* same construction
-
----
-
-# SCALE AND BASELINE
-
-For:
-
-0° FRONT
-45° THREE-QUARTER
-90° SIDE
-180° BACK
-
-the component MUST maintain:
-
-EXACT SAME SCALE.
-
-EXACT SAME VERTICAL HEIGHT.
-
-EXACT SAME BASELINE.
-
-EXACT SAME CENTER ALIGNMENT.
-
-Do not make one view larger.
-
-Do not make one view smaller.
-
-Do not move one view upward.
-
-Do not move one view downward.
-
-High Angle and Low Angle may naturally show perspective foreshortening, but must remain centered inside their own cells.
-
----
-
-# STRICT COMPONENT ISOLATION
-
-Generate ONLY the requested component:
-
-${partDescriptionFormatted}
-
-The component must be physically separated from every other character component.
-
-Do NOT automatically generate the entire character.
-
-Do NOT reconstruct the character.
-
-Do NOT add unrelated body parts.
-
-Do NOT add hidden supporting geometry.
-
-Only include geometry that belongs to the requested component or is physically inseparable from it.
-
-${negativePartConstraintsFormatted}
-
----
-
-# ART STYLE
-
+ART STYLE:
 ${artStyleEn}
-
 2D anime / Chinese Guoman character asset.
+Clean professional lineart, sharp clean silhouette, hard-edge cel shading, flat matte colors.
 
-Clean professional lineart.
+BACKGROUND:
+${bgPromptColorEn} (${bgPromptColorHex})
+Solid flat uniform single color background. Zero gradients, zero shadows, zero floor, zero textures, zero color spill.
 
-Sharp clean silhouette.
-
-Hard-edge cel shading.
-
-Flat matte colors.
-
-Consistent line thickness.
-
-No painterly rendering.
-
-No photorealistic rendering.
-
-No 3D render appearance.
-
-No unnecessary details.
-
----
-
-# CHROMA GREEN BACKGROUND
-
-PURE CHROMA GREEN:
-
-#00FF00
-
-The entire canvas background must be one single perfectly uniform green color.
-
-No gradient.
-
-No texture.
-
-No environment.
-
-No floor.
-
-No scenery.
-
-No background objects.
-
-No background shadow.
-
-No lighting variation on the green background.
-
-No green color spill onto the asset.
-
-No green halo.
-
-No green fringe.
-
----
-
-# EDGE QUALITY
-
-Crisp clean cutout edges.
-
-Sharp silhouette.
-
-Clean hard edge.
-
-Zero fuzzy edges.
-
-Zero glow.
-
-Zero bloom.
-
-Zero rim light.
-
-Zero green fringe.
-
-Zero green contamination.
-
-Zero background color bleeding.
-
-The asset must be suitable for automatic chroma-key extraction.
-
----
-
-# LIGHTING
-
-Strictly flat neutral 2D animation lighting.
-
-No cinematic environment lighting.
-
-No colored lighting.
-
-No rim lighting.
-
-No bloom.
-
-No volumetric lighting.
-
-No dramatic shadow cast onto the background.
-
-Only subtle internal cel shading required to communicate form.
-
----
-
-# TEXT AND LAYOUT RESTRICTIONS
-
-ABSOLUTELY NO TEXT.
-
-NO LETTERS.
-
-NO NUMBERS.
-
-NO WORDS.
-
-NO LABELS.
-
-NO CAPTIONS.
-
-NO TITLES.
-
-NO ANGLE LABELS.
-
-NO ARROWS.
-
-NO WATERMARK.
-
-NO LOGO.
-
-NO SIGNATURE.
-
-NO GRID LINES.
-
-NO CELL BORDERS.
-
-NO DIVIDER LINES.
-
-NO ADDITIONAL PANELS.
-
-NO ADDITIONAL VIEWS.
-
-EXACTLY 2 ROWS × 3 COLUMNS.
-
-EXACTLY 6 CELLS.
-
-EXACTLY 6 VIEWS MAXIMUM.
+NEGATIVE PROMPT:
+grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, head, face, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow, rim light
 
 --ar 16:9`;
 
     promptVietnamese = `【 BẢNG SPRITE 6 GÓC QUAY ĐIỆN ẢNH CHO 1 CHI TIẾT (LƯỚI 2 HÀNG × 3 CỘT — TỶ LỆ 16:9) 】
 
 ════════════════════════════════════════════════════════════
-1. CHI TIẾT BÓC TÁCH (ISOLATED COMPONENT):
+1. CHI TIẾT BÓC TÁCH KHỚP XƯƠNG (ISOLATED COMPONENT LAYER):
 ════════════════════════════════════════════════════════════
 • Tên linh kiện: ${comp.nameVi}
 • Tiêu đề định danh: ${comp.titleEn}
@@ -2045,33 +1984,28 @@ ${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
 • Trạng thái góc 180° Sau lưng: ${comp.rearVisibility === 'hidden' ? '🟩 BỊ KHUẤT HOÀN TOÀN — ĐỂ Ô RỖNG NỀN XANH LÁ TRẦN (#00FF00)' : '✅ CÓ THỂ NHÌN THẤY TỪ PHÍA SAU — VẼ MẶT SAU CHI TIẾT'}
 
 ════════════════════════════════════════════════════════════
-2. BỐ CỤC 6 Ô CHUẨN ĐIỆN ẢNH (2 HÀNG × 3 CỘT — EXACT 2×3 GRID):
+2. BỐ CỤC 6 GÓC QUAY (2 HÀNG × 3 CỘT LIỀN MẠCH — KHÔNG VẼ KHUNG ĐEN):
 ════════════════════════════════════════════════════════════
-🔹 HÀNG 1 (Góc Ngang Tầm Mắt - Standard Turnaround):
-   - Ô [0, 0]: 1. Chính diện 0° (FRONT 0°: Camera nhìn trực diện, không méo hình)
-   - Ô [0, 1]: 2. Nghiêng 3/4 45° (THREE-QUARTER 45°: Camera xoay 45° quanh trục)
-   - Ô [0, 2]: 3. Nhìn ngang 90° (SIDE PROFILE 90°: Camera xoay 90° góc nghiêng)
+🔹 HÀNG TRÊN:
+   - 1. Chính diện 0° (FRONT 0°)
+   - 2. Nghiêng 3/4 45° (THREE-QUARTER 45°)
+   - 3. Nhìn ngang 90° (SIDE PROFILE 90°)
 
-🔹 HÀNG 2 (Góc Điện Ảnh & Sau Lưng):
-   - Ô [1, 0]: 4. Trên cao nhìn xuống (HIGH ANGLE / TOP-DOWN: Camera nhìn dốc xuống)
-   - Ô [1, 1]: 5. Dưới hất lên (LOW ANGLE / BOTTOM-UP: Camera nhìn dốc lên trời)
-   - Ô [1, 2]: 6. Sau lưng 180° (REAR 180°: ${comp.rearVisibility === 'hidden' ? 'Ô RỖNG HOÀN TOÀN / NỀN XANH LÁ' : 'Mặt sau chi tiết'})
+🔹 HÀNG DƯỚI:
+   - 4. Trên cao nhìn xuống (HIGH ANGLE / TOP-DOWN)
+   - 5. Dưới hất lên (LOW ANGLE / BOTTOM-UP)
+   - 6. Sau lưng 180° (REAR 180°: ${comp.rearVisibility === 'hidden' ? 'Ô RỖNG HOÀN TOÀN' : 'Mặt sau chi tiết'})
 
 ════════════════════════════════════════════════════════════
-3. QUY TẮC ĐỒNG BỘ ĐỘ CAO & KHÔNG GIAN (SCALE & BOUNDARY):
+3. QUY TẮC BẢO ĐẢM KHÔNG DÍNH LƯỚI:
 ════════════════════════════════════════════════════════════
-• 4 góc (0°, 45°, 90°, 180°) BẮT BUỘC có CÙNG ĐỘ CAO, CÙNG TỶ LỆ KÍCH THƯỚC VÀ ĐƯỜNG ĐÁY (Baseline).
-• Ngoại lệ góc phối cảnh: Ô [1, 0] và Ô [1, 1] có chiều cao thay đổi tự nhiên theo góc chúc/hất của camera.
-• Mỗi chi tiết phải nằm trọn 100% trong ô của mình, TUYỆT ĐỐI KHÔNG TRÀN VIỀN SANG Ô KHÁC.
-• Phông nền: ${bgTextVi}.
-• CẤM TUYỆT ĐỐI (Strict Negative):
-  - KHÔNG CHỮ, KHÔNG SỐ, KHÔNG NHÃN DÁN, KHÔNG ĐƯỜNG KẺ LƯỚI / KHUNG ĐEN, KHÔNG WATERMARK.
-  - CẤM VẼ DẠNG 2×4, 3×2, 1×6, CẤM VẼ 8 Ô, CẤM THÊM ẢNH PHỤ.`;
+• Đã xóa toàn bộ từ khóa kích hoạt đường kẻ ô của AI.
+• Phông nền: ${bgTextVi}.`;
 
     promptJSON = JSON.stringify(
       {
         project: 'Flow-App 2D Motion Comic Engine',
-        workflow_step: 'Step 2 - Master Modular 2D Sprite Sheet 2x3 Decomposition',
+        workflow_step: 'Step 2 - Modular 2D Sprite Sheet Decomposition',
         component: {
           id: comp.id,
           name_vi: comp.nameVi,
@@ -2085,18 +2019,6 @@ ${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
           canvas_aspect_ratio: '16:9',
           rows: 2,
           cols: 3,
-          cell_assignment: {
-            '[0,0]': '0° Front Orthographic',
-            '[0,1]': '45° Three-Quarter Orthographic',
-            '[0,2]': '90° Side Profile Orthographic',
-            '[1,0]': 'High-Angle Top-Down',
-            '[1,1]': 'Low-Angle Bottom-Up',
-            '[1,2]':
-              comp.rearVisibility === 'hidden'
-                ? 'EMPTY_CHROMA_GREEN_SPACE'
-                : '180° Rear Back',
-          },
-          scale_lock: '0°, 45°, 90°, 180° share exact same height and baseline',
           background: bgPromptColorHex,
         },
       },
@@ -2105,10 +2027,10 @@ ${comp.excludedGeometry.map((g) => `   - KHÔNG CÓ ${g}`).join('\n')}
     );
 
     const promptGemini = promptVietnamese;
-    gridStructureGuide = `📐 Khung Cắt 16:9: Lưới 2 Hàng × 3 Cột chuẩn điện ảnh (6 ô rộng bằng nhau), tự động khớp vào Tab 1 Cắt Lưới và loại bỏ ô khuất.`;
+    gridStructureGuide = `📐 Khung Cắt 16:9: Lưới 2 Hàng × 3 Cột điện ảnh, xếp tự nhiên trên nền xanh.`;
 
     const negativePrompt =
-      '2x4 grid, 4 columns, 2 rows 4 columns, 3x2 grid, 1x6 layout, extra cells, extra views, duplicate view, additional panel, inset image, thumbnail, close-up, reference image, multiple objects, multiple components, full character, entire head, entire body, unrelated body parts, wrong cell position, swapped angle, wrong angle, inconsistent scale, inconsistent height, inconsistent baseline, perspective distortion, fisheye, wide angle, blurry, text, letters, numbers, labels, captions, watermark, logo, signature, grid lines, borders, divider lines, green halo, green fringe, green spill, glow, bloom, rim light';
+      'grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, head, face, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow, rim light';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
     return {
