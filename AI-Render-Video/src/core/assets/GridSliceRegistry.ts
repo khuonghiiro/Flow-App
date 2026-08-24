@@ -1,5 +1,4 @@
 import { Character2DAngle, Character2DPartType } from '../../types/scene2d';
-import demoHairMultiAngleSheet from '../../assets/demo_hair_multi_angle_sheet.jpg';
 
 export interface GridCellDefinition {
   row: number;
@@ -252,11 +251,11 @@ export const GRID_CATEGORY_DEFINITIONS: GridCategoryDefinition[] = [
  * Generates a clean Chroma-Green or White sample SVG grid sheet for instant user testing
  * Specially rendered with intuitive multi-angle anime hair sprites and clear angle badges
  */
-export const generateDemoGridSpriteSheet = (catId: string, bg: 'chroma_green' | 'pure_white' = 'chroma_green'): string => {
-  if (catId === 'hair_multi_angle_grid' && bg === 'chroma_green') {
-    return demoHairMultiAngleSheet;
-  }
-
+export const generateDemoGridSpriteSheet = (
+  catId: string,
+  bg: 'chroma_green' | 'pure_white' = 'chroma_green',
+  variant: 'default' | 'chibi' = 'default'
+): string => {
   const cat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === catId) || GRID_CATEGORY_DEFINITIONS[0];
   const bgColor = bg === 'chroma_green' ? '#00ff00' : '#ffffff';
 
@@ -264,6 +263,13 @@ export const generateDemoGridSpriteSheet = (catId: string, bg: 'chroma_green' | 
   const cellH = 270;
   const totalW = cat.cols * cellW;
   const totalH = cat.rows * cellH;
+
+  const isChibi = variant === 'chibi';
+  const hairColor = isChibi ? '#f59e0b' : '#1e1b4b';
+  const hairStroke = isChibi ? '#b45309' : '#312e81';
+  const hairHighlight = isChibi ? '#fef08a' : '#a5b4fc';
+  const backHairColor = isChibi ? '#d97706' : '#0f172a';
+  const backHairStroke = isChibi ? '#92400e' : '#1e293b';
 
   const svgCells = cat.cells
     .map((c) => {
@@ -279,53 +285,53 @@ export const generateDemoGridSpriteSheet = (catId: string, bg: 'chroma_green' | 
         if (col === 0) {
           // Front 0°: Symmetric bangs
           hairShape = `
-            <path d="M ${cx - 70} ${cy - 40} Q ${cx} ${cy - 65} ${cx + 70} ${cy - 40} Q ${cx + 60} ${cy + 15} ${cx + 40} ${cy + 45} Q ${cx + 10} ${cy + 10} ${cx} ${cy + 35} Q ${cx - 10} ${cy + 10} ${cx - 40} ${cy + 45} Q ${cx - 60} ${cy + 15} ${cx - 70} ${cy - 40} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
-            <path d="M ${cx - 30} ${cy - 25} Q ${cx} ${cy - 45} ${cx + 30} ${cy - 25} Q ${cx + 10} ${cy + 5} ${cx} ${cy + 25} Z" fill="#4338ca" opacity="0.6"/>
-            <path d="M ${cx - 50} ${cy - 30} Q ${cx} ${cy - 50} ${cx + 50} ${cy - 30}" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <path d="M ${cx - 70} ${cy - 40} Q ${cx} ${cy - 65} ${cx + 70} ${cy - 40} Q ${cx + 60} ${cy + 15} ${cx + 40} ${cy + 45} Q ${cx + 10} ${cy + 10} ${cx} ${cy + 35} Q ${cx - 10} ${cy + 10} ${cx - 40} ${cy + 45} Q ${cx - 60} ${cy + 15} ${cx - 70} ${cy - 40} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+            <path d="M ${cx - 30} ${cy - 25} Q ${cx} ${cy - 45} ${cx + 30} ${cy - 25} Q ${cx + 10} ${cy + 5} ${cx} ${cy + 25} Z" fill="${isChibi ? '#fbbf24' : '#4338ca'}" opacity="0.6"/>
+            <path d="M ${cx - 50} ${cy - 30} Q ${cx} ${cy - 50} ${cx + 50} ${cy - 30}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
           `;
         } else if (col === 1) {
           // 45° 3/4 View: Shifted bangs
           hairShape = `
-            <path d="M ${cx - 60} ${cy - 40} Q ${cx - 10} ${cy - 65} ${cx + 65} ${cy - 35} Q ${cx + 70} ${cy + 20} ${cx + 50} ${cy + 50} Q ${cx + 20} ${cy + 15} ${cx + 5} ${cy + 38} Q ${cx - 15} ${cy + 15} ${cx - 45} ${cy + 30} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
-            <path d="M ${cx - 30} ${cy - 25} Q ${cx + 5} ${cy - 45} ${cx + 45} ${cy - 20}" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <path d="M ${cx - 60} ${cy - 40} Q ${cx - 10} ${cy - 65} ${cx + 65} ${cy - 35} Q ${cx + 70} ${cy + 20} ${cx + 50} ${cy + 50} Q ${cx + 20} ${cy + 15} ${cx + 5} ${cy + 38} Q ${cx - 15} ${cy + 15} ${cx - 45} ${cy + 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+            <path d="M ${cx - 30} ${cy - 25} Q ${cx + 5} ${cy - 45} ${cx + 45} ${cy - 20}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
           `;
         } else if (col === 2) {
           // 90° Profile: Side view of bangs
           hairShape = `
-            <path d="M ${cx - 30} ${cy - 45} Q ${cx + 20} ${cy - 60} ${cx + 45} ${cy - 35} Q ${cx + 65} ${cy + 10} ${cx + 55} ${cy + 50} Q ${cx + 30} ${cy + 25} ${cx + 20} ${cy + 40} Q ${cx + 5} ${cy + 15} ${cx - 20} ${cy + 5} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
-            <path d="M ${cx - 10} ${cy - 30} Q ${cx + 25} ${cy - 45} ${cx + 40} ${cy - 25}" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <path d="M ${cx - 30} ${cy - 45} Q ${cx + 20} ${cy - 60} ${cx + 45} ${cy - 35} Q ${cx + 65} ${cy + 10} ${cx + 55} ${cy + 50} Q ${cx + 30} ${cy + 25} ${cx + 20} ${cy + 40} Q ${cx + 5} ${cy + 15} ${cx - 20} ${cy + 5} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+            <path d="M ${cx - 10} ${cy - 30} Q ${cx + 25} ${cy - 45} ${cx + 40} ${cy - 25}" stroke="${hairHighlight}" stroke-width="4" stroke-linecap="round" fill="none"/>
           `;
         } else if (col === 3) {
           // 135° Back 3/4
           hairShape = `
-            <path d="M ${cx - 50} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 40} Q ${cx + 45} ${cy + 10} ${cx + 25} ${cy + 35} Q ${cx - 10} ${cy + 5} ${cx - 45} ${cy + 15} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+            <path d="M ${cx - 50} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 40} Q ${cx + 45} ${cy + 10} ${cx + 25} ${cy + 35} Q ${cx - 10} ${cy + 5} ${cx - 45} ${cy + 15} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
           `;
         } else {
           // 180° Full Back
           hairShape = `
-            <path d="M ${cx - 55} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 45} Q ${cx + 45} ${cy + 5} ${cx + 20} ${cy + 25} Q ${cx} ${cy + 10} ${cx - 20} ${cy + 25} Q ${cx - 45} ${cy + 5} ${cx - 55} ${cy - 45} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
+            <path d="M ${cx - 55} ${cy - 45} Q ${cx} ${cy - 65} ${cx + 55} ${cy - 45} Q ${cx + 45} ${cy + 5} ${cx + 20} ${cy + 25} Q ${cx} ${cy + 10} ${cx - 20} ${cy + 25} Q ${cx - 45} ${cy + 5} ${cx - 55} ${cy - 45} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
           `;
         }
       } else if (row === 1) {
         // Crown / Top Bun
         hairShape = `
-          <ellipse cx="${cx}" cy="${cy - 20}" rx="38" ry="30" fill="#1e1b4b" stroke="#312e81" stroke-width="3"/>
-          <path d="M ${cx - 25} ${cy - 20} Q ${cx} ${cy - 35} ${cx + 25} ${cy - 20}" stroke="#a5b4fc" stroke-width="3" fill="none"/>
+          <ellipse cx="${cx}" cy="${cy - 20}" rx="38" ry="30" fill="${hairColor}" stroke="${hairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 25} ${cy - 20} Q ${cx} ${cy - 35} ${cx + 25} ${cy - 20}" stroke="${hairHighlight}" stroke-width="3" fill="none"/>
           <rect x="${cx - 12}" y="${cy + 5}" width="24" height="12" rx="4" fill="#d97706"/>
           <path d="M ${cx - 40} ${cy + 10} L ${cx + 40} ${cy + 10}" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
         `;
       } else if (row === 2) {
         // Back Long Flowing Hair
         hairShape = `
-          <path d="M ${cx - 65} ${cy - 50} Q ${cx} ${cy - 40} ${cx + 65} ${cy - 50} Q ${cx + 75} ${cy + 20} ${cx + 50} ${cy + 85} Q ${cx} ${cy + 95} ${cx - 50} ${cy + 85} Q ${cx - 75} ${cy + 20} ${cx - 65} ${cy - 50} Z" fill="#0f172a" stroke="#1e293b" stroke-width="3"/>
-          <path d="M ${cx - 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx - 15} ${cy + 80}" stroke="#64748b" stroke-width="3" stroke-linecap="round" fill="none"/>
-          <path d="M ${cx + 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx + 15} ${cy + 80}" stroke="#64748b" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M ${cx - 65} ${cy - 50} Q ${cx} ${cy - 40} ${cx + 65} ${cy - 50} Q ${cx + 75} ${cy + 20} ${cx + 50} ${cy + 85} Q ${cx} ${cy + 95} ${cx - 50} ${cy + 85} Q ${cx - 75} ${cy + 20} ${cx - 65} ${cy - 50} Z" fill="${backHairColor}" stroke="${backHairStroke}" stroke-width="3"/>
+          <path d="M ${cx - 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx - 15} ${cy + 80}" stroke="${isChibi ? '#fde047' : '#64748b'}" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M ${cx + 30} ${cy - 20} Q ${cx} ${cy + 30} ${cx + 15} ${cy + 80}" stroke="${isChibi ? '#fde047' : '#64748b'}" stroke-width="3" stroke-linecap="round" fill="none"/>
         `;
       } else {
         // Sideburns
         hairShape = `
-          <path d="M ${cx - 40} ${cy - 40} Q ${cx - 50} ${cy} ${cx - 35} ${cy + 45} Q ${cx - 30} ${cy + 10} ${cx - 32} ${cy - 30} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="2"/>
-          <path d="M ${cx + 40} ${cy - 40} Q ${cx + 50} ${cy} ${cx + 35} ${cy + 45} Q ${cx + 30} ${cy + 10} ${cx + 32} ${cy - 30} Z" fill="#1e1b4b" stroke="#312e81" stroke-width="2"/>
+          <path d="M ${cx - 40} ${cy - 40} Q ${cx - 50} ${cy} ${cx - 35} ${cy + 45} Q ${cx - 30} ${cy + 10} ${cx - 32} ${cy - 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="2"/>
+          <path d="M ${cx + 40} ${cy - 40} Q ${cx + 50} ${cy} ${cx + 35} ${cy + 45} Q ${cx + 30} ${cy + 10} ${cx + 32} ${cy - 30} Z" fill="${hairColor}" stroke="${hairStroke}" stroke-width="2"/>
         `;
       }
 

@@ -12,8 +12,6 @@ import {
   GridCellDefinition,
   generateDemoGridSpriteSheet,
 } from '../../core/assets/GridSliceRegistry';
-import demoHairMultiAngleSheet from '../../assets/demo_hair_multi_angle_sheet.jpg';
-import demoChibiHairSpriteSheet from '../../assets/demo_chibi_hair_sprite_sheet.jpg';
 import {
   ThreeMultiAngleBillboardEngine,
   AngleDetectionResult,
@@ -47,6 +45,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi'>('chibi');
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
+  const [isEyedropperActive, setIsEyedropperActive] = useState<boolean>(false);
+  const [eyedropperHoverColor, setEyedropperHoverColor] = useState<{ hex: string; r: number; g: number; b: number; x: number; y: number } | null>(null);
   const [isolationMode, setIsolationMode] = useState<'all' | 'outer_only'>('outer_only');
   const [tolerance, setTolerance] = useState<number>(38);
   const [feather, setFeather] = useState<number>(1);
@@ -201,6 +201,23 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   // Load Sprite Sheet Image
   useEffect(() => {
+    if (!userUploadedImageUrl) {
+      loadedImageRef.current = null;
+      setLoadedImage(null);
+      setPreviewDisplayMode('original');
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+      const canvas = imageCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      return;
+    }
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
@@ -214,16 +231,13 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       setSlicedResults(new Map());
     };
 
-    if (userUploadedImageUrl) {
-      img.src = userUploadedImageUrl;
-    } else {
-      if (currentCategory.id === 'hair_multi_angle_grid') {
-        img.src = activeDemoKey === 'chibi' ? demoChibiHairSpriteSheet : demoHairMultiAngleSheet;
-      } else {
-        img.src = generateDemoGridSpriteSheet(currentCategory.id);
-      }
-    }
-  }, [userUploadedImageUrl, activeDemoKey, selectedCatId, currentCategory, initUniformDividers]);
+    img.onerror = () => {
+      loadedImageRef.current = null;
+      setLoadedImage(null);
+    };
+
+    img.src = userUploadedImageUrl;
+  }, [userUploadedImageUrl, currentCategory, initUniformDividers]);
 
   // Redraw Canvas & Grid Dividers
   const redrawCanvas = useCallback(() => {
@@ -352,7 +366,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     redrawCanvas();
   }, [redrawCanvas]);
 
-  // Mouse drag & drop dividers handler
+  // Mouse drag & drop dividers and Eyedropper handler
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = imageCanvasRef.current;
     if (!canvas) return;
@@ -361,6 +375,23 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const scaleY = canvas.height / rect.height;
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
+
+    // Eyedropper Mode: Sample exact pixel color directly from image canvas
+    if (isEyedropperActive) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx && mouseX >= 0 && mouseX < canvas.width && mouseY >= 0 && mouseY < canvas.height) {
+        const pixel = ctx.getImageData(Math.floor(mouseX), Math.floor(mouseY), 1, 1).data;
+        const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
+        setKeyColorType('custom');
+        setKeyColorHex(hex);
+        setIsEyedropperActive(false);
+        setEyedropperHoverColor(null);
+        if (hasExplicitlySliced) {
+          handleAutoSliceAndAssemble({ keyColorType: 'custom', keyColorHex: hex });
+        }
+      }
+      return;
+    }
 
     // Check Col dividers
     for (let c = 1; c < colDividers.length - 1; c++) {
@@ -412,6 +443,25 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
+    // Eyedropper Live Preview Loupe
+    if (isEyedropperActive) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx && mouseX >= 0 && mouseX < canvas.width && mouseY >= 0 && mouseY < canvas.height) {
+        const pixel = ctx.getImageData(Math.floor(mouseX), Math.floor(mouseY), 1, 1).data;
+        const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
+        setEyedropperHoverColor({
+          hex,
+          r: pixel[0],
+          g: pixel[1],
+          b: pixel[2],
+          x: e.clientX,
+          y: e.clientY,
+        });
+      }
+      canvas.style.cursor = 'crosshair';
+      return;
+    }
+
     if (draggingDividerRef.current) {
       if (draggingDividerRef.current.type === 'col') {
         const idx = draggingDividerRef.current.index;
@@ -451,6 +501,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       }
     }
     canvas.style.cursor = 'pointer';
+  };
+
+  const handleCanvasMouseLeave = () => {
+    setEyedropperHoverColor(null);
+    draggingDividerRef.current = null;
   };
 
   const handleCanvasMouseUp = () => {
@@ -1076,8 +1131,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
-      {/* Main 3-Column Studio Grid: 340px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '340px 1fr 380px', gap: 10, minHeight: 0 }}>
+      {/* Main 3-Column Studio Grid: 410px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '410px 1fr 380px', gap: 10, minHeight: 0 }}>
         {/* Left Column: Slicer Controls & Filters */}
         <SlicerSidebarControls
           selectedCatId={selectedCatId}
@@ -1097,8 +1152,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             }
           }}
           onResetToDemoImage={(key = 'chibi') => {
-            setUserUploadedImageUrl(null);
             setActiveDemoKey(key);
+            const bg = keyColorType === 'pure_white' ? 'pure_white' : 'chroma_green';
+            const demoUrl = generateDemoGridSpriteSheet(currentCategory.id, bg, key);
+            setUserUploadedImageUrl(demoUrl);
+            setHasExplicitlySliced(false);
+            setSlicedResults(new Map());
+            slicedCanvasesRef.current.clear();
+            setIsCumulativeProcessing(false);
+            setPreviewDisplayMode('original');
+            setAssemblySuccess(false);
+          }}
+          onClearImage={() => {
+            setUserUploadedImageUrl(null);
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
             slicedCanvasesRef.current.clear();
@@ -1107,6 +1173,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             setAssemblySuccess(false);
           }}
           fileInputRef={fileInputRef}
+          isEyedropperActive={isEyedropperActive}
+          setIsEyedropperActive={setIsEyedropperActive}
           keyColorType={keyColorType}
           setKeyColorType={setKeyColorType}
           keyColorHex={keyColorHex}
@@ -1172,6 +1240,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
 
           <SlicerInteractiveCanvas
             imageCanvasRef={imageCanvasRef}
+            hasImage={!!loadedImage}
+            isEyedropperActive={isEyedropperActive}
+            eyedropperHoverColor={eyedropperHoverColor}
             previewDisplayMode={previewDisplayMode}
             setPreviewDisplayMode={setPreviewDisplayMode}
             hasExplicitlySliced={hasExplicitlySliced}
@@ -1179,6 +1250,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             onMouseDown={handleCanvasMouseDown}
             onDoubleClick={handleCanvasDoubleClick}
             onMouseMove={handleCanvasMouseMove}
+            onMouseLeave={handleCanvasMouseLeave}
             onMouseUp={handleCanvasMouseUp}
           />
         </div>
