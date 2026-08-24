@@ -470,32 +470,11 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
         }}
       >
-        {/* Card Header & Cumulative Mode Switch */}
+        {/* Card Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6 }}>
           <div style={{ fontSize: 11.5, fontWeight: 700, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.2px' }}>
             <Scissors size={14} color="#4ade80" /> 2. Chế độ bóc tách nền
           </div>
-          {setIsCumulativeProcessing && (
-            <button
-              onClick={() => setIsCumulativeProcessing(!isCumulativeProcessing)}
-              style={{
-                height: 22,
-                padding: '0 8px',
-                fontSize: 9,
-                fontWeight: 700,
-                borderRadius: 4,
-                border: isCumulativeProcessing ? '1px solid #facc15' : '1px solid rgba(255,255,255,0.15)',
-                background: isCumulativeProcessing ? 'rgba(234, 179, 8, 0.3)' : 'rgba(0,0,0,0.4)',
-                color: isCumulativeProcessing ? '#facc15' : '#94a3b8',
-                cursor: 'pointer',
-                boxShadow: isCumulativeProcessing ? '0 0 8px rgba(234, 179, 8, 0.35)' : 'none',
-                boxSizing: 'border-box',
-              }}
-              title="Chế độ xử lý tiếp nhiều lần mà không bị xóa kết quả trước"
-            >
-              {isCumulativeProcessing ? '⚡ Xử lý tiếp: Bật' : '○ Xử lý tiếp: Tắt'}
-            </button>
-          )}
         </div>
 
         {/* 3 Sub-tabs Bar - Synchronized height: 34px */}
@@ -1786,29 +1765,31 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
           )}
         </div>
 
-        {/* Apply as New Base Image (if sliced) */}
+        {/* Commit and Lock as New Base Image (if sliced) */}
         {onApplyAsNewBaseImage && slicedCount > 0 && (
           <button
             onClick={onApplyAsNewBaseImage}
             style={{
               width: '100%',
-              height: 28,
-              fontSize: 9.5,
-              fontWeight: 600,
-              borderRadius: 5,
+              height: 32,
+              fontSize: 10.5,
+              fontWeight: 700,
+              borderRadius: 6,
               background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
               color: '#ffffff',
-              border: '1px solid #14b8a6',
+              border: '1px solid #2dd4bf',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 5,
+              gap: 6,
+              boxShadow: '0 2px 10px rgba(13, 148, 136, 0.35)',
               boxSizing: 'border-box',
+              letterSpacing: '0.1px',
             }}
-            title="Lưu đè kết quả đã cắt thành ảnh gốc mới"
+            title="Lưu kết quả bóc tách hiện tại thành ảnh gốc mới để tiếp tục xử lý các màu nền/chi tiết khác mà không bị áp dụng lại các bộ lọc cũ"
           >
-            📌 Áp dụng làm ảnh gốc mới (Apply Base)
+            💾 Xác nhận & Lưu làm mốc gốc mới (Commit Base)
           </button>
         )}
       </div>

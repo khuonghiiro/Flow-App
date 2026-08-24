@@ -61,7 +61,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [despeckleSize, setDespeckleSize] = useState<number>(0);
   const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(0);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
-  const [isCumulativeProcessing, setIsCumulativeProcessing] = useState<boolean>(false);
 
   // Advanced Despeckle, Color Defringe & Edge Smoothing states
   const [eyedropperTarget, setEyedropperTarget] = useState<'chroma' | 'fringe'>('chroma');
@@ -71,24 +70,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [defringeStrength, setDefringeStrength] = useState<number>(60);
   const [edgeChoke, setEdgeChoke] = useState<number>(0);
   const [edgeSmooth, setEdgeSmooth] = useState<number>(2);
-
-  // Sync snapshot when cumulative mode is toggled
-  const toggleCumulativeProcessing = (enabled: boolean) => {
-    setIsCumulativeProcessing(enabled);
-    if (enabled) {
-      // Snapshot current sliced canvases as stable cumulative base
-      const snapshot = new Map<string, HTMLCanvasElement>();
-      slicedCanvasesRef.current.forEach((canvas, key) => {
-        const copy = document.createElement('canvas');
-        copy.width = canvas.width;
-        copy.height = canvas.height;
-        const cCtx = copy.getContext('2d');
-        if (cCtx) cCtx.drawImage(canvas, 0, 0);
-        snapshot.set(key, copy);
-      });
-      cumulativeBaseCanvasesRef.current = snapshot;
-    }
-  };
   const [paddingInset, setPaddingInset] = useState<number>(0);
 
   // User upload & Slicing state
@@ -1018,15 +999,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         if (!ctx) return;
 
         const key = `${cell.row}_${cell.col}`;
-        const cumulativeBase = cumulativeBaseCanvasesRef.current.get(key);
-
-        if (isCumulativeProcessing && cumulativeBase) {
-          // Draw from stable snapshot of previous pass (prevents compounding erosion on slider moves!)
-          ctx.drawImage(cumulativeBase, 0, 0, w, h);
-        } else {
-          // Draw from original raw sprite sheet (with padding inset)
-          ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
-        }
+        // Draw from active base image (with padding inset)
+        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
 
         // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with strict Tab-Isolated values
         processCellChromaAndDespeckle(ctx, w, h, {
@@ -1114,69 +1088,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     strokeColorHex,
     despeckleSize,
     whiteSpeckleSensitivity,
-    keepLargestIslandOnly,
-    isCumulativeProcessing,
     paddingInset,
     onApplyAssembly,
     redrawCanvas,
   ]);
-
-  // Apply current sliced / processed / erased results as the new Base Image
-  const handleApplyAsNewBaseImage = useCallback(() => {
-    const baseImg = loadedImageRef.current;
-    if (!baseImg) return;
-
-    const compositeCanvas = document.createElement('canvas');
-    compositeCanvas.width = baseImg.width;
-    compositeCanvas.height = baseImg.height;
-    const cCtx = compositeCanvas.getContext('2d');
-    if (!cCtx) return;
-
-    // Draw base image first
-    cCtx.drawImage(baseImg, 0, 0);
-
-    // Overlay all sliced / processed / erased cells onto their exact grid positions
-    currentCategory.cells.forEach((cell) => {
-      const key = `${cell.row}_${cell.col}`;
-      const cellCanvas = slicedCanvasesRef.current.get(key);
-      if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-        const pad = Math.max(0, paddingInset);
-        const rawX0 = colDividers[cell.col];
-        const rawY0 = rowDividers[cell.row];
-        const rawW = colDividers[cell.col + 1] - rawX0;
-        const rawH = rowDividers[cell.row + 1] - rawY0;
-        const x0 = rawX0 + pad;
-        const y0 = rawY0 + pad;
-        const w = Math.max(10, rawW - pad * 2);
-        const h = Math.max(10, rawH - pad * 2);
-        cCtx.clearRect(rawX0, rawY0, rawW, rawH);
-        cCtx.drawImage(cellCanvas, x0, y0, w, h);
-      }
-    });
-
-    const newBaseDataUrl = compositeCanvas.toDataURL('image/png');
-    
-    // Create new Image object to replace loadedImageRef and update state
-    const newImg = new Image();
-    newImg.crossOrigin = 'anonymous';
-    newImg.onload = () => {
-      loadedImageRef.current = newImg;
-      setLoadedImage(newImg);
-      setUserUploadedImageUrl(newBaseDataUrl);
-      slicedCanvasesRef.current.clear();
-      setPreviewDisplayMode('original');
-      setHasExplicitlySliced(false);
-      redrawCanvas();
-    };
-    newImg.src = newBaseDataUrl;
-  }, [currentCategory, colDividers, rowDividers, redrawCanvas]);
-
-  // Reset cumulative cache to original raw slices
-  const handleResetToRawSlices = useCallback(() => {
-    slicedCanvasesRef.current.clear();
-    setIsCumulativeProcessing(false);
-    handleAutoSliceAndAssemble();
-  }, [handleAutoSliceAndAssemble]);
 
   // Adjust Column Width
   const adjustColWidth = (deltaPx: number) => {
@@ -1204,6 +1119,82 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       }
     }
   };
+
+  // Commit current transparent slice result as the new active base image
+  const handleCommitAsNewBase = useCallback(() => {
+    const img = loadedImageRef.current;
+    if (!img || (!hasExplicitlySliced && slicedCanvasesRef.current.size === 0)) return;
+
+    // 1. Create a composite canvas of current full image / all grid slices
+    const fullCanvas = document.createElement('canvas');
+    fullCanvas.width = img.width;
+    fullCanvas.height = img.height;
+    const fCtx = fullCanvas.getContext('2d');
+    if (!fCtx) return;
+
+    fCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
+
+    if (currentCategory.id === 'single_full_image') {
+      const single = slicedCanvasesRef.current.get('0_0');
+      if (single) {
+        const pad = Math.max(0, paddingInset);
+        fCtx.drawImage(single, pad, pad, Math.max(10, fullCanvas.width - pad * 2), Math.max(10, fullCanvas.height - pad * 2));
+      }
+    } else {
+      currentCategory.cells.forEach((cell) => {
+        const key = `${cell.row}_${cell.col}`;
+        const cellCanvas = slicedCanvasesRef.current.get(key);
+        if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+          const pad = Math.max(0, paddingInset);
+          const rawX0 = colDividers[cell.col];
+          const rawY0 = rowDividers[cell.row];
+          const rawW = colDividers[cell.col + 1] - rawX0;
+          const rawH = rowDividers[cell.row + 1] - rawY0;
+          const x0 = rawX0 + pad;
+          const y0 = rawY0 + pad;
+          const w = Math.max(10, rawW - pad * 2);
+          const h = Math.max(10, rawH - pad * 2);
+          fCtx.drawImage(cellCanvas, x0, y0, w, h);
+        }
+      });
+    }
+
+    const newBaseUrl = fullCanvas.toDataURL('image/png');
+
+    // 2. Load this new base image into loadedImageRef
+    const newImg = new Image();
+    newImg.crossOrigin = 'anonymous';
+    newImg.onload = () => {
+      loadedImageRef.current = newImg;
+      setLoadedImage(newImg);
+      setUserUploadedImageUrl(newBaseUrl);
+
+      // 3. Pause live dynamic slicing until user initiates next pass
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+      setPreviewDisplayMode('original');
+
+      // 4. Reset sliders to neutral defaults to avoid compounding filter damage
+      setFeather(0);
+      setShadowRetention(0);
+      setStrokeWidth(0);
+      setEdgeChoke(0);
+      setDespeckleSize(0);
+      setWhiteSpeckleSensitivity(0);
+      setKeepLargestIslandOnly(false);
+
+      const canvas = imageCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(newImg, 0, 0);
+        }
+      }
+    };
+    newImg.src = newBaseUrl;
+  }, [hasExplicitlySliced, currentCategory, colDividers, rowDividers, paddingInset]);
 
   const handleTogglePreviewDisplayMode = useCallback((mode: 'transparent' | 'original') => {
     setPreviewDisplayMode(mode);
@@ -1235,7 +1226,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               setHasExplicitlySliced(false);
               setSlicedResults(new Map());
               slicedCanvasesRef.current.clear();
-              setIsCumulativeProcessing(false);
               setPreviewDisplayMode('original');
               setAssemblySuccess(false);
             }
@@ -1248,7 +1238,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
             slicedCanvasesRef.current.clear();
-            setIsCumulativeProcessing(false);
             setPreviewDisplayMode('original');
             setAssemblySuccess(false);
           }}
@@ -1257,7 +1246,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
             slicedCanvasesRef.current.clear();
-            setIsCumulativeProcessing(false);
             setPreviewDisplayMode('original');
             setAssemblySuccess(false);
           }}
@@ -1313,10 +1301,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           onRunDespeckleOnly={() => {
             handleAutoSliceAndAssemble();
           }}
-          isCumulativeProcessing={isCumulativeProcessing}
-          setIsCumulativeProcessing={toggleCumulativeProcessing}
-          onResetToRawSlices={handleResetToRawSlices}
-          onApplyAsNewBaseImage={handleApplyAsNewBaseImage}
+          onApplyAsNewBaseImage={handleCommitAsNewBase}
           paddingInset={paddingInset}
           setPaddingInset={setPaddingInset}
           isProcessing={isProcessing}

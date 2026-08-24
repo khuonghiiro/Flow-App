@@ -132,6 +132,9 @@ export function processCellChromaAndDespeckle(
 
       if (g >= minGreenBrightness && (g - Math.max(r, b)) >= greenDiffMin) {
         isKeyPixel[i] = 1;
+      } else if (g > Math.max(r, b) && (g - Math.max(r, b)) >= 18) {
+        // Soft shadow & translucent region on green background
+        isKeyPixel[i] = 1;
       }
     }
   } else {
@@ -229,7 +232,7 @@ export function processCellChromaAndDespeckle(
     }
   }
 
-  // Apply transparency to outer background with Soft Shadow & Translucent Silk Unmixing
+  // Apply transparency to outer background with Physical Soft Shadow & Translucent Silk Unmixing
   const shadowRetention = Math.max(0, Math.min(100, options.shadowRetention || 0));
 
   for (let i = 0; i < totalPixels; i++) {
@@ -240,28 +243,35 @@ export function processCellChromaAndDespeckle(
         const g = data[p + 1];
         const b = data[p + 2];
         const maxRB = Math.max(r, b);
-        const greenExcess = g - maxRB;
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-        // Case A: Translucent Silk / Gauze / Chiffon / Smoke (Has noticeable Red or Blue fabric pigment)
-        if (maxRB > 25) {
-          const alphaEst = Math.min(1.0, Math.max(0.12, (maxRB / 235.0) * (shadowRetention / 100.0)));
+        // Solid pure green background without shadow
+        if (g >= 242 && maxRB <= 20) {
+          data[p + 3] = 0;
+          continue;
+        }
+
+        // Physical shadow opacity on green screen (255 - G) / 255:
+        const shadowAlpha = (255.0 - g) / 255.0;
+
+        // Case A: Translucent Glow Rays, Catchlight Star Flare or Colored Silk (R or B is significant)
+        if (maxRB > 35) {
+          const silkAlpha = maxRB / 235.0;
+          const effAlpha = Math.max(shadowAlpha, silkAlpha) * (shadowRetention / 100.0);
           const cleanG = Math.min(g, Math.round(maxRB * 0.95));
-          const outA = Math.round(Math.max(0, Math.min(255, alphaEst * 255)));
+          const outA = Math.round(Math.min(255, Math.max(0, effAlpha * 255)));
 
-          if (outA > 15) {
+          if (outA > 8) {
             data[p + 1] = cleanG; // Clean despilled silk color
-            data[p + 3] = outA;   // Ethereal translucent silk alpha!
+            data[p + 3] = outA;   // Translucent glow alpha!
             continue;
           }
         }
-        // Case B: Soft Shadow & Ambient Occlusion (Dark Shading in folds & eye sockets)
-        else if (greenExcess > 4 && lum < 185) {
-          const wb = Math.min(1.0, Math.max(0.0, greenExcess / Math.max(g, 1)));
-          const alphaVal = (1.0 - wb) * (shadowRetention / 100.0);
-          const outA = Math.round(Math.max(0, Math.min(255, alphaVal * 255)));
+        // Case B: Soft Shadow & Ambient Occlusion (Low R, B, and G reduced due to shadow darkness)
+        else {
+          const effAlpha = shadowAlpha * (shadowRetention / 100.0);
+          const outA = Math.round(Math.min(255, Math.max(0, effAlpha * 255)));
 
-          if (outA > 12) {
+          if (outA > 8) {
             data[p + 1] = maxRB; // Neutralize green to clean neutral dark shadow
             data[p + 3] = outA;  // Smooth semi-transparent alpha!
             continue;
@@ -285,7 +295,7 @@ export function processCellChromaAndDespeckle(
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const pIdx = y * width + x;
-        if (isTransparent[pIdx]) {
+        if (data[pIdx * 4 + 3] === 0) {
           edgeDist[pIdx] = 0;
           distQueue.push(pIdx);
         }
