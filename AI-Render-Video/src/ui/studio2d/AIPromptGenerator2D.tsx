@@ -83,6 +83,7 @@ const CHARACTER_PART_GROUPS: CharacterPartGroup[] = [
 
 export const AIPromptGenerator2D: React.FC = () => {
   const [workflowTab, setWorkflowTab] = useState<'step1_master' | 'step2_decomposed_parts' | 'step3_actions'>('step1_master');
+  const [promptFormatTab, setPromptFormatTab] = useState<'en' | 'vi' | 'json'>('en');
   
   // Category Selector for Step 2
   const [targetCategory, setTargetCategory] = useState<
@@ -98,12 +99,14 @@ export const AIPromptGenerator2D: React.FC = () => {
     workflow_step: 'step1_master_character',
     sheet_type: 'cinematic_single_part_2x3',
     part_type: 'toc_truoc',
-    character_style: 'Anime 2D Nhật Bản mắt to long lanh, phong cách Kyoto Animation / Ufotable',
+    character_style: 'Chinese Guoman / 国漫 Xianxia Chibi',
     custom_character_style: '',
     gender: 'nu',
+    body_proportion: 'chibi_2_5',
+    custom_body_proportion: '',
     view_angle: 'all_angles_16_9',
-    action_or_expression: 'Ánh mắt sắc bén, thần thái kiên định tự tin',
-    color_theme: 'Đỏ rực ánh kim phối bạc sáng',
+    action_or_expression: 'Mỉm cười thanh tao nhẹ nhàng, thần thái tiên tử bí ẩn',
+    color_theme: 'Trắng bạch kim phối tím nhạt viền ngọc bích',
     special_features: 'Linh lực phát sáng nhẹ, tà áo bay phất phơ',
     clean_background: true,
     aspect_ratio: '16:9',
@@ -111,28 +114,28 @@ export const AIPromptGenerator2D: React.FC = () => {
     // Five Senses & Facial (Step 1)
     eye_shape: 'Mắt anime to tròn long lanh tinh anh',
     custom_eye_shape: '',
-    eye_color: 'Xanh biếc ngọc bích phát sáng',
+    eye_color: 'Lam ngọc sáng lấp lánh (Sparkling Platinum Blue)',
     custom_eye_color: '',
-    nose_shape: 'Sống mũi thẳng cao thanh tú',
+    nose_shape: 'Sống mũi nhỏ thanh tú',
     custom_nose_shape: '',
-    mouth_style: 'Cười nhếch môi tự tin',
+    mouth_style: 'Khẩu hình cười mỉm nhỏ nhắn môi mảnh',
     custom_mouth_style: '',
     ear_style: 'human_natural',
     // Costume & Robes (Step 1)
-    costume_style: 'Áo giáp bạc ánh kim phối đạo bào thướt tha',
+    costume_style: 'Đạo bào Hanfu tu tiên trắng lụa, viền tím nhạt, tà áo thướt tha dải lụa bay',
     custom_costume_style: '',
-    costume_color: 'Bạc ánh kim phối viền chỉ đỏ',
+    costume_color: 'Trắng bạch kim phối tím nhạt viền ngọc bích',
     // Weapon & Prop Item (Step 1)
-    prop_item: 'Thanh kiếm phát sáng linh lực lam ngọc',
+    prop_item: 'Kiếm tiên phát sáng linh lực lam ngọc',
     custom_prop_item: '',
     // Hair (Step 1 & Step 2)
-    hair_length: 'Dài ngang lưng suôn mượt',
+    hair_length: 'Dài quá eo buông xõa mượt mà',
     custom_hair_length: '',
-    hair_texture: 'Tóc đỏ rực rỡ bồng bềnh',
+    hair_texture: 'Tóc thẳng suôn mượt rẽ ngôi giữa kèm 2 lọn ôm má',
     custom_hair_texture: '',
-    hair_color: 'Đỏ rực rỡ (#E62A2A)',
+    hair_color: 'Bạch kim ánh bạc (Platinum White)',
     custom_hair_color: '',
-    hair_accessories: 'Trâm cài bạc đính dải lụa',
+    hair_accessories: 'Trâm cài ngọc bích đính dải lụa xanh ngọc',
     custom_hair_accessories: '',
   });
 
@@ -201,6 +204,13 @@ export const AIPromptGenerator2D: React.FC = () => {
   };
 
   const currentAction = generateActionSequencePrompt();
+
+  const getActivePromptText = () => {
+    if (workflowTab === 'step3_actions') return currentAction.promptVi;
+    if (promptFormatTab === 'en') return promptResult.promptEnglish;
+    if (promptFormatTab === 'json') return promptResult.promptJSON;
+    return promptResult.promptVietnamese;
+  };
 
   return (
     <div
@@ -307,17 +317,17 @@ export const AIPromptGenerator2D: React.FC = () => {
 
         {/* Scrollable Form Body */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 4 }}>
-          {/* ─── BƯỚC 1: TẠO NHÂN VẬT GỐC ĐA GÓC QUAY ─── */}
+          {/* ─── BƯỚC 1: TẠO NHÂN VẬT GỐC ĐA GÓC QUAY (5 GÓC + ĐỈNH ĐẦU) ─── */}
           {workflowTab === 'step1_master' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ background: 'rgba(2, 132, 199, 0.12)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(2, 132, 199, 0.35)', fontSize: 11, color: '#e0f2fe', lineHeight: 1.4 }}>
-                🌟 <b>Tạo bảng vẽ nhân vật Anime 2D hoàn chỉnh</b> (Mắt to tròn long lanh, ngũ quan sắc nét, 5 góc quay đồng nhất trên Nền Trắng).
+                🌟 <b>Tạo Bảng Xoay Nhân Vật Gốc (Turnaround Sheet 16:9)</b> gồm chuỗi 5 góc chuẩn <code>Front → 45° → Side → 135° → Back</code> + 1 góc soi Đỉnh Đầu.
               </div>
 
-              {/* Giới tính & Phong cách Anime */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 8 }}>
+              {/* 1. Giới tính & Phong cách nghệ thuật */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 8 }}>
                 <div>
-                  <label style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 3 }}>Giới tính:</label>
+                  <label style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 3 }}>Giới tính (Gender):</label>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button
                       onClick={() => setConfig((p) => ({ ...p, gender: 'nam' }))}
@@ -333,7 +343,7 @@ export const AIPromptGenerator2D: React.FC = () => {
                         cursor: 'pointer',
                       }}
                     >
-                      Nam
+                      Nam (Male)
                     </button>
                     <button
                       onClick={() => setConfig((p) => ({ ...p, gender: 'nu' }))}
@@ -349,31 +359,48 @@ export const AIPromptGenerator2D: React.FC = () => {
                         cursor: 'pointer',
                       }}
                     >
-                      Nữ
+                      Nữ (Female)
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 3 }}>🎨 Phong cách Anime:</label>
+                  <label style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 3 }}>🎨 Phong cách (Art Style):</label>
                   <input
                     type="text"
                     value={config.character_style || ''}
                     onChange={(e) => setConfig((p) => ({ ...p, character_style: e.target.value }))}
-                    placeholder="Anime 2D mắt to nét đẹp..."
+                    placeholder="Chinese Guoman / 国漫 Xianxia Chibi..."
                     style={{ width: '100%', height: 32, padding: '4px 8px', fontSize: 10.5, background: '#090d16', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: 5, boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
 
-              {/* Ngũ quan */}
+              {/* 2. Tỷ lệ cơ thể (Body / Proportion) */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: 10, borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', display: 'block' }}>
+                  📐 Tỷ lệ cơ thể (Body Proportion):
+                </label>
+                <select
+                  value={config.body_proportion || 'chibi_2_5'}
+                  onChange={(e) => setConfig((p) => ({ ...p, body_proportion: e.target.value }))}
+                  style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5 }}
+                >
+                  <option value="chibi_2_5">Cute chibi 2.5 đầu (Đầu to, thân nhỏ gọn kawaii)</option>
+                  <option value="chibi_2_heads">Super Chibi 2 đầu (Đầu to đặc trưng, siêu cute)</option>
+                  <option value="anime_standard">Anime tiêu chuẩn 6-7 đầu (Thon thả thanh thoát)</option>
+                  <option value="heroic_martial">Hiệp khách oai phong 7.5 đầu (Lưng thẳng vai rộng)</option>
+                </select>
+              </div>
+
+              {/* 3. Ngũ quan & Khuôn mặt (Eyes, Nose, Mouth) */}
               <div style={{ background: 'rgba(56, 189, 248, 0.06)', padding: 10, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Eye size={13} /> Mắt, Mũi & Miệng Nhân Vật:
+                  <Eye size={13} /> Khuôn Mặt & Ngũ Quan (Face):
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   <div>
-                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Dáng Mắt:</label>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Dáng Mắt (Eyes):</label>
                     <input
                       type="text"
                       value={config.eye_shape || ''}
@@ -382,7 +409,7 @@ export const AIPromptGenerator2D: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Màu Mắt:</label>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Màu Mắt (Eye Color):</label>
                     <input
                       type="text"
                       value={config.eye_color || ''}
@@ -391,16 +418,36 @@ export const AIPromptGenerator2D: React.FC = () => {
                     />
                   </div>
                 </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <div>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Sống Mũi (Nose):</label>
+                    <input
+                      type="text"
+                      value={config.nose_shape || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, nose_shape: e.target.value }))}
+                      style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Miệng / Thần Thái (Mouth):</label>
+                    <input
+                      type="text"
+                      value={config.mouth_style || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, mouth_style: e.target.value }))}
+                      style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Mái tóc */}
+              {/* 4. Mái tóc (Hair) */}
               <div style={{ background: 'rgba(236, 72, 153, 0.06)', padding: 10, borderRadius: 8, border: '1px solid rgba(236, 72, 153, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 800, color: '#f472b6', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  💇 Mái Tóc:
+                  💇 Mái Tóc (Hair):
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   <div>
-                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Màu Tóc:</label>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Màu Tóc (Color):</label>
                     <input
                       type="text"
                       value={config.hair_color || ''}
@@ -409,7 +456,7 @@ export const AIPromptGenerator2D: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Kiểu & Độ Dài:</label>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Kiểu Tóc (Style):</label>
                     <input
                       type="text"
                       value={config.hair_texture || ''}
@@ -418,27 +465,84 @@ export const AIPromptGenerator2D: React.FC = () => {
                     />
                   </div>
                 </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <div>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Độ Dài Tóc (Length):</label>
+                    <input
+                      type="text"
+                      value={config.hair_length || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, hair_length: e.target.value }))}
+                      style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Trâm Cài / Phụ Kiện:</label>
+                    <input
+                      type="text"
+                      value={config.hair_accessories || ''}
+                      onChange={(e) => setConfig((p) => ({ ...p, hair_accessories: e.target.value }))}
+                      style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Trang phục & Vũ khí */}
+              {/* 5. Trang phục & Vũ khí */}
               <div style={{ background: 'rgba(168, 85, 247, 0.06)', padding: 10, borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Shirt size={13} /> Trang Phục & Vũ Khí:
+                  <Shirt size={13} /> Trang Phục & Vũ Khí (Clothing & Weapon):
                 </div>
                 <input
                   type="text"
                   value={config.costume_style || ''}
                   onChange={(e) => setConfig((p) => ({ ...p, costume_style: e.target.value }))}
-                  placeholder="Áo giáp bạc, tà áo thướt tha..."
+                  placeholder="Kiểu trang phục: Hanfu tu tiên trắng bạc, tà áo dài..."
                   style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, boxSizing: 'border-box' }}
                 />
                 <input
                   type="text"
                   value={config.prop_item || ''}
                   onChange={(e) => setConfig((p) => ({ ...p, prop_item: e.target.value }))}
-                  placeholder="Kiếm phát sáng, pháp bảo..."
+                  placeholder="Vũ khí / Pháp bảo: Kiếm tiên phát sáng linh lực..."
                   style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#facc15', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5, boxSizing: 'border-box' }}
                 />
+              </div>
+
+              {/* 6. Màu nền xuất ảnh */}
+              <div>
+                <label style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Màu nền kết xuất (Background):</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <button
+                    onClick={() => setConfig((p) => ({ ...p, bg_type: 'chroma_green' }))}
+                    style={{
+                      padding: '6px 8px',
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      borderRadius: 5,
+                      border: config.bg_type === 'chroma_green' ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                      background: config.bg_type === 'chroma_green' ? 'rgba(34, 197, 94, 0.25)' : 'rgba(255,255,255,0.03)',
+                      color: config.bg_type === 'chroma_green' ? '#4ade80' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🟢 Phông Xanh (#00FF00)
+                  </button>
+                  <button
+                    onClick={() => setConfig((p) => ({ ...p, bg_type: 'pure_white' }))}
+                    style={{
+                      padding: '6px 8px',
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      borderRadius: 5,
+                      border: config.bg_type === 'pure_white' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                      background: config.bg_type === 'pure_white' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.03)',
+                      color: config.bg_type === 'pure_white' ? '#7dd3fc' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⚪ Nền Trắng (#FFFFFF)
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -596,7 +700,7 @@ export const AIPromptGenerator2D: React.FC = () => {
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════════════════
-          CỘT PHẢI: HIỂN THỊ PROMPT TIẾNG VIỆT CHUẨN ĐIỆN ẢNH & NÚT SAO CHÉP LỚN
+          CỘT PHẢI: HIỂN THỊ PROMPT THEO TAB (ENGLISH / VIỆT / JSON) & NÚT SAO CHÉP LỚN
       ════════════════════════════════════════════════════════════════════════════════ */}
       <div
         style={{
@@ -610,33 +714,71 @@ export const AIPromptGenerator2D: React.FC = () => {
           overflow: 'hidden',
         }}
       >
-        {/* Header Bar */}
+        {/* Header Bar with Format Tabs */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
             {workflowTab === 'step1_master'
-              ? '📋 PROMPT TIẾNG VIỆT BƯỚC 1: TẠO NHÂN VẬT ANIME GỐC (16:9)'
+              ? '📋 BƯỚC 1: BẢNG XOAY NHÂN VẬT GỐC (5 GÓC + ĐỈNH ĐẦU)'
               : workflowTab === 'step2_decomposed_parts'
-              ? '✂️ PROMPT TIẾNG VIỆT BƯỚC 2: BÓC TÁCH 6 GÓC ĐIỆN ẢNH (2 HÀNG × 3 CỘT — 16:9)'
-              : '⚔️ PROMPT TIẾNG VIỆT BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG 4K'}
+              ? '✂️ BƯỚC 2: BÓC TÁCH 6 GÓC ĐIỆN ẢNH (2 HÀNG × 3 CỘT — 16:9)'
+              : '⚔️ BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG 4K'}
           </div>
 
-          <div style={{ fontSize: 10.5, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '3px 8px', borderRadius: 4, fontWeight: 700 }}>
-            Tỷ Lệ 16:9 Chuẩn
-          </div>
+          {/* Language Switcher */}
+          {workflowTab !== 'step3_actions' && (
+            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 2, borderRadius: 6 }}>
+              <button
+                onClick={() => setPromptFormatTab('en')}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  border: 'none',
+                  background: promptFormatTab === 'en' ? '#0284c7' : 'transparent',
+                  color: promptFormatTab === 'en' ? '#fff' : '#94a3b8',
+                  cursor: 'pointer',
+                }}
+              >
+                🇺🇸 Tiếng Anh (Chuẩn AI)
+              </button>
+              <button
+                onClick={() => setPromptFormatTab('vi')}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  border: 'none',
+                  background: promptFormatTab === 'vi' ? '#0284c7' : 'transparent',
+                  color: promptFormatTab === 'vi' ? '#fff' : '#94a3b8',
+                  cursor: 'pointer',
+                }}
+              >
+                🇻🇳 Tiếng Việt
+              </button>
+              <button
+                onClick={() => setPromptFormatTab('json')}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  border: 'none',
+                  background: promptFormatTab === 'json' ? '#0284c7' : 'transparent',
+                  color: promptFormatTab === 'json' ? '#fff' : '#94a3b8',
+                  cursor: 'pointer',
+                }}
+              >
+                ⚙️ JSON
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Big Copy Button */}
         <button
-          onClick={() =>
-            handleCopy(
-              workflowTab === 'step1_master'
-                ? promptResult.promptVietnamese
-                : workflowTab === 'step2_decomposed_parts'
-                ? promptResult.promptVietnamese
-                : currentAction.promptVi,
-              'main_copy'
-            )
-          }
+          onClick={() => handleCopy(getActivePromptText(), 'main_copy')}
           style={{
             width: '100%',
             height: 44,
@@ -658,11 +800,11 @@ export const AIPromptGenerator2D: React.FC = () => {
         >
           {copiedPrompt === 'main_copy' ? <Check size={18} /> : <Copy size={18} />}
           {copiedPrompt === 'main_copy'
-            ? '✓ ĐÃ SAO CHÉP PROMPT TIẾNG VIỆT!'
-            : '📋 SAO CHÉP PROMPT TIẾNG VIỆT (DÁN VÀO BANANA PRO / AI)'}
+            ? '✓ ĐÃ SAO CHÉP PROMPT!'
+            : `📋 SAO CHÉP PROMPT ${promptFormatTab === 'en' ? 'TIẾNG ANH (DÁN VÀO MIDJOURNEY / SD / GEMINI)' : promptFormatTab === 'vi' ? 'TIẾNG VIỆT' : 'JSON'}`}
         </button>
 
-        {/* Prompt Content Box (Pure Vietnamese) */}
+        {/* Prompt Content Box */}
         <div
           style={{
             flex: 1,
@@ -675,16 +817,16 @@ export const AIPromptGenerator2D: React.FC = () => {
         >
           <pre
             style={{
-              fontSize: 12,
+              fontSize: 11.5,
               color: '#e0f2fe',
-              lineHeight: 1.7,
+              lineHeight: 1.65,
               margin: 0,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
-              fontFamily: 'inherit',
+              fontFamily: 'Consolas, Monaco, "Courier New", monospace',
             }}
           >
-            {workflowTab !== 'step3_actions' ? promptResult.promptVietnamese : currentAction.promptVi}
+            {getActivePromptText()}
           </pre>
 
           {/* Camera Guide for Action Sequence */}

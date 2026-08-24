@@ -837,7 +837,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <input
                   type="range"
-                  min="5"
+                  min="1"
                   max="100"
                   value={tolerance}
                   onChange={(e) => setTolerance(parseInt(e.target.value))}

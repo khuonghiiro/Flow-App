@@ -465,7 +465,7 @@ export function processCellChromaAndDespeckle(
     }
   }
 
-  
+
   // 7. Final Step: Outer Stroke & Color Contour Outline
   const strokeW = Math.min(25, Math.max(0, options.strokeWidth || 0));
   if (strokeW > 0) {

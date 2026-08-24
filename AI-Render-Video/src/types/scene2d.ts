@@ -260,6 +260,9 @@ export interface AIPartPromptConfig {
   clean_background: boolean;
   aspect_ratio?: '1:1' | '3:4' | '16:9' | '9:16' | string;
   bg_type?: 'chroma_green' | 'pure_white' | 'chroma_gray' | 'pure_black' | string;
+  // Body & Proportions
+  body_proportion?: string;
+  custom_body_proportion?: string;
   // Hair specific
   hair_length?: string;
   custom_hair_length?: string;
