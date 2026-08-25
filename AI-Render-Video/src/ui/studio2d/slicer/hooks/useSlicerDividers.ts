@@ -7,8 +7,9 @@ export function useSlicerDividers() {
   const [rowDividers, setRowDividers] = useState<number[]>([]);
   const draggingDividerRef = useRef<{ type: 'col' | 'row'; index: number } | null>(null);
 
-  // Initialize Default Uniform Dividers
+  // Initialize Default Uniform Dividers (Chia đều tuyệt đối các ô trong 1 ảnh)
   const initUniformDividers = useCallback((width: number, height: number, cols: number, rows: number) => {
+    if (!width || !height || cols < 1 || rows < 1) return;
     const colStep = width / cols;
     const rowStep = height / rows;
     const colsArr: number[] = [];
@@ -32,8 +33,10 @@ export function useSlicerDividers() {
       keyType: 'chroma_green' | 'pure_white' | 'custom' = 'chroma_green',
       keyHex = '#00ff00'
     ) => {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
       if (cols <= 1 && rows <= 1) {
-        initUniformDividers(img.width, img.height, cols, rows);
+        initUniformDividers(w, h, cols, rows);
         return;
       }
       try {
@@ -42,7 +45,7 @@ export function useSlicerDividers() {
         setRowDividers(result.rowDividers);
       } catch (err) {
         console.warn('AutoFit grid detection failed, using uniform grid:', err);
-        initUniformDividers(img.width, img.height, cols, rows);
+        initUniformDividers(w, h, cols, rows);
       }
     },
     [initUniformDividers]
@@ -63,7 +66,9 @@ export function useSlicerDividers() {
   const resetAllDividers = useCallback(
     (img: HTMLImageElement | null, cols: number, rows: number) => {
       if (img) {
-        initUniformDividers(img.width, img.height, cols, rows);
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        initUniformDividers(w, h, cols, rows);
       }
     },
     [initUniformDividers]

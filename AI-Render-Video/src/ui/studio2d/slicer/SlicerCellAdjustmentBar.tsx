@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eraser, Camera, Tag, Scissors } from 'lucide-react';
+import { Eraser, Camera, Tag, X, RotateCcw, Sliders, ChevronDown } from 'lucide-react';
 import { GridCellDefinition } from '../../../core/assets/GridSliceRegistry';
 import { Character2DAngle, Character2DPartType } from '../../../types/scene2d';
 import { STANDARD_ANGLE_DEFINITIONS } from '../../../core/assets/slicer/SlicerAngleConstants';
@@ -12,6 +12,7 @@ interface SlicerCellAdjustmentBarProps {
   onResetAllDividers: () => void;
   onUpdateCellAngle?: (cell: GridCellDefinition, angle: Character2DAngle, mirrorAngle?: Character2DAngle) => void;
   onUpdateCellSlot?: (cell: GridCellDefinition, partSlot: Character2DPartType) => void;
+  onClose?: () => void;
 }
 
 const PART_SLOT_OPTIONS: { id: Character2DPartType; label: string }[] = [
@@ -36,35 +37,84 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
   onResetAllDividers,
   onUpdateCellAngle,
   onUpdateCellSlot,
+  onClose,
 }) => {
   if (!selectedCell) {
     return (
-      <div style={{ background: '#0b1329', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', fontSize: 9.5, color: '#94a3b8' }}>
-        💡 <i>Mẹo: Nhấp chọn một ô bất kỳ để gắn góc quay (0°, 45°, 90°...), đổi linh kiện, cắt gọt Bounding Box, hoặc kéo các đường kẻ nét đứt để co giãn kích thước các ô.</i>
+      <div
+        style={{
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          padding: '6px 12px',
+          borderRadius: 8,
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: 10,
+          color: '#94a3b8',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <span>💡</span>
+        <span>
+          <i>Mẹo: Nhấp chọn một ô để gán góc quay, đổi linh kiện, chỉnh độ rộng cột hoặc mở cọ tẩy pixel thừa.</i>
+        </span>
       </div>
     );
   }
 
-  const currentAngleDef = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === selectedCell.angle) || STANDARD_ANGLE_DEFINITIONS[0];
-
   return (
-    <div style={{ background: '#0b1329', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #0284c7', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Top row: Title + Slot Selector + Angle Selector + Eraser */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>
-              Đang chọn: [{selectedCell.row + 1}, {selectedCell.col + 1}]
-            </div>
-            <div style={{ fontSize: 9.5, color: '#94a3b8' }}>
-              (Nhấp đúp trên ảnh để mở cọ tẩy xóa pixel thừa)
-            </div>
+    <div
+      style={{
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(20, 30, 50, 0.96) 100%)',
+        backdropFilter: 'blur(16px)',
+        padding: '7px 12px',
+        borderRadius: 10,
+        border: '1px solid rgba(56, 189, 248, 0.28)',
+        boxShadow: '0 10px 28px -4px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        animation: 'fadeIn 0.15s ease-out',
+      }}
+    >
+      {/* Top Row: Cell badge + Angle + Slot + Eraser Action + Close */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Cell Coordinate Badge */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(2, 132, 199, 0.15))',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              color: '#38bdf8',
+              fontSize: 10.5,
+              fontWeight: 800,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span style={{ fontSize: 11 }}>🔲</span>
+            <span>Ô [{selectedCell.row + 1}, {selectedCell.col + 1}]</span>
           </div>
 
-          {/* Quick Angle Selector Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(2, 132, 199, 0.15)', padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-            <Camera size={12} color="#38bdf8" />
-            <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Góc Quay:</span>
+          {/* Angle Selector */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              background: 'rgba(2, 132, 199, 0.12)',
+              padding: '2px 6px',
+              borderRadius: 6,
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+            }}
+          >
+            <Camera size={11} color="#38bdf8" />
+            <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600 }}>Góc:</span>
             <select
               value={selectedCell.angle || 'front'}
               onChange={(e) => {
@@ -75,13 +125,13 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
                 }
               }}
               style={{
-                background: '#070b14',
+                background: '#070f1e',
                 color: '#38bdf8',
-                border: '1px solid #0284c7',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
                 borderRadius: 4,
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: 700,
-                padding: '2px 6px',
+                padding: '2px 4px',
                 cursor: 'pointer',
                 outline: 'none',
               }}
@@ -94,10 +144,20 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
             </select>
           </div>
 
-          {/* Quick Part Slot Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255, 255, 255, 0.04)', padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <Tag size={12} color="#a855f7" />
-            <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Slot:</span>
+          {/* Slot Selector */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              background: 'rgba(168, 85, 247, 0.1)',
+              padding: '2px 6px',
+              borderRadius: 6,
+              border: '1px solid rgba(168, 85, 247, 0.25)',
+            }}
+          >
+            <Tag size={11} color="#c084fc" />
+            <span style={{ fontSize: 9.5, color: '#c084fc', fontWeight: 600 }}>Slot:</span>
             <select
               value={selectedCell.partSlot || 'toc_truoc'}
               onChange={(e) => {
@@ -107,15 +167,16 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
                 }
               }}
               style={{
-                background: '#070b14',
-                color: '#e2e8f0',
-                border: '1px solid rgba(255,255,255,0.15)',
+                background: '#0e0b1f',
+                color: '#e9d5ff',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
                 borderRadius: 4,
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: 600,
-                padding: '2px 6px',
+                padding: '2px 4px',
                 cursor: 'pointer',
                 outline: 'none',
+                maxWidth: 160,
               }}
             >
               {PART_SLOT_OPTIONS.map((slot) => (
@@ -127,75 +188,169 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
           </div>
         </div>
 
-        {/* Right side: Preview Image & Actions (Eraser) */}
+        {/* Right Actions: Thumbnail + Eraser + Dismiss */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {slicedCellDataUrl && (
             <img
               src={slicedCellDataUrl}
               alt="Cell preview"
-              style={{ width: 32, height: 32, objectFit: 'contain', background: '#000', borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)' }}
+              style={{
+                width: 26,
+                height: 26,
+                objectFit: 'contain',
+                background: '#040711',
+                borderRadius: 4,
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+              }}
             />
           )}
 
           <button
             onClick={() => onOpenCellPixelEditor(selectedCell)}
             style={{
-              padding: '5px 10px',
+              padding: '4px 10px',
               fontSize: 10,
               fontWeight: 700,
-              borderRadius: 5,
-              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
               color: '#ffffff',
-              border: 'none',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
               cursor: 'pointer',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)',
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
+              transition: 'all 0.15s ease',
             }}
+            title="Mở cọ tẩy xóa pixel thừa cho riêng ô này (hoặc nhấp đúp trên ảnh)"
           >
-            <Eraser size={12} /> Cọ Tẩy Pixel Ô Này
+            <Eraser size={11} />
+            <span>Cọ Tẩy Pixel</span>
           </button>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                padding: '3px 5px',
+                borderRadius: 5,
+                background: 'rgba(255, 255, 255, 0.06)',
+                color: '#94a3b8',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Đóng thanh điều chỉnh ô"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Bottom row: Quick Divider Adjustment Buttons */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6 }}>
-        <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Nới rộng cột {selectedCell.col + 1}:</span>
-        <button
-          onClick={() => onAdjustColWidth(15)}
-          style={{ padding: '2px 6px', fontSize: 9.5, borderRadius: 4, background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-        >
-          +15px
-        </button>
-        <button
-          onClick={() => onAdjustColWidth(30)}
-          style={{ padding: '2px 6px', fontSize: 9.5, borderRadius: 4, background: '#0369a1', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-        >
-          +30px
-        </button>
-        <button
-          onClick={() => onAdjustColWidth(-15)}
-          style={{ padding: '2px 6px', fontSize: 9.5, borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
-        >
-          -15px
-        </button>
+      {/* Bottom Row: Width Adjustment Segmented Bar + Reset Grid */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+          paddingTop: 5,
+          fontSize: 9.5,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ color: '#94a3b8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <Sliders size={10} color="#38bdf8" /> Nới rộng cột {selectedCell.col + 1}:
+          </span>
+
+          <div
+            style={{
+              display: 'inline-flex',
+              background: 'rgba(15, 23, 42, 0.8)',
+              padding: 2,
+              borderRadius: 5,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              gap: 2,
+            }}
+          >
+            <button
+              onClick={() => onAdjustColWidth(-15)}
+              style={{
+                padding: '2px 7px',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: 3,
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#cbd5e1',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              title="Thu hẹp cột -15px"
+            >
+              -15px
+            </button>
+            <button
+              onClick={() => onAdjustColWidth(15)}
+              style={{
+                padding: '2px 7px',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: 3,
+                background: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              title="Nới rộng cột +15px"
+            >
+              +15px
+            </button>
+            <button
+              onClick={() => onAdjustColWidth(30)}
+              style={{
+                padding: '2px 7px',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: 3,
+                background: '#0369a1',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              title="Nới rộng cột +30px"
+            >
+              +30px
+            </button>
+          </div>
+
+          <span style={{ color: '#64748b', fontSize: 8.5, marginLeft: 4 }}>
+            (Nhấp đúp chuột trên ô để tẩy nhanh)
+          </span>
+        </div>
 
         <button
           onClick={onResetAllDividers}
           style={{
-            marginLeft: 'auto',
             padding: '2px 8px',
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 600,
             borderRadius: 4,
-            background: 'rgba(239, 68, 68, 0.15)',
+            background: 'rgba(239, 68, 68, 0.1)',
             color: '#f87171',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
             cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
           }}
+          title="Chia lại tất cả các ô đều nhau"
         >
-          Reset Lưới
+          <RotateCcw size={9} />
+          <span>Reset Lưới Đều</span>
         </button>
       </div>
     </div>

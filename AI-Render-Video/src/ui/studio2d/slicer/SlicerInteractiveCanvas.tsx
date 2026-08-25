@@ -653,8 +653,8 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               ? 'grabbing'
               : 'grab'
             : isEyedropperActive
-            ? 'crosshair'
-            : 'default',
+              ? 'crosshair'
+              : 'default',
         }}
       >
         {/* Top Eyedropper Guidance Banner */}
@@ -685,8 +685,8 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               {eyedropperTarget === 'smooth'
                 ? '🎯 Chế độ hút màu viền làm mịn: Rê chuột và nhấp vào nét vẽ để chọn màu viền khử răng cưa'
                 : eyedropperTarget === 'fringe'
-                ? '🎯 Chế độ hút màu viền rác: Rê chuột và nhấp vào vùng viền sượng/sạn để chọn màu khử'
-                : '🎯 Chế độ hút màu nền: Rê chuột lên ảnh và nhấp chuột để chọn mã màu nền cần tách'}
+                  ? '🎯 Chế độ hút màu viền rác: Rê chuột và nhấp vào vùng viền sượng/sạn để chọn màu khử'
+                  : '🎯 Chế độ hút màu nền: Rê chuột lên ảnh và nhấp chuột để chọn mã màu nền cần tách'}
             </span>
           </div>
         )}

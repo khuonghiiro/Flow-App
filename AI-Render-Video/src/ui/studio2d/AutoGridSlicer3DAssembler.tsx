@@ -509,13 +509,15 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     img.onload = () => {
       loadedImageRef.current = img;
       setLoadedImage(img);
-      autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      initUniformDividers(w, h, currentCategory.cols, currentCategory.rows);
       setHasExplicitlySliced(false);
       slicedCanvasesRef.current.clear();
       setSlicedResults(new Map());
     };
     img.src = userUploadedImageUrl;
-  }, [userUploadedImageUrl, autoFitDividers, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]);
+  }, [userUploadedImageUrl, initUniformDividers, currentCategory.cols, currentCategory.rows, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]);
 
   const handleSelectCatId = useCallback(
     (newCatId: string) => {
@@ -528,14 +530,18 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       }
       const cat = customCategory && customCategory.id === newCatId ? customCategory : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
       const img = loadedImage || loadedImageRef.current;
-      if (img) autoFitDividers(img, cat.cols, cat.rows, keyColorType, keyColorHex);
+      if (img) {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        initUniformDividers(w, h, cat.cols, cat.rows);
+      }
       setSelectedCell(null);
       setHasExplicitlySliced(false);
       slicedCanvasesRef.current.clear();
       setSlicedResults(new Map());
       setPreviewDisplayMode('original');
     },
-    [loadedImage, autoFitDividers, keyColorType, keyColorHex, customCategory, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
+    [loadedImage, initUniformDividers, customCategory, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
   );
 
   const handleToggleSingleImageMode = useCallback(() => {
@@ -566,14 +572,18 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       saveCachedSingleMode(false);
       setSelectedCatId(newCat.id);
       const img = loadedImage || loadedImageRef.current;
-      if (img) autoFitDividers(img, newCat.cols, newCat.rows, keyColorType, keyColorHex);
+      if (img) {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        initUniformDividers(w, h, newCat.cols, newCat.rows);
+      }
       setSelectedCell(null);
       setHasExplicitlySliced(false);
       slicedCanvasesRef.current.clear();
       setSlicedResults(new Map());
       setPreviewDisplayMode('original');
     },
-    [loadedImage, autoFitDividers, keyColorType, keyColorHex, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
+    [loadedImage, initUniformDividers, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
   );
 
   const handleToggleDirectBBoxCrop = useCallback(() => {
@@ -690,7 +700,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       loadedImageRef.current = nextImg;
       setLoadedImage(nextImg);
       setUserUploadedImageUrl(dataUrl);
-      autoFitDividers(nextImg, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
+      const w = nextImg.naturalWidth || nextImg.width;
+      const h = nextImg.naturalHeight || nextImg.height;
+      initUniformDividers(w, h, currentCategory.cols, currentCategory.rows);
     };
     nextImg.src = dataUrl;
 
@@ -796,7 +808,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       )}
 
       {/* Main Studio Grid: Sidebar, Canvas, Vertical Gallery (when images exist), 3D Turntable Preview */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: imageList.length > 0 ? '380px 1fr 145px 360px' : '410px 1fr 380px', gap: 10, minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: imageList.length > 0 ? '370px 1fr 228px 350px' : '410px 1fr 380px', gap: 10, minHeight: 0 }}>
         {/* Column 1: Slicer Controls */}
         <SlicerSidebarControls
           targetCategory={targetCategory}
@@ -974,6 +986,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
                 else redrawCanvas();
               }}
               onUpdateCellSlot={(cell, slot) => { cell.partSlot = slot; if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
+              onClose={() => setSelectedCell(null)}
             />
           )}
         </div>
@@ -999,6 +1012,32 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             }}
             onOpenAddFiles={() => fileInputRef.current?.click()}
             totalImagesCount={imageList.length}
+            previewDisplayMode={previewDisplayMode}
+            chromaOpts={
+              keyColorType
+                ? {
+                    keyColorType,
+                    keyColorHex: keyColorHex || '#00ff00',
+                    isolationMode: isolationMode || 'all',
+                    tolerance: tolerance ?? 35,
+                    feather: feather ?? 2,
+                    shadowRetention: 0,
+                    strokeWidth: 0,
+                    strokeColorHex: '#000000',
+                    despeckleSize: 0,
+                    whiteSpeckleSensitivity: 0,
+                    keepLargestIslandOnly: false,
+                    fringeColorType: 'chroma_green',
+                    fringeColorHex: '#00ff00',
+                    defringeStrength: 0,
+                    edgeChoke: 0,
+                    edgeSmooth: 0,
+                    smoothColorType: 'black',
+                    smoothColorHex: '#000000',
+                    cleanupMode: 'all',
+                  }
+                : undefined
+            }
           />
         )}
 
