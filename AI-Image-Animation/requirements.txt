@@ -1,0 +1,27 @@
+# Web Framework & Server
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+websockets>=12.0
+
+# Scientific & Image Processing
+numpy>=1.24.3,<2.0.0
+scipy>=1.11.0
+pillow>=10.2.0
+opencv-python>=4.9.0.80
+imageio>=2.34.0
+imageio-ffmpeg>=0.4.9
+
+# AI & Deep Learning (RTX 3060 12GB VRAM Optimized)
+torch>=2.2.0
+torchvision>=0.17.0
+accelerate>=0.27.0
+transformers>=4.38.0
+diffusers>=0.27.0
+safetensors>=0.4.2
+
+# Utilities
+tqdm>=4.66.0
+requests>=2.31.0
+aiofiles>=23.2.1

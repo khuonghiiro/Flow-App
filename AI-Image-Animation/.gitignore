@@ -1,0 +1,51 @@
+# Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches and temporary files
+.cache/
+tmp/
+temp/
+outputs/
+*.mp4
+*.gif
+*.webm
+*.png
+*.jpg
+*.jpeg
+!app/static/samples/*.png
+!app/static/samples/*.jpg
+
+# Model checkpoints & weights (heavy files)
+checkpoints/
+models/
+weights/
+*.ckpt
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# IDEs & System files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log

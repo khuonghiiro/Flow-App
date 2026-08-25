@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Image Animation Studio - RTX 3060 12GB</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Modular Stylesheets -->
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/canvas.css">
+  <link rel="stylesheet" href="/css/controls.css">
+  <link rel="stylesheet" href="/css/api_modal.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo">💨</div>
+      <h1 class="brand-title">AI Image Animation Studio</h1>
+      <span class="brand-badge">RTX 3060 12GB</span>
+    </div>
+    
+    <div class="header-actions">
+      <div class="gpu-badge" id="gpuStatusBadge">
+        <span class="gpu-indicator"></span>
+        <span id="gpuStatusText">NVIDIA GPU 12GB</span>
+      </div>
+      
+      <button class="btn btn-outline-api" id="btnOpenApiModal">
+        <span>🔌 API Guide (Port 3979)</span>
+      </button>
+      
+      <button class="btn btn-primary" id="btnExportModal">
+        <span>⚡ Render & Export</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace Grid -->
+  <main class="workspace-container">
+    
+    <!-- Left Sidebar: Upload, AI Model Management & Tools -->
+    <aside class="sidebar-left">
+      
+      <!-- 1. Image Upload Section -->
+      <div class="panel-section">
+        <div class="panel-title">
+          <span>🖼️ Tải Ảnh Lên (Image Source)</span>
+        </div>
+
+        <!-- Upload Box (Default state) -->
+        <div class="upload-card" id="sidebarUploadBox">
+          <div class="upload-icon">📁</div>
+          <div class="upload-title">Nhấp để chọn hoặc kéo ảnh vào</div>
+          <div class="upload-sub">Hỗ trợ JPG, PNG, WebP</div>
+        </div>
+
+        <!-- Loaded Image Info & Preview (Active state) -->
+        <div class="upload-preview-container" id="sidebarImagePreview" style="display: none;">
+          <img id="sidebarThumbImg" class="upload-thumb" src="" alt="Thumbnail">
+          <div class="upload-info">
+            <span class="upload-info-name" id="sidebarImgName">character.png</span>
+            <span class="upload-info-dim" id="sidebarImgDim">600 × 750 px</span>
+            <div style="display: flex; gap: 6px; margin-top: 4px;">
+              <button class="btn btn-secondary" id="btnChangeImage" style="padding: 4px 8px; font-size: 11px;">🔄 Đổi ảnh</button>
+              <button class="btn btn-secondary" id="btnClearImage" style="padding: 4px 8px; font-size: 11px;">🗑️</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Sample Shortcuts -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+          <button class="btn btn-secondary" id="btnSampleAnime" style="font-size: 11px; padding: 6px 8px;">🌸 Mẫu Anime</button>
+          <button class="btn btn-secondary" id="btnSamplePortrait" style="font-size: 11px; padding: 6px 8px;">👤 Mẫu Chân Dung</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+      </div>
+
+      <!-- 2. AI Model & VRAM Management Section -->
+      <div class="panel-section">
+        <div class="panel-title">
+          <span>🧠 Quản Lý Model & VRAM</span>
+        </div>
+
+        <div class="model-manager-card">
+          <div class="model-header-status">
+            <span style="font-weight: 600; color: var(--text-primary);">Trạng Thái Model:</span>
+            <span class="status-badge" id="modelStatusBadge">🟢 Sẵn Sàng (Ready)</span>
+          </div>
+
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+            RTX 3060 12GB: Tối ưu bộ nhớ đệm, tự động thu hồi VRAM sau render.
+          </div>
+
+          <div class="model-actions-row">
+            <button class="btn-load" id="btnLoadModel">
+              <span>🟢 Nạp Model</span>
+            </button>
+            <button class="btn-unload" id="btnUnloadModel">
+              <span>🔴 Hủy Model</span>
+            </button>
+          </div>
+
+          <!-- VRAM Usage Mini-Bar -->
+          <div style="margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
+              <span>VRAM Đang Dùng</span>
+              <span id="vramUsedText" style="color: var(--primary); font-family: var(--font-mono);">0.5 GB / 12 GB</span>
+            </div>
+            <div class="progress-bar-track" style="height: 5px;">
+              <div class="progress-bar-fill" id="vramBarFill" style="width: 5%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Interactive Tool Palette -->
+      <div class="panel-section">
+        <div class="panel-title">
+          <span>🖌️ Công Cụ Vẽ & Tạo Gió</span>
+        </div>
+
+        <div class="tools-grid">
+          <button class="tool-grid-btn active" id="toolBrush" data-tool="brush">
+            <span>🖌️</span>
+            <span>Cọ Mask Tóc/Áo</span>
+          </button>
+          <button class="tool-grid-btn" id="toolVector" data-tool="vector">
+            <span>↗️</span>
+            <span>Mũi Tên Gió</span>
+          </button>
+          <button class="tool-grid-btn" id="toolPin" data-tool="pin">
+            <span>📌</span>
+            <span>Ghim Cố Định</span>
+          </button>
+          <button class="tool-grid-btn" id="toolEraser" data-tool="eraser">
+            <span>🧹</span>
+            <span>Tẩy / Xóa</span>
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+          <button class="btn btn-secondary" id="btnClearVectors" style="font-size: 11px; padding: 6px 8px;">🔄 Xóa Vector</button>
+          <button class="btn btn-secondary" id="btnClearMask" style="font-size: 11px; padding: 6px 8px;">🗑️ Xóa Mask</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Center Canvas Viewport -->
+    <section class="viewport-center" id="viewportCenter">
+      <div class="viewport-hud">
+        <button class="hud-btn active" id="hudShowMask">🎭 Hiện Mask</button>
+        <button class="hud-btn active" id="hudShowVectors">💨 Hiện Vector</button>
+        <button class="hud-btn" id="hudSplitView">🌓 So sánh ảnh gốc</button>
+      </div>
+
+      <!-- Canvas Stack -->
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="imageCanvas"></canvas>
+        <canvas id="maskCanvas"></canvas>
+        <canvas id="vectorCanvas"></canvas>
+        <canvas id="previewCanvas"></canvas>
+      </div>
+
+      <!-- Drag & Drop Overlay -->
+      <div class="dropzone-overlay" id="dropzoneOverlay">
+        <div class="dropzone-icon">📁</div>
+        <div class="dropzone-text">
+          <h3>Kéo thả ảnh nhân vật hoặc bấm để tải lên</h3>
+          <p>Hỗ trợ JPG, PNG, WebP (Tối ưu cho ảnh chân dung, anime, trang phục)</p>
+        </div>
+        <div class="sample-buttons">
+          <button class="btn btn-secondary" id="btnSampleAnime">Ảnh Mẫu Anime</button>
+          <button class="btn btn-secondary" id="btnSamplePortrait">Ảnh Mẫu Chân Dung</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+      </div>
+    </section>
+
+    <!-- Right Properties Panel -->
+    <aside class="properties-right">
+      
+      <!-- Preset Presets -->
+      <div class="panel-section">
+        <div class="panel-title">
+          <span>🌪️ Preset Gió & Chuyển Động</span>
+        </div>
+        <div class="presets-grid" id="presetsGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Wind Physics Controls -->
+      <div class="panel-section">
+        <div class="panel-title">
+          <span>🌬️ Thông Số Gió (Wind Physics)</span>
+        </div>
+        
+        <div class="control-row">
+          <div class="control-label">
+            <span>Cường độ gió (Strength)</span>
+            <span class="control-val" id="valWindStrength">1.2x</span>
+          </div>
+          <input type="range" id="sliderWindStrength" min="0.0" max="4.0" step="0.1" value="1.2">
+        </div>
+
+        <div class="control-row">
+          <div class="control-label">
+            <span>Tần số sóng lượn (Frequency)</span>
+            <span class="control-val" id="valWaveFreq">1.8 Hz</span>
+          </div>
+          <input type="range" id="sliderWaveFreq" min="0.2" max="5.0" step="0.1" value="1.8">
+        </div>
+
+        <div class="control-row">
+          <div class="control-label">
+            <span>Độ hỗn loạn / Nhấp nhô (Turbulence)</span>
+            <span class="control-val" id="valTurbulence">0.6</span>
+          </div>
+          <input type="range" id="sliderTurbulence" min="0.0" max="2.0" step="0.1" value="0.6">
+        </div>
+
+        <div class="control-row">
+          <div class="control-label">
+            <span>Lọn tóc vi mô (Strand Flutter)</span>
+            <span class="control-val" id="valFlutter">1.4</span>
+          </div>
+          <input type="range" id="sliderFlutter" min="0.0" max="3.0" step="0.1" value="1.4">
+        </div>
+      </div>
+
+      <!-- Brush Settings -->
+      <div class="panel-section" id="brushSettingsSection">
+        <div class="panel-title">
+          <span>🖌️ Cài Đặt Cọ Vẽ Mask</span>
+        </div>
+        <div class="control-row">
+          <div class="control-label">
+            <span>Kích thước cọ (Radius)</span>
+            <span class="control-val" id="valBrushSize">30 px</span>
+          </div>
+          <input type="range" id="sliderBrushSize" min="5" max="100" step="1" value="30">
+        </div>
+      </div>
+
+      <!-- Animation Options -->
+      <div class="panel-section">
+        <div class="panel-title">
+          <span>⏱️ Cấu Hình Video Lặp</span>
+        </div>
+        <div class="control-row">
+          <div class="control-label">
+            <span>Thời lượng video</span>
+            <span class="control-val" id="valDuration">3.0 s</span>
+          </div>
+          <input type="range" id="sliderDuration" min="1.0" max="8.0" step="0.5" value="3.0">
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Bottom Timeline Bar -->
+    <footer class="timeline-bottom">
+      <button class="timeline-btn" id="btnPlayPause" title="Phát / Tạm dừng">
+        <span id="playIcon">▶️</span>
+      </button>
+
+      <div class="timeline-scrubber">
+        <input type="range" id="timelineSlider" min="0.0" max="1.0" step="0.01" value="0.0">
+      </div>
+
+      <div class="time-display" id="timeDisplay">0.0s / 3.0s</div>
+    </footer>
+
+  </main>
+
+  <!-- API Integration Modal -->
+  <div class="modal-backdrop" id="apiModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">🔌 Hướng Dẫn Tích Hợp API (Port 3979)</div>
+        <button class="modal-close" id="btnCloseApiModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); font-size: 13px;">
+          Bất kỳ trang web hoặc ứng dụng nào cũng có thể gọi trực tiếp API này để tạo giao diện xử lý chuyển động ảnh riêng.
+        </p>
+
+        <div class="api-tabs">
+          <button class="api-tab-btn active" data-lang="js">JavaScript (Fetch)</button>
+          <button class="api-tab-btn" data-lang="python">Python (Requests)</button>
+          <button class="api-tab-btn" data-lang="curl">cURL (Terminal)</button>
+        </div>
+
+        <div class="code-container">
+          <button class="btn-copy" id="btnCopyCode">Copy Code</button>
+          <pre class="code-block" id="apiCodeBlock"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Progress Modal -->
+  <div class="modal-backdrop" id="exportModal">
+    <div class="modal-dialog" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title">⚡ Xuất Video Chuyển Động</div>
+        <button class="modal-close" id="btnCloseExportModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="control-row">
+          <label style="font-size: 13px; color: var(--text-secondary);">Định dạng xuất:</label>
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <button class="btn btn-secondary active" id="btnFormatMp4" data-fmt="mp4">MP4 (H.264)</button>
+            <button class="btn btn-secondary" id="btnFormatGif" data-fmt="gif">GIF Loop</button>
+            <button class="btn btn-secondary" id="btnFormatWebm" data-fmt="webm">WebM VP9</button>
+          </div>
+        </div>
+
+        <div id="exportProgressSection" style="display: none; margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+            <span id="exportStatusMessage">Đang xử lý render video...</span>
+            <span id="exportPercent">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="exportProgressBar"></div>
+          </div>
+        </div>
+
+        <div id="exportResultSection" style="display: none; margin-top: 16px; text-align: center;">
+          <a class="btn btn-primary" id="btnDownloadResult" download target="_blank" style="width: 100%;">
+            💾 Tải Video Về Máy
+          </a>
+        </div>
+
+        <button class="btn btn-primary" id="btnStartExport" style="margin-top: 12px; width: 100%;">
+          Bắt Đầu Render
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modular Scripts -->
+  <script src="/js/api_client.js"></script>
+  <script src="/js/mask_painter.js"></script>
+  <script src="/js/vector_tools.js"></script>
+  <script src="/js/canvas_engine.js"></script>
+  <script src="/js/ui_controller.js"></script>
+  <script src="/js/export_manager.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
