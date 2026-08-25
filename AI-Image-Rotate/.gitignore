@@ -1,0 +1,58 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# AI Models, Weights & Checkpoints (Heavy Files)
+weights/
+checkpoints/
+models_cache/
+*.pt
+*.pth
+*.bin
+*.onnx
+*.safetensors
+*.ckpt
+*.h5
+*.tflite
+
+# Output generated files & cache
+outputs/
+temp/
+tmp/
+*.log
+logs/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.suo
+*.user
+*.useroscan
+*.sln.docstates
+
+# OS Generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+*.swp
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local

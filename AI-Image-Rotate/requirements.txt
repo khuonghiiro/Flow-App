@@ -1,0 +1,24 @@
+# Web & API Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+python-multipart>=0.0.9
+aiofiles>=23.2.0
+requests>=2.31.0
+
+# Image & Data Processing
+pillow>=10.0.0
+numpy>=1.24.0,<2.0.0
+rembg>=2.0.50
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+
+# AI & Deep Learning (RTX 3060 12GB Optimized)
+# Note: For CUDA-accelerated PyTorch, install with cu121 / cu118 index url
+diffusers>=0.26.0
+transformers>=4.38.0
+accelerate>=0.27.0
+einops>=0.7.0
+scipy>=1.11.0
+tqdm>=4.66.0
+psutil>=5.9.0

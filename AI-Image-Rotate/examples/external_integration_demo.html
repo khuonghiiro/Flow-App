@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trang Web Demo Tích Hợp API Xoay Ảnh 360°</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 1px solid #334155;
+    }
+    h2 { color: #38bdf8; margin-top: 0; }
+    .turntable-box {
+      width: 100%;
+      height: 350px;
+      background: #090d16;
+      border-radius: 8px;
+      border: 1px dashed #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    button {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover { background: #7dd3fc; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>🌐 Ví Dụ Website Bên Ngoài Tích Hợp API Port 3978</h2>
+    <p>Trang này minh họa một website bất kỳ gọi API của máy chủ AI Image Rotate để tạo khung xoay 360° tương tác.</p>
+    
+    <button id="btn-demo-rotate">🚀 Gọi API Xoay 360° Với Ảnh Mẫu</button>
+
+    <div id="embed-viewer-container" class="turntable-box">
+      <span style="color: #64748b;">Khung xem 360° sẽ hiển thị tại đây</span>
+    </div>
+  </div>
+
+  <!-- Include SDK -->
+  <script src="./ai_rotate_client.js"></script>
+  <script>
+    const sdk = new AIRotateSDK('http://localhost:3978');
+    const btn = document.getElementById('btn-demo-rotate');
+    const container = document.getElementById('embed-viewer-container');
+
+    // Create a demo canvas image to send
+    function generateDemoImage() {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 256;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 256, 256);
+      grad.addColorStop(0, '#f43f5e');
+      grad.addColorStop(1, '#8b5cf6');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(128, 128, 90, 0, Math.PI * 2);
+      ctx.fill();
+      return c.toDataURL('image/png');
+    }
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang gọi API http://localhost:3978/api/rotate/turntable ...';
+      try {
+        const demoB64 = generateDemoImage();
+        const result = await sdk.rotateTurntable({
+          imageBase64: demoB64,
+          numFrames: 16,
+          elevationDeg: 0,
+          removeBackground: true
+        });
+
+        // Embed interactive viewer
+        sdk.embedViewer(container, result.frames);
+        btn.textContent = '✅ Đã tạo thành công! Kéo chuột vào khung đen để xoay 360°';
+      } catch (err) {
+        alert('Lỗi: ' + err.message + '\nHãy đảm bảo server đang chạy tại port 3978.');
+        btn.disabled = false;
+        btn.textContent = '🚀 Thử lại';
+      }
+    });
+  </script>
+</body>
+</html>

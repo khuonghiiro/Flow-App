@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 360 Image Rotate Studio - RTX 3060 12GB</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Modular Stylesheets -->
+  <link rel="stylesheet" href="/static/css/variables.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/turntable.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">🔄</div>
+      <div>
+        <span class="brand-title">AI 360° Novel View Studio</span>
+        <span class="brand-badge">PORT 3978</span>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <span id="vram-usage-text" style="font-size: 0.78rem; color: var(--text-muted); font-family: monospace;">VRAM: Đang kết nối...</span>
+      <div id="gpu-status-badge" class="gpu-badge">
+        <span class="dot-indicator"></span> RTX 3060 12GB (CUDA)
+      </div>
+    </div>
+  </header>
+
+  <!-- App Main Content Grid -->
+  <main class="app-container">
+    
+    <!-- Left Sidebar: Controls & Model Manager -->
+    <aside class="control-panel">
+      
+      <!-- Section 0: AI Model Management & Loading into VRAM -->
+      <section class="control-group" style="background: rgba(0, 242, 254, 0.05); border: 1px solid var(--border-active); border-radius: var(--radius-md); padding: 12px;">
+        <div class="section-title" style="color: var(--accent-cyan);">⚡ Quản Lý & Nạp Model AI (VRAM)</div>
+        
+        <div style="margin-top: 8px;">
+          <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Chọn Model AI 3D Novel View:</label>
+          <select id="select-ai-model" style="width: 100%; padding: 8px; border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-subtle); font-size: 0.8rem; outline: none;">
+            <option value="sudo-ai/zero123plus-v1.1">🌟 Zero123++ v1.1 (Multi-View 3D - Khuyên Dùng)</option>
+            <option value="stabilityai/stable-zero123">🌟 Stable Zero123 (High Quality Single View)</option>
+            <option value="ashawkey/zero123-xl-diffusers">🌟 Zero123-XL (Large Novel View)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-top: 8px;">
+          <button id="btn-load-model" class="btn btn-primary" style="flex: 2; font-size: 0.78rem; padding: 8px;">
+            📥 Nạp Model Vào VRAM GPU
+          </button>
+          <button id="btn-unload-model" class="btn btn-secondary" style="flex: 1; font-size: 0.78rem; padding: 8px;" title="Giải phóng VRAM">
+            🗑️ Xả VRAM
+          </button>
+        </div>
+
+        <!-- Progress Bar & Status Text -->
+        <div id="model-progress-box" style="margin-top: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-dim); margin-bottom: 3px;">
+            <span id="model-status-text">Chưa nạp model vào GPU</span>
+            <span id="model-progress-percent">0%</span>
+          </div>
+          <div style="width: 100%; height: 5px; background: var(--bg-surface); border-radius: 3px; overflow: hidden;">
+            <div id="model-progress-bar" style="width: 0%; height: 100%; background: var(--grad-primary); transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1: Input Image -->
+      <section class="control-group">
+        <div class="section-title">1. Ảnh Đầu Vào (Source Image)</div>
+        
+        <div id="upload-dropzone" class="dropzone">
+          <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+          <div class="dropzone-icon">📥</div>
+          <div class="dropzone-text">Kéo thả ảnh hoặc bấm để chọn</div>
+          <div class="dropzone-subtext">AI sẽ nhận diện và tự suy luận các góc còn lại (kể cả sau lưng 180°)</div>
+          <img id="preview-image" style="display: none; max-width: 100%; max-height: 150px; object-fit: contain; margin: 0 auto;" alt="Source Preview">
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button id="btn-load-sample" class="btn btn-secondary" style="flex: 1; font-size: 0.78rem;">🎲 Dùng Ảnh Mẫu</button>
+          <button id="btn-remove-bg" class="btn btn-secondary" style="flex: 1; font-size: 0.78rem;">✨ Tách Nền (Rembg)</button>
+        </div>
+      </section>
+
+      <!-- Section 2: Quick Angle Presets -->
+      <section class="control-group">
+        <div class="section-title">2. Chọn Nhanh Góc Xoay (Angle Presets)</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+          <button class="btn btn-secondary btn-preset" data-az="0" data-el="0" style="padding: 6px 2px; font-size: 0.72rem;">0° Trước</button>
+          <button class="btn btn-secondary btn-preset" data-az="45" data-el="0" style="padding: 6px 2px; font-size: 0.72rem;">45° Nghiêng</button>
+          <button class="btn btn-secondary btn-preset" data-az="90" data-el="0" style="padding: 6px 2px; font-size: 0.72rem;">90° Hông</button>
+          <button class="btn btn-secondary btn-preset" data-az="135" data-el="0" style="padding: 6px 2px; font-size: 0.72rem;">135° Sau-Phải</button>
+          <button class="btn btn-primary btn-preset" data-az="180" data-el="0" style="padding: 6px 2px; font-size: 0.72rem; font-weight: 700; grid-column: span 2;">🛡️ 180° Sau Lưng</button>
+          <button class="btn btn-secondary btn-preset" data-az="225" data-el="0" style="padding: 6px 2px; font-size: 0.72rem;">225° Sau-Trái</button>
+          <button class="btn btn-secondary btn-preset" data-az="270" data-el="0" style="padding: 6px 2px; font-size: 0.72rem;">270° Hông Trái</button>
+        </div>
+      </section>
+
+      <!-- Section 3: 3D Orbit Compass Angle Selector -->
+      <section class="control-group">
+        <div class="section-title">3. Tùy Chỉnh Góc Bằng Con Quay 3D (Gizmo)</div>
+        <div class="orbit-gizmo-container">
+          <canvas id="orbit-gizmo-canvas" class="gizmo-canvas"></canvas>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+            Kéo chuột trên vòng xoay để chọn góc chính xác
+          </div>
+        </div>
+      </section>
+
+      <!-- Precision Sliders -->
+      <section class="control-group">
+        <div class="control-label">
+          <span>Góc Ngang (Azimuth):</span>
+          <span id="val-azimuth" class="control-value">0°</span>
+        </div>
+        <input type="range" id="slider-azimuth" class="slider-range" min="0" max="360" value="0" step="1">
+
+        <div class="control-label" style="margin-top: 8px;">
+          <span>Góc Nghiêng (Elevation):</span>
+          <span id="val-elevation" class="control-value">0°</span>
+        </div>
+        <input type="range" id="slider-elevation" class="slider-range" min="-45" max="45" value="0" step="1">
+
+        <div class="control-label" style="margin-top: 8px;">
+          <span>Số Khung Hình Vòng Xoay 360°:</span>
+          <span id="val-frames" class="control-value">16 frames</span>
+        </div>
+        <input type="range" id="slider-frames" class="slider-range" min="8" max="36" value="16" step="4">
+      </section>
+
+      <!-- Options -->
+      <section class="control-group">
+        <div class="toggle-group">
+          <span class="toggle-label">Tự động xóa phông & canh giữa (Rembg)</span>
+          <label class="switch">
+            <input type="checkbox" id="chk-remove-bg" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Action Buttons -->
+      <section class="control-group" style="gap: 10px; margin-top: 6px;">
+        <button id="btn-rotate-single" class="btn btn-secondary btn-block">
+          🎯 Render Góc Đã Chọn (Single Novel View)
+        </button>
+        <button id="btn-rotate-turntable" class="btn btn-primary btn-block">
+          🔄 Render Full Vòng Xoay 360° (Turntable Suite)
+        </button>
+      </section>
+
+    </aside>
+
+    <!-- Right Viewport Studio -->
+    <section class="viewport-panel">
+      
+      <!-- Studio Tabs Header -->
+      <div class="viewport-header">
+        <div class="tab-nav">
+          <button class="tab-btn active" data-tab="turntable">🌐 360° Turntable Viewport</button>
+          <button class="tab-btn" data-tab="gallery">🖼️ Album Tất Cả Các Góc</button>
+          <button class="tab-btn" data-tab="api-docs">⚡ Tích Hợp API Ngoài (SDK)</button>
+        </div>
+
+        <!-- Export Buttons -->
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-export-zip" class="btn btn-secondary" style="font-size: 0.78rem;" disabled>📦 Tải ZIP</button>
+          <button id="btn-export-gif" class="btn btn-secondary" style="font-size: 0.78rem;" disabled>🎞️ Tải GIF</button>
+          <button id="btn-export-sheet" class="btn btn-secondary" style="font-size: 0.78rem;" disabled>🗺️ Spritesheet</button>
+        </div>
+      </div>
+
+      <!-- Tab 1: Interactive 360 Turntable Viewport -->
+      <div id="view-turntable" style="display: flex; flex-direction: column; flex: 1; height: 100%;">
+        <div id="turntable-stage" class="turntable-stage">
+          <div class="stage-grid"></div>
+          
+          <!-- Angle HUD -->
+          <div id="hud-angle-indicator" class="turntable-hud">
+            AZIMUTH: 0° | READY
+          </div>
+
+          <!-- Rotating Display Image -->
+          <img id="turntable-display-img" class="turntable-image" src="" alt="360 Output">
+
+          <!-- Floating Stage Controls -->
+          <div class="stage-toolbar">
+            <button id="btn-auto-spin" class="tool-icon-btn" title="Tự động quay 360°">▶</button>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Kéo chuột để xoay vòng 360° (Mặt trước - Hông - Sau lưng)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Multi-Angle Gallery Grid -->
+      <div id="view-gallery" style="display: none;">
+        <div id="gallery-container" class="gallery-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Tab 3: External Web App Integration Guide -->
+      <div id="view-api-docs" style="display: none; overflow-y: auto;">
+        <h3 style="font-size: 1.05rem; margin-bottom: 12px; color: var(--accent-cyan);">Cách Tích Hợp API Xoay 360° Vào Website Khác (Port 3978):</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Bất kỳ ứng dụng web hoặc client nào cũng có thể gửi request đến <code style="color: var(--accent-cyan); background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">http://localhost:3978/api/rotate/single</code> (để lấy góc sau lưng 180° hoặc góc bất kỳ) hoặc <code style="color: var(--accent-cyan); background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">/api/rotate/turntable</code>.
+        </p>
+
+        <div class="code-box">
+<pre>// Lấy ảnh phía sau lưng (180°) từ AI
+async function getBackView(imageBase64) {
+  const response = await fetch('http://localhost:3978/api/rotate/single', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image_base64: imageBase64,
+      azimuth_deg: 180.0, // 180 độ: Phía sau lưng
+      elevation_deg: 0.0,
+      remove_background: true
+    })
+  });
+  
+  const data = await response.json();
+  const backImageBase64 = data.frames[0].image_base64;
+  console.log('Ảnh sau lưng đã render:', backImageBase64);
+  return backImageBase64;
+}</pre>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 0.85rem; color: var(--text-muted);">
+          📖 Xem tài liệu Swagger UI chi tiết tại: <a href="http://localhost:3978/docs" target="_blank" style="color: var(--accent-cyan); font-weight: 600;">http://localhost:3978/docs</a>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Modular Scripts -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/orbit_gizmo.js"></script>
+  <script src="/static/js/turntable_viewer.js"></script>
+  <script src="/static/js/gallery.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
