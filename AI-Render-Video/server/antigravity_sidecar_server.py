@@ -83,8 +83,10 @@ class AntigravitySidecarHandler(BaseHTTPRequestHandler):
                 bg_type = data.get("bgType", "chroma_green")
                 aspect_ratio = data.get("aspectRatio", "1:1")
                 
-                # Check for high-res pre-rendered master asset
-                if "tóc đỏ" in user_prompt.lower() or "red hair" in user_prompt.lower():
+                is_isolated_part = any(k in user_prompt for k in ["ASSET:", "Generate an isolated", "FRONT_BANGS", "toc_truoc", "sprite", "layer"])
+
+                # Check for high-res pre-rendered master asset ONLY for full character prompts
+                if not is_isolated_part and ("tóc đỏ" in user_prompt.lower() or "red hair" in user_prompt.lower()):
                     master_asset = os.path.join(OUTPUT_DIR, "red_hair_knight_girl.png")
                     if os.path.exists(master_asset):
                         with open(master_asset, "rb") as f:
@@ -101,11 +103,14 @@ class AntigravitySidecarHandler(BaseHTTPRequestHandler):
                         print(f"[Antigravity Sidecar] ✓ Served Master Imagen Asset for prompt: {user_prompt}")
                         return
 
-                translated_prompt = translate_vietnamese_prompt(user_prompt)
-                bg_text = "pure solid flat uniform chroma green background #00FF00, single solid green background, green screen" if bg_type == "chroma_green" else "pure solid flat white background #FFFFFF, single solid white background"
-                enhanced_prompt = f"masterpiece, best quality, top tier anime art, trending on pixiv, highly detailed 2D anime character illustration, {translated_prompt}, standing full body front view, gorgeous expressive eyes, vibrant colors, clean sharp lineart, anime cel shading, studio lighting, {bg_text}, no background clutter, 8k resolution"
-                
-                print(f"[Antigravity Sidecar] Generating masterpiece anime: {translated_prompt}")
+                if is_isolated_part:
+                    enhanced_prompt = user_prompt
+                    print(f"[Antigravity Sidecar] Generating isolated part sprite without character wrapper: {user_prompt[:80]}...")
+                else:
+                    translated_prompt = translate_vietnamese_prompt(user_prompt)
+                    bg_text = "pure solid flat uniform chroma green background #00FF00, single solid green background, green screen" if bg_type == "chroma_green" else "pure solid flat white background #FFFFFF, single solid white background"
+                    enhanced_prompt = f"masterpiece, best quality, top tier anime art, trending on pixiv, highly detailed 2D anime character illustration, {translated_prompt}, standing full body front view, gorgeous expressive eyes, vibrant colors, clean sharp lineart, anime cel shading, studio lighting, {bg_text}, no background clutter, 8k resolution"
+                    print(f"[Antigravity Sidecar] Generating masterpiece anime: {translated_prompt}")
                 
                 # Model inference with multiple failover models (flux-anime -> flux -> turbo)
                 image_bytes = None

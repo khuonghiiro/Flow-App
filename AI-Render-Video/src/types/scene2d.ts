@@ -272,6 +272,8 @@ export interface AIPartPromptConfig {
   custom_hair_color?: string;
   hair_accessories?: string;
   custom_hair_accessories?: string;
+  bangs_style?: string;
+  custom_bangs_style?: string;
   // Workflow Step Mode
   workflow_step?: 'step1_master_character' | 'step2_decomposed_parts' | 'step2_decomposed_hair' | 'step3_action_sequence';
   // Character Details (Step 1)

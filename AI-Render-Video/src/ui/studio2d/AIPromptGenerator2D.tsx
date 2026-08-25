@@ -74,6 +74,8 @@ export const AIPromptGenerator2D: React.FC = () => {
     custom_hair_color: '',
     hair_accessories: 'Trâm cài ngọc bích đính dải lụa xanh ngọc',
     custom_hair_accessories: '',
+    bangs_style: 'see_through_airy',
+    custom_bangs_style: '',
     batch_count: 1,
     base_count: 1,
   });

@@ -12,11 +12,12 @@ import {
   getHairColorLabels,
   getHairTextureLabels,
   getHairAccessoryLabels,
+  getBangsStyleLabels,
   getBodyProportionLabels,
 } from './PromptLabelHelpers';
 import { getComponentDef, Asset2DComponentDef } from './Asset2DComponentDefs';
-import { JSON_SCHEMA_FIELD_GUIDE, getPromptRules } from './Step1MasterPromptBuilder';
 import { buildFilenameVariants } from './PartFilenameParser';
+import { buildStep1MasterPrompt } from './Step1MasterPromptBuilder';
 
 export { type Asset2DComponentDef, getComponentDef } from './Asset2DComponentDefs';
 
@@ -34,6 +35,7 @@ function clampPromptLength(prompt: string, maxLen = 3900): string {
 
 /**
  * Builds Step 2 Decomposed Isolated Parts Prompts (1:1 Single Asset, 1x4 Turnaround, 2x3 Multi-Angle Sheet)
+ * Following Google's Official Nano Banana Pro (Gemini 3 Pro Image) Pseudo-Code Prompting Standard
  */
 export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPromptResult {
   const sheet = config.sheet_type || 'single_isolated_1x1';
@@ -69,10 +71,11 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
   const hairColInfo = getHairColorLabels(config.hair_color, config.custom_hair_color);
   const hairTexInfo = getHairTextureLabels(config.hair_texture, config.custom_hair_texture);
   const hairAccInfo = getHairAccessoryLabels(config.hair_accessories, config.custom_hair_accessories);
+  const bangsStyleInfo = getBangsStyleLabels(config.bangs_style, config.custom_bangs_style);
   const bodyPropInfo = getBodyProportionLabels(config.body_proportion, config.custom_body_proportion);
 
   const comp = getComponentDef(config.part_type || 'toc_truoc', {
-    hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo,
+    hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
     eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
     costumeInfo, costumeColorVi, propInfo,
   });
@@ -91,101 +94,85 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
 
   const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? Math.min(4, Math.max(1, config.batch_count)) : 1;
   const userBaseCount = typeof config.base_count === 'number' && config.base_count > 0 ? Math.min(4, Math.max(1, config.base_count)) : 1;
-  const ruleText = getPromptRules(config, bgPromptColorEn, bgPromptColorHex);
-  const isMale = config.gender === 'nam';
-  const genderLabelEn = isMale ? 'Male' : 'Female';
+  
+  const ruleText = config.custom_rules?.trim() ||
+    `MANDATORY: Solid flat ${bgPromptColorHex} ${bgPromptColorEn} background, zero shadows, no text, no watermark. Subject MUST be positioned exactly at the dead-center (centered horizontally and vertically on both X and Y axes) with generous equal green padding on all 4 borders, fully visible, zero cropping, nothing touching edges. If reference image is provided, use it ONLY for color/style matching — do NOT reproduce full character, body pose, or other anatomy.`;
 
-  const baseRefPrompt = `masterpiece, best quality, ultra detailed, 2D ${artStyleEn} character turnaround sheet, ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER.
+  const step1MasterResult = buildStep1MasterPrompt(config);
+  const baseRefPrompt = step1MasterResult.promptEnglish;
 
-CHARACTER SPECIFICATIONS:
-- Gender: ${genderLabelEn}
-- Art Style: ${artStyleEn}
-- Proportion: ${bodyPropInfo.en}
-- Eyes: ${eyeShapeInfo.en}, ${eyeColInfo.en}
-- Nose & Mouth: ${noseInfo.en}, ${mouthInfo.en}
-- Hairstyle: ${hairTexInfo.en}, ${hairColInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}
-- Costume: ${costumeInfo.en} (Color: ${costumeColorVi})
-- Weapon / Props: ${propInfo.en}
-
-TURNAROUND 5-VIEW SEQUENCE (16:9 Canvas):
-1. VIEW 1 — FRONT (0°): Direct frontal orthographic view, full body from head to feet.
-2. VIEW 2 — THREE-QUARTER (45°): 45-degree angle showing face depth, cheek, and shoulder curve.
-3. VIEW 3 — SIDE PROFILE (90°): 90-degree clean lateral side profile showing nose bridge and spine silhouette.
-4. VIEW 4 — REAR THREE-QUARTER (135°): 135-degree rear angle showing back waist sash and rear hair flow.
-5. VIEW 5 — BACK (180°): Full rear back view showing back hair mantle, shoulder blade lines, and robe spine.
-+ TOP-DOWN REFERENCE: Top-down view looking downward at the head crown and hair parting.
-
-CONSISTENCY & RESTRICTIONS:
-- 100% identical character rotated strictly around vertical axis.
-- Clean 2D anime vector-like lineart, flat 2-tone cel shading, zero drop shadows, zero ambient occlusion on ground.
-- Flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background with zero gradients or cast shadows.
-- STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.`;
-
-  const renderSpecs = `Clean crisp 2D anime lineart, flat 2-tone cel shading, vibrant colors, zero drop shadows, solid uniform flat ${bgPromptColorEn} (${bgPromptColorHex}) background for 1-click alpha keying, no text, no watermark, no border`;
-
-  // Helper to build explicit prompt for any angle of a component
+  // Helper to build explicit prompt for any angle of a component using Google Pseudo-Code standard
   const buildPartAnglePrompt = (angleType: '000_front' | '045_three_quarter' | '090_side' | '135_rear' | '180_back' | 'high_angle' | 'low_angle') => {
     if (angleType === '180_back' && comp.rearVisibility === 'hidden') {
       return clampPromptLength(
-        `pure empty blank canvas, uniform solid ${bgPromptColorEn} background (${bgPromptColorHex}), 100% empty space with zero graphics because ${comp.nameVi} is completely occluded and hidden when viewed from behind, no text, no borders`
+        `Generate an isolated sprite:\nASSET: EMPTY_BLANK_CANVAS\nCONTENT: Pure empty canvas with zero graphics, completely hollow space because ${comp.nameVi} is completely hidden and occluded from the rear.\nVIEW: 180° rear back view\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, 100% empty space.`
       );
     }
 
     let angleDesc = '';
     switch (angleType) {
       case '000_front':
-        angleDesc = 'Direct 0° orthographic front view, facing camera squarely, perfectly upright and centered';
+        angleDesc = 'Strictly 0° dead-center orthographic front-facing view, perfectly perpendicular to camera, facing directly straight forward at the lens, perfect bilateral symmetry along vertical center axis, strictly ZERO yaw angle rotation, ZERO tilt, strictly NO 3/4 turn';
         break;
       case '045_three_quarter':
-        angleDesc = 'Oblique 45° three-quarter angle view showing dimensional curve, depth, and thickness';
+        angleDesc = 'Standard 45° three-quarter oblique view, turned precisely 45 degrees, showing dimensional depth and 3/4 contour';
         break;
       case '090_side':
-        angleDesc = 'Pure 90° lateral side profile view showing clean silhouette and joint edge contour';
+        angleDesc = 'Pure 90° lateral side profile view, perfectly perpendicular sideways, exactly 90 degrees turned, showing flat lateral silhouette with zero front face visible';
         break;
       case '135_rear':
-        angleDesc = 'Oblique 135° rear three-quarter angle view from behind';
+        angleDesc = 'Standard 135° rear three-quarter oblique view from behind, turned 135 degrees, showing back profile and rear volume';
         break;
       case '180_back':
-        angleDesc = 'Direct 180° rear back view facing away from camera, showing backside surface texture';
+        angleDesc = 'Strictly 180° direct rear back orthographic view, facing completely away from camera, bilateral symmetry from behind, zero front features visible';
         break;
       case 'high_angle':
-        angleDesc = 'High-angle 3D top-down perspective looking downward from above';
+        angleDesc = 'Strictly high-angle top-down bird-eye perspective looking directly downward at the asset';
         break;
       case 'low_angle':
-        angleDesc = 'Low-angle bottom-up perspective looking upward from below';
+        angleDesc = 'Strictly low-angle bottom-up worm-eye perspective looking directly upward from below';
         break;
     }
 
+    const bangsField = comp.id === 'toc_truoc' ? `\nBANGS_STYLE: ${bangsStyleInfo.en}` : '';
+    let extractionRule = `Replicate the EXACT ${comp.titleEn} shape, silhouette, and colors from the reference character if provided. Strictly omit all surrounding body parts.`;
+
+    if (comp.id === 'toc_truoc') {
+      extractionRule = `Extract/Generate ONLY the standalone front bangs clip-on hair accessory (${bangsStyleInfo.en}) as a detached decorative hair attachment floating alone on green screen. Strictly erase, omit, and replace with green background: all back hair, rear hair mantle, head, skull, face, eyes, and body.`;
+    } else if (comp.id === 'toc_sau') {
+      extractionRule = `Extract/Generate ONLY the plain base rear back hair (${hairLenInfo.en}, ${hairTexInfo.en}) with clean exposed forehead and pulled-back hairline. Strictly zero decorative front bangs or forehead fringe.`;
+    }
+
     return clampPromptLength(
-      `raw modular 2D anime animation asset, standalone isolated layer sprite: ${comp.titleEn}. Camera View: ${angleDesc}. Art Style: 2D ${artStyleEn}. Component geometry: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero connected anatomy, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. ${renderSpecs}`
+      `Task: Extract isolated 2D anime layer sprite.\nASSET: ${comp.assetTag}\nCONTENT: ${comp.positiveContent}${bangsField}\nVIEW: ${angleDesc}\nCOMPOSITION: Perfectly centered horizontally and vertically at the exact middle of the canvas, floating standalone with generous equal green padding on all 4 borders (top, bottom, left, right), zero cropping, fully contained inside the frame.\nSTYLE: 2D ${artStyleEn}, clean crisp anime lineart, flat 2-tone cel shading\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, dead-center placement, nothing else visible except the asset itself\nEXTRACTION_DIRECTIVE: ${extractionRule}\nEXCLUDE: ${comp.excludeShort}, off-center placement, shifted to edges, touching canvas border, cropped sprite, 3/4 angled turn on front view, rotated yaw angle, tilted camera, off-center perspective, dynamic pose tilt, Dutch angle.`
     );
   };
 
   const angle = config.view_angle || 'front';
   let angleKey: '000_front' | '045_three_quarter' | '090_side' | '180_back' | 'high_angle' | 'low_angle' = '000_front';
   let angleLabelVi = '0° Chính diện (Front 0°)';
-  let angleDescEn = 'Camera directly facing the front of the isolated component';
+  let angleDescEn = 'Strictly 0° dead-center orthographic front-facing view, perfectly perpendicular to camera, facing directly straight forward at the lens, perfect bilateral symmetry along vertical center axis, strictly ZERO yaw angle rotation, ZERO tilt, strictly NO 3/4 turn';
 
   if (angle === 'three_quarter' || angle === '45' || angle === 'three_quarter_45') {
     angleKey = '045_three_quarter';
     angleLabelVi = '45° Nghiêng 3/4 (Three-Quarter 45°)';
-    angleDescEn = 'Camera rotated 45 degrees showing three-quarter depth';
+    angleDescEn = 'Standard 45° three-quarter oblique view, turned precisely 45 degrees, showing dimensional depth and 3/4 contour';
   } else if (angle === 'profile_side' || angle === '90' || angle === 'side_90') {
     angleKey = '090_side';
     angleLabelVi = '90° Nhìn ngang (Side Profile 90°)';
-    angleDescEn = 'Camera rotated 90 degrees showing clean side silhouette';
+    angleDescEn = 'Pure 90° lateral side profile view, perfectly perpendicular sideways, exactly 90 degrees turned, showing flat lateral silhouette with zero front face visible';
   } else if (angle === 'back' || angle === '180' || angle === 'rear_180') {
     angleKey = '180_back';
     angleLabelVi = '180° Sau lưng (Rear Back 180°)';
-    angleDescEn = comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Camera directly facing the rear back of the component';
+    angleDescEn = comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Strictly 180° direct rear back orthographic view, facing completely away from camera, bilateral symmetry from behind, zero front features visible';
   } else if (angle === 'high_angle' || angle === 'top_down') {
     angleKey = 'high_angle';
     angleLabelVi = 'Trên cao nhìn xuống (High Angle)';
-    angleDescEn = 'Camera positioned elevated above looking downward at the component';
+    angleDescEn = 'Strictly high-angle top-down bird-eye perspective looking directly downward at the asset';
   } else if (angle === 'low_angle' || angle === 'bottom_up') {
     angleKey = 'low_angle';
     angleLabelVi = 'Dưới hất lên (Low Angle)';
-    angleDescEn = 'Camera positioned below looking upward at the component';
+    angleDescEn = 'Strictly low-angle bottom-up worm-eye perspective looking directly upward from below';
   }
 
   const singleAnglePromptItem = {
@@ -348,9 +335,9 @@ CONSISTENCY & RESTRICTIONS:
 
     const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
-    const promptEnglish = `raw modular 2D anime animation asset, standalone isolated puppet layer sprite: ${comp.titleEn}, angle: ${angleLabelVi}. Art style: 2D ${artStyleEn}. Contains strictly: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero attached body parts, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. Solid uniform flat ${bgPromptColorEn} (${bgPromptColorHex}) background, zero shadows, no text, no watermark`;
-    const promptVietnamese = `【 ẢNH ĐƠN ${selectedAspectRatio} SIÊU NÉT — ${comp.nameVi} (${angleLabelVi}) 】\n• Tiêu đề: ${comp.titleEn}\n• Chi tiết cần vẽ: ${comp.includedGeometry.join(', ')}\n• Quy tắc cô lập: ${comp.isolationRule}\n• Tuyệt đối loại trừ: ${comp.excludedGeometry.slice(0, 6).join(', ')}\n• Nền: ${bgTextVi}.\n• Quy tắc bắt buộc: ${ruleText}.`;
-    const negativePrompt = 'full character, full body, complete person, attached limbs, connected body parts, human silhouette, mannequin head, face, eyes, eyebrows, nose, mouth, skin, torso, arms, legs, extra limbs, back hair, long hair, ponytail, hair bun, braids, rear hair mantle, hair covering shoulders, background scenery, floor shadows, borders, frames, grid lines, text, letters, numbers, watermark, signature, blurry, 3D CGI render, photorealism';
+    const promptEnglish = buildPartAnglePrompt(angleKey);
+    const promptVietnamese = `【 ẢNH ĐƠN ${selectedAspectRatio} TÁCH RỜI — ${comp.nameVi} (${angleLabelVi}) 】\n• ASSET: ${comp.assetTag}\n• CONTENT: ${comp.positiveContent}\n• VIEW: ${angleDescEn}\n• EXCLUDE: ${comp.excludeShort}\n• Nền: ${bgTextVi}.\n• Quy tắc: ${ruleText}.`;
+    const negativePrompt = `${comp.excludeShort}, full character, full body, head, face, extra limbs, background scenery, floor shadows, borders, frames, grid lines, text, letters, numbers, watermark, blurry, 3D CGI render, photorealism`;
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
     return {
@@ -468,9 +455,19 @@ CONSISTENCY & RESTRICTIONS:
 
     const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
-    const promptEnglish = `raw modular 2D anime animation asset, seamless 4-view horizontal rotation sequence of standalone isolated ${comp.titleEn}: Front 0°, Three-Quarter 45°, Side Profile 90°, Rear Back 180°. Art style: 2D ${artStyleEn}. Contains strictly: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero attached body parts, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. Solid flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background, zero shadows, no text, no watermark`;
-    const promptVietnamese = `【 CHUỖI XOAY NGANG 4 GÓC LIỀN MẠCH — ${comp.nameVi} (${selectedAspectRatio}) 】\n• Bố cục: 4 góc dàn ngang trên 1 hàng (0° ➔ 45° ➔ 90° ➔ 180°)\n• Nền: ${bgTextVi}.\n• Quy tắc cô lập: ${comp.isolationRule}\n• Quy tắc bắt buộc: ${ruleText}.`;
-    const negativePrompt = 'full character, full body, complete person, attached limbs, connected body parts, mannequin, head, face, extra limbs, back hair, long hair, ponytail, hair bun, braids, rear hair mantle, hair covering shoulders, comic panels, panel borders, grid lines, divider lines, text, labels, watermark, blurry, 3D CGI render, photorealism';
+    const bangsField = comp.id === 'toc_truoc' ? `\nBANGS_STYLE: ${bangsStyleInfo.en}` : '';
+    let extractionRule = `Replicate the EXACT ${comp.titleEn} shape, silhouette, and colors from the reference character if provided. Strictly omit all surrounding body parts.`;
+    if (comp.id === 'toc_truoc') {
+      extractionRule = `Extract/Generate ONLY the standalone front bangs clip-on hair accessory (${bangsStyleInfo.en}) as a detached decorative hair attachment floating alone on green screen. Strictly erase, omit, and replace with green background: all back hair, rear hair mantle, head, skull, face, eyes, and body.`;
+    } else if (comp.id === 'toc_sau') {
+      extractionRule = `Extract/Generate ONLY the plain base rear back hair (${hairLenInfo.en}, ${hairTexInfo.en}) with clean exposed forehead and pulled-back hairline. Strictly zero decorative front bangs or forehead fringe.`;
+    }
+
+    const promptEnglish = clampPromptLength(
+      `Task: Extract isolated 4-view rotation sequence.\nASSET: ${comp.assetTag}_TURNAROUND_1X4\nCONTENT: 4 sequential rotation views of ${comp.positiveContent}${bangsField} arranged horizontally in 1 row (0° Front, 45° Three-Quarter, 90° Side Profile, 180° Rear Back).\nCOMPOSITION: All 4 rotation views evenly spaced and vertically centered along the horizontal middle axis of the canvas, generous equal padding on all borders, zero cropping.\nSTYLE: 2D ${artStyleEn}, clean crisp anime lineart, flat 2-tone cel shading\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, nothing else visible except the 4 views\nEXTRACTION_DIRECTIVE: ${extractionRule}\nEXCLUDE: ${comp.excludeShort}, off-center placement, touching borders, cropped sprites, comic panel borders, box frames, dividing lines.`
+    );
+    const promptVietnamese = `【 CHUỖI XOAY NGANG 4 GÓC LIỀN MẠCH — ${comp.nameVi} (${selectedAspectRatio}) 】\n• Bố cục: 4 góc dàn ngang trên 1 hàng (0° ➔ 45° ➔ 90° ➔ 180°)\n• Nền: ${bgTextVi}.\n• Quy tắc: ${ruleText}.`;
+    const negativePrompt = `${comp.excludeShort}, full character, full body, mannequin, head, face, extra limbs, comic panels, panel borders, grid lines, divider lines, text, labels, watermark, blurry, 3D CGI render, photorealism`;
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
     return {
@@ -578,13 +575,13 @@ CONSISTENCY & RESTRICTIONS:
         part_name: comp.nameVi,
         group_id: comp.groupId,
         group_name: comp.groupNameVi,
-        angle: '180° Rear Back (Sau lưng)',
+        angle: '180° Back (Sau lưng)',
         angle_id: '180_back',
         angle_deg: 180,
         z_index: comp.zIndex,
         save_filename: `${comp.filePrefix}_180_back.png`,
         aspect_ratio: selectedAspectRatio,
-        view_desc: 'Hàng dưới Ô 6: Mặt sau chi tiết',
+        view_desc: 'Hàng dưới Ô 6: Góc nhìn từ sau lưng',
         rule: ruleText,
         prompt: buildPartAnglePrompt('180_back'),
         count: userBatchCount,
@@ -621,9 +618,19 @@ CONSISTENCY & RESTRICTIONS:
 
   const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
-  const promptEnglish = `raw modular 2D anime animation asset, modular 2D anime sprite sheet of standalone isolated ${comp.titleEn} (6 views arranged in 2 rows of 3). Top: Front 0°, Three-Quarter 45°, Side Profile 90°. Bottom: High Angle, Low Angle, Rear Back 180°. Art style: 2D ${artStyleEn}. Contains strictly: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero attached body parts, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. Solid flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background, zero shadows, no text, no watermark`;
-  const promptVietnamese = `【 BẢNG SPRITE 6 GÓC QUAY ĐIỆN ẢNH CHO 1 CHI TIẾT (LƯỚI 2×3 — ${selectedAspectRatio}) 】\n• Linh kiện: ${comp.nameVi}\n• Hàng trên: 1. Chính diện 0° | 2. Nghiêng 3/4 45° | 3. Nhìn ngang 90°\n• Hàng dưới: 4. Trên cao nhìn xuống | 5. Dưới hất lên | 6. Sau lưng 180°\n• Nền: ${bgTextVi}.\n• Quy tắc cô lập: ${comp.isolationRule}\n• Quy tắc bắt buộc: ${ruleText}.`;
-  const negativePrompt = 'grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, complete person, head, face, extra limbs, attached limbs, back hair, long hair, ponytail, hair bun, braids, rear hair mantle, hair covering shoulders, text, labels, watermark, blurry, 3D CGI render, photorealism';
+  const bangsField2x3 = comp.id === 'toc_truoc' ? `\nBANGS_STYLE: ${bangsStyleInfo.en}` : '';
+  let extractionRule2x3 = `Replicate the EXACT ${comp.titleEn} shape, silhouette, and colors from the reference character if provided. Strictly omit all surrounding body parts.`;
+  if (comp.id === 'toc_truoc') {
+    extractionRule2x3 = `Extract/Generate ONLY the standalone front bangs clip-on hair accessory (${bangsStyleInfo.en}) as a detached decorative hair attachment floating alone on green screen. Strictly erase, omit, and replace with green background: all back hair, rear hair mantle, head, skull, face, eyes, and body.`;
+  } else if (comp.id === 'toc_sau') {
+    extractionRule2x3 = `Extract/Generate ONLY the plain base rear back hair (${hairLenInfo.en}, ${hairTexInfo.en}) with clean exposed forehead and pulled-back hairline. Strictly zero decorative front bangs or forehead fringe.`;
+  }
+
+  const promptEnglish = clampPromptLength(
+    `Task: Extract isolated 6-view sprite sheet.\nASSET: ${comp.assetTag}_SPRITE_SHEET_2X3\nCONTENT: 6 multi-angle views of ${comp.positiveContent}${bangsField2x3} arranged in a 2x3 grid (Row 1: 0° Front, 45° Three-Quarter, 90° Side. Row 2: High Angle, Low Angle, 180° Back).\nCOMPOSITION: All 6 sprite views perfectly centered within their respective grid cells, uniform scale, generous padding between cells and outer canvas borders, zero cropping.\nSTYLE: 2D ${artStyleEn}, clean crisp anime lineart, flat 2-tone cel shading\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, nothing else visible except the sprite cells\nEXTRACTION_DIRECTIVE: ${extractionRule2x3}\nEXCLUDE: ${comp.excludeShort}, off-center cells, touching borders, cropped sprites, grid lines, divider lines, cell borders, panel frames.`
+  );
+  const promptVietnamese = `【 BẢNG SPRITE 6 GÓC QUAY ĐIỆN ẢNH CHO 1 CHI TIẾT (LƯỚI 2×3 — ${selectedAspectRatio}) 】\n• Linh kiện: ${comp.nameVi}\n• Hàng trên: 1. Chính diện 0° | 2. Nghiêng 3/4 45° | 3. Nhìn ngang 90°\n• Hàng dưới: 4. Trên cao nhìn xuống | 5. Dưới hất lên | 6. Sau lưng 180°\n• Nền: ${bgTextVi}.\n• Quy tắc: ${ruleText}.`;
+  const negativePrompt = `${comp.excludeShort}, grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, head, face, extra limbs, text, labels, watermark, blurry, 3D CGI render, photorealism`;
   const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
   return {

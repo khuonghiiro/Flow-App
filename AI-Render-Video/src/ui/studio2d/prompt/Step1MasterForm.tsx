@@ -226,6 +226,21 @@ export const Step1MasterForm: React.FC<Step1MasterFormProps> = ({ config, setCon
             />
           </div>
         </div>
+        <div>
+          <label style={{ fontSize: 10, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Kiểu Mái Trước (Front Bangs Style):</label>
+          <select
+            value={config.bangs_style || 'see_through_airy'}
+            onChange={(e) => setConfig((p) => ({ ...p, bangs_style: e.target.value }))}
+            style={{ width: '100%', height: 28, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#f472b6', border: '1px solid rgba(244, 114, 182, 0.4)', borderRadius: 5 }}
+          >
+            <option value="see_through_airy">Mái thưa Hàn Quốc / Anime (See-Through Bangs)</option>
+            <option value="blunt_straight">Mái bằng ngang trán (Blunt Straight Bangs)</option>
+            <option value="side_swept_7_3">Mái xéo rẽ ngôi 7/3 (Side-Swept Bangs 7/3)</option>
+            <option value="curtain_parted_5_5">Mái rẽ đôi ngôi giữa 5/5 (Curtain Center-Parted)</option>
+            <option value="hime_cut_tendrils">Mái Hime lọn dài ôm má (Hime Cut & Tendrils)</option>
+            <option value="spiky_action">Mái nhọn so le lộn xộn (Spiky Action Bangs)</option>
+          </select>
+        </div>
       </div>
 
       {/* 5. Trang phục & Vũ khí */}

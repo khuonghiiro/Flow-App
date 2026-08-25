@@ -12,6 +12,7 @@ import {
   getHairColorLabels,
   getHairTextureLabels,
   getHairAccessoryLabels,
+  getBangsStyleLabels,
   getBodyProportionLabels,
 } from './PromptLabelHelpers';
 import { buildFilenameVariants } from './PartFilenameParser';
@@ -107,13 +108,14 @@ export function buildStep1MasterPrompt(config: AIPartPromptConfig): AIPromptResu
   const hairColInfo = getHairColorLabels(config.hair_color, config.custom_hair_color);
   const hairTexInfo = getHairTextureLabels(config.hair_texture, config.custom_hair_texture);
   const hairAccInfo = getHairAccessoryLabels(config.hair_accessories, config.custom_hair_accessories);
+  const bangsStyleInfo = getBangsStyleLabels(config.bangs_style, config.custom_bangs_style);
   const bodyPropInfo = getBodyProportionLabels(config.body_proportion, config.custom_body_proportion);
 
   const selectedAspectRatio = config.aspect_ratio || '16:9';
   const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? config.batch_count : 1;
   const ruleText = getPromptRules(config, bgPromptColorEn, bgPromptColorHex);
 
-  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero cast shadows, flat solid ${bgPromptColorEn} background, no scenery, no text, no watermark`;
+  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}, front bangs style: ${bangsStyleInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero cast shadows, flat solid ${bgPromptColorEn} background, no scenery, no text, no watermark`;
 
   const promptEnglish = `masterpiece, best quality, ultra detailed, 2D ${artStyleEn} character turnaround sheet, ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER.
 
@@ -123,7 +125,7 @@ CHARACTER SPECIFICATIONS:
 - Proportion: ${bodyPropInfo.en}
 - Eyes: ${eyeShapeInfo.en}, ${eyeColInfo.en}
 - Nose & Mouth: ${noseInfo.en}, ${mouthInfo.en}
-- Hairstyle: ${hairTexInfo.en}, ${hairColInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}
+- Hairstyle: ${hairTexInfo.en}, ${hairColInfo.en}, ${hairLenInfo.en}, front bangs style: ${bangsStyleInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}
 - Costume: ${costumeInfo.en} (Color: ${costumeColorVi})
 - Weapon / Props: ${propInfo.en}
 
@@ -148,7 +150,7 @@ CONSISTENCY & RESTRICTIONS:
 ════════════════════════════════════════════════════════════
 • Giới tính: ${genderLabelVi} | Phong cách: ${artStyleVi} | Tỷ lệ: ${bodyPropInfo.vi}
 • Khuôn mặt: Mắt ${eyeShapeInfo.vi} (${eyeColInfo.vi}), mũi ${noseInfo.vi}, miệng ${mouthInfo.vi}
-• Mái tóc: ${hairColInfo.vi}, ${hairTexInfo.vi}, ${hairLenInfo.vi} (${hairAccInfo.vi})
+• Mái tóc: ${hairColInfo.vi}, ${hairTexInfo.vi}, ${hairLenInfo.vi}, kiểu mái trước: ${bangsStyleInfo.vi} (${hairAccInfo.vi})
 • Trang phục: ${costumeInfo.vi} (Màu sắc: ${costumeColorVi})
 • Vũ khí / Pháp bảo: ${propInfo.vi}
 
@@ -183,7 +185,7 @@ CONSISTENCY & RESTRICTIONS:
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc nhìn chính diện 0° toàn thân làm chuẩn tham chiếu chính',
       prompt: clampPromptLength(
-        `masterpiece, ultra-detailed 2D ${artStyleEn} character, ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Direct 0° orthographic front view facing the viewer squarely, full body from head crown to shoes, standing upright with relaxed arms. Character features: face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), outfit (${costumeInfo.en}, color: ${costumeColorVi}), holding weapon (${propInfo.en}). ${commonVisualRules}`
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Strictly 0° dead-center orthographic front-facing view, perfectly perpendicular to camera, facing directly forward straight at the lens, perfect bilateral symmetry along vertical center axis, strictly ZERO yaw angle rotation, ZERO tilt, full body from head crown to shoes, standing upright with relaxed arms. Character features: face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}, front bangs style: ${bangsStyleInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), outfit (${costumeInfo.en}, color: ${costumeColorVi}), holding weapon (${propInfo.en}). ${commonVisualRules}`
       ),
       count: userBatchCount,
     },
@@ -201,7 +203,7 @@ CONSISTENCY & RESTRICTIONS:
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc xoay 45° hiển thị độ sâu ngũ quan, tóc mai và vai',
       prompt: clampPromptLength(
-        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: 45° three-quarter oblique angle view, full body from head to feet, clearly showing cheekbone depth, 3/4 facial contour, nose bridge curve, chest garment depth, and shoulder angle. Hair: (${hairColInfo.en}, ${hairTexInfo.en}). Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). Weapon: (${propInfo.en}). ${commonVisualRules}`
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: 45° three-quarter oblique angle view, full body from head to feet, clearly showing cheekbone depth, 3/4 facial contour, nose bridge curve, chest garment depth, and shoulder angle. Hair: (${hairColInfo.en}, ${hairTexInfo.en}, front bangs style: ${bangsStyleInfo.en}). Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). Weapon: (${propInfo.en}). ${commonVisualRules}`
       ),
       count: userBatchCount,
     },
@@ -219,7 +221,7 @@ CONSISTENCY & RESTRICTIONS:
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc nhìn ngang 90° thấy sống mũi, cằm, tai và dáng suối tóc',
       prompt: clampPromptLength(
-        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Pure 90° lateral side profile view, full body from head to feet, showing clean facial silhouette with nose bridge, lips, chin, ear placement, spine posture, and flowing back hair cascading down the spine. Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). ${commonVisualRules}`
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Pure 90° lateral side profile view, full body from head to feet, showing clean facial silhouette with nose bridge, lips, chin, ear placement, spine posture, front bangs style: ${bangsStyleInfo.en}, and flowing back hair cascading down the spine. Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). ${commonVisualRules}`
       ),
       count: userBatchCount,
     },
@@ -273,7 +275,7 @@ CONSISTENCY & RESTRICTIONS:
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc phụ soi đỉnh đầu từ trên xuống thấy đường rẽ ngôi và trâm cài',
       prompt: clampPromptLength(
-        `masterpiece, ultra-detailed 2D ${artStyleEn} character reference. Camera: Top-down vertical bird's-eye view looking directly down at the character's head crown, clearly showing the hair parting line, hair crown volume, top hair accessories (${hairAccInfo.en}), and shoulder top silhouette. Hair: (${hairColInfo.en}, ${hairTexInfo.en}). ${commonVisualRules}`
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character reference. Camera: Top-down vertical bird's-eye view looking directly down at the character's head crown, clearly showing the hair parting line, front bangs style: ${bangsStyleInfo.en}, hair crown volume, top hair accessories (${hairAccInfo.en}), and shoulder top silhouette. Hair: (${hairColInfo.en}, ${hairTexInfo.en}). ${commonVisualRules}`
       ),
       count: userBatchCount,
     },

@@ -186,3 +186,18 @@ export const getBodyProportionLabels = (prop?: string, custom?: string) => {
     default: return { vi: prop, en: prop };
   }
 };
+
+export const getBangsStyleLabels = (bangs?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!bangs) return { vi: 'Mái thưa tỉa lớp thanh thoát (See-through Bangs)', en: 'see-through delicate airy anime bangs' };
+  switch (bangs) {
+    case 'see_through_airy': return { vi: 'Mái thưa tỉa lớp thanh thoát (See-through Bangs)', en: 'see-through delicate airy anime bangs ending at eyebrow level' };
+    case 'blunt_straight': return { vi: 'Mái bằng ngang trán (Blunt Straight Bangs)', en: 'straight cut blunt horizontal anime bangs covering forehead' };
+    case 'side_swept_7_3': return { vi: 'Mái xéo rẽ ngôi 7/3 (Side-Swept Bangs 7/3)', en: 'side-swept anime bangs parted 7/3 sweeping across forehead' };
+    case 'curtain_parted_5_5': return { vi: 'Mái rẽ đôi ngôi giữa 5/5 (Curtain Center-Parted Bangs)', en: 'curtain center-parted anime bangs framing both temples' };
+    case 'hime_cut_tendrils': return { vi: 'Mái Hime hai lọn dài ôm má (Hime Cut & Side Tendrils)', en: 'straight blunt front bangs with long straight hime-cut side tendrils framing cheeks' };
+    case 'spiky_action': return { vi: 'Mái nhọn so le lộn xộn năng động (Spiky Action Bangs)', en: 'spiky jagged layered anime front bangs with sharp tips' };
+    default: return { vi: bangs, en: bangs };
+  }
+};
+

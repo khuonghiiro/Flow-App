@@ -322,6 +322,30 @@ export const Step2DecomposedForm: React.FC<Step2DecomposedFormProps> = ({
         </div>
       )}
 
+      {/* Cấu Hình Chi Tiết Riêng Cho Mái Tóc Trước */}
+      {selectedTag === 'toc_truoc' && (
+        <div style={{ background: 'rgba(236, 72, 153, 0.08)', padding: 10, borderRadius: 8, border: '1px solid rgba(236, 72, 153, 0.3)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 800, color: '#f472b6', display: 'flex', alignItems: 'center', gap: 5 }}>
+            💇 Kiểu Dáng Mái Tóc Trước (Front Bangs Style):
+          </label>
+          <select
+            value={config.bangs_style || 'see_through_airy'}
+            onChange={(e) => setConfig((p) => ({ ...p, bangs_style: e.target.value }))}
+            style={{ width: '100%', height: 32, padding: '4px 6px', fontSize: 11, background: '#090d16', color: '#f472b6', border: '1px solid rgba(244, 114, 182, 0.5)', borderRadius: 6 }}
+          >
+            <option value="see_through_airy">Mái thưa Hàn Quốc / Anime tỉa lớp (See-Through Airy Bangs)</option>
+            <option value="blunt_straight">Mái bằng ngang trán (Blunt Straight Bangs)</option>
+            <option value="side_swept_7_3">Mái xéo rẽ ngôi 7/3 (Side-Swept Bangs 7/3)</option>
+            <option value="curtain_parted_5_5">Mái rẽ đôi ngôi giữa 5/5 (Curtain Center-Parted)</option>
+            <option value="hime_cut_tendrils">Mái Hime lọn dài ôm má (Hime Cut & Side Tendrils)</option>
+            <option value="spiky_action">Mái nhọn so le lộn xộn năng động (Spiky Action Bangs)</option>
+          </select>
+          <div style={{ fontSize: 9.5, color: '#fbcfe8', opacity: 0.9 }}>
+            💡 Gợi ý: Chọn kiểu mái khớp với ảnh tham chiếu của bạn để AI trích xuất hình dáng chính xác 100%!
+          </div>
+        </div>
+      )}
+
       {/* Màu nền tách phông */}
       <div>
         <label style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
