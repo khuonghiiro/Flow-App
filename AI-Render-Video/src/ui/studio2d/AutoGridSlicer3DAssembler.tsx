@@ -9,6 +9,9 @@ import { parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Ass
 import { GridTablePickerModal } from './slicer/GridTablePickerModal';
 import { JsonPromptImportModal, ParsedJsonMetadataItem } from './slicer/JsonPromptImportModal';
 import { SlicerSaveKitModal } from './slicer/modals/SlicerSaveKitModal';
+import { SlicerSmartCropModal } from './slicer/modals/SlicerSmartCropModal';
+import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
+import { PaddedCropRect } from '../../core/utils/PixelBoundingBoxAlgorithms';
 import {
   CheckerboardTheme,
   loadCachedCheckerTheme,
@@ -147,6 +150,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [isTunerOpen, setIsTunerOpen] = useState<boolean>(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
   const [isSaveKitModalOpen, setIsSaveKitModalOpen] = useState<boolean>(false);
+  const [isSmartCropOpen, setIsSmartCropOpen] = useState<boolean>(false);
+  const [smartCropTargetCell, setSmartCropTargetCell] = useState<GridCellDefinition | null>(null);
+  const [smartCropTargetDataUrl, setSmartCropTargetDataUrl] = useState<string>('');
+
+  // Smart Auto-Trim Bounding Box States
+  const [enableSmartCrop, setEnableSmartCrop] = useState<boolean>(false);
+  const [smartCropPadding, setSmartCropPadding] = useState<number>(2);
+  const cellCropRectsRef = useRef<Map<string, PaddedCropRect>>(new Map());
 
   const currentCategory: GridCategoryDefinition =
     customCategory && selectedCatId === customCategory.id
@@ -194,6 +205,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     smoothColorHex,
     cleanupMode,
     paddingInset,
+    enableSmartCrop,
+    smartCropPadding,
+    cellCropRectsRef,
     singleImageSlot,
     singleImageAngle,
     onApplyAssembly,
@@ -212,6 +226,9 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     checkerTheme,
     currentCategory,
     paddingInset,
+    enableSmartCrop,
+    smartCropPadding,
+    cellCropRectsRef,
     colDividers,
     rowDividers,
     selectedCell,
@@ -544,6 +561,221 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     [loadedImage, autoFitDividers, keyColorType, keyColorHex, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
   );
 
+  const handleOpenSmartCropForCell = useCallback(
+    (cell: GridCellDefinition) => {
+      const key = `${cell.row}_${cell.col}`;
+      const cellDataUrl = slicedResults.get(key);
+      if (cellDataUrl) {
+        setSmartCropTargetCell(cell);
+        setSmartCropTargetDataUrl(cellDataUrl);
+        setIsSmartCropOpen(true);
+        return;
+      }
+      const img = loadedImage || loadedImageRef.current;
+      if (!img) return;
+      const colIdx = cell.col;
+      const rowIdx = cell.row;
+      if (colDividers.length <= colIdx + 1 || rowDividers.length <= rowIdx + 1) return;
+      const x0 = colDividers[colIdx];
+      const y0 = rowDividers[rowIdx];
+      const w = Math.max(10, colDividers[colIdx + 1] - x0);
+      const h = Math.max(10, rowDividers[rowIdx + 1] - y0);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
+        processCellChromaAndDespeckle(ctx, w, h, {
+          keyColorType,
+          keyColorHex,
+          isolationMode,
+          tolerance,
+          feather,
+          shadowRetention,
+          strokeWidth,
+          strokeColorHex,
+          despeckleSize,
+          whiteSpeckleSensitivity,
+          keepLargestIslandOnly,
+          fringeColorType,
+          fringeColorHex,
+          defringeStrength,
+          edgeChoke,
+          edgeSmooth,
+          smoothColorType,
+          smoothColorHex,
+          cleanupMode,
+        });
+        setSmartCropTargetCell(cell);
+        setSmartCropTargetDataUrl(canvas.toDataURL('image/png'));
+        setIsSmartCropOpen(true);
+      }
+    },
+    [
+      slicedResults,
+      loadedImage,
+      colDividers,
+      rowDividers,
+      keyColorType,
+      keyColorHex,
+      isolationMode,
+      tolerance,
+      feather,
+      shadowRetention,
+      strokeWidth,
+      strokeColorHex,
+      despeckleSize,
+      whiteSpeckleSensitivity,
+      keepLargestIslandOnly,
+      fringeColorType,
+      fringeColorHex,
+      defringeStrength,
+      edgeChoke,
+      edgeSmooth,
+      smoothColorType,
+      smoothColorHex,
+      cleanupMode,
+    ]
+  );
+
+  const handleOpenSmartCropForMainImage = useCallback(() => {
+    if (selectedCell) {
+      handleOpenSmartCropForCell(selectedCell);
+      return;
+    }
+    if (selectedCatId === 'single_full_image' && slicedResults.get('0_0')) {
+      setSmartCropTargetCell(null);
+      setSmartCropTargetDataUrl(slicedResults.get('0_0')!);
+      setIsSmartCropOpen(true);
+      return;
+    }
+    const img = loadedImage || loadedImageRef.current;
+    if (!img) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (ctx) {
+      ctx.drawImage(img, 0, 0);
+      processCellChromaAndDespeckle(ctx, img.width, img.height, {
+        keyColorType,
+        keyColorHex,
+        isolationMode,
+        tolerance,
+        feather,
+        shadowRetention,
+        strokeWidth,
+        strokeColorHex,
+        despeckleSize,
+        whiteSpeckleSensitivity,
+        keepLargestIslandOnly,
+        fringeColorType,
+        fringeColorHex,
+        defringeStrength,
+        edgeChoke,
+        edgeSmooth,
+        smoothColorType,
+        smoothColorHex,
+        cleanupMode,
+      });
+      setSmartCropTargetCell(null);
+      setSmartCropTargetDataUrl(canvas.toDataURL('image/png'));
+      setIsSmartCropOpen(true);
+    }
+  }, [
+    selectedCell,
+    handleOpenSmartCropForCell,
+    selectedCatId,
+    slicedResults,
+    loadedImage,
+    keyColorType,
+    keyColorHex,
+    isolationMode,
+    tolerance,
+    feather,
+    shadowRetention,
+    strokeWidth,
+    strokeColorHex,
+    despeckleSize,
+    whiteSpeckleSensitivity,
+    keepLargestIslandOnly,
+    fringeColorType,
+    fringeColorHex,
+    defringeStrength,
+    edgeChoke,
+    edgeSmooth,
+    smoothColorType,
+    smoothColorHex,
+    cleanupMode,
+  ]);
+
+  const handleApplySmartCrop = useCallback(
+    (croppedDataUrl: string, rect: PaddedCropRect) => {
+      if (smartCropTargetCell) {
+        const key = `${smartCropTargetCell.row}_${smartCropTargetCell.col}`;
+        setSlicedResults((prev) => new Map(prev).set(key, croppedDataUrl));
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            slicedCanvasesRef.current.set(key, canvas);
+            redrawCanvas('transparent');
+          }
+        };
+        img.src = croppedDataUrl;
+
+        if (smartCropTargetCell.partSlot) {
+          const slot = smartCropTargetCell.partSlot;
+          const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
+          if (!updatedAssembly.parts[slot]) {
+            updatedAssembly.parts[slot] = {
+              path: croppedDataUrl,
+              offset: [0, 0],
+              scale: [1, 1],
+              rotation: 0,
+              pivot: [0.5, 0.5],
+              flipX: false,
+              flipY: false,
+              z_index: 1,
+              opacity: 1,
+              angles: {},
+            };
+          }
+          const part = updatedAssembly.parts[slot]!;
+          if (smartCropTargetCell.angle === 'front' || smartCropTargetCell.col === 0) part.path = croppedDataUrl;
+          if (smartCropTargetCell.angle) {
+            if (!part.angles) part.angles = {};
+            part.angles[smartCropTargetCell.angle] = croppedDataUrl;
+          }
+          onApplyAssembly(updatedAssembly);
+          if (threeEngineRef.current) threeEngineRef.current.setAssembly(updatedAssembly);
+        }
+      } else if (selectedCatId === 'single_full_image') {
+        setSlicedResults((prev) => new Map(prev).set('0_0', croppedDataUrl));
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            slicedCanvasesRef.current.set('0_0', canvas);
+            redrawCanvas('transparent');
+          }
+        };
+        img.src = croppedDataUrl;
+      }
+      showToast('✓ Đã cắt gọt viền Bounding Box và cập nhật linh kiện thành công!', 'redo');
+    },
+    [smartCropTargetCell, selectedCatId, currentAssembly, onApplyAssembly, threeEngineRef, redrawCanvas, showToast, setSlicedResults]
+  );
+
   useEffect(() => {
     redrawCanvas();
   }, [redrawCanvas]);
@@ -711,6 +943,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           onApplyAsNewBaseImage={handleCommitAsNewBase}
           paddingInset={paddingInset}
           setPaddingInset={setPaddingInset}
+          enableSmartCrop={enableSmartCrop}
+          setEnableSmartCrop={setEnableSmartCrop}
+          smartCropPadding={smartCropPadding}
+          setSmartCropPadding={setSmartCropPadding}
           isProcessing={isProcessing}
           assemblySuccess={assemblySuccess}
           onAutoSliceAndAssemble={() => { pushUndoState('Bóc tách & Lắp ráp 3D'); handleAutoSliceAndAssemble(); }}
@@ -719,6 +955,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           totalCellCount={currentCategory.id === 'single_full_image' ? 1 : currentCategory.cells.length}
           onOpenSaveKitModal={() => setIsSaveKitModalOpen(true)}
           onOpenCatalogModal={() => setIsCatalogOpen(true)}
+          onOpenSmartCrop={handleOpenSmartCropForMainImage}
         />
 
         {/* Column 2: Interactive Canvas */}
@@ -771,6 +1008,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               selectedCell={selectedCell}
               slicedCellDataUrl={slicedResults.get(`${selectedCell.row}_${selectedCell.col}`)}
               onOpenCellPixelEditor={(cell) => openCellPixelEditor(cell)}
+              onOpenSmartCrop={(cell) => handleOpenSmartCropForCell(cell)}
               onAdjustColWidth={(delta) => { adjustColWidth(selectedCell, delta); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
               onResetAllDividers={() => { resetAllDividers(loadedImageRef.current, currentCategory.cols, currentCategory.rows); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
               onUpdateCellAngle={(cell, angle, mirror) => {
@@ -810,6 +1048,27 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       </div>
 
       {/* Modals */}
+      {isSmartCropOpen && smartCropTargetDataUrl && (
+        <SlicerSmartCropModal
+          isOpen={isSmartCropOpen}
+          onClose={() => {
+            setIsSmartCropOpen(false);
+            setSmartCropTargetCell(null);
+            setSmartCropTargetDataUrl('');
+          }}
+          imageDataUrl={smartCropTargetDataUrl}
+          defaultTitle={
+            smartCropTargetCell
+              ? smartCropTargetCell.label || `Linh Kiện [${smartCropTargetCell.row + 1}, ${smartCropTargetCell.col + 1}]`
+              : (selectedCatId === 'single_full_image' ? 'Linh Kiện Ảnh Đơn' : 'Linh Kiện Bóc Tách')
+          }
+          defaultCategory={targetCategory === 'character' ? 'toc' : 'custom_slices'}
+          defaultPartSlot={smartCropTargetCell?.partSlot || singleImageSlot || 'toc_truoc'}
+          defaultAngle={smartCropTargetCell?.angle || singleImageAngle || 'front'}
+          onApplyCroppedImage={handleApplySmartCrop}
+        />
+      )}
+
       {isEraserOpen && editingCellDef && (
         <CellPixelEraserModal
           isOpen={isEraserOpen}

@@ -87,6 +87,10 @@ export interface SlicerSidebarControlsProps {
 
   paddingInset: number;
   setPaddingInset: (inset: number) => void;
+  enableSmartCrop?: boolean;
+  setEnableSmartCrop?: (enable: boolean) => void;
+  smartCropPadding?: number;
+  setSmartCropPadding?: (pad: number) => void;
   isProcessing: boolean;
   assemblySuccess: boolean;
   onAutoSliceAndAssemble: () => void;
@@ -95,6 +99,7 @@ export interface SlicerSidebarControlsProps {
   totalCellCount: number;
   onOpenSaveKitModal?: () => void;
   onOpenCatalogModal?: () => void;
+  onOpenSmartCrop?: () => void;
 }
 
 export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
@@ -173,6 +178,10 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
 
   paddingInset,
   setPaddingInset,
+  enableSmartCrop,
+  setEnableSmartCrop,
+  smartCropPadding,
+  setSmartCropPadding,
   isProcessing,
   assemblySuccess,
   onAutoSliceAndAssemble,
@@ -181,6 +190,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   totalCellCount,
   onOpenSaveKitModal,
   onOpenCatalogModal,
+  onOpenSmartCrop,
 }) => {
   return (
     <div
@@ -377,11 +387,16 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         totalCellCount={totalCellCount}
         paddingInset={paddingInset}
         setPaddingInset={setPaddingInset}
+        enableSmartCrop={enableSmartCrop}
+        setEnableSmartCrop={setEnableSmartCrop}
+        smartCropPadding={smartCropPadding}
+        setSmartCropPadding={setSmartCropPadding}
         onCommitSliderChange={onCommitSliderChange}
         onAutoSliceAndAssemble={onAutoSliceAndAssemble}
         onOpenSaveKitModal={onOpenSaveKitModal}
         onOpenCatalogModal={onOpenCatalogModal}
         onApplyAsNewBaseImage={onApplyAsNewBaseImage}
+        onOpenSmartCrop={onOpenSmartCrop}
       />
     </div>
   );

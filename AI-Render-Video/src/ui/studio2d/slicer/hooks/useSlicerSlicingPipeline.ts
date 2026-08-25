@@ -4,6 +4,11 @@ import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistr
 import { processCellChromaAndDespeckle, ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
 import { PART_HIERARCHY_CONFIG } from '../../../../core/assets/Asset2DRegistry';
 import { ThreeMultiAngleBillboardEngine } from '../../../../core/engine2d/ThreeMultiAngleBillboardEngine';
+import {
+  detectPixelContentBoundingBox,
+  cropCanvasWithPadding,
+  PaddedCropRect,
+} from '../../../../core/utils/PixelBoundingBoxAlgorithms';
 
 export interface UseSlicerSlicingPipelineProps {
   loadedImageRef: React.MutableRefObject<HTMLImageElement | null>;
@@ -31,6 +36,9 @@ export interface UseSlicerSlicingPipelineProps {
   smoothColorHex: string;
   cleanupMode: 'all' | 'defringe' | 'smooth' | 'despeckle';
   paddingInset: number;
+  enableSmartCrop?: boolean;
+  smartCropPadding?: number;
+  cellCropRectsRef?: React.MutableRefObject<Map<string, PaddedCropRect>>;
   singleImageSlot: Character2DPartType;
   singleImageAngle: Character2DAngle;
   onApplyAssembly: (updated: Character2DAssembly) => void;
@@ -64,6 +72,9 @@ export function useSlicerSlicingPipeline({
   smoothColorHex,
   cleanupMode,
   paddingInset,
+  enableSmartCrop = false,
+  smartCropPadding = 2,
+  cellCropRectsRef,
   singleImageSlot,
   singleImageAngle,
   onApplyAssembly,
@@ -120,9 +131,28 @@ export function useSlicerSlicingPipeline({
           if (ctx) {
             ctx.drawImage(img, pad, pad, w, h, 0, 0, w, h);
             processCellChromaAndDespeckle(ctx, w, h, opts);
-            const dataUrl = canvas.toDataURL('image/png');
+
+            let finalCanvas = canvas;
+            let dataUrl = canvas.toDataURL('image/png');
+
+            if (enableSmartCrop) {
+              const bbox = detectPixelContentBoundingBox(ctx, w, h, 10);
+              if (bbox.hasContent) {
+                const cropped = cropCanvasWithPadding(canvas, bbox, smartCropPadding);
+                finalCanvas = cropped.croppedCanvas;
+                dataUrl = cropped.dataUrl;
+                if (cellCropRectsRef) {
+                  cellCropRectsRef.current.set('0_0', cropped.rect);
+                }
+              } else if (cellCropRectsRef) {
+                cellCropRectsRef.current.delete('0_0');
+              }
+            } else if (cellCropRectsRef) {
+              cellCropRectsRef.current.delete('0_0');
+            }
+
             results.set('0_0', dataUrl);
-            slicedCanvasesRef.current.set('0_0', canvas);
+            slicedCanvasesRef.current.set('0_0', finalCanvas);
 
             const slot = singleImageSlot;
             const hierarchy = PART_HIERARCHY_CONFIG[slot];
@@ -163,10 +193,29 @@ export function useSlicerSlicingPipeline({
             if (ctx) {
               ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
               processCellChromaAndDespeckle(ctx, w, h, opts);
-              const dataUrl = canvas.toDataURL('image/png');
+
               const key = `${cell.row}_${cell.col}`;
+              let finalCanvas = canvas;
+              let dataUrl = canvas.toDataURL('image/png');
+
+              if (enableSmartCrop) {
+                const bbox = detectPixelContentBoundingBox(ctx, w, h, 10);
+                if (bbox.hasContent) {
+                  const cropped = cropCanvasWithPadding(canvas, bbox, smartCropPadding);
+                  finalCanvas = cropped.croppedCanvas;
+                  dataUrl = cropped.dataUrl;
+                  if (cellCropRectsRef) {
+                    cellCropRectsRef.current.set(key, cropped.rect);
+                  }
+                } else if (cellCropRectsRef) {
+                  cellCropRectsRef.current.delete(key);
+                }
+              } else if (cellCropRectsRef) {
+                cellCropRectsRef.current.delete(key);
+              }
+
               results.set(key, dataUrl);
-              slicedCanvasesRef.current.set(key, canvas);
+              slicedCanvasesRef.current.set(key, finalCanvas);
 
               if (cell.partSlot) {
                 const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
@@ -232,6 +281,9 @@ export function useSlicerSlicingPipeline({
       smoothColorHex,
       cleanupMode,
       paddingInset,
+      enableSmartCrop,
+      smartCropPadding,
+      cellCropRectsRef,
       singleImageSlot,
       singleImageAngle,
       onApplyAssembly,
