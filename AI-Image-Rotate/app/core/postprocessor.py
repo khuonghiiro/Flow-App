@@ -19,12 +19,13 @@ class ImagePostprocessor:
         if not frames:
             return ""
 
-        # Convert to RGB with white background or palette for clean GIF rendering
+        # Convert to RGB with neutral background for clean GIF rendering
         gif_frames = []
         for img in frames:
-            rgb_frame = Image.new("RGBA", img.size, (20, 24, 33, 255))
-            rgb_frame.paste(img, (0, 0), img)
-            gif_frames.append(rgb_frame.convert("RGB"))
+            img_rgba = img.convert("RGBA")
+            bg_frame = Image.new("RGBA", img.size, (20, 24, 33, 255))
+            bg_frame.paste(img_rgba, (0, 0), mask=img_rgba.split()[3])
+            gif_frames.append(bg_frame.convert("RGB"))
 
         buffer = io.BytesIO()
         gif_frames[0].save(
@@ -58,7 +59,8 @@ class ImagePostprocessor:
         for idx, frame in enumerate(frames):
             c = idx % cols
             r = idx // cols
-            spritesheet.paste(frame, (c * frame_w, r * frame_h))
+            frame_rgba = frame.convert("RGBA")
+            spritesheet.paste(frame_rgba, (c * frame_w, r * frame_h), mask=frame_rgba.split()[3])
 
         buffer = io.BytesIO()
         spritesheet.save(buffer, format="PNG", optimize=True)

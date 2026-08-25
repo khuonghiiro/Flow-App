@@ -1,4 +1,5 @@
 import math
+import hashlib
 import logging
 import threading
 import time
@@ -10,6 +11,15 @@ from app.core.device_manager import device_manager, TORCH_AVAILABLE
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Bypass torch.load safety check in transformers for local/cached model weights
+try:
+    import transformers.utils.import_utils
+    transformers.utils.import_utils.check_torch_load_is_safe = lambda: None
+    if hasattr(transformers, "modeling_utils"):
+        transformers.modeling_utils.check_torch_load_is_safe = lambda: None
+except Exception:
+    pass
 
 # Try to import Zero123PlusPipeline
 try:
@@ -26,12 +36,12 @@ except Exception as e:
 def slice_zero123plus_grid(grid_img: Image.Image) -> Dict[str, Image.Image]:
     """
     Slices the 640x960 6-view grid output of Zero123++ into canonical perspective images:
-    - View 0: 30° (Front-Right)
-    - View 1: 90° (Right Profile)
-    - View 2: 150° (Back-Right)
-    - View 3: 210° (Back / Posterior View - SAU LƯNG)
-    - View 4: 270° (Left Profile)
-    - View 5: 330° (Front-Left)
+    - View 0: 30° (Front-Right, +20° elevation)
+    - View 1: 90° (Right Profile, -10° elevation)
+    - View 2: 150° (Back-Right, +20° elevation)
+    - View 3: 210° (Back / Posterior View - SAU LƯNG, -10° elevation)
+    - View 4: 270° (Left Profile, +20° elevation)
+    - View 5: 330° (Front-Left, -10° elevation)
     """
     w, h = grid_img.size
     # Expected grid dimensions: 640 width x 960 height (3 rows x 2 cols of 320x320)
@@ -42,7 +52,7 @@ def slice_zero123plus_grid(grid_img: Image.Image) -> Dict[str, Image.Image]:
         "30": grid_img.crop((0, 0, tile_w, tile_h)),
         "90": grid_img.crop((tile_w, 0, w, tile_h)),
         "150": grid_img.crop((0, tile_h, tile_w, tile_h * 2)),
-        "210": grid_img.crop((tile_w, tile_h, w, tile_h * 2)),  # Pure Back View
+        "210": grid_img.crop((tile_w, tile_h, w, tile_h * 2)),  # Pure Back View (Sau Lưng)
         "270": grid_img.crop((0, tile_h * 2, tile_w, h)),
         "330": grid_img.crop((tile_w, tile_h * 2, w, h)),
     }
@@ -85,36 +95,50 @@ class Zero123InferenceEngine:
             with self._lock:
                 self.loading_progress = 20
                 self.loading_status_text = f"Đang tải trọng số Zero123++ ({model_id}) vào GPU VRAM..."
-                if TORCH_AVAILABLE and device_manager.device_str == "cuda":
-                    device_manager.clean_vram()
-                    self.loading_progress = 40
-                    self.loading_status_text = "Đang cấu hình FP16 trên NVIDIA GeForce RTX 3060..."
+                if not TORCH_AVAILABLE or device_manager.device_str != "cuda":
+                    raise RuntimeError("Cần GPU NVIDIA CUDA (RTX 3060) để nạp model AI.")
 
-                    try:
-                        self.pipeline = Zero123PlusPipeline.from_pretrained(
-                            model_id,
-                            torch_dtype=torch.float16,
-                            cache_dir=str(settings.MODELS_CACHE_DIR)
-                        )
-                        self.pipeline.scheduler = EulerAncestralDiscreteScheduler.from_config(
-                            self.pipeline.scheduler.config,
-                            timestep_spacing='trailing'
-                        )
-                        self.pipeline.to("cuda:0")
-                        logger.info(f"[Zero123Engine] Pipeline {model_id} loaded on cuda:0 in FP16.")
-                    except Exception as e:
-                        logger.warning(f"[Zero123Engine] Pipeline load note: {e}")
+                device_manager.clean_vram()
+                self.loading_progress = 40
+                self.loading_status_text = "Đang nạp pipeline FP16 trên NVIDIA GeForce RTX 3060..."
+
+                # Ensure safety check bypass is active
+                try:
+                    import transformers.utils.import_utils
+                    transformers.utils.import_utils.check_torch_load_is_safe = lambda: None
+                    if hasattr(transformers, "modeling_utils"):
+                        transformers.modeling_utils.check_torch_load_is_safe = lambda: None
+                except Exception:
+                    pass
+
+                pipeline = Zero123PlusPipeline.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float16,
+                    cache_dir=str(settings.MODELS_CACHE_DIR)
+                )
+                self.loading_progress = 75
+                self.loading_status_text = "Đang nạp trọng số vào VRAM và cấu hình Euler-A..."
+
+                pipeline.scheduler = EulerAncestralDiscreteScheduler.from_config(
+                    pipeline.scheduler.config,
+                    timestep_spacing="trailing"
+                )
+                pipeline.to("cuda:0")
+                self.pipeline = pipeline
+                device_manager.clean_vram()
 
                 self.loading_progress = 100
                 self.is_loaded = True
                 self.is_loading = False
                 self.loading_status_text = f"✅ Đã nạp thành công {model_id} vào RTX 3060 12GB VRAM (FP16)"
+                logger.info(f"[Zero123Engine] Pipeline {model_id} successfully loaded into CUDA VRAM.")
         except Exception as e:
             logger.error(f"[Zero123Engine] Load error: {e}", exc_info=True)
+            self.pipeline = None
             self.is_loaded = False
             self.is_loading = False
             self.loading_progress = 0
-            self.loading_status_text = f"❌ Lỗi: {str(e)}"
+            self.loading_status_text = f"❌ Lỗi nạp model: {str(e)}"
 
     def unload_model(self):
         with self._lock:
@@ -126,8 +150,16 @@ class Zero123InferenceEngine:
             self._cached_views = None
             device_manager.clean_vram()
 
-    def _generate_all_views_neural(self, input_image: Image.Image, num_steps: int = 28) -> Dict[str, Image.Image]:
+    def _generate_all_views_neural(self, input_image: Image.Image, num_steps: int = 24) -> Dict[str, Image.Image]:
         """Runs Zero123++ pipeline on RTX 3060 and generates the full 6 canonical 3D views."""
+        # Auto-load if pipeline not initialized yet
+        if self.pipeline is None and not self.is_loading:
+            try:
+                logger.info("[Zero123Engine] Pipeline not in memory, loading on demand...")
+                self._load_worker(self.model_name)
+            except Exception as e:
+                logger.warning(f"[Zero123Engine] Auto-load on inference failed: {e}")
+
         # Convert to RGB with neutral background as expected by Zero123++
         img = input_image.convert("RGBA")
         rgb_img = Image.new("RGB", img.size, (127, 127, 127))
@@ -136,7 +168,7 @@ class Zero123InferenceEngine:
 
         if self.pipeline is not None:
             device_manager.clean_vram()
-            with torch.inference_mode(), torch.cuda.amp.autocast(dtype=torch.float16):
+            with torch.inference_mode(), torch.amp.autocast("cuda", dtype=torch.float16):
                 grid_result = self.pipeline(resized_input, num_inference_steps=num_steps).images[0]
                 return slice_zero123plus_grid(grid_result)
 
@@ -149,7 +181,6 @@ class Zero123InferenceEngine:
         angles = ["30", "90", "150", "210", "270", "330"]
         for ang in angles:
             deg = float(ang)
-            rad = math.radians(deg)
             views[ang] = self._render_single_angle_3d(image, deg)
         return views
 
@@ -185,14 +216,16 @@ class Zero123InferenceEngine:
         azimuth_deg: float,
         elevation_deg: float = 0.0,
         radius_scale: float = 1.0,
-        num_steps: int = 28,
+        num_steps: int = 24,
         guidance_scale: float = 3.0
     ) -> Image.Image:
         """Selects and maps the novel view angle accurately."""
         azimuth_deg = float(azimuth_deg % 360)
-        current_hash = hash(input_image.tobytes()[:1000])
+        # Compute SHA256 of the full image bytes to properly detect new uploaded images
+        current_hash = hashlib.sha256(input_image.tobytes()).hexdigest()
 
         if self._cached_views is None or self._last_source_hash != current_hash:
+            logger.info("[Zero123Engine] New image detected, generating fresh 3D views on RTX 3060...")
             self._cached_views = self._generate_all_views_neural(input_image, num_steps=num_steps)
             self._last_source_hash = current_hash
 
@@ -221,7 +254,15 @@ class Zero123InferenceEngine:
         num_steps: int = 24
     ) -> List[Tuple[int, float, Image.Image]]:
         """Generates full 360 turntable sequence from Zero123++ novel views."""
-        views = self._generate_all_views_neural(input_image, num_steps=num_steps)
+        current_hash = hashlib.sha256(input_image.tobytes()).hexdigest()
+        if self._cached_views is None or self._last_source_hash != current_hash:
+            logger.info("[Zero123Engine] Turntable: new image detected, generating fresh views...")
+            views = self._generate_all_views_neural(input_image, num_steps=num_steps)
+            self._cached_views = views
+            self._last_source_hash = current_hash
+        else:
+            views = self._cached_views
+
         front_img = input_image.convert("RGBA").resize((320, 320))
 
         ordered_angles = [

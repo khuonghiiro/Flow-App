@@ -170,8 +170,15 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   };
 
-  dropzone.addEventListener('click', () => imageInput.click());
-  imageInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+  dropzone.addEventListener('click', () => {
+    imageInput.value = '';
+    imageInput.click();
+  });
+  imageInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  });
 
   dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));

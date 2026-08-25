@@ -36,12 +36,16 @@ class ImagePreprocessor:
         encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return f"data:image/{format.lower()};base64,{encoded}"
 
+    def __init__(self):
+        self._session = None
+
     def remove_background(self, image: Image.Image) -> Image.Image:
         """Removes background from image using rembg or returns RGBA with alpha mask."""
         if REMBG_AVAILABLE:
             try:
-                session = rembg.new_session("u2net")
-                return rembg.remove(image, session=session)
+                if self._session is None:
+                    self._session = rembg.new_session("u2net")
+                return rembg.remove(image, session=self._session)
             except Exception as e:
                 logger.error(f"[Preprocessor] rembg execution failed: {e}")
         
@@ -86,7 +90,10 @@ class ImagePreprocessor:
 
     def preprocess(self, image_input: Image.Image, remove_bg: bool = True, target_size: int = 512) -> Image.Image:
         """Full pipeline: clean, remove background, center and pad."""
-        img = image_input
+        img = image_input.convert("RGBA")
+        # Resize large image to max 1024 to speed up rembg processing
+        if max(img.size) > 1024:
+            img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
         if remove_bg:
             img = self.remove_background(img)
         return self.center_and_pad(img, target_size=target_size)
