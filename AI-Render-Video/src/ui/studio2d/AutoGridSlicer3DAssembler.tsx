@@ -1,30 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Character2DAssembly,
-  Character2DAngle,
-  Character2DPartType,
-  CharacterResourceCategory,
-  CharacterResourceKit,
-} from '../../types/scene2d';
-import {
-  GRID_CATEGORY_DEFINITIONS,
-  GridCategoryDefinition,
-  GridCellDefinition,
-  generateDemoGridSpriteSheet,
-} from '../../core/assets/GridSliceRegistry';
-import {
-  ThreeMultiAngleBillboardEngine,
-  AngleDetectionResult,
-} from '../../core/engine2d/ThreeMultiAngleBillboardEngine';
+import { Character2DAssembly, Character2DAngle, Character2DPartType } from '../../types/scene2d';
+import { GRID_CATEGORY_DEFINITIONS, GridCategoryDefinition, GridCellDefinition } from '../../core/assets/GridSliceRegistry';
+import { ThreeMultiAngleBillboardEngine, AngleDetectionResult } from '../../core/engine2d/ThreeMultiAngleBillboardEngine';
 import { CellPixelEraserModal } from './CellPixelEraserModal';
 import { CharacterAssetCatalogModal } from './CharacterAssetCatalogModal';
 import { MultiAngleTunerModal } from './MultiAngleTunerModal';
-import { saveCustomResourceKit } from '../../core/assets/CharacterKitStorage';
-import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
-import { detectAndFitGridDividers } from '../../core/utils/GridAutoFitDetector';
-import { PART_HIERARCHY_CONFIG, parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Asset2DRegistry';
+import { parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Asset2DRegistry';
 import { GridTablePickerModal } from './slicer/GridTablePickerModal';
 import { JsonPromptImportModal, ParsedJsonMetadataItem } from './slicer/JsonPromptImportModal';
+import { SlicerSaveKitModal } from './slicer/modals/SlicerSaveKitModal';
 import {
   CheckerboardTheme,
   loadCachedCheckerTheme,
@@ -32,51 +16,22 @@ import {
   loadCachedSingleMode,
   saveCachedSingleMode,
   loadCachedGridConfig,
-  saveCachedGridConfig,
   createDynamicGridCategory,
   STANDARD_ANGLE_DEFINITIONS,
   getAngleDefinitionById,
 } from '../../core/assets/slicer/SlicerAngleConstants';
 
-// Subcomponents
+// Subcomponents & Custom Hooks
 import { SlicerSidebarControls } from './slicer/SlicerSidebarControls';
 import { SlicerCellAdjustmentBar } from './slicer/SlicerCellAdjustmentBar';
 import { SlicerInteractiveCanvas } from './slicer/SlicerInteractiveCanvas';
 import { Slicer3DTurntablePreview } from './slicer/Slicer3DTurntablePreview';
-
-export interface SlicerHistorySnapshot {
-  timestamp: number;
-  label?: string;
-  userUploadedImageUrl: string | null;
-  selectedCatId: string;
-  keyColorType: 'chroma_green' | 'pure_white' | 'custom';
-  keyColorHex: string;
-  isolationMode: 'all' | 'outer_only';
-  tolerance: number;
-  feather: number;
-  shadowRetention: number;
-  strokeWidth: number;
-  strokeColorHex: string;
-  bgCleanupSubTab: 'chroma' | 'despeckle' | 'ai_matting';
-  cleanupMode: 'all' | 'defringe' | 'smooth' | 'despeckle';
-  fringeColorType: 'chroma_green' | 'pure_white' | 'pure_black' | 'custom';
-  fringeColorHex: string;
-  defringeStrength: number;
-  edgeChoke: number;
-  edgeSmooth: number;
-  smoothColorType?: 'black' | 'white' | 'auto' | 'custom';
-  smoothColorHex?: string;
-  despeckleSize: number;
-  whiteSpeckleSensitivity: number;
-  keepLargestIslandOnly: boolean;
-  paddingInset: number;
-  colDividers: number[];
-  rowDividers: number[];
-  slicedResults: [string, string][];
-  previewDisplayMode: 'transparent' | 'original';
-  hasExplicitlySliced: boolean;
-  currentAssembly: Character2DAssembly;
-}
+import { useSlicerDividers } from './slicer/hooks/useSlicerDividers';
+import { useSlicerUndoRedo, SlicerHistorySnapshot } from './slicer/hooks/useSlicerUndoRedo';
+import { useSlicerCanvasDrawing } from './slicer/hooks/useSlicerCanvasDrawing';
+import { useSlicerSlicingPipeline } from './slicer/hooks/useSlicerSlicingPipeline';
+import { useSlicerAIMatting } from './slicer/hooks/useSlicerAIMatting';
+import { useSlicerCanvasInteraction } from './slicer/hooks/useSlicerCanvasInteraction';
 
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
@@ -93,21 +48,20 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   externalImageUrl,
   externalCategoryId,
 }) => {
-  // Category & Single Mode Configuration with LocalStorage Cache
+  // Category & Single Mode State
   const [lastUsedGridCatId, setLastUsedGridCatId] = useState<string>(() => {
     const cachedGrid = loadCachedGridConfig();
-    if (cachedGrid) return `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}`;
-    return externalCategoryId || 'cinematic_single_part_2x3';
+    return cachedGrid ? `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}` : externalCategoryId || 'cinematic_single_part_2x3';
   });
 
   const [selectedCatId, setSelectedCatId] = useState<string>(() => {
     if (loadCachedSingleMode()) return 'single_full_image';
     if (externalCategoryId) return externalCategoryId;
     const cachedGrid = loadCachedGridConfig();
-    if (cachedGrid) return `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}`;
-    return 'cinematic_single_part_2x3';
+    return cachedGrid ? `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}` : 'cinematic_single_part_2x3';
   });
-  const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi' | 'irregular_ai'>('chibi');
+
+  // Filter & Color Tuning States
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
   const [isEyedropperActive, setIsEyedropperActive] = useState<boolean>(false);
@@ -122,12 +76,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [aiModel, setAiModel] = useState<string>('birefnet-general');
   const [aiScope, setAiScope] = useState<'full_image' | 'all' | 'selected'>('full_image');
   const [aiServerStatus, setAiServerStatus] = useState<'online' | 'offline' | 'checking'>('checking');
-  const [isAIRunning, setIsAIRunning] = useState<boolean>(false);
   const [despeckleSize, setDespeckleSize] = useState<number>(0);
   const [whiteSpeckleSensitivity, setWhiteSpeckleSensitivity] = useState<number>(0);
   const [keepLargestIslandOnly, setKeepLargestIslandOnly] = useState<boolean>(false);
 
-  // Advanced Despeckle, Color Defringe & Edge Smoothing states (Default 0 so Tab 2 never affects Tab 1 until adjusted)
+  // Defringe & Edge Smoothing states
   const [eyedropperTarget, setEyedropperTarget] = useState<'chroma' | 'fringe' | 'smooth'>('chroma');
   const [cleanupMode, setCleanupMode] = useState<'all' | 'defringe' | 'smooth' | 'despeckle'>('all');
   const [fringeColorType, setFringeColorType] = useState<'chroma_green' | 'pure_white' | 'pure_black' | 'custom'>('chroma_green');
@@ -139,55 +92,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [smoothColorHex, setSmoothColorHex] = useState<string>('#000000');
   const [paddingInset, setPaddingInset] = useState<number>(0);
 
-  // User upload & Slicing state
+  // Image & Selection
   const [userUploadedImageUrl, setUserUploadedImageUrl] = useState<string | null>(null);
   const [uploadedFileMetadata, setUploadedFileMetadata] = useState<ParsedPartFilenameInfo | null>(null);
-  const [slicedResults, setSlicedResults] = useState<Map<string, string>>(new Map());
+  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
   const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [assemblySuccess, setAssemblySuccess] = useState<boolean>(false);
-
-  // Undo / Redo History Stack (Max 30 snapshots)
-  const [undoStack, setUndoStack] = useState<SlicerHistorySnapshot[]>([]);
-  const [redoStack, setRedoStack] = useState<SlicerHistorySnapshot[]>([]);
-  const [historyToast, setHistoryToast] = useState<{ message: string; type: 'undo' | 'redo' } | null>(null);
-
-
-  // Auto-check AI Server status on mount and when tab changes
-  useEffect(() => {
-    const checkServer = async () => {
-      try {
-        const res = await fetch('http://127.0.0.1:5000/api/status', { method: 'GET' });
-        if (res.ok) {
-          setAiServerStatus('online');
-        } else {
-          setAiServerStatus('offline');
-        }
-      } catch (e) {
-        setAiServerStatus('offline');
-      }
-    };
-    checkServer();
-    const interval = setInterval(checkServer, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Listen to external image transferred from Tab 0 (Antigravity Decomposer)
-  useEffect(() => {
-    if (externalImageUrl) {
-      const meta = parsePartFilename(externalImageUrl);
-      setUploadedFileMetadata(meta);
-      setUserUploadedImageUrl(externalImageUrl);
-      setHasExplicitlySliced(false);
-      setSlicedResults(new Map());
-      slicedCanvasesRef.current.clear();
-      setPreviewDisplayMode('original');
-      setAssemblySuccess(false);
-      if (externalCategoryId) {
-        setSelectedCatId(externalCategoryId);
-      }
-    }
-  }, [externalImageUrl, externalCategoryId]);
 
   // 3D Engine State
   const [activeAngleInfo, setActiveAngleInfo] = useState<AngleDetectionResult>({
@@ -199,1119 +108,51 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [turntableAngle, setTurntableAngle] = useState<number>(0);
   const [timeOfDay, setTimeOfDay] = useState<number>(0);
 
+  // Refs & Modals
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
   const threeContainerRef = useRef<HTMLDivElement>(null);
   const threeEngineRef = useRef<ThreeMultiAngleBillboardEngine | null>(null);
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Checkerboard Theme State (Dark vs Light) & LocalStorage Cache
   const [checkerTheme, setCheckerTheme] = useState<CheckerboardTheme>(loadCachedCheckerTheme);
-
-  // Custom Grid Category from Table Matrix Picker & LocalStorage Cache
   const [customCategory, setCustomCategory] = useState<GridCategoryDefinition | null>(() => {
     const cached = loadCachedGridConfig();
-    if (cached) {
-      return createDynamicGridCategory(cached.rows, cached.cols);
-    }
-    return null;
+    return cached ? createDynamicGridCategory(cached.rows, cached.cols) : null;
   });
-
-  // Modal Open States
   const [isTablePickerOpen, setIsTablePickerOpen] = useState<boolean>(false);
   const [isJsonImportOpen, setIsJsonImportOpen] = useState<boolean>(false);
-
-  // Single Image Mode Angle & Slot State
   const [singleImageAngle, setSingleImageAngle] = useState<Character2DAngle>('front');
   const [singleImageSlot, setSingleImageSlot] = useState<Character2DPartType>('than_co_ban');
+  const [isEraserOpen, setIsEraserOpen] = useState<boolean>(false);
+  const [editingCellDef, setEditingCellDef] = useState<GridCellDefinition | null>(null);
+  const [editingCellOriginalDataUrl, setEditingCellOriginalDataUrl] = useState<string>('');
+  const [isTunerOpen, setIsTunerOpen] = useState<boolean>(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
+  const [isSaveKitModalOpen, setIsSaveKitModalOpen] = useState<boolean>(false);
 
   const currentCategory: GridCategoryDefinition =
     customCategory && selectedCatId === customCategory.id
       ? customCategory
-      : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) ||
-        GRID_CATEGORY_DEFINITIONS[0];
-
-  const [previewDisplayMode, setPreviewDisplayMode] = useState<'transparent' | 'original'>('original');
-  const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
-  const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
-  const slicedCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
-  const cumulativeBaseCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
-
-  // Interactive Grid Dividers: X coords for cols & Y coords for rows
-  const [colDividers, setColDividers] = useState<number[]>([]);
-  const [rowDividers, setRowDividers] = useState<number[]>([]);
-  const draggingDividerRef = useRef<{ type: 'col' | 'row'; index: number } | null>(null);
-
-  // Pixel Eraser Modal state
-  const [isEraserOpen, setIsEraserOpen] = useState<boolean>(false);
-  const [editingCellDef, setEditingCellDef] = useState<GridCellDefinition | null>(null);
-  const [editingCellOriginalDataUrl, setEditingCellOriginalDataUrl] = useState<string>('');
-
-  // Catalog, Save Kit & Multi-Angle Tuner Modal state
-  const [isTunerOpen, setIsTunerOpen] = useState<boolean>(false);
-  const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
-  const [isSaveKitModalOpen, setIsSaveKitModalOpen] = useState<boolean>(false);
-  const [saveKitName, setSaveKitName] = useState<string>('');
-  const [saveKitCategory, setSaveKitCategory] = useState<CharacterResourceCategory>('toc');
-  const [saveKitAuthor, setSaveKitAuthor] = useState<string>('AI Master');
-  const [saveKitDescription, setSaveKitDescription] = useState<string>('');
-
-  // Initialize Default Uniform Dividers
-  const initUniformDividers = useCallback((width: number, height: number, cols: number, rows: number) => {
-    const colStep = width / cols;
-    const rowStep = height / rows;
-    const colsArr: number[] = [];
-    for (let c = 0; c <= cols; c++) {
-      colsArr.push(Math.round(c * colStep));
-    }
-    const rowsArr: number[] = [];
-    for (let r = 0; r <= rows; r++) {
-      rowsArr.push(Math.round(r * rowStep));
-    }
-    setColDividers(colsArr);
-    setRowDividers(rowsArr);
-  }, []);
-
-  // Smart Content-Aware Auto-Fit Grid Dividers for AI-generated Sprite Sheets
-  const autoFitDividers = useCallback(
-    (img: HTMLImageElement, cols: number, rows: number, keyType = keyColorType, keyHex = keyColorHex) => {
-      if (cols <= 1 && rows <= 1) {
-        initUniformDividers(img.width, img.height, cols, rows);
-        return;
-      }
-      try {
-        const result = detectAndFitGridDividers(img, cols, rows, keyType, keyHex);
-        setColDividers(result.colDividers);
-        setRowDividers(result.rowDividers);
-      } catch (err) {
-        console.warn('AutoFit grid detection failed, using uniform grid:', err);
-        initUniformDividers(img.width, img.height, cols, rows);
-      }
-    },
-    [keyColorType, keyColorHex, initUniformDividers]
-  );
-
-  const handleAutoFitGrid = useCallback(() => {
-    const img = loadedImage || loadedImageRef.current;
-    if (!img) return;
-    autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
-  }, [loadedImage, currentCategory, keyColorType, keyColorHex, autoFitDividers]);
-
-  const handleResetUniformGrid = useCallback(() => {
-    const img = loadedImage || loadedImageRef.current;
-    if (!img) return;
-    initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
-  }, [loadedImage, currentCategory, initUniformDividers]);
-
-  // Initialize 3D Engine
-  useEffect(() => {
-    if (threeContainerRef.current && !threeEngineRef.current) {
-      threeEngineRef.current = new ThreeMultiAngleBillboardEngine(
-        threeContainerRef.current,
-        (res: AngleDetectionResult) => {
-          setActiveAngleInfo(res);
-          setTurntableAngle(res.angleDeg);
-        }
-      );
-      if (currentAssembly) {
-        threeEngineRef.current.setAssembly(currentAssembly);
-      }
-    }
-
-    return () => {
-      if (threeEngineRef.current) {
-        threeEngineRef.current.dispose();
-        threeEngineRef.current = null;
-      }
-    };
-  }, []);
-
-  // Sync 3D engine with currentAssembly updates
-  useEffect(() => {
-    if (threeEngineRef.current && currentAssembly) {
-      threeEngineRef.current.setAssembly(currentAssembly);
-    }
-  }, [currentAssembly]);
-
-  // Load Sprite Sheet Image (Only runs when uploaded image URL actually changes)
-  useEffect(() => {
-    if (!userUploadedImageUrl) {
-      loadedImageRef.current = null;
-      setLoadedImage(null);
-      setPreviewDisplayMode('original');
-      setHasExplicitlySliced(false);
-      slicedCanvasesRef.current.clear();
-      setSlicedResults(new Map());
-      const canvas = imageCanvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-      }
-      return;
-    }
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-
-    img.onload = () => {
-      loadedImageRef.current = img;
-      setLoadedImage(img);
-      // Auto-fit grid to match AI sprite dimensions and content gutters
-      autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
-      setPreviewDisplayMode('original');
-      setHasExplicitlySliced(false);
-      slicedCanvasesRef.current.clear();
-      setSlicedResults(new Map());
-    };
-
-    img.onerror = () => {
-      loadedImageRef.current = null;
-      setLoadedImage(null);
-    };
-
-    img.src = userUploadedImageUrl;
-  }, [userUploadedImageUrl]);
-
-  // Handle Category / Mode Switching (Single Image vs Grid Sprite)
-  const handleSelectCatId = useCallback((newCatId: string) => {
-    setSelectedCatId(newCatId);
-    if (newCatId !== 'single_full_image') {
-      setLastUsedGridCatId(newCatId);
-      saveCachedSingleMode(false);
-    } else {
-      saveCachedSingleMode(true);
-    }
-    const cat =
-      customCategory && customCategory.id === newCatId
-        ? customCategory
-        : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
-    const img = loadedImage || loadedImageRef.current;
-    if (img) {
-      autoFitDividers(img, cat.cols, cat.rows, keyColorType, keyColorHex);
-    }
-    setSelectedCell(null);
-    setHasExplicitlySliced(false);
-    slicedCanvasesRef.current.clear();
-    setSlicedResults(new Map());
-    setPreviewDisplayMode('original');
-  }, [loadedImage, autoFitDividers, keyColorType, keyColorHex, customCategory]);
-
-  // Toggle Single Image Mode (Bật để ảnh đơn, Tắt để theo ma trận lưới đã chọn)
-  const handleToggleSingleImageMode = useCallback(() => {
-    if (selectedCatId === 'single_full_image') {
-      const targetCatId =
-        customCategory?.id || (lastUsedGridCatId !== 'single_full_image' ? lastUsedGridCatId : 'cinematic_single_part_2x3');
-      saveCachedSingleMode(false);
-      handleSelectCatId(targetCatId);
-    } else {
-      setLastUsedGridCatId(selectedCatId);
-      saveCachedSingleMode(true);
-      handleSelectCatId('single_full_image');
-    }
-  }, [selectedCatId, customCategory, lastUsedGridCatId, handleSelectCatId]);
-
-  // Toggle Caro Sáng / Tối (Checkerboard Dark vs Light)
-  const handleToggleCheckerTheme = useCallback(() => {
-    setCheckerTheme((prev) => {
-      const next = prev === 'light' ? 'dark' : 'light';
-      saveCachedCheckerTheme(next);
-      return next;
-    });
-  }, []);
-
-  // Handle Custom Grid Selection from Word-Style Table Matrix Picker Modal
-  const handleSelectGridMatrix = useCallback((rows: number, cols: number) => {
-    const newCat = createDynamicGridCategory(rows, cols);
-    setCustomCategory(newCat);
-    setLastUsedGridCatId(newCat.id);
-    saveCachedSingleMode(false);
-    setSelectedCatId(newCat.id);
-    const img = loadedImage || loadedImageRef.current;
-    if (img) {
-      autoFitDividers(img, newCat.cols, newCat.rows, keyColorType, keyColorHex);
-    }
-    setSelectedCell(null);
-    setHasExplicitlySliced(false);
-    slicedCanvasesRef.current.clear();
-    setSlicedResults(new Map());
-    setPreviewDisplayMode('original');
-  }, [loadedImage, autoFitDividers, keyColorType, keyColorHex]);
-
-  // Redraw Canvas & Grid Dividers
-  const redrawCanvas = useCallback((modeOverride?: 'transparent' | 'original') => {
-    const canvas = imageCanvasRef.current;
-    const img = loadedImage || loadedImageRef.current;
-    if (!canvas || !img) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    if (canvas.width !== img.width || canvas.height !== img.height) {
-      canvas.width = img.width;
-      canvas.height = img.height;
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const effectiveMode = modeOverride ?? previewDisplayMode;
-
-    if (effectiveMode === 'transparent' && (hasExplicitlySliced || slicedCanvasesRef.current.size > 0)) {
-      // Checkerboard transparency pattern (Dark vs Light based on checkerTheme)
-      const size = 16;
-      const isLight = checkerTheme === 'light';
-      const colorA = isLight ? '#ffffff' : '#182030';
-      const colorB = isLight ? '#e2e8f0' : '#0c1220';
-
-      for (let x = 0; x < canvas.width; x += size) {
-        for (let y = 0; y < canvas.height; y += size) {
-          ctx.fillStyle = (Math.floor(x / size) + Math.floor(y / size)) % 2 === 0 ? colorA : colorB;
-          ctx.fillRect(x, y, size, size);
-        }
-      }
-
-      if (currentCategory.id === 'single_full_image') {
-        const singleCanvas = slicedCanvasesRef.current.get('0_0');
-        if (singleCanvas) {
-          const pad = Math.max(0, paddingInset);
-          const x0 = pad;
-          const y0 = pad;
-          const w = Math.max(10, canvas.width - pad * 2);
-          const h = Math.max(10, canvas.height - pad * 2);
-          ctx.drawImage(singleCanvas, x0, y0, w, h);
-        }
-      } else {
-        currentCategory.cells.forEach((cell) => {
-          const key = `${cell.row}_${cell.col}`;
-          const cellCanvas = slicedCanvasesRef.current.get(key);
-          if (cellCanvas) {
-            const pad = Math.max(0, paddingInset);
-            let x0 = 0, y0 = 0, w = canvas.width, h = canvas.height;
-            if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-              const rawX0 = colDividers[cell.col];
-              const rawY0 = rowDividers[cell.row];
-              const rawW = colDividers[cell.col + 1] - rawX0;
-              const rawH = rowDividers[cell.row + 1] - rawY0;
-              x0 = rawX0 + pad;
-              y0 = rawY0 + pad;
-              w = Math.max(10, rawW - pad * 2);
-              h = Math.max(10, rawH - pad * 2);
-            }
-            ctx.drawImage(cellCanvas, x0, y0, w, h);
-          }
-        });
-      }
-    } else {
-      ctx.drawImage(img, 0, 0);
-    }
-
-    // Draw Grid Lines & Angle Badges (ONLY when NOT single full image)
-    if (currentCategory.id !== 'single_full_image') {
-      const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
-        if (isBorder) {
-          ctx.lineWidth = 2.5;
-          ctx.setLineDash([]);
-          ctx.strokeStyle = '#000000';
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-
-          ctx.lineWidth = 1.2;
-          ctx.strokeStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        } else {
-          // Pass 1: Solid Black Base Dash
-          ctx.lineWidth = 2.0;
-          ctx.strokeStyle = '#000000';
-          ctx.setLineDash([6, 6]);
-          ctx.lineDashOffset = 0;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-
-          // Pass 2: Interleaved White Dash
-          ctx.lineWidth = 2.0;
-          ctx.strokeStyle = '#ffffff';
-          ctx.setLineDash([6, 6]);
-          ctx.lineDashOffset = 6;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        }
-      };
-
-      colDividers.forEach((x, c) => {
-        const isBorder = c === 0 || c === colDividers.length - 1;
-        drawDualDashLine(x, 0, x, canvas.height, isBorder);
-      });
-
-      rowDividers.forEach((y, r) => {
-        const isBorder = r === 0 || r === rowDividers.length - 1;
-        drawDualDashLine(0, y, canvas.width, y, isBorder);
-      });
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
-
-      // Draw Angle Badges in top-left of each cell
-      currentCategory.cells.forEach((cell) => {
-        if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-          const x0 = colDividers[cell.col];
-          const y0 = rowDividers[cell.row];
-          const w = colDividers[cell.col + 1] - x0;
-          const h = rowDividers[cell.row + 1] - y0;
-          if (w > 45 && h > 28) {
-            const angleDef = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === cell.angle) || STANDARD_ANGLE_DEFINITIONS[0];
-            const badgeText = angleDef.shortLabel || '0° Front';
-            ctx.font = 'bold 10.5px sans-serif';
-            const textMetrics = ctx.measureText(badgeText);
-            const badgeW = Math.max(50, textMetrics.width + 12);
-            const badgeH = 18;
-
-            ctx.fillStyle = 'rgba(11, 15, 25, 0.85)';
-            ctx.beginPath();
-            if ((ctx as any).roundRect) {
-              (ctx as any).roundRect(x0 + 5, y0 + 5, badgeW, badgeH, 4);
-            } else {
-              ctx.rect(x0 + 5, y0 + 5, badgeW, badgeH);
-            }
-            ctx.fill();
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            ctx.fillStyle = '#38bdf8';
-            ctx.fillText(badgeText, x0 + 10, y0 + 18);
-          }
-        }
-      });
-
-      // Highlight Selected Cell with High-Contrast Dual Stroke
-      if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
-        const x0 = colDividers[selectedCell.col];
-        const y0 = rowDividers[selectedCell.row];
-        const w = colDividers[selectedCell.col + 1] - x0;
-        const h = rowDividers[selectedCell.row + 1] - y0;
-
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
-        ctx.fillRect(x0, y0, w, h);
-
-        // Outer black border
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3.5;
-        ctx.setLineDash([]);
-        ctx.strokeRect(x0, y0, w, h);
-
-        // Inner glowing cyan border
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 2.0;
-        ctx.strokeRect(x0, y0, w, h);
-      }
-    }
-  }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults, paddingInset, checkerTheme]);
-
-  useEffect(() => {
-    redrawCanvas();
-  }, [redrawCanvas]);
-
-  // Mouse drag & drop dividers and Eyedropper handler
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    const mouseY = (e.clientY - rect.top) * scaleY;
-
-    // Eyedropper Mode: Sample exact pixel color directly from image canvas
-    if (isEyedropperActive) {
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (ctx && mouseX >= 0 && mouseX < canvas.width && mouseY >= 0 && mouseY < canvas.height) {
-        const pixel = ctx.getImageData(Math.floor(mouseX), Math.floor(mouseY), 1, 1).data;
-        const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
-        setIsEyedropperActive(false);
-        setEyedropperHoverColor(null);
-        if (eyedropperTarget === 'smooth') {
-          setSmoothColorType('custom');
-          setSmoothColorHex(hex);
-          if (hasExplicitlySliced) {
-            handleAutoSliceAndAssemble({ smoothColorType: 'custom', smoothColorHex: hex });
-          }
-        } else if (eyedropperTarget === 'fringe') {
-          setFringeColorType('custom');
-          setFringeColorHex(hex);
-          if (hasExplicitlySliced) {
-            handleAutoSliceAndAssemble({ fringeColorType: 'custom', fringeColorHex: hex });
-          }
-        } else {
-          setKeyColorType('custom');
-          setKeyColorHex(hex);
-          if (hasExplicitlySliced) {
-            handleAutoSliceAndAssemble({ keyColorType: 'custom', keyColorHex: hex });
-          }
-        }
-      }
-      return;
-    }
-
-    // Check Col dividers
-    for (let c = 1; c < colDividers.length - 1; c++) {
-      if (Math.abs(colDividers[c] - mouseX) <= 12) {
-        draggingDividerRef.current = { type: 'col', index: c };
-        return;
-      }
-    }
-
-    // Check Row dividers
-    for (let r = 1; r < rowDividers.length - 1; r++) {
-      if (Math.abs(rowDividers[r] - mouseY) <= 12) {
-        draggingDividerRef.current = { type: 'row', index: r };
-        return;
-      }
-    }
-
-    // Select Cell clicked
-    let clickedCol = -1;
-    for (let c = 0; c < colDividers.length - 1; c++) {
-      if (mouseX >= colDividers[c] && mouseX <= colDividers[c + 1]) {
-        clickedCol = c;
-        break;
-      }
-    }
-
-    let clickedRow = -1;
-    for (let r = 0; r < rowDividers.length - 1; r++) {
-      if (mouseY >= rowDividers[r] && mouseY <= rowDividers[r + 1]) {
-        clickedRow = r;
-        break;
-      }
-    }
-
-    if (clickedCol !== -1 && clickedRow !== -1) {
-      const found = currentCategory.cells.find((cell) => cell.row === clickedRow && cell.col === clickedCol);
-      if (found) {
-        setSelectedCell(found);
-      }
-    }
-  };
-
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = imageCanvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    const mouseY = (e.clientY - rect.top) * scaleY;
-
-    // Eyedropper Live Preview Loupe
-    if (isEyedropperActive) {
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (ctx && mouseX >= 0 && mouseX < canvas.width && mouseY >= 0 && mouseY < canvas.height) {
-        const pixel = ctx.getImageData(Math.floor(mouseX), Math.floor(mouseY), 1, 1).data;
-        const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
-        setEyedropperHoverColor({
-          hex,
-          r: pixel[0],
-          g: pixel[1],
-          b: pixel[2],
-          x: e.clientX,
-          y: e.clientY,
-        });
-      }
-      canvas.style.cursor = 'crosshair';
-      return;
-    }
-
-    if (draggingDividerRef.current) {
-      if (draggingDividerRef.current.type === 'col') {
-        const idx = draggingDividerRef.current.index;
-        const min = colDividers[idx - 1] + 15;
-        const max = colDividers[idx + 1] - 15;
-        const newX = Math.max(min, Math.min(max, Math.round(mouseX)));
-        setColDividers((prev) => {
-          const next = [...prev];
-          next[idx] = newX;
-          return next;
-        });
-      } else {
-        const idx = draggingDividerRef.current.index;
-        const min = rowDividers[idx - 1] + 15;
-        const max = rowDividers[idx + 1] - 15;
-        const newY = Math.max(min, Math.min(max, Math.round(mouseY)));
-        setRowDividers((prev) => {
-          const next = [...prev];
-          next[idx] = newY;
-          return next;
-        });
-      }
-      return;
-    }
-
-    // Change Cursor when hovering dividers
-    for (let c = 1; c < colDividers.length - 1; c++) {
-      if (Math.abs(colDividers[c] - mouseX) <= 8) {
-        canvas.style.cursor = 'col-resize';
-        return;
-      }
-    }
-    for (let r = 1; r < rowDividers.length - 1; r++) {
-      if (Math.abs(rowDividers[r] - mouseY) <= 8) {
-        canvas.style.cursor = 'row-resize';
-        return;
-      }
-    }
-    canvas.style.cursor = 'pointer';
-  };
-
-  const handleCanvasMouseLeave = () => {
-    setEyedropperHoverColor(null);
-    draggingDividerRef.current = null;
-  };
-
-  const handleCanvasMouseUp = () => {
-    draggingDividerRef.current = null;
-  };
-
-  // Open Pixel Eraser Modal on Double Click
-  const handleCanvasDoubleClick = () => {
-    if (selectedCell) {
-      openCellPixelEditor(selectedCell);
-    }
-  };
-
-  const openCellPixelEditor = (cell: GridCellDefinition) => {
-    const key = `${cell.row}_${cell.col}`;
-    const dataUrl = slicedResults.get(key);
-    if (!dataUrl && loadedImageRef.current) {
-      // Create quick slice for this cell with padding inset
-      const pad = Math.max(0, paddingInset);
-      const rawX0 = colDividers[cell.col];
-      const rawY0 = rowDividers[cell.row];
-      const rawW = colDividers[cell.col + 1] - rawX0;
-      const rawH = rowDividers[cell.row + 1] - rawY0;
-      const x0 = rawX0 + pad;
-      const y0 = rawY0 + pad;
-      const w = Math.max(10, rawW - pad * 2);
-      const h = Math.max(10, rawH - pad * 2);
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = w;
-      tempCanvas.height = h;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (tempCtx) {
-        tempCtx.drawImage(loadedImageRef.current, x0, y0, w, h, 0, 0, w, h);
-        setEditingCellOriginalDataUrl(tempCanvas.toDataURL());
-      }
-    } else if (dataUrl) {
-      setEditingCellOriginalDataUrl(dataUrl);
-    }
-    setEditingCellDef(cell);
-    setIsEraserOpen(true);
-  };
-
-
-  // Pure In-Browser Client-Side Fast BFS Matting (0 Server Required, 10ms, Zero VRAM, Protects Eye Whites)
-  const handleFastBFSMatting = useCallback(() => {
-    const img = loadedImageRef.current;
-    if (!img) return;
-
-    setIsProcessing(true);
-    try {
-      // 1. Create canvas for full image
-      const fullCanvas = document.createElement('canvas');
-      fullCanvas.width = img.width;
-      fullCanvas.height = img.height;
-      const ctx = fullCanvas.getContext('2d');
-      if (!ctx) {
-        setIsProcessing(false);
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0);
-
-      // 2. Run pure client-side Smart BFS Floodfill
-      processCellChromaAndDespeckle(ctx, img.width, img.height, {
-        keyColorType: keyColorType,
-        keyColorHex: keyColorHex,
-        isolationMode: isolationMode || 'all',
-        tolerance: tolerance !== undefined ? tolerance : 1,
-        feather: feather !== undefined ? feather : 0,
-        shadowRetention: shadowRetention !== undefined ? shadowRetention : 100,
-        strokeWidth: strokeWidth || 0,
-        strokeColorHex: strokeColorHex || '#000000',
-        despeckleSize: despeckleSize || 0,
-        whiteSpeckleSensitivity: whiteSpeckleSensitivity || 0,
-        keepLargestIslandOnly: keepLargestIslandOnly || false,
-      });
-
-      const cleanDataUrl = fullCanvas.toDataURL('image/png');
-      const cleanImg = new Image();
-      cleanImg.onload = () => {
-        loadedImageRef.current = cleanImg;
-        setLoadedImage(cleanImg);
-        setUserUploadedImageUrl(cleanDataUrl);
-
-        // Slice cells
-        const pad = Math.max(0, paddingInset);
-        const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-        const nextResults = new Map<string, string>();
-
-        for (const cell of currentCategory.cells) {
-          if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) continue;
-
-          const rawX0 = colDividers[cell.col];
-          const rawY0 = rowDividers[cell.row];
-          const rawW = colDividers[cell.col + 1] - rawX0;
-          const rawH = rowDividers[cell.row + 1] - rawY0;
-          const x0 = rawX0 + pad;
-          const y0 = rawY0 + pad;
-          const w = Math.max(10, rawW - pad * 2);
-          const h = Math.max(10, rawH - pad * 2);
-
-          const cellCanvas = document.createElement('canvas');
-          cellCanvas.width = w;
-          cellCanvas.height = h;
-          const cCtx = cellCanvas.getContext('2d');
-          if (!cCtx) continue;
-          cCtx.drawImage(cleanImg, x0, y0, w, h, 0, 0, w, h);
-          const cellDataUrl = cellCanvas.toDataURL('image/png');
-
-          const key = `${cell.row}_${cell.col}`;
-          nextResults.set(key, cellDataUrl);
-          slicedCanvasesRef.current.set(key, cellCanvas);
-
-          if (cell.partSlot) {
-            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
-            if (!updatedAssembly.parts[cell.partSlot]) {
-              updatedAssembly.parts[cell.partSlot] = {
-                path: cellDataUrl,
-                offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
-                scale: [1, 1],
-                rotation: 0,
-                pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
-                flipX: false,
-                flipY: false,
-                z_index: hierarchy?.defaultZ ?? 1,
-                z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
-                opacity: 1,
-                angles: {},
-              };
-            }
-            const part = updatedAssembly.parts[cell.partSlot]!;
-            if (cell.angle === 'front' || cell.col === 0) {
-              part.path = cellDataUrl;
-            }
-            if (cell.angle) {
-              if (!part.angles) part.angles = {};
-              part.angles[cell.angle] = cellDataUrl;
-            }
-          }
-        }
-
-        setSlicedResults(nextResults);
-        setHasExplicitlySliced(true);
-        setPreviewDisplayMode('transparent');
-        setAssemblySuccess(true);
-        onApplyAssembly(updatedAssembly);
-        if (threeEngineRef.current) {
-          threeEngineRef.current.setAssembly(updatedAssembly);
-        }
-        redrawCanvas();
-        setIsProcessing(false);
-      };
-      cleanImg.src = cleanDataUrl;
-    } catch (err: any) {
-      console.error('Fast BFS Matting error:', err);
-      setIsProcessing(false);
-    }
-  }, [keyColorType, keyColorHex, tolerance, feather, strokeWidth, strokeColorHex, despeckleSize, whiteSpeckleSensitivity, keepLargestIslandOnly, paddingInset, currentAssembly, currentCategory, colDividers, rowDividers, onApplyAssembly, redrawCanvas]);
-
-  // AI Matting Handler (BiRefNet / ISNet-Anime on GPU)
-  const handleRunAIMatting = async () => {
-    const img = loadedImageRef.current;
-    if (!img) {
-      alert('Vui lòng tải ảnh Sprite Sheet lên trước khi bóc tách!');
-      return;
-    }
-
-    // Ping server check
-    try {
-      const ping = await fetch('http://127.0.0.1:5000/api/status');
-      if (!ping.ok) throw new Error('offline');
-    } catch {
-      alert('Chưa kết nối được Server AI! Vui lòng khởi động file "run_ai_matting_server.bat" hoặc chạy lệnh "python server_ai_matting.py" trong thư mục dự án.');
-      return;
-    }
-
-    setIsAIRunning(true);
-
-    // ==========================================
-    // MODE 1: TÁCH NỀN TOÀN BỘ ẢNH GỐC (FULL IMAGE)
-    // ==========================================
-    if (aiScope === 'full_image') {
-      try {
-        const fullCanvas = document.createElement('canvas');
-        fullCanvas.width = img.width;
-        fullCanvas.height = img.height;
-        const fCtx = fullCanvas.getContext('2d');
-        if (!fCtx) throw new Error('Không thể tạo canvas');
-        fCtx.drawImage(img, 0, 0);
-        const fullDataUrl = fullCanvas.toDataURL('image/png');
-
-        const response = await fetch('http://127.0.0.1:5000/api/remove-bg', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            image: fullDataUrl,
-            model: aiModel,
-            alpha_matting: false,
-          }),
-        });
-
-        const data = await response.json();
-        if (!data.success || !data.result) {
-          throw new Error(data.error || 'AI Server không trả về kết quả');
-        }
-
-        const cleanFullImg = new Image();
-        await new Promise<void>((resolve, reject) => {
-          cleanFullImg.onload = () => resolve();
-          cleanFullImg.onerror = reject;
-          cleanFullImg.src = data.result;
-        });
-
-        loadedImageRef.current = cleanFullImg;
-        setUserUploadedImageUrl(data.result);
-
-        const pad = Math.max(0, paddingInset);
-        const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-        const nextResults = new Map<string, string>();
-
-        for (const cell of currentCategory.cells) {
-          if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) continue;
-
-          const rawX0 = colDividers[cell.col];
-          const rawY0 = rowDividers[cell.row];
-          const rawW = colDividers[cell.col + 1] - rawX0;
-          const rawH = rowDividers[cell.row + 1] - rawY0;
-          const x0 = rawX0 + pad;
-          const y0 = rawY0 + pad;
-          const w = Math.max(10, rawW - pad * 2);
-          const h = Math.max(10, rawH - pad * 2);
-
-          const cellCanvas = document.createElement('canvas');
-          cellCanvas.width = w;
-          cellCanvas.height = h;
-          const cCtx = cellCanvas.getContext('2d');
-          if (!cCtx) continue;
-          cCtx.drawImage(cleanFullImg, x0, y0, w, h, 0, 0, w, h);
-          const cellDataUrl = cellCanvas.toDataURL('image/png');
-
-          const key = `${cell.row}_${cell.col}`;
-          nextResults.set(key, cellDataUrl);
-          slicedCanvasesRef.current.set(key, cellCanvas);
-
-          if (cell.partSlot) {
-            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
-            if (!updatedAssembly.parts[cell.partSlot]) {
-              updatedAssembly.parts[cell.partSlot] = {
-                path: cellDataUrl,
-                offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
-                scale: [1, 1],
-                rotation: 0,
-                pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
-                flipX: false,
-                flipY: false,
-                z_index: hierarchy?.defaultZ ?? 1,
-                z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
-                opacity: 1,
-                angles: {},
-              };
-            }
-            const part = updatedAssembly.parts[cell.partSlot]!;
-            if (cell.angle === 'front' || cell.col === 0) {
-              part.path = cellDataUrl;
-            }
-            if (cell.angle) {
-              if (!part.angles) part.angles = {};
-              part.angles[cell.angle] = cellDataUrl;
-            }
-          }
-        }
-
-        setSlicedResults(nextResults);
-        setHasExplicitlySliced(true);
-        setPreviewDisplayMode('transparent');
-        setAssemblySuccess(true);
-        onApplyAssembly(updatedAssembly);
-        if (threeEngineRef.current) {
-          threeEngineRef.current.setAssembly(updatedAssembly);
-        }
-        redrawCanvas();
-        return;
-      } catch (err: any) {
-        console.error('Full AI Matting error:', err);
-        alert('Có lỗi xảy ra khi bóc tách toàn bộ ảnh: ' + (err.message || err));
-        return;
-      } finally {
-        setIsAIRunning(false);
-      }
-    }
-
-    // ==========================================
-    // MODE 2: TÁCH THEO TỪNG Ô / Ô ĐANG CHỌN
-    // ==========================================
-    const targetCells = (aiScope === 'selected' && selectedCell)
-      ? [selectedCell]
-      : currentCategory.cells;
-
-    const pad = Math.max(0, paddingInset);
-    const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-    const nextResults = new Map(slicedResults);
-
-    try {
-      for (let i = 0; i < targetCells.length; i++) {
-        const cell = targetCells[i];
-        if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) continue;
-
-        const rawX0 = colDividers[cell.col];
-        const rawY0 = rowDividers[cell.row];
-        const rawW = colDividers[cell.col + 1] - rawX0;
-        const rawH = rowDividers[cell.row + 1] - rawY0;
-        const x0 = rawX0 + pad;
-        const y0 = rawY0 + pad;
-        const w = Math.max(10, rawW - pad * 2);
-        const h = Math.max(10, rawH - pad * 2);
-
-        // Crop cell to base64
-        const cellCanvas = document.createElement('canvas');
-        cellCanvas.width = w;
-        cellCanvas.height = h;
-        const ctx = cellCanvas.getContext('2d');
-        if (!ctx) continue;
-        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
-        const inputDataUrl = cellCanvas.toDataURL('image/png');
-
-        // Call AI Matting API
-        const response = await fetch('http://127.0.0.1:5000/api/remove-bg', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            image: inputDataUrl,
-            model: aiModel,
-            alpha_matting: false,
-          }),
-        });
-
-        const data = await response.json();
-        if (data.success && data.result) {
-          const key = `${cell.row}_${cell.col}`;
-          nextResults.set(key, data.result);
-
-          // Update cached canvas
-          const pImg = new Image();
-          await new Promise<void>((resolve) => {
-            pImg.onload = () => {
-              const c = document.createElement('canvas');
-              c.width = w;
-              c.height = h;
-              const cCtx = c.getContext('2d');
-              if (cCtx) cCtx.drawImage(pImg, 0, 0, w, h);
-              slicedCanvasesRef.current.set(key, c);
-              resolve();
-            };
-            pImg.src = data.result;
-          });
-
-          // Map to 3D Assembly
-          if (cell.partSlot) {
-            const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
-            if (!updatedAssembly.parts[cell.partSlot]) {
-              updatedAssembly.parts[cell.partSlot] = {
-                path: data.result,
-                offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
-                scale: [1, 1],
-                rotation: 0,
-                pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
-                flipX: false,
-                flipY: false,
-                z_index: hierarchy?.defaultZ ?? 1,
-                z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
-                opacity: 1,
-                angles: {},
-              };
-            }
-            const part = updatedAssembly.parts[cell.partSlot]!;
-            if (cell.angle === 'front' || cell.col === 0) {
-              part.path = data.result;
-            }
-            if (cell.angle) {
-              if (!part.angles) part.angles = {};
-              part.angles[cell.angle] = data.result;
-            }
-          }
-        }
-      }
-
-      setSlicedResults(nextResults);
-      setHasExplicitlySliced(true);
-      setPreviewDisplayMode('transparent');
-      setAssemblySuccess(true);
-      onApplyAssembly(updatedAssembly);
-      if (threeEngineRef.current) {
-        threeEngineRef.current.setAssembly(updatedAssembly);
-      }
-      redrawCanvas();
-    } catch (err: any) {
-      console.error('AI Matting error:', err);
-      alert('Có lỗi xảy ra khi bóc tách bằng AI: ' + (err.message || err));
-    } finally {
-      setIsAIRunning(false);
-    }
-  };
-
-  // Auto Slice & Assemble Algorithm using High-Performance Chroma & Despeckle Processor
-  const handleAutoSliceAndAssemble = useCallback((overrides?: Partial<Parameters<typeof processCellChromaAndDespeckle>[3]>) => {
-    const img = loadedImageRef.current;
-    if (!img) return;
-
-    const effTol = overrides?.tolerance !== undefined ? overrides.tolerance : tolerance;
-    const effFeather = overrides?.feather !== undefined ? overrides.feather : feather;
-    const effShadowRetention = overrides?.shadowRetention !== undefined ? overrides.shadowRetention : shadowRetention;
-    const effStrokeW = overrides?.strokeWidth !== undefined ? overrides.strokeWidth : strokeWidth;
-    const effStrokeColor = overrides?.strokeColorHex !== undefined ? overrides.strokeColorHex : strokeColorHex;
-    const effKeyType = overrides?.keyColorType !== undefined ? overrides.keyColorType : keyColorType;
-    const effKeyHex = overrides?.keyColorHex !== undefined ? overrides.keyColorHex : keyColorHex;
-    const effIsoMode = overrides?.isolationMode !== undefined ? overrides.isolationMode : isolationMode;
-    const effDespeckle = overrides?.despeckleSize !== undefined ? overrides.despeckleSize : despeckleSize;
-    const effWhiteSens = overrides?.whiteSpeckleSensitivity !== undefined ? overrides.whiteSpeckleSensitivity : whiteSpeckleSensitivity;
-    const effKeepLargest = overrides?.keepLargestIslandOnly !== undefined ? overrides.keepLargestIslandOnly : keepLargestIslandOnly;
-    const effFringeType = overrides?.fringeColorType !== undefined ? overrides.fringeColorType : fringeColorType;
-    const effFringeHex = overrides?.fringeColorHex !== undefined ? overrides.fringeColorHex : fringeColorHex;
-    const effDefringe = overrides?.defringeStrength !== undefined ? overrides.defringeStrength : defringeStrength;
-    const effChoke = overrides?.edgeChoke !== undefined ? overrides.edgeChoke : edgeChoke;
-    const effSmooth = overrides?.edgeSmooth !== undefined ? overrides.edgeSmooth : edgeSmooth;
-    const effSmoothType = overrides?.smoothColorType !== undefined ? overrides.smoothColorType : smoothColorType;
-    const effSmoothHex = overrides?.smoothColorHex !== undefined ? overrides.smoothColorHex : smoothColorHex;
-    const effCleanupMode = overrides?.cleanupMode !== undefined ? overrides.cleanupMode : cleanupMode;
-
-    setIsProcessing(true);
-    setTimeout(() => {
-      const results = new Map<string, string>();
-      const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-
-      currentCategory.cells.forEach((cell) => {
-        let rawX0 = 0, rawY0 = 0, rawW = img.width, rawH = img.height;
-        if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-          rawX0 = colDividers[cell.col];
-          rawY0 = rowDividers[cell.row];
-          rawW = colDividers[cell.col + 1] - rawX0;
-          rawH = rowDividers[cell.row + 1] - rawY0;
-        } else if (currentCategory.id !== 'single_full_image') {
-          return;
-        }
-
-        const pad = Math.max(0, paddingInset);
-        const x0 = rawX0 + pad;
-        const y0 = rawY0 + pad;
-        const w = Math.max(10, rawW - pad * 2);
-        const h = Math.max(10, rawH - pad * 2);
-
-        const cellCanvas = document.createElement('canvas');
-        cellCanvas.width = w;
-        cellCanvas.height = h;
-        const ctx = cellCanvas.getContext('2d');
-        if (!ctx) return;
-
-        const key = `${cell.row}_${cell.col}`;
-        // Draw from active base image (with padding inset)
-        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
-
-        // Run full Chroma Key, Feathering, Despeckle & Noise Filtering with seamless Tab 1 + Tab 2 combination
-        processCellChromaAndDespeckle(ctx, w, h, {
-          keyColorType: effKeyType,
-          keyColorHex: effKeyHex,
-          isolationMode: effIsoMode,
-          tolerance: effTol,
-          feather: effFeather,
-          shadowRetention: effShadowRetention,
-          strokeWidth: effStrokeW,
-          strokeColorHex: effStrokeColor,
-          despeckleSize: effDespeckle,
-          whiteSpeckleSensitivity: effWhiteSens,
-          keepLargestIslandOnly: effKeepLargest,
-          fringeColorType: effFringeType,
-          fringeColorHex: effFringeHex,
-          defringeStrength: effDefringe,
-          edgeChoke: effChoke,
-          edgeSmooth: effSmooth,
-          smoothColorType: effSmoothType,
-          smoothColorHex: effSmoothHex,
-          cleanupMode: effCleanupMode,
-        });
-
-        const dataUrl = cellCanvas.toDataURL('image/png');
-        results.set(key, dataUrl);
-        slicedCanvasesRef.current.set(key, cellCanvas);
-
-        // Map to 3D Assembly part (ensure part exists in assembly)
-        const targetSlot = currentCategory.id === 'single_full_image' ? singleImageSlot : cell.partSlot;
-        const targetAngle = currentCategory.id === 'single_full_image' ? singleImageAngle : cell.angle;
-
-        if (targetSlot) {
-          const hierarchy = PART_HIERARCHY_CONFIG[targetSlot];
-          if (!updatedAssembly.parts[targetSlot]) {
-            updatedAssembly.parts[targetSlot] = {
-              path: dataUrl,
-              offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
-              scale: [1, 1],
-              rotation: 0,
-              pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
-              flipX: false,
-              flipY: false,
-              z_index: hierarchy?.defaultZ ?? 1,
-              z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
-              opacity: 1,
-              angles: {},
-            };
-          }
-          const part = updatedAssembly.parts[targetSlot]!;
-          if (!part.offset || (part.offset[0] === 0 && part.offset[1] === 0 && hierarchy?.defaultOffset)) {
-            part.offset = [...hierarchy.defaultOffset];
-          }
-          if (targetAngle === 'front' || cell.col === 0) {
-            part.path = dataUrl;
-          }
-          if (targetAngle) {
-            if (!part.angles) part.angles = {};
-            part.angles[targetAngle] = dataUrl;
-            if (cell.mirrorAngle) {
-              part.angles[cell.mirrorAngle] = dataUrl;
-            }
-          }
-        }
-      });
-
-      setSlicedResults(results);
-      setHasExplicitlySliced(true);
-      setPreviewDisplayMode('transparent');
-      setAssemblySuccess(true);
-      setIsProcessing(false);
-
-      onApplyAssembly(updatedAssembly);
-      if (threeEngineRef.current) {
-        threeEngineRef.current.setAssembly(updatedAssembly);
-      }
-      redrawCanvas('transparent');
-    }, 20);
-  }, [
+      : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) || GRID_CATEGORY_DEFINITIONS[0];
+
+  // 1. Dividers Hook
+  const { colDividers, setColDividers, rowDividers, setRowDividers, draggingDividerRef, initUniformDividers, autoFitDividers, adjustColWidth, resetAllDividers } = useSlicerDividers();
+
+  // 2. Slicing Pipeline Hook
+  const {
+    slicedResults,
+    setSlicedResults,
+    slicedCanvasesRef,
+    hasExplicitlySliced,
+    setHasExplicitlySliced,
+    isProcessing,
+    assemblySuccess,
+    previewDisplayMode,
+    setPreviewDisplayMode,
+    handleAutoSliceAndAssemble,
+  } = useSlicerSlicingPipeline({
+    loadedImageRef,
     currentAssembly,
     currentCategory,
     colDividers,
@@ -1339,209 +180,29 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     singleImageSlot,
     singleImageAngle,
     onApplyAssembly,
-    redrawCanvas,
-  ]);
+    threeEngineRef,
+    redrawCanvas: (m) => redrawCanvas(m),
+  });
 
-  // Adjust Column Width
-  const adjustColWidth = (deltaPx: number) => {
-    if (!selectedCell) return;
-    const c = selectedCell.col;
-    setColDividers((prev) => {
-      const next = [...prev];
-      if (c + 1 < next.length) {
-        next[c + 1] = Math.max(next[c] + 15, next[c + 1] + deltaPx);
-      }
-      return next;
-    });
-    if (hasExplicitlySliced) {
-      handleAutoSliceAndAssemble();
-    }
-  };
+  // 3. Canvas Drawing Hook
+  const { redrawCanvas } = useSlicerCanvasDrawing({
+    imageCanvasRef,
+    loadedImage,
+    loadedImageRef,
+    previewDisplayMode,
+    hasExplicitlySliced,
+    slicedCanvasesRef,
+    checkerTheme,
+    currentCategory,
+    paddingInset,
+    colDividers,
+    rowDividers,
+    selectedCell,
+  });
 
-  // Reset All Dividers
-  const resetAllDividers = () => {
-    const img = loadedImageRef.current;
-    if (img) {
-      initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
-      if (hasExplicitlySliced) {
-        handleAutoSliceAndAssemble();
-      }
-    }
-  };
-
-  // Per-cell Angle & Slot Updaters
-  const handleUpdateCellAngle = useCallback((cell: GridCellDefinition, angle: Character2DAngle, mirrorAngle?: Character2DAngle) => {
-    cell.angle = angle;
-    cell.mirrorAngle = mirrorAngle;
-    const def = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === angle);
-    if (def) {
-      cell.label = `Ô [${cell.row + 1}, ${cell.col + 1}]: ${def.shortLabel}`;
-    }
-    if (hasExplicitlySliced) {
-      handleAutoSliceAndAssemble();
-    } else {
-      redrawCanvas();
-    }
-  }, [hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
-
-  const handleUpdateCellSlot = useCallback((cell: GridCellDefinition, partSlot: Character2DPartType) => {
-    cell.partSlot = partSlot;
-    if (hasExplicitlySliced) {
-      handleAutoSliceAndAssemble();
-    }
-  }, [hasExplicitlySliced, handleAutoSliceAndAssemble]);
-
-  // Auto Detect Angle from Filename (Standard Tab 4 Format)
-  const handleAutoDetectAngleFromFilename = useCallback(() => {
-    if (!uploadedFileMetadata && !userUploadedImageUrl) return;
-    const meta = uploadedFileMetadata || (userUploadedImageUrl ? parsePartFilename(userUploadedImageUrl) : null);
-    if (!meta) return;
-
-    if (selectedCatId === 'single_full_image') {
-      const def = getAngleDefinitionById(meta.angle_id);
-      setSingleImageAngle(def.angle);
-      if (meta.part_id) {
-        setSingleImageSlot(meta.part_id as Character2DPartType);
-      }
-      setHistoryToast({ message: `✓ Đã tự động nhận diện: ${meta.part_name} (${meta.angle_name})`, type: 'redo' });
-      setTimeout(() => setHistoryToast(null), 3000);
-      if (hasExplicitlySliced) {
-        handleAutoSliceAndAssemble();
-      }
-    } else {
-      const def = getAngleDefinitionById(meta.angle_id);
-      if (currentCategory.cells.length > 0) {
-        currentCategory.cells[0].angle = def.angle;
-        if (meta.part_id) currentCategory.cells[0].partSlot = meta.part_id as Character2DPartType;
-      }
-      setHistoryToast({ message: `✓ Đã tự động gắn góc: ${meta.angle_name} cho ô đầu tiên`, type: 'redo' });
-      setTimeout(() => setHistoryToast(null), 3000);
-      redrawCanvas();
-    }
-  }, [uploadedFileMetadata, userUploadedImageUrl, selectedCatId, currentCategory, hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
-
-  // Apply Prompt JSON Metadata from Tab 4
-  const handleApplyJsonMetadata = useCallback((metadataList: ParsedJsonMetadataItem[]) => {
-    if (!metadataList || metadataList.length === 0) return;
-
-    if (selectedCatId === 'single_full_image') {
-      const first = metadataList[0];
-      if (first.angle) setSingleImageAngle(first.angle);
-      if (first.part_id) setSingleImageSlot(first.part_id);
-    } else {
-      metadataList.forEach((item, idx) => {
-        if (idx < currentCategory.cells.length) {
-          const cell = currentCategory.cells[idx];
-          if (item.angle) cell.angle = item.angle;
-          if (item.part_id) cell.partSlot = item.part_id;
-          if (item.name || item.part_name) cell.label = `${item.part_name || item.name} (${item.angle_label || item.angle_id || ''})`;
-        }
-      });
-    }
-
-    setHistoryToast({ message: `✓ Đã nạp thành công ${metadataList.length} metadata từ JSON Tab 4!`, type: 'redo' });
-    setTimeout(() => setHistoryToast(null), 3000);
-    if (hasExplicitlySliced) {
-      handleAutoSliceAndAssemble();
-    } else {
-      redrawCanvas();
-    }
-  }, [selectedCatId, currentCategory, hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
-
-  // Commit current transparent slice result as the new active base image
-  const handleCommitAsNewBase = useCallback(() => {
-    const img = loadedImageRef.current;
-    if (!img || (!hasExplicitlySliced && slicedCanvasesRef.current.size === 0)) return;
-
-    // 1. Create a composite canvas of current full image / all grid slices
-    const fullCanvas = document.createElement('canvas');
-    fullCanvas.width = img.width;
-    fullCanvas.height = img.height;
-    const fCtx = fullCanvas.getContext('2d');
-    if (!fCtx) return;
-
-    fCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
-
-    if (currentCategory.id === 'single_full_image') {
-      const single = slicedCanvasesRef.current.get('0_0');
-      if (single) {
-        const pad = Math.max(0, paddingInset);
-        fCtx.drawImage(single, pad, pad, Math.max(10, fullCanvas.width - pad * 2), Math.max(10, fullCanvas.height - pad * 2));
-      }
-    } else {
-      currentCategory.cells.forEach((cell) => {
-        const key = `${cell.row}_${cell.col}`;
-        const cellCanvas = slicedCanvasesRef.current.get(key);
-        if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-          const pad = Math.max(0, paddingInset);
-          const rawX0 = colDividers[cell.col];
-          const rawY0 = rowDividers[cell.row];
-          const rawW = colDividers[cell.col + 1] - rawX0;
-          const rawH = rowDividers[cell.row + 1] - rawY0;
-          const x0 = rawX0 + pad;
-          const y0 = rawY0 + pad;
-          const w = Math.max(10, rawW - pad * 2);
-          const h = Math.max(10, rawH - pad * 2);
-          fCtx.drawImage(cellCanvas, x0, y0, w, h);
-        }
-      });
-    }
-
-    const newBaseUrl = fullCanvas.toDataURL('image/png');
-
-    // 2. Load this new base image into loadedImageRef
-    const newImg = new Image();
-    newImg.crossOrigin = 'anonymous';
-    newImg.onload = () => {
-      loadedImageRef.current = newImg;
-      setLoadedImage(newImg);
-      setUserUploadedImageUrl(newBaseUrl);
-
-      // 3. Pause live dynamic slicing until user initiates next pass
-      setHasExplicitlySliced(false);
-      slicedCanvasesRef.current.clear();
-      setSlicedResults(new Map());
-      setPreviewDisplayMode('original');
-
-      // 4. Reset sliders to neutral defaults to avoid compounding filter damage
-      setFeather(0);
-      setShadowRetention(0);
-      setStrokeWidth(0);
-      setEdgeChoke(0);
-      setDespeckleSize(0);
-      setWhiteSpeckleSensitivity(0);
-      setKeepLargestIslandOnly(false);
-
-      const canvas = imageCanvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(newImg, 0, 0);
-        }
-      }
-    };
-    newImg.src = newBaseUrl;
-  }, [hasExplicitlySliced, currentCategory, colDividers, rowDividers, paddingInset]);
-
-  const handleTogglePreviewDisplayMode = useCallback((mode: 'transparent' | 'original') => {
-    setPreviewDisplayMode(mode);
-    if (mode === 'transparent') {
-      if (!hasExplicitlySliced || slicedCanvasesRef.current.size === 0) {
-        handleAutoSliceAndAssemble();
-      } else {
-        redrawCanvas('transparent');
-      }
-    } else {
-      redrawCanvas('original');
-    }
-  }, [hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
-
-  // =========================================================================
-  // UNDO & REDO HISTORY ENGINE (Ctrl + Z / Ctrl + Y)
-  // =========================================================================
-  const takeSnapshot = useCallback((label?: string): SlicerHistorySnapshot => {
-    return {
+  // 4. Undo/Redo Hook
+  const getCurrentSnapshot = useCallback(
+    (label?: string): SlicerHistorySnapshot => ({
       timestamp: Date.now(),
       label,
       userUploadedImageUrl,
@@ -1573,337 +234,323 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       previewDisplayMode,
       hasExplicitlySliced,
       currentAssembly: JSON.parse(JSON.stringify(currentAssembly)),
-    };
-  }, [
-    userUploadedImageUrl,
-    selectedCatId,
-    keyColorType,
-    keyColorHex,
-    isolationMode,
-    tolerance,
-    feather,
-    shadowRetention,
-    strokeWidth,
-    strokeColorHex,
-    bgCleanupSubTab,
-    cleanupMode,
-    fringeColorType,
-    fringeColorHex,
-    defringeStrength,
-    edgeChoke,
-    edgeSmooth,
-    smoothColorType,
-    smoothColorHex,
-    despeckleSize,
-    whiteSpeckleSensitivity,
-    keepLargestIslandOnly,
-    paddingInset,
-    colDividers,
-    rowDividers,
-    slicedResults,
-    previewDisplayMode,
+    }),
+    [
+      userUploadedImageUrl,
+      selectedCatId,
+      keyColorType,
+      keyColorHex,
+      isolationMode,
+      tolerance,
+      feather,
+      shadowRetention,
+      strokeWidth,
+      strokeColorHex,
+      bgCleanupSubTab,
+      cleanupMode,
+      fringeColorType,
+      fringeColorHex,
+      defringeStrength,
+      edgeChoke,
+      edgeSmooth,
+      smoothColorType,
+      smoothColorHex,
+      despeckleSize,
+      whiteSpeckleSensitivity,
+      keepLargestIslandOnly,
+      paddingInset,
+      colDividers,
+      rowDividers,
+      slicedResults,
+      previewDisplayMode,
+      hasExplicitlySliced,
+      currentAssembly,
+    ]
+  );
+
+  const applySnapshot = useCallback(
+    (snap: SlicerHistorySnapshot) => {
+      if (snap.userUploadedImageUrl !== userUploadedImageUrl) setUserUploadedImageUrl(snap.userUploadedImageUrl);
+      setSelectedCatId(snap.selectedCatId);
+      setKeyColorType(snap.keyColorType);
+      setKeyColorHex(snap.keyColorHex);
+      setIsolationMode(snap.isolationMode);
+      setTolerance(snap.tolerance);
+      setFeather(snap.feather);
+      setShadowRetention(snap.shadowRetention);
+      setStrokeWidth(snap.strokeWidth);
+      setStrokeColorHex(snap.strokeColorHex);
+      setBgCleanupSubTab(snap.bgCleanupSubTab);
+      setCleanupMode(snap.cleanupMode);
+      setFringeColorType(snap.fringeColorType);
+      setFringeColorHex(snap.fringeColorHex);
+      setDefringeStrength(snap.defringeStrength);
+      setEdgeChoke(snap.edgeChoke);
+      setEdgeSmooth(snap.edgeSmooth);
+      if (snap.smoothColorType) setSmoothColorType(snap.smoothColorType);
+      if (snap.smoothColorHex) setSmoothColorHex(snap.smoothColorHex);
+      setDespeckleSize(snap.despeckleSize);
+      setWhiteSpeckleSensitivity(snap.whiteSpeckleSensitivity);
+      setKeepLargestIslandOnly(snap.keepLargestIslandOnly);
+      setPaddingInset(snap.paddingInset);
+      setColDividers(snap.colDividers);
+      setRowDividers(snap.rowDividers);
+      setSlicedResults(new Map(snap.slicedResults));
+      setPreviewDisplayMode(snap.previewDisplayMode);
+      setHasExplicitlySliced(snap.hasExplicitlySliced);
+      onApplyAssembly(snap.currentAssembly);
+      if (threeEngineRef.current) threeEngineRef.current.setAssembly(snap.currentAssembly);
+    },
+    [userUploadedImageUrl, onApplyAssembly, setColDividers, setRowDividers, setSlicedResults, setPreviewDisplayMode, setHasExplicitlySliced]
+  );
+
+  const { undoStack, redoStack, historyToast, showToast, pushUndoState, handleUndo, handleRedo } = useSlicerUndoRedo({
+    getCurrentSnapshot,
+    applySnapshot,
+  });
+
+  // 5. AI Matting Hook
+  const { isAIRunning, handleRunAIMatting } = useSlicerAIMatting({
+    loadedImageRef,
+    aiModel,
+    setUserUploadedImageUrl,
+    onAutoSliceAndAssemble: handleAutoSliceAndAssemble,
+  });
+
+  // 6. Canvas Interaction Hook
+  const { handleCanvasMouseDown, handleCanvasMouseMove, openCellPixelEditor, handleCommitAsNewBase } = useSlicerCanvasInteraction({
+    imageCanvasRef,
+    loadedImageRef,
+    setLoadedImage,
+    setUserUploadedImageUrl,
+    isEyedropperActive,
+    setIsEyedropperActive,
+    eyedropperTarget,
+    setEyedropperHoverColor,
+    setSmoothColorType,
+    setSmoothColorHex,
+    setFringeColorType,
+    setFringeColorHex,
+    setKeyColorType,
+    setKeyColorHex,
     hasExplicitlySliced,
-    currentAssembly,
-  ]);
+    setHasExplicitlySliced,
+    handleAutoSliceAndAssemble,
+    colDividers,
+    setColDividers,
+    rowDividers,
+    setRowDividers,
+    draggingDividerRef,
+    currentCategory,
+    setSelectedCell,
+    slicedResults,
+    setSlicedResults,
+    slicedCanvasesRef,
+    paddingInset,
+    setEditingCellDef,
+    setEditingCellOriginalDataUrl,
+    setIsEraserOpen,
+    setPreviewDisplayMode,
+    redrawCanvas,
+  });
 
-  const pushUndoState = useCallback((label?: string) => {
-    const snap = takeSnapshot(label);
-    setUndoStack((prev) => {
-      const next = [...prev, snap];
-      if (next.length > 30) next.shift();
-      return next;
-    });
-    setRedoStack([]);
-  }, [takeSnapshot]);
-
-  const handleUndo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    const currentSnap = takeSnapshot('Current');
-    const targetSnap = undoStack[undoStack.length - 1];
-
-    setRedoStack((r) => [...r, currentSnap]);
-    setUndoStack((u) => u.slice(0, u.length - 1));
-
-    if (targetSnap.userUploadedImageUrl !== userUploadedImageUrl) {
-      setUserUploadedImageUrl(targetSnap.userUploadedImageUrl);
-    }
-    setSelectedCatId(targetSnap.selectedCatId);
-    setKeyColorType(targetSnap.keyColorType);
-    setKeyColorHex(targetSnap.keyColorHex);
-    setIsolationMode(targetSnap.isolationMode);
-    setTolerance(targetSnap.tolerance);
-    setFeather(targetSnap.feather);
-    setShadowRetention(targetSnap.shadowRetention);
-    setStrokeWidth(targetSnap.strokeWidth);
-    setStrokeColorHex(targetSnap.strokeColorHex);
-    setBgCleanupSubTab(targetSnap.bgCleanupSubTab);
-    setCleanupMode(targetSnap.cleanupMode);
-    setFringeColorType(targetSnap.fringeColorType);
-    setFringeColorHex(targetSnap.fringeColorHex);
-    setDefringeStrength(targetSnap.defringeStrength);
-    setEdgeChoke(targetSnap.edgeChoke);
-    setEdgeSmooth(targetSnap.edgeSmooth);
-    if (targetSnap.smoothColorType) setSmoothColorType(targetSnap.smoothColorType);
-    if (targetSnap.smoothColorHex) setSmoothColorHex(targetSnap.smoothColorHex);
-    setDespeckleSize(targetSnap.despeckleSize);
-    setWhiteSpeckleSensitivity(targetSnap.whiteSpeckleSensitivity);
-    setKeepLargestIslandOnly(targetLargest => targetSnap.keepLargestIslandOnly);
-    setPaddingInset(targetSnap.paddingInset);
-    setColDividers(targetSnap.colDividers);
-    setRowDividers(targetSnap.rowDividers);
-    setSlicedResults(new Map(targetSnap.slicedResults));
-    setPreviewDisplayMode(targetSnap.previewDisplayMode);
-    setHasExplicitlySliced(targetSnap.hasExplicitlySliced);
-    onApplyAssembly(targetSnap.currentAssembly);
-    if (threeEngineRef.current) {
-      threeEngineRef.current.setAssembly(targetSnap.currentAssembly);
-    }
-
-    setHistoryToast({ message: `↩️ Đã hoàn tác: ${targetSnap.label || 'Thay đổi trước'} (Ctrl+Z)`, type: 'undo' });
-    setTimeout(() => setHistoryToast(null), 2500);
-
-    if (targetSnap.hasExplicitlySliced) {
-      handleAutoSliceAndAssemble({
-        tolerance: targetSnap.tolerance,
-        feather: targetSnap.feather,
-        shadowRetention: targetSnap.shadowRetention,
-        strokeWidth: targetSnap.strokeWidth,
-        strokeColorHex: targetSnap.strokeColorHex,
-        keyColorType: targetSnap.keyColorType,
-        keyColorHex: targetSnap.keyColorHex,
-        isolationMode: targetSnap.isolationMode,
-        despeckleSize: targetSnap.despeckleSize,
-        whiteSpeckleSensitivity: targetSnap.whiteSpeckleSensitivity,
-        keepLargestIslandOnly: targetSnap.keepLargestIslandOnly,
-        fringeColorType: targetSnap.fringeColorType,
-        fringeColorHex: targetSnap.fringeColorHex,
-        defringeStrength: targetSnap.defringeStrength,
-        edgeChoke: targetSnap.edgeChoke,
-        edgeSmooth: targetSnap.edgeSmooth,
-        smoothColorType: targetSnap.smoothColorType,
-        smoothColorHex: targetSnap.smoothColorHex,
-        cleanupMode: targetSnap.cleanupMode,
-      });
-    } else {
-      redrawCanvas(targetSnap.previewDisplayMode);
-    }
-  }, [undoStack, takeSnapshot, userUploadedImageUrl, onApplyAssembly, handleAutoSliceAndAssemble, redrawCanvas]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStack.length === 0) return;
-    const currentSnap = takeSnapshot('Current');
-    const targetSnap = redoStack[redoStack.length - 1];
-
-    setUndoStack((u) => [...u, currentSnap]);
-    setRedoStack((r) => r.slice(0, r.length - 1));
-
-    if (targetSnap.userUploadedImageUrl !== userUploadedImageUrl) {
-      setUserUploadedImageUrl(targetSnap.userUploadedImageUrl);
-    }
-    setSelectedCatId(targetSnap.selectedCatId);
-    setKeyColorType(targetSnap.keyColorType);
-    setKeyColorHex(targetSnap.keyColorHex);
-    setIsolationMode(targetSnap.isolationMode);
-    setTolerance(targetSnap.tolerance);
-    setFeather(targetSnap.feather);
-    setShadowRetention(targetSnap.shadowRetention);
-    setStrokeWidth(targetSnap.strokeWidth);
-    setStrokeColorHex(targetSnap.strokeColorHex);
-    setBgCleanupSubTab(targetSnap.bgCleanupSubTab);
-    setCleanupMode(targetSnap.cleanupMode);
-    setFringeColorType(targetSnap.fringeColorType);
-    setFringeColorHex(targetSnap.fringeColorHex);
-    setDefringeStrength(targetSnap.defringeStrength);
-    setEdgeChoke(targetSnap.edgeChoke);
-    setEdgeSmooth(targetSnap.edgeSmooth);
-    if (targetSnap.smoothColorType) setSmoothColorType(targetSnap.smoothColorType);
-    if (targetSnap.smoothColorHex) setSmoothColorHex(targetSnap.smoothColorHex);
-    setDespeckleSize(targetSnap.despeckleSize);
-    setWhiteSpeckleSensitivity(targetSnap.whiteSpeckleSensitivity);
-    setKeepLargestIslandOnly(targetSnap.keepLargestIslandOnly);
-    setPaddingInset(targetSnap.paddingInset);
-    setColDividers(targetSnap.colDividers);
-    setRowDividers(targetSnap.rowDividers);
-    setSlicedResults(new Map(targetSnap.slicedResults));
-    setPreviewDisplayMode(targetSnap.previewDisplayMode);
-    setHasExplicitlySliced(targetSnap.hasExplicitlySliced);
-    onApplyAssembly(targetSnap.currentAssembly);
-    if (threeEngineRef.current) {
-      threeEngineRef.current.setAssembly(targetSnap.currentAssembly);
-    }
-
-    setHistoryToast({ message: `↪️ Đã làm lại: ${targetSnap.label || 'Thao tác tiếp theo'} (Ctrl+Y)`, type: 'redo' });
-    setTimeout(() => setHistoryToast(null), 2500);
-
-    if (targetSnap.hasExplicitlySliced) {
-      handleAutoSliceAndAssemble({
-        tolerance: targetSnap.tolerance,
-        feather: targetSnap.feather,
-        shadowRetention: targetSnap.shadowRetention,
-        strokeWidth: targetSnap.strokeWidth,
-        strokeColorHex: targetSnap.strokeColorHex,
-        keyColorType: targetSnap.keyColorType,
-        keyColorHex: targetSnap.keyColorHex,
-        isolationMode: targetSnap.isolationMode,
-        despeckleSize: targetSnap.despeckleSize,
-        whiteSpeckleSensitivity: targetSnap.whiteSpeckleSensitivity,
-        keepLargestIslandOnly: targetSnap.keepLargestIslandOnly,
-        fringeColorType: targetSnap.fringeColorType,
-        fringeColorHex: targetSnap.fringeColorHex,
-        defringeStrength: targetSnap.defringeStrength,
-        edgeChoke: targetSnap.edgeChoke,
-        edgeSmooth: targetSnap.edgeSmooth,
-        smoothColorType: targetSnap.smoothColorType,
-        smoothColorHex: targetSnap.smoothColorHex,
-        cleanupMode: targetSnap.cleanupMode,
-      });
-    } else {
-      redrawCanvas(targetSnap.previewDisplayMode);
-    }
-  }, [redoStack, takeSnapshot, userUploadedImageUrl, onApplyAssembly, handleAutoSliceAndAssemble, redrawCanvas]);
-
-  // Global Keyboard Listener for Ctrl+Z (Undo) and Ctrl+Y (Redo)
+  // AI Server Health check
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (isEraserOpen || isSaveKitModalOpen || isCatalogOpen || isTunerOpen) return;
-
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
-        const activeEl = document.activeElement;
-        if (activeEl instanceof HTMLTextAreaElement || (activeEl instanceof HTMLInputElement && (activeEl.type === 'text' || activeEl.type === 'password'))) {
-          return;
-        }
-        e.preventDefault();
-        if (e.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
-        const activeEl = document.activeElement;
-        if (activeEl instanceof HTMLTextAreaElement || (activeEl instanceof HTMLInputElement && (activeEl.type === 'text' || activeEl.type === 'password'))) {
-          return;
-        }
-        e.preventDefault();
-        handleRedo();
+    const checkServer = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:5000/api/status', { method: 'GET' });
+        setAiServerStatus(res.ok ? 'online' : 'offline');
+      } catch {
+        setAiServerStatus('offline');
       }
     };
+    checkServer();
+    const interval = setInterval(checkServer, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [handleUndo, handleRedo, isEraserOpen, isSaveKitModalOpen, isCatalogOpen, isTunerOpen]);
+  // External Image Listeners
+  useEffect(() => {
+    if (externalImageUrl) {
+      setUploadedFileMetadata(parsePartFilename(externalImageUrl));
+      setUserUploadedImageUrl(externalImageUrl);
+      setHasExplicitlySliced(false);
+      setSlicedResults(new Map());
+      slicedCanvasesRef.current.clear();
+      setPreviewDisplayMode('original');
+      if (externalCategoryId) setSelectedCatId(externalCategoryId);
+    }
+  }, [externalImageUrl, externalCategoryId, setHasExplicitlySliced, setSlicedResults, setPreviewDisplayMode]);
+
+  // Initialize 3D Engine
+  useEffect(() => {
+    if (threeContainerRef.current && !threeEngineRef.current) {
+      threeEngineRef.current = new ThreeMultiAngleBillboardEngine(threeContainerRef.current, (res: AngleDetectionResult) => {
+        setActiveAngleInfo(res);
+        setTurntableAngle(res.angleDeg);
+      });
+      if (currentAssembly) threeEngineRef.current.setAssembly(currentAssembly);
+    }
+    return () => {
+      if (threeEngineRef.current) {
+        threeEngineRef.current.dispose();
+        threeEngineRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (threeEngineRef.current && currentAssembly) threeEngineRef.current.setAssembly(currentAssembly);
+  }, [currentAssembly]);
+
+  // Load Image
+  useEffect(() => {
+    if (!userUploadedImageUrl) {
+      loadedImageRef.current = null;
+      setLoadedImage(null);
+      setPreviewDisplayMode('original');
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      loadedImageRef.current = img;
+      setLoadedImage(img);
+      autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
+      setPreviewDisplayMode('original');
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+    };
+    img.src = userUploadedImageUrl;
+  }, [userUploadedImageUrl, autoFitDividers, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]);
+
+  const handleSelectCatId = useCallback(
+    (newCatId: string) => {
+      setSelectedCatId(newCatId);
+      if (newCatId !== 'single_full_image') {
+        setLastUsedGridCatId(newCatId);
+        saveCachedSingleMode(false);
+      } else {
+        saveCachedSingleMode(true);
+      }
+      const cat = customCategory && customCategory.id === newCatId ? customCategory : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
+      const img = loadedImage || loadedImageRef.current;
+      if (img) autoFitDividers(img, cat.cols, cat.rows, keyColorType, keyColorHex);
+      setSelectedCell(null);
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+      setPreviewDisplayMode('original');
+    },
+    [loadedImage, autoFitDividers, keyColorType, keyColorHex, customCategory, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
+  );
+
+  const handleToggleSingleImageMode = useCallback(() => {
+    if (selectedCatId === 'single_full_image') {
+      const targetCatId = customCategory?.id || (lastUsedGridCatId !== 'single_full_image' ? lastUsedGridCatId : 'cinematic_single_part_2x3');
+      saveCachedSingleMode(false);
+      handleSelectCatId(targetCatId);
+    } else {
+      setLastUsedGridCatId(selectedCatId);
+      saveCachedSingleMode(true);
+      handleSelectCatId('single_full_image');
+    }
+  }, [selectedCatId, customCategory, lastUsedGridCatId, handleSelectCatId]);
+
+  const handleToggleCheckerTheme = useCallback(() => {
+    setCheckerTheme((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      saveCachedCheckerTheme(next);
+      return next;
+    });
+  }, []);
+
+  const handleSelectGridMatrix = useCallback(
+    (rows: number, cols: number) => {
+      const newCat = createDynamicGridCategory(rows, cols);
+      setCustomCategory(newCat);
+      setLastUsedGridCatId(newCat.id);
+      saveCachedSingleMode(false);
+      setSelectedCatId(newCat.id);
+      const img = loadedImage || loadedImageRef.current;
+      if (img) autoFitDividers(img, newCat.cols, newCat.rows, keyColorType, keyColorHex);
+      setSelectedCell(null);
+      setHasExplicitlySliced(false);
+      slicedCanvasesRef.current.clear();
+      setSlicedResults(new Map());
+      setPreviewDisplayMode('original');
+    },
+    [loadedImage, autoFitDividers, keyColorType, keyColorHex, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
+  );
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [redrawCanvas]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8, background: '#040711', overflow: 'hidden' }}>
-      {/* Smart Metadata Auto-Recognition Banner */}
-      {uploadedFileMetadata && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '5px 12px',
-            background: 'linear-gradient(90deg, rgba(2, 132, 199, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%)',
-            borderRadius: 6,
-            border: '1px solid rgba(56, 189, 248, 0.35)',
-            fontSize: 11,
-            color: '#e0f2fe',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 800, color: '#38bdf8' }}>🏷️ TỰ ĐỘNG NHẬN DIỆN TỆP:</span>
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-                color: '#fff',
-                padding: '2px 8px',
-                borderRadius: 4,
-                fontWeight: 700,
-                fontSize: 11,
-              }}
-            >
-              {uploadedFileMetadata.part_name} ({uploadedFileMetadata.part_id})
-            </span>
-            <span style={{ color: '#bae6fd' }}>
-              • Góc quay: <b style={{ color: '#fff' }}>{uploadedFileMetadata.angle_name}</b>
-            </span>
-            <span style={{ color: '#cbd5e1' }}>
-              • Nhóm: <b style={{ color: '#a78bfa' }}>{uploadedFileMetadata.group_name}</b>
-            </span>
-            <span style={{ color: '#cbd5e1' }}>
-              • Thứ tự Z-Index: <b style={{ color: '#34d399' }}>Lớp {uploadedFileMetadata.z_index}</b>
-            </span>
-          </div>
-          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>
-            Tên tệp chuẩn: {uploadedFileMetadata.save_filename}
-          </span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#070b14', color: '#f8fafc', padding: 10, gap: 10, overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Toast Notification */}
+      {historyToast && (
+        <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: historyToast.type === 'undo' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)', color: '#fff', padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, zIndex: 9999, boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+          {historyToast.message}
         </div>
       )}
 
-      {/* Main 3-Column Studio Grid: 410px Spacious Sidebar, 1fr Interactive Canvas, 380px 3D Preview */}
+      {/* Auto Detect Metadata Header Bar */}
+      {uploadedFileMetadata && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 12px', background: 'linear-gradient(90deg, rgba(2, 132, 199, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%)', borderRadius: 6, border: '1px solid rgba(56, 189, 248, 0.35)', fontSize: 11, color: '#e0f2fe' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 800, color: '#38bdf8' }}>🏷️ TỰ ĐỘNG NHẬN DIỆN TỆP:</span>
+            <span style={{ background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)', color: '#fff', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+              {uploadedFileMetadata.part_name} ({uploadedFileMetadata.part_id})
+            </span>
+            <span>• Góc quay: <b>{uploadedFileMetadata.angle_name}</b></span>
+            <span>• Nhóm: <b>{uploadedFileMetadata.group_name}</b></span>
+          </div>
+          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>{uploadedFileMetadata.save_filename}</span>
+        </div>
+      )}
+
+      {/* Main 3-Column Studio Grid: 410px Sidebar, 1fr Canvas, 380px 3D Preview */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '410px 1fr 380px', gap: 10, minHeight: 0 }}>
-        {/* Left Column: Slicer Controls & Filters */}
+        {/* Column 1: Slicer Controls */}
         <SlicerSidebarControls
           selectedCatId={selectedCatId}
-          onSelectCatId={(catId) => {
-            pushUndoState('Đổi cấu trúc lưới');
-            handleSelectCatId(catId);
-          }}
+          onSelectCatId={(catId) => { pushUndoState('Đổi cấu trúc lưới'); handleSelectCatId(catId); }}
           customCategory={customCategory}
-          onOpenGridTablePicker={() => setIsTablePickerOpen(true)}
           singleImageAngle={singleImageAngle}
-          onUpdateSingleImageAngle={(ang) => {
-            setSingleImageAngle(ang);
-            if (hasExplicitlySliced) {
-              handleAutoSliceAndAssemble();
-            }
-          }}
+          onUpdateSingleImageAngle={(ang) => { setSingleImageAngle(ang); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
           singleImageSlot={singleImageSlot}
-          onUpdateSingleImageSlot={(slot) => {
-            setSingleImageSlot(slot);
-            if (hasExplicitlySliced) {
-              handleAutoSliceAndAssemble();
+          onUpdateSingleImageSlot={(slot) => { setSingleImageSlot(slot); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
+          onAutoDetectAngleFromFilename={() => {
+            if (!uploadedFileMetadata && !userUploadedImageUrl) return;
+            const meta = uploadedFileMetadata || (userUploadedImageUrl ? parsePartFilename(userUploadedImageUrl) : null);
+            if (!meta) return;
+            if (selectedCatId === 'single_full_image') {
+              const def = getAngleDefinitionById(meta.angle_id);
+              setSingleImageAngle(def.angle);
+              if (meta.part_id) setSingleImageSlot(meta.part_id as Character2DPartType);
+              showToast(`✓ Đã nhận diện: ${meta.part_name} (${meta.angle_name})`, 'redo');
+              if (hasExplicitlySliced) handleAutoSliceAndAssemble();
             }
           }}
-          onAutoDetectAngleFromFilename={handleAutoDetectAngleFromFilename}
           onOpenJsonImportModal={() => setIsJsonImportOpen(true)}
           userUploadedImageUrl={userUploadedImageUrl}
           onFileUpload={(e) => {
             const file = e.target.files?.[0];
             if (file) {
               pushUndoState('Tải ảnh mới');
-              const meta = parsePartFilename(file.name);
-              setUploadedFileMetadata(meta);
-              const url = URL.createObjectURL(file);
-              setUserUploadedImageUrl(url);
+              setUploadedFileMetadata(parsePartFilename(file.name));
+              setUserUploadedImageUrl(URL.createObjectURL(file));
               setHasExplicitlySliced(false);
               setSlicedResults(new Map());
               slicedCanvasesRef.current.clear();
               setPreviewDisplayMode('original');
-              setAssemblySuccess(false);
             }
-          }}
-          onResetToDemoImage={(key = 'chibi') => {
-            pushUndoState('Nạp ảnh mẫu');
-            if (key === 'irregular_ai') {
-              setSelectedCatId('chibi_3x3');
-              setUserUploadedImageUrl('/demo_ai_irregular_spritesheet.png');
-              setHasExplicitlySliced(false);
-              setSlicedResults(new Map());
-              slicedCanvasesRef.current.clear();
-              setPreviewDisplayMode('original');
-              setAssemblySuccess(false);
-              return;
-            }
-            setActiveDemoKey(key as any);
-            const bg = keyColorType === 'pure_white' ? 'pure_white' : 'chroma_green';
-            const demoUrl = generateDemoGridSpriteSheet(currentCategory.id, bg, key as any);
-            setUserUploadedImageUrl(demoUrl);
-            setHasExplicitlySliced(false);
-            setSlicedResults(new Map());
-            slicedCanvasesRef.current.clear();
-            setPreviewDisplayMode('original');
-            setAssemblySuccess(false);
           }}
           onClearImage={() => {
             pushUndoState('Xóa ảnh');
@@ -1912,7 +559,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             setSlicedResults(new Map());
             slicedCanvasesRef.current.clear();
             setPreviewDisplayMode('original');
-            setAssemblySuccess(false);
           }}
           fileInputRef={fileInputRef}
           isEyedropperActive={isEyedropperActive}
@@ -1940,14 +586,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           aiScope={aiScope}
           setAiScope={setAiScope}
           aiServerStatus={aiServerStatus}
-          onRunAIMatting={() => {
-            pushUndoState('AI Tách Nền (GPU)');
-            handleRunAIMatting();
-          }}
-          onRunFastBFSMatting={() => {
-            pushUndoState('Smart BFS Tách Nền');
-            handleFastBFSMatting();
-          }}
+          onRunAIMatting={() => { pushUndoState('AI Tách Nền (GPU)'); handleRunAIMatting(); }}
           isAIRunning={isAIRunning}
           despeckleSize={despeckleSize}
           setDespeckleSize={setDespeckleSize}
@@ -1973,179 +612,146 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           setSmoothColorType={setSmoothColorType}
           smoothColorHex={smoothColorHex}
           setSmoothColorHex={setSmoothColorHex}
-          onRunDespeckleOnly={() => {
-            pushUndoState('Khử rác viền');
-            handleAutoSliceAndAssemble();
-          }}
-          onApplyAsNewBaseImage={() => {
-            pushUndoState('Ghi đè ảnh gốc mới');
-            handleCommitAsNewBase();
-          }}
+          onRunDespeckleOnly={() => handleAutoSliceAndAssemble()}
+          onApplyAsNewBaseImage={handleCommitAsNewBase}
           paddingInset={paddingInset}
           setPaddingInset={setPaddingInset}
           isProcessing={isProcessing}
           assemblySuccess={assemblySuccess}
-          onAutoSliceAndAssemble={() => {
-            pushUndoState('Bóc tách lưới');
-            handleAutoSliceAndAssemble();
-          }}
-          onCommitSliderChange={(overrides) => {
-            pushUndoState('Chỉnh thông số');
-            if (hasExplicitlySliced) {
-              handleAutoSliceAndAssemble(overrides);
-            }
-          }}
+          onAutoSliceAndAssemble={() => { pushUndoState('Bóc tách & Lắp ráp 3D'); handleAutoSliceAndAssemble(); }}
+          onCommitSliderChange={(overrides) => { pushUndoState('Điều chỉnh thông số'); handleAutoSliceAndAssemble(overrides); }}
           slicedCount={slicedResults.size}
-          totalCellCount={currentCategory.cells.length}
-          onOpenSaveKitModal={() => {
-            setSaveKitName(currentCategory.label);
-            setIsSaveKitModalOpen(true);
-          }}
+          totalCellCount={currentCategory.id === 'single_full_image' ? 1 : currentCategory.cells.length}
+          onOpenSaveKitModal={() => setIsSaveKitModalOpen(true)}
           onOpenCatalogModal={() => setIsCatalogOpen(true)}
         />
 
-        {/* Center Column: Interactive Canvas Slicer & Adjuster */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflow: 'hidden' }}>
-          <SlicerCellAdjustmentBar
-            selectedCell={selectedCell}
-            slicedCellDataUrl={selectedCell ? slicedResults.get(`${selectedCell.row}_${selectedCell.col}`) : undefined}
-            onOpenCellPixelEditor={openCellPixelEditor}
-            onAdjustColWidth={(deltaPx) => {
-              pushUndoState('Chỉnh độ rộng cột');
-              adjustColWidth(deltaPx);
-            }}
-            onResetAllDividers={() => {
-              pushUndoState('Đặt lại lưới đều');
-              resetAllDividers();
-            }}
-            onUpdateCellAngle={handleUpdateCellAngle}
-            onUpdateCellSlot={handleUpdateCellSlot}
-          />
-
+        {/* Column 2: Interactive Canvas */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, overflow: 'hidden' }}>
           <SlicerInteractiveCanvas
             imageCanvasRef={imageCanvasRef}
-            hasImage={!!loadedImage}
+            hasImage={Boolean(userUploadedImageUrl)}
+            previewDisplayMode={previewDisplayMode}
+            setPreviewDisplayMode={setPreviewDisplayMode}
+            onTogglePreviewDisplayMode={(mode) => {
+              setPreviewDisplayMode(mode);
+              if (mode === 'transparent') {
+                if (!hasExplicitlySliced || slicedCanvasesRef.current.size === 0) handleAutoSliceAndAssemble();
+                else redrawCanvas('transparent');
+              } else redrawCanvas('original');
+            }}
+            hasExplicitlySliced={hasExplicitlySliced}
+            checkerTheme={checkerTheme}
+            onToggleCheckerTheme={handleToggleCheckerTheme}
+            isSingleImageMode={selectedCatId === 'single_full_image'}
+            onToggleSingleImageMode={handleToggleSingleImageMode}
+            onOpenGridTablePicker={() => setIsTablePickerOpen(true)}
             isEyedropperActive={isEyedropperActive}
             eyedropperTarget={eyedropperTarget}
             eyedropperHoverColor={eyedropperHoverColor}
-            previewDisplayMode={previewDisplayMode}
-            setPreviewDisplayMode={setPreviewDisplayMode}
-            onTogglePreviewDisplayMode={handleTogglePreviewDisplayMode}
-            checkerTheme={checkerTheme}
-            onToggleCheckerTheme={handleToggleCheckerTheme}
-            onOpenGridTablePicker={() => setIsTablePickerOpen(true)}
-            isSingleImageMode={selectedCatId === 'single_full_image'}
-            onToggleSingleImageMode={handleToggleSingleImageMode}
-            hasExplicitlySliced={hasExplicitlySliced}
             currentCategory={currentCategory}
             onAutoFitGrid={() => {
-              pushUndoState('Tự động khớp lưới');
-              handleAutoFitGrid();
+              const img = loadedImage || loadedImageRef.current;
+              if (img) autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
             }}
             onResetUniformGrid={() => {
-              pushUndoState('Đặt lại lưới đều');
-              handleResetUniformGrid();
+              const img = loadedImage || loadedImageRef.current;
+              if (img) initUniformDividers(img.width, img.height, currentCategory.cols, currentCategory.rows);
             }}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
             canUndo={undoStack.length > 0}
             canRedo={redoStack.length > 0}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
             historyToast={historyToast}
             onMouseDown={handleCanvasMouseDown}
-            onDoubleClick={handleCanvasDoubleClick}
             onMouseMove={handleCanvasMouseMove}
-            onMouseLeave={handleCanvasMouseLeave}
-            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={() => { setEyedropperHoverColor(null); draggingDividerRef.current = null; }}
+            onMouseUp={() => { draggingDividerRef.current = null; }}
+            onDoubleClick={() => { if (selectedCell) openCellPixelEditor(selectedCell); }}
           />
+
+          {selectedCell && (
+            <SlicerCellAdjustmentBar
+              selectedCell={selectedCell}
+              slicedCellDataUrl={slicedResults.get(`${selectedCell.row}_${selectedCell.col}`)}
+              onOpenCellPixelEditor={(cell) => openCellPixelEditor(cell)}
+              onAdjustColWidth={(delta) => { adjustColWidth(selectedCell, delta); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
+              onResetAllDividers={() => { resetAllDividers(loadedImageRef.current, currentCategory.cols, currentCategory.rows); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
+              onUpdateCellAngle={(cell, angle, mirror) => {
+                cell.angle = angle;
+                cell.mirrorAngle = mirror;
+                if (hasExplicitlySliced) handleAutoSliceAndAssemble();
+                else redrawCanvas();
+              }}
+              onUpdateCellSlot={(cell, slot) => { cell.partSlot = slot; if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
+            />
+          )}
         </div>
 
-        {/* Right Column: 3D Turntable Preview, 360° & 2D Backgrounds (Spacious 400px) */}
+        {/* Column 3: 3D Turntable Preview */}
         <Slicer3DTurntablePreview
           threeContainerRef={threeContainerRef}
           threeEngineRef={threeEngineRef}
           activeAngleInfo={activeAngleInfo}
           turntableAngle={turntableAngle}
-          setTurntableAngle={setTurntableAngle}
+          setTurntableAngle={(deg) => {
+            setTurntableAngle(deg);
+            if (threeEngineRef.current) threeEngineRef.current.jumpToAngle(deg, false);
+          }}
           timeOfDay={timeOfDay}
-          setTimeOfDay={setTimeOfDay}
+          setTimeOfDay={(t) => {
+            setTimeOfDay(t);
+            if (threeEngineRef.current) threeEngineRef.current.setTimeOfDay(t);
+          }}
           slicedResults={slicedResults}
           currentCategory={currentCategory}
           selectedCell={selectedCell}
-          onSelectCell={setSelectedCell}
-          onOpenSaveKitModal={() => {
-            setSaveKitName(currentCategory.label);
-            setIsSaveKitModalOpen(true);
-          }}
+          onSelectCell={(cell) => setSelectedCell(cell)}
+          onOpenSaveKitModal={() => setIsSaveKitModalOpen(true)}
           onOpenCatalogModal={() => setIsCatalogOpen(true)}
           onOpenTunerModal={() => setIsTunerOpen(true)}
         />
       </div>
 
-      {/* Pixel Eraser Modal */}
+      {/* Modals */}
       {isEraserOpen && editingCellDef && (
         <CellPixelEraserModal
           isOpen={isEraserOpen}
-          cellTitle={`${editingCellDef.label} [${editingCellDef.row + 1}, ${editingCellDef.col + 1}]`}
+          onClose={() => { setIsEraserOpen(false); setEditingCellDef(null); }}
+          cellTitle={editingCellDef.label || `Ô [${editingCellDef.row + 1}, ${editingCellDef.col + 1}]`}
           initialImageDataUrl={editingCellOriginalDataUrl}
-          onClose={() => setIsEraserOpen(false)}
-          onSave={(editedDataUrl: string) => {
-            if (!editingCellDef) return;
-            pushUndoState('Chỉnh sửa pixel ô');
+          onSave={(newDataUrl) => {
             const key = `${editingCellDef.row}_${editingCellDef.col}`;
-            setSlicedResults((prev) => {
-              const next = new Map(prev);
-              next.set(key, editedDataUrl);
-              return next;
-            });
-            const pImg = new Image();
-            pImg.onload = () => {
-              const c = document.createElement('canvas');
-              c.width = pImg.width;
-              c.height = pImg.height;
-              const ctx = c.getContext('2d');
+            setSlicedResults((prev) => new Map(prev).set(key, newDataUrl));
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
               if (ctx) {
-                ctx.drawImage(pImg, 0, 0);
-                slicedCanvasesRef.current.set(key, c);
-                redrawCanvas();
+                ctx.drawImage(img, 0, 0);
+                slicedCanvasesRef.current.set(key, canvas);
+                redrawCanvas('transparent');
               }
             };
-            pImg.src = editedDataUrl;
-
-            // Update 3D Assembly immediately
-            const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-            if (editingCellDef.partSlot && updatedAssembly.parts[editingCellDef.partSlot]) {
-              const part = updatedAssembly.parts[editingCellDef.partSlot]!;
-              part.path = editedDataUrl;
-              if (editingCellDef.angle) {
-                if (!part.angles) part.angles = {};
-                part.angles[editingCellDef.angle] = editedDataUrl;
-              }
-            }
-            onApplyAssembly(updatedAssembly);
-            if (threeEngineRef.current) {
-              threeEngineRef.current.setAssembly(updatedAssembly);
-            }
-            setIsEraserOpen(false);
+            img.src = newDataUrl;
           }}
         />
       )}
 
-      {/* Resource Catalog Modal */}
       {isCatalogOpen && (
         <CharacterAssetCatalogModal
           isOpen={isCatalogOpen}
           onClose={() => setIsCatalogOpen(false)}
           currentAssembly={currentAssembly}
-          onApplyAssembly={(updated) => {
+          onApplyAssembly={(updated: Character2DAssembly) => {
             onApplyAssembly(updated);
-            if (threeEngineRef.current) {
-              threeEngineRef.current.setAssembly(updated);
-            }
+            if (threeEngineRef.current) threeEngineRef.current.setAssembly(updated);
           }}
         />
       )}
 
-      {/* Multi-Angle Part & Hair Layer Tuner Modal */}
       {isTunerOpen && (
         <MultiAngleTunerModal
           isOpen={isTunerOpen}
@@ -2154,69 +760,24 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           activeCameraAngle={activeAngleInfo.discreteAngle}
           onApplyAssembly={(updated) => {
             onApplyAssembly(updated);
-            if (threeEngineRef.current) {
-              threeEngineRef.current.setAssembly(updated);
-            }
+            if (threeEngineRef.current) threeEngineRef.current.setAssembly(updated);
           }}
           onJumpToAngle={(deg, isTop) => {
             setTurntableAngle(deg);
-            if (threeEngineRef.current) {
-              threeEngineRef.current.jumpToAngle(deg, isTop);
-            }
+            if (threeEngineRef.current) threeEngineRef.current.jumpToAngle(deg, isTop);
           }}
         />
       )}
 
-      {/* Save Kit Modal */}
       {isSaveKitModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#0b1329', padding: 18, borderRadius: 10, border: '1px solid #38bdf8', width: 380, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#38bdf8' }}>💾 Lưu Bộ Linh Kiện Mới Vào Kho:</div>
-            <div>
-              <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Tên bộ:</label>
-              <input
-                type="text"
-                value={saveKitName}
-                onChange={(e) => setSaveKitName(e.target.value)}
-                style={{ width: '100%', padding: '7px 10px', fontSize: 11.5, background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
-              <button
-                onClick={() => setIsSaveKitModalOpen(false)}
-                style={{ padding: '7px 14px', fontSize: 11, borderRadius: 5, background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', border: 'none', cursor: 'pointer' }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => {
-                  const partsMap: Record<string, string> = {};
-                  slicedResults.forEach((val, key) => {
-                    partsMap[key] = val;
-                  });
-                  saveCustomResourceKit({
-                    id: `kit_${Date.now()}`,
-                    name: saveKitName || 'Bộ Linh Kiện Mới',
-                    category: saveKitCategory,
-                    categoryLabel: currentCategory.label,
-                    previewImage: slicedResults.get('0_0') || '',
-                    description: saveKitDescription,
-                    parts: partsMap as any,
-                    createdAt: new Date().toISOString(),
-                  });
-                  setIsSaveKitModalOpen(false);
-                  alert('✓ Đã lưu bộ linh kiện vào kho thành công!');
-                }}
-                style={{ padding: '7px 16px', fontSize: 11.5, fontWeight: 700, borderRadius: 5, background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 2px 10px rgba(2, 132, 199, 0.4)' }}
-              >
-                Lưu Vào Kho
-              </button>
-            </div>
-          </div>
-        </div>
+        <SlicerSaveKitModal
+          isOpen={isSaveKitModalOpen}
+          onClose={() => setIsSaveKitModalOpen(false)}
+          slicedResults={slicedResults}
+          categoryLabel={currentCategory.label}
+        />
       )}
 
-      {/* Word-Style Grid Table Matrix Picker Modal */}
       {isTablePickerOpen && (
         <GridTablePickerModal
           isOpen={isTablePickerOpen}
@@ -2227,12 +788,30 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         />
       )}
 
-      {/* JSON Prompt Metadata Import Modal */}
       {isJsonImportOpen && (
         <JsonPromptImportModal
           isOpen={isJsonImportOpen}
           onClose={() => setIsJsonImportOpen(false)}
-          onApplyJsonMetadata={handleApplyJsonMetadata}
+          onApplyJsonMetadata={(metadataList: ParsedJsonMetadataItem[]) => {
+            if (!metadataList || metadataList.length === 0) return;
+            if (selectedCatId === 'single_full_image') {
+              const first = metadataList[0];
+              if (first.angle) setSingleImageAngle(first.angle);
+              if (first.part_id) setSingleImageSlot(first.part_id);
+            } else {
+              metadataList.forEach((item, idx) => {
+                if (idx < currentCategory.cells.length) {
+                  const cell = currentCategory.cells[idx];
+                  if (item.angle) cell.angle = item.angle;
+                  if (item.part_id) cell.partSlot = item.part_id;
+                  if (item.name || item.part_name) cell.label = `${item.part_name || item.name} (${item.angle_label || item.angle_id || ''})`;
+                }
+              });
+            }
+            showToast(`✓ Đã nạp ${metadataList.length} metadata từ JSON Tab 4!`, 'redo');
+            if (hasExplicitlySliced) handleAutoSliceAndAssemble();
+            else redrawCanvas();
+          }}
         />
       )}
     </div>
