@@ -3,7 +3,12 @@
  */
 class ExportManager {
   constructor() {
+    this.selectedEngine = "flow";
+    this.selectedLoopMode = "seamless_phase";
     this.selectedFormat = "mp4";
+    this.selectedResolution = 1.0;
+    this.selectedFps = 30;
+
     this.modal = document.getElementById("exportModal");
     this.btnOpen = document.getElementById("btnExportModal");
     this.btnClose = document.getElementById("btnCloseExportModal");
@@ -30,16 +35,36 @@ class ExportManager {
       this.btnClose.onclick = () => this.modal.classList.remove("show");
     }
 
-    // Format buttons
-    ["btnFormatMp4", "btnFormatGif", "btnFormatWebm"].forEach(id => {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      btn.onclick = () => {
-        ["btnFormatMp4", "btnFormatGif", "btnFormatWebm"].forEach(b => {
-          document.getElementById(b).classList.remove("active");
+    // Interactive button group selectors (data-group & data-val)
+    const optionButtons = this.modal ? this.modal.querySelectorAll("[data-group]") : [];
+    optionButtons.forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const group = btn.dataset.group;
+        const val = btn.dataset.val;
+
+        // Deselect other buttons in same group
+        this.modal.querySelectorAll(`[data-group="${group}"]`).forEach(b => {
+          b.classList.remove("active");
         });
         btn.classList.add("active");
-        this.selectedFormat = btn.dataset.fmt;
+
+        if (group === "engine") {
+          this.selectedEngine = val;
+          const loopSection = document.getElementById("groupLoopModeSection");
+          if (loopSection) {
+            loopSection.style.opacity = val === "diffusion" ? "0.4" : "1.0";
+            loopSection.style.pointerEvents = val === "diffusion" ? "none" : "auto";
+          }
+        } else if (group === "loop") {
+          this.selectedLoopMode = val;
+        } else if (group === "format") {
+          this.selectedFormat = val;
+        } else if (group === "resolution") {
+          this.selectedResolution = parseFloat(val) || 1.0;
+        } else if (group === "fps") {
+          this.selectedFps = parseInt(val) || 30;
+        }
       };
     });
 
@@ -67,14 +92,28 @@ class ExportManager {
     }
 
     payload.format = this.selectedFormat;
+    payload.loop_mode = this.selectedLoopMode;
+    payload.resolution_scale = this.selectedResolution;
+    payload.fps = this.selectedFps;
+
     this.btnStart.style.display = "none";
     this.progressSection.style.display = "block";
-    this.progressBar.style.width = "15%";
-    this.percentText.innerText = "15%";
-    this.statusMsg.innerText = "Đang gửi tác vụ đến GPU (RTX 3060)...";
+    this.progressBar.style.width = "10%";
+    this.percentText.innerText = "10%";
+    this.statusMsg.innerText = "Đang gửi tác vụ đến GPU RTX 3060...";
 
     try {
-      const resp = await window.apiClient.submitFlowAnimation(payload);
+      let resp;
+      if (this.selectedEngine === "diffusion") {
+        resp = await window.apiClient.submitDiffusionAnimation({
+          image: payload.image,
+          fps: payload.fps,
+          num_frames: Math.min(49, Math.max(14, Math.round(payload.duration_seconds * payload.fps)))
+        });
+      } else {
+        resp = await window.apiClient.submitFlowAnimation(payload);
+      }
+      
       const taskId = resp.task_id;
       this.pollProgress(taskId);
     } catch (err) {
@@ -90,7 +129,7 @@ class ExportManager {
       try {
         const task = await window.apiClient.getTaskStatus(taskId);
         const percent = Math.round(task.progress * 100);
-        this.progressBar.style.width = `${percent}%`;
+        this.progressBar.style.width = `${Math.max(10, percent)}%`;
         this.percentText.innerText = `${percent}%`;
         this.statusMsg.innerText = task.message || "Đang render khung hình...";
 
@@ -103,7 +142,7 @@ class ExportManager {
           this.btnStart.style.display = "block";
         }
       } catch (e) {
-        if (attempts > 60) {
+        if (attempts > 120) {
           clearInterval(interval);
           this.statusMsg.innerText = "Hết thời gian chờ phản hồi từ máy chủ.";
         }
@@ -120,3 +159,4 @@ class ExportManager {
 }
 
 window.ExportManager = ExportManager;
+

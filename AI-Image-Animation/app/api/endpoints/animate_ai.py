@@ -1,5 +1,5 @@
-import asyncio
 import os
+import anyio.to_thread
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from app.schemas.request_models import DiffusionAnimateRequest, ExportFormat
 from app.schemas.response_models import AnimateResponse
@@ -14,39 +14,36 @@ router = APIRouter(prefix="/animate", tags=["Animation Engines"])
 ai_model = AIMotionModel()
 
 
-def _render_diffusion_task_sync(task_id: str, req: DiffusionAnimateRequest):
+def _compute_diffusion_sync(task_id: str, req: DiffusionAnimateRequest):
     """
     Synchronous worker for AI diffusion generative motion.
     """
+    raw_image = decode_base64_image(req.image)
+    frames = ai_model.generate(raw_image, req)
+    
+    out_path, rel_url = get_output_path(task_id, "mp4")
+    VideoExporter.export(frames, out_path, ExportFormat.MP4, fps=req.fps)
+    
+    file_size = os.path.getsize(out_path) if out_path.exists() else 0
+    duration = len(frames) / float(req.fps)
+    return rel_url, duration, file_size
+
+
+async def _render_diffusion_task(task_id: str, req: DiffusionAnimateRequest):
+    """
+    Asynchronous background handler that offloads diffusion computation and updates task status.
+    """
     try:
-        raw_image = decode_base64_image(req.image)
-        frames = ai_model.generate(raw_image, req)
-        
-        out_path, rel_url = get_output_path(task_id, "mp4")
-        VideoExporter.export(frames, out_path, ExportFormat.MP4, fps=req.fps)
-        
-        file_size = os.path.getsize(out_path) if out_path.exists() else 0
-        duration = len(frames) / float(req.fps)
-        
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.run_coroutine_threadsafe(
-                task_manager.complete_task(
-                    task_id=task_id,
-                    result_url=rel_url,
-                    video_url=rel_url,
-                    duration=duration,
-                    file_size=file_size
-                ),
-                loop
-            )
+        rel_url, duration, file_size = await anyio.to_thread.run_sync(_compute_diffusion_sync, task_id, req)
+        await task_manager.complete_task(
+            task_id=task_id,
+            result_url=rel_url,
+            video_url=rel_url,
+            duration=duration,
+            file_size=file_size
+        )
     except Exception as ex:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.run_coroutine_threadsafe(
-                task_manager.fail_task(task_id=task_id, error_message=str(ex)),
-                loop
-            )
+        await task_manager.fail_task(task_id=task_id, error_message=str(ex))
 
 
 @router.post("/diffusion", response_model=AnimateResponse, summary="Render AI generative diffusion video")
@@ -61,7 +58,7 @@ async def create_diffusion_animation(
         task_id = generate_unique_id("diff")
         await task_manager.create_task(task_id, "AI Diffusion generation started...")
         
-        background_tasks.add_task(_render_diffusion_task_sync, task_id, req)
+        background_tasks.add_task(_render_diffusion_task, task_id, req)
         
         return AnimateResponse(
             task_id=task_id,
@@ -71,3 +68,4 @@ async def create_diffusion_animation(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start diffusion task: {str(e)}")
+

@@ -310,18 +310,84 @@
 
   <!-- Export Progress Modal -->
   <div class="modal-backdrop" id="exportModal">
-    <div class="modal-dialog" style="max-width: 500px;">
+    <div class="modal-dialog" style="max-width: 540px;">
       <div class="modal-header">
         <div class="modal-title">⚡ Xuất Video Chuyển Động</div>
         <button class="modal-close" id="btnCloseExportModal">✕</button>
       </div>
       <div class="modal-body">
+        
+        <!-- 1. Công nghệ Render Engine -->
         <div class="control-row">
-          <label style="font-size: 13px; color: var(--text-secondary);">Định dạng xuất:</label>
-          <div style="display: flex; gap: 8px; margin-top: 6px;">
-            <button class="btn btn-secondary active" id="btnFormatMp4" data-fmt="mp4">MP4 (H.264)</button>
-            <button class="btn btn-secondary" id="btnFormatGif" data-fmt="gif">GIF Loop</button>
-            <button class="btn btn-secondary" id="btnFormatWebm" data-fmt="webm">WebM VP9</button>
+          <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">1. Công Nghệ Xử Lý (Engine):</label>
+          <div class="btn-chip-group">
+            <button class="btn-chip active" data-group="engine" data-val="flow">
+              <span class="btn-chip-title">⚡ Neural Vector Flow</span>
+              <span class="btn-chip-sub">RTX 3060 - 60 FPS tức thì</span>
+            </button>
+            <button class="btn-chip" data-group="engine" data-val="diffusion">
+              <span class="btn-chip-title">🧠 AI Generative SVD</span>
+              <span class="btn-chip-sub">Khuếch tán AI Diffusion</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Chế độ lặp chuyển động (Loop Mode) -->
+        <div class="control-row" id="groupLoopModeSection">
+          <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">2. Chế Độ Lặp (Loop Mode):</label>
+          <div class="btn-chip-group">
+            <button class="btn-chip active" data-group="loop" data-val="seamless_phase">
+              <span class="btn-chip-title">🌊 Sóng Tuần Hoàn</span>
+              <span class="btn-chip-sub">Sinusoidal Seamless</span>
+            </button>
+            <button class="btn-chip" data-group="loop" data-val="ping_pong">
+              <span class="btn-chip-title">🏓 Ping-Pong</span>
+              <span class="btn-chip-sub">Thuận - Nghịch mượt mà</span>
+            </button>
+            <button class="btn-chip" data-group="loop" data-val="cyclic_crossfade">
+              <span class="btn-chip-title">🔄 Hòa Tan Vòng</span>
+              <span class="btn-chip-sub">Cyclic Crossfade</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Định dạng xuất (Format) -->
+        <div class="control-row">
+          <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">3. Định Dạng Xuất (Format):</label>
+          <div class="btn-chip-group">
+            <button class="btn-chip active" data-group="format" data-val="mp4">
+              <span class="btn-chip-title">🎬 MP4 Video</span>
+              <span class="btn-chip-sub">H.264 Chuẩn nét</span>
+            </button>
+            <button class="btn-chip" data-group="format" data-val="gif">
+              <span class="btn-chip-title">🎞️ GIF Loop</span>
+              <span class="btn-chip-sub">Ảnh động lặp lại</span>
+            </button>
+            <button class="btn-chip" data-group="format" data-val="webm">
+              <span class="btn-chip-title">🌐 WebM</span>
+              <span class="btn-chip-sub">VP9 Web nhẹ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Độ phân giải & Tốc độ khung hình (FPS) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="control-row">
+            <label style="font-size: 12px; color: var(--text-secondary);">Độ phân giải:</label>
+            <div style="display: flex; gap: 6px; margin-top: 4px;">
+              <button class="btn btn-secondary" data-group="resolution" data-val="0.75" style="flex: 1; padding: 6px 4px; font-size: 11px;">720p</button>
+              <button class="btn btn-secondary active" data-group="resolution" data-val="1.0" style="flex: 1; padding: 6px 4px; font-size: 11px;">1080p</button>
+              <button class="btn btn-secondary" data-group="resolution" data-val="1.5" style="flex: 1; padding: 6px 4px; font-size: 11px;">2K</button>
+            </div>
+          </div>
+
+          <div class="control-row">
+            <label style="font-size: 12px; color: var(--text-secondary);">Tốc độ khung hình:</label>
+            <div style="display: flex; gap: 6px; margin-top: 4px;">
+              <button class="btn btn-secondary" data-group="fps" data-val="24" style="flex: 1; padding: 6px 4px; font-size: 11px;">24 FPS</button>
+              <button class="btn btn-secondary active" data-group="fps" data-val="30" style="flex: 1; padding: 6px 4px; font-size: 11px;">30 FPS</button>
+              <button class="btn btn-secondary" data-group="fps" data-val="60" style="flex: 1; padding: 6px 4px; font-size: 11px;">60 FPS</button>
+            </div>
           </div>
         </div>
 
@@ -341,8 +407,8 @@
           </a>
         </div>
 
-        <button class="btn btn-primary" id="btnStartExport" style="margin-top: 12px; width: 100%;">
-          Bắt Đầu Render
+        <button class="btn btn-primary" id="btnStartExport" style="margin-top: 12px; width: 100%; padding: 12px;">
+          🚀 Bắt Đầu Render & Xuất File
         </button>
       </div>
     </div>

@@ -53,7 +53,13 @@ class AIMotionModel:
                     
                 if ENABLE_VAE_SLICING:
                     self.pipeline.enable_vae_slicing()
-                    
+            
+            self.is_loaded = True
+        except Exception as e:
+            self.is_loaded = False
+            self.pipeline = None
+            raise RuntimeError(f"Failed to load AI motion diffusion pipeline: {e}")
+
     def unload_from_vram(self) -> bool:
         """
         Unloads model pipeline and frees all GPU VRAM.

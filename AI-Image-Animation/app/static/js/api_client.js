@@ -55,6 +55,19 @@ class ApiClient {
     return await res.json();
   }
 
+  async submitDiffusionAnimation(payload) {
+    const res = await fetch(`${this.baseUrl}/api/animate/diffusion`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Diffusion rendering request failed");
+    }
+    return await res.json();
+  }
+
   async getTaskStatus(taskId) {
     const res = await fetch(`${this.baseUrl}/api/tasks/${taskId}`);
     if (!res.ok) throw new Error("Task query failed");
