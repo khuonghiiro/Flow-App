@@ -1,9 +1,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { parsePartFilename, ParsedPartFilenameInfo } from '../../../../core/assets/prompt_builders/PartFilenameParser';
+import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
 
 export interface SlicerUploadedImageItem {
   id: string;
   url: string;
+  originalUrl?: string;
+  transparentUrl?: string;
+  isTransparentSeparated?: boolean;
+  filterConfig?: ChromaProcessOptions;
   file?: File;
   name: string;
   metadata: ParsedPartFilenameInfo | null;
@@ -134,6 +139,7 @@ export function useSlicerMultiImageGallery(options: {
         newItems.push({
           id,
           url,
+          originalUrl: url,
           file,
           name: file.name,
           metadata,

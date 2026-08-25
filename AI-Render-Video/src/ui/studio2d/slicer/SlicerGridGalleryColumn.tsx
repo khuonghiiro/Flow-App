@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Layers,
   Plus,
@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   X,
   Sparkles,
-  Info,
+  CheckSquare,
+  Square,
+  RefreshCw,
 } from 'lucide-react';
 import { SlicerPartGroupItem, SlicerUploadedImageItem } from './hooks/useSlicerMultiImageGallery';
 import { ChromaProcessOptions, processCellChromaAndDespeckle } from '../../../core/utils/ChromaDespeckleProcessor';
@@ -25,9 +27,11 @@ export interface SlicerGridGalleryColumnProps {
   totalImagesCount: number;
   previewDisplayMode?: 'original' | 'transparent';
   chromaOpts?: ChromaProcessOptions;
+  onBatchSeparateImages?: (imageIds: string[]) => Promise<void>;
+  isBatchProcessing?: boolean;
 }
 
-const PAGE_SIZE = 20; // Maximum 20 images per grid page (4 columns x 5 rows)
+const PAGE_SIZE = 20; // 20 images per grid page (4 columns x 5 rows)
 
 export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = ({
   partGroups,
@@ -39,12 +43,12 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
   onClearAll,
   onOpenAddFiles,
   totalImagesCount,
-  previewDisplayMode = 'original',
-  chromaOpts,
+  onBatchSeparateImages,
+  isBatchProcessing = false,
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [hoveredItem, setHoveredItem] = useState<SlicerUploadedImageItem | null>(null);
-  const [processedThumbs, setProcessedThumbs] = useState<Map<string, string>>(new Map());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Current active part group
   const currentGroup = partGroups.find((g) => g.part_id === activePartId) || partGroups[0];
@@ -64,51 +68,35 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
     return allImages.slice(start, start + PAGE_SIZE);
   }, [allImages, currentPage]);
 
-  // On-demand Chroma processing ONLY for the visible 20 items on the active page
-  useEffect(() => {
-    if (previewDisplayMode !== 'transparent' || !chromaOpts?.keyColorType) {
-      setProcessedThumbs(new Map());
-      return;
-    }
+  const pageImageIds = useMemo(() => pageImages.map((it) => it.id), [pageImages]);
 
-    let isMounted = true;
-    const processActivePage = async () => {
-      const results = new Map<string, string>();
-      for (const item of pageImages) {
-        if (!isMounted) break;
-        try {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject();
-            img.src = item.url;
-          });
+  // Are all images on this page selected?
+  const isAllPageSelected = useMemo(() => {
+    if (pageImageIds.length === 0) return false;
+    return pageImageIds.every((id) => selectedIds.has(id));
+  }, [pageImageIds, selectedIds]);
 
-          const w = Math.min(80, img.naturalWidth || 80);
-          const h = Math.round((w / (img.naturalWidth || 1)) * (img.naturalHeight || 1));
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, w, h);
-            processCellChromaAndDespeckle(ctx, w, h, chromaOpts);
-            results.set(item.id, canvas.toDataURL('image/png'));
-          }
-        } catch {
-          // Fallback to original url
-          results.set(item.id, item.url);
-        }
+  const handleToggleSelectAllPage = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (isAllPageSelected) {
+        pageImageIds.forEach((id) => next.delete(id));
+      } else {
+        pageImageIds.forEach((id) => next.add(id));
       }
-      if (isMounted) setProcessedThumbs(results);
-    };
+      return next;
+    });
+  };
 
-    processActivePage();
-    return () => {
-      isMounted = false;
-    };
-  }, [pageImages, previewDisplayMode, chromaOpts]);
+  const handleToggleSelectItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   if (totalImagesCount === 0) return null;
 
@@ -118,15 +106,15 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(20, 30, 50, 0.96) 100%)',
-        backdropFilter: 'blur(12px)',
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(20, 30, 50, 0.97) 100%)',
+        backdropFilter: 'blur(16px)',
         borderRadius: 10,
-        border: '1px solid rgba(56, 189, 248, 0.28)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.08)',
-        padding: '8px 8px',
-        width: 228,
-        minWidth: 228,
-        maxWidth: 228,
+        border: '1.5px solid rgba(56, 189, 248, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.1)',
+        padding: '8px 10px',
+        width: 310,
+        minWidth: 310,
+        maxWidth: 310,
         height: '100%',
         minHeight: 0,
         overflow: 'hidden',
@@ -136,20 +124,20 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
     >
       {/* 1. Header: Title + Action buttons */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-          <Layers size={13} color="#38bdf8" />
-          <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38bdf8', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+          <Layers size={14} color="#38bdf8" />
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', whiteSpace: 'nowrap' }}>
             GRID ẢNH ({allImages.length})
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={onOpenAddFiles}
             style={{
-              height: 20,
-              padding: '0 6px',
-              fontSize: 9,
+              height: 22,
+              padding: '0 8px',
+              fontSize: 9.5,
               fontWeight: 700,
               borderRadius: 4,
               background: 'rgba(34, 197, 94, 0.2)',
@@ -158,17 +146,17 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
+              gap: 3,
             }}
             title="Thêm ảnh vào kho"
           >
-            <Plus size={10} /> Thêm
+            <Plus size={11} /> Thêm ảnh
           </button>
           <button
             onClick={onClearAll}
             style={{
-              height: 20,
-              width: 20,
+              height: 22,
+              width: 22,
               borderRadius: 4,
               background: 'rgba(239, 68, 68, 0.15)',
               color: '#f87171',
@@ -180,14 +168,14 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
             }}
             title="Xóa tất cả ảnh"
           >
-            <Trash2 size={10} />
+            <Trash2 size={11} />
           </button>
         </div>
       </div>
 
       {/* 2. Group filter chips (if multiple part groups exist) */}
       {partGroups.length > 1 && (
-        <div style={{ display: 'flex', gap: 3, overflowX: 'auto', paddingBottom: 3, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           {partGroups.map((group) => {
             const isActive = (activePartId || partGroups[0]?.part_id) === group.part_id;
             return (
@@ -196,11 +184,12 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
                 onClick={() => {
                   onSelectPart(group.part_id);
                   setCurrentPage(0);
+                  setSelectedIds(new Set());
                 }}
                 style={{
-                  padding: '2px 5px',
-                  borderRadius: 4,
-                  fontSize: 8.5,
+                  padding: '2px 6px',
+                  borderRadius: 5,
+                  fontSize: 9,
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
                   cursor: 'pointer',
@@ -214,14 +203,14 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
               >
                 <span>{group.icon}</span>
                 <span>{group.part_name}</span>
-                <span style={{ fontSize: 7.5, opacity: 0.8 }}>({group.images.length})</span>
+                <span style={{ fontSize: 8, opacity: 0.8 }}>({group.images.length})</span>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* 3. Slider / Pagination Navigation Bar */}
+      {/* 3. Slider / Pagination Bar */}
       <div
         style={{
           display: 'flex',
@@ -230,15 +219,15 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           background: 'rgba(2, 132, 199, 0.12)',
           border: '1px solid rgba(56, 189, 248, 0.25)',
           borderRadius: 6,
-          padding: '2px 4px',
+          padding: '3px 6px',
         }}
       >
         <button
           onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
           disabled={currentPage === 0}
           style={{
-            width: 22,
-            height: 20,
+            width: 24,
+            height: 22,
             borderRadius: 4,
             border: 'none',
             background: currentPage === 0 ? 'transparent' : 'rgba(56, 189, 248, 0.2)',
@@ -250,12 +239,12 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           }}
           title="Trang trước (20 ảnh)"
         >
-          <ChevronLeft size={13} />
+          <ChevronLeft size={14} />
         </button>
 
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#e2e8f0' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#e2e8f0' }}>
           Trang <span style={{ color: '#38bdf8' }}>{currentPage + 1}</span> / {totalPages}{' '}
-          <span style={{ fontSize: 8.5, color: '#94a3b8' }}>
+          <span style={{ fontSize: 9, color: '#94a3b8' }}>
             ({currentPage * PAGE_SIZE + 1} - {Math.min((currentPage + 1) * PAGE_SIZE, allImages.length)})
           </span>
         </span>
@@ -264,8 +253,8 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
           disabled={currentPage >= totalPages - 1}
           style={{
-            width: 22,
-            height: 20,
+            width: 24,
+            height: 22,
             borderRadius: 4,
             border: 'none',
             background: currentPage >= totalPages - 1 ? 'transparent' : 'rgba(56, 189, 248, 0.2)',
@@ -277,17 +266,106 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           }}
           title="Trang tiếp theo (20 ảnh)"
         >
-          <ChevronRight size={13} />
+          <ChevronRight size={14} />
         </button>
       </div>
 
-      {/* 4. Fixed 20-Slot Grid Container (4 columns x 5 rows) */}
+      {/* 4. Batch Select & Background Removal Actions */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: 6,
+          padding: '4px 6px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          gap: 6,
+        }}
+      >
+        <button
+          onClick={handleToggleSelectAllPage}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            background: 'transparent',
+            border: 'none',
+            color: isAllPageSelected ? '#38bdf8' : '#cbd5e1',
+            fontSize: 9.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            padding: 0,
+          }}
+          title={isAllPageSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả ảnh trên trang này'}
+        >
+          {isAllPageSelected ? <CheckSquare size={13} color="#38bdf8" /> : <Square size={13} color="#64748b" />}
+          <span>Chọn trang ({pageImages.length})</span>
+        </button>
+
+        {onBatchSeparateImages && (
+          <button
+            onClick={async () => {
+              const targetIds =
+                selectedIds.size > 0
+                  ? Array.from(selectedIds)
+                  : activeImageId
+                  ? [activeImageId]
+                  : pageImages[0]
+                  ? [pageImages[0].id]
+                  : [];
+              if (targetIds.length > 0) {
+                await onBatchSeparateImages(targetIds);
+                setSelectedIds(new Set());
+              }
+            }}
+            disabled={isBatchProcessing || pageImages.length === 0}
+            style={{
+              padding: '3px 8px',
+              fontSize: 9.5,
+              fontWeight: 700,
+              borderRadius: 5,
+              background: isBatchProcessing
+                ? 'rgba(255,255,255,0.1)'
+                : 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              cursor: isBatchProcessing ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.35)',
+            }}
+            title={
+              selectedIds.size > 0
+                ? `Tách nền ${selectedIds.size} ảnh đã tích chọn`
+                : 'Tách nền ảnh đang hiển thị'
+            }
+          >
+            {isBatchProcessing ? (
+              <>
+                <RefreshCw size={10} className="animate-spin" /> Đang tách...
+              </>
+            ) : selectedIds.size > 0 ? (
+              <>
+                <Sparkles size={10} /> Tách nền ({selectedIds.size} đã chọn)
+              </>
+            ) : (
+              <>
+                <Sparkles size={10} /> Tách ảnh đang xem
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* 5. Fixed 20-Slot Grid Container (4 columns x 5 rows, 66px x 62px per cell) */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: 'repeat(5, 48px)',
-          gap: 5,
+          gridTemplateRows: 'repeat(5, 62px)',
+          gap: 6,
           width: '100%',
           flexShrink: 0,
         }}
@@ -302,17 +380,18 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
                 key={`empty_${idx}`}
                 onClick={onOpenAddFiles}
                 style={{
-                  height: 48,
+                  height: 62,
                   borderRadius: 6,
-                  border: '1px dashed rgba(255, 255, 255, 0.1)',
-                  background: 'rgba(0, 0, 0, 0.2)',
+                  border: '1.5px dashed rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(0, 0, 0, 0.25)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'rgba(255, 255, 255, 0.15)',
-                  fontSize: 10,
+                  color: 'rgba(255, 255, 255, 0.2)',
+                  fontSize: 14,
+                  fontWeight: 600,
                   cursor: 'pointer',
-                  transition: 'all 0.1s ease',
+                  transition: 'all 0.15s ease',
                 }}
                 title="Bấm để tải thêm ảnh"
               >
@@ -322,7 +401,9 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           }
 
           const isSelected = item.id === activeImageId;
-          const displayUrl = processedThumbs.get(item.id) || item.url;
+          const isChecked = selectedIds.has(item.id);
+          const isSeparated = Boolean(item.isTransparentSeparated && item.transparentUrl);
+          const displayUrl = isSeparated ? item.transparentUrl! : (item.originalUrl || item.url);
           const angleName = item.metadata?.angle_name || 'Góc tự do';
 
           return (
@@ -332,22 +413,84 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
               onMouseEnter={() => setHoveredItem(item)}
               onMouseLeave={() => setHoveredItem(null)}
               style={{
-                height: 48,
-                background: isSelected ? 'rgba(2, 132, 199, 0.28)' : 'rgba(15, 23, 42, 0.7)',
-                border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
+                height: 62,
+                background: isSelected
+                  ? 'rgba(2, 132, 199, 0.3)'
+                  : isSeparated
+                  ? 'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 10px 10px'
+                  : 'rgba(15, 23, 42, 0.8)',
+                border: isSelected
+                  ? '2px solid #38bdf8'
+                  : isChecked
+                  ? '1.5px solid #a855f7'
+                  : isSeparated
+                  ? '1px solid rgba(74, 222, 128, 0.35)'
+                  : '1px solid rgba(255, 255, 255, 0.15)',
                 borderRadius: 6,
-                padding: 2,
+                padding: 3,
                 cursor: 'pointer',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
-                boxShadow: isSelected ? '0 0 10px rgba(56, 189, 248, 0.4)' : 'none',
+                boxShadow: isSelected ? '0 0 12px rgba(56, 189, 248, 0.45)' : 'none',
                 transition: 'all 0.12s ease',
               }}
-              title={`${item.name} (${angleName})`}
+              title={`${item.name} (${angleName})${isSeparated ? ' • ĐÃ TÁCH NỀN' : ''}`}
             >
+              {/* Top-Left: Selection Checkbox */}
+              <div
+                onClick={(e) => handleToggleSelectItem(item.id, e)}
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: 2,
+                  zIndex: 4,
+                  background: isChecked ? '#0284c7' : 'rgba(0, 0, 0, 0.7)',
+                  borderRadius: 3,
+                  width: 15,
+                  height: 15,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: isChecked ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.3)',
+                  cursor: 'pointer',
+                }}
+                title={isChecked ? 'Bỏ chọn ảnh này' : 'Chọn ảnh này để tách nền'}
+              >
+                {isChecked ? <CheckCircle2 size={10} color="#ffffff" /> : <div style={{ width: 6, height: 6 }} />}
+              </div>
+
+              {/* Top-Right: High-contrast X Delete Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveImage(item.id);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  width: 17,
+                  height: 17,
+                  borderRadius: 4,
+                  background: 'rgba(239, 68, 68, 0.9)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 5,
+                  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.5)',
+                  transition: 'transform 0.1s ease',
+                }}
+                title="Xóa ảnh này khỏi danh sách"
+              >
+                <X size={10} strokeWidth={3} />
+              </button>
+
               {/* Image Thumbnail with object-fit: contain */}
               <img
                 src={displayUrl}
@@ -361,65 +504,61 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
                 }}
               />
 
-              {/* Selected indicator badge */}
+              {/* Bottom-Left: Selected viewing badge */}
               {isSelected && (
                 <div
                   style={{
                     position: 'absolute',
-                    top: 2,
+                    bottom: 2,
                     left: 2,
                     background: '#0284c7',
-                    borderRadius: 3,
-                    padding: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    color: '#ffffff',
+                    fontSize: 7.5,
+                    fontWeight: 800,
+                    padding: '1px 3px',
+                    borderRadius: 2,
+                    zIndex: 3,
                   }}
                 >
-                  <CheckCircle2 size={9} color="#ffffff" />
+                  XEM
                 </div>
               )}
 
-              {/* Quick delete button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemoveImage(item.id);
-                }}
-                style={{
-                  position: 'absolute',
-                  top: 2,
-                  right: 2,
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  background: 'rgba(0, 0, 0, 0.75)',
-                  color: '#f87171',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: isSelected ? 1 : 0.6,
-                }}
-                title="Xóa ảnh"
-              >
-                <X size={8} />
-              </button>
+              {/* Bottom-Right: Separated indicator */}
+              {isSeparated && !isSelected && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    background: 'rgba(34, 197, 94, 0.25)',
+                    color: '#4ade80',
+                    fontSize: 7.5,
+                    fontWeight: 700,
+                    padding: '1px 3px',
+                    borderRadius: 2,
+                    border: '1px solid rgba(74, 222, 128, 0.4)',
+                    zIndex: 3,
+                  }}
+                  title="Ảnh đã được tách nền trong suốt"
+                >
+                  ✨ ĐÃ TÁCH
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* 5. Hover Info Bar / Active Image Metadata */}
+      {/* 6. Hover Info Bar / Active Image Metadata */}
       <div
         style={{
           marginTop: 'auto',
-          padding: '4px 6px',
-          background: 'rgba(0, 0, 0, 0.4)',
+          padding: '4px 8px',
+          background: 'rgba(0, 0, 0, 0.45)',
           borderRadius: 6,
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          fontSize: 8.5,
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: 9,
           color: '#94a3b8',
           display: 'flex',
           flexDirection: 'column',
@@ -432,13 +571,14 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
               📐 {hoveredItem.metadata?.angle_name || hoveredItem.name}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-              <span style={{ color: '#34d399' }}>{hoveredItem.aspectRatioLabel}</span>
+              <span style={{ color: '#34d399', fontWeight: 600 }}>{hoveredItem.aspectRatioLabel}</span>
               <span>{hoveredItem.width}×{hoveredItem.height}px</span>
             </div>
           </>
         ) : (
-          <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center' }}>
-            Rê chuột lên ảnh để xem góc & kích thước
+          <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Đã chọn: <b style={{ color: '#38bdf8' }}>{selectedIds.size}</b> ảnh</span>
+            <span>Tích chọn để tách nền loạt</span>
           </div>
         )}
       </div>

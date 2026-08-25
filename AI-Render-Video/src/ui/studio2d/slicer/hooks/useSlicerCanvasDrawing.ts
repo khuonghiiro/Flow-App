@@ -58,7 +58,7 @@ export function useSlicerCanvasDrawing({
   const redrawCanvas = useCallback(
     (modeOverride?: 'transparent' | 'original') => {
       const canvas = imageCanvasRef.current;
-      const img = loadedImage || loadedImageRef.current;
+      const img = loadedImageRef.current || loadedImage;
       if (!canvas || !img) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -71,7 +71,7 @@ export function useSlicerCanvasDrawing({
       const effectiveMode = modeOverride ?? previewDisplayMode;
       const slicedCanvases = slicedCanvasesRef.current || new Map<string, HTMLCanvasElement>();
 
-      if (effectiveMode === 'transparent' && (hasExplicitlySliced || slicedCanvases.size > 0)) {
+      if (effectiveMode === 'transparent') {
         const size = 16;
         const isLight = checkerTheme === 'light';
         const colorA = isLight ? '#ffffff' : '#182030';
@@ -83,54 +83,61 @@ export function useSlicerCanvasDrawing({
           }
         }
 
-        if (currentCategory.id === 'single_full_image') {
-          const singleCanvas = slicedCanvases.get('0_0');
-          if (singleCanvas) {
-            const pad = Math.max(0, paddingInset);
-            const cropRect = cellCropRectsRef?.current?.get('0_0');
-            if (enableSmartCrop && cropRect) {
-              const drawX = pad + cropRect.left;
-              const drawY = pad + cropRect.top;
-              ctx.drawImage(singleCanvas, drawX, drawY, cropRect.width, cropRect.height);
-
-              // Draw Smart Crop boundary box
-              ctx.strokeStyle = '#c084fc';
-              ctx.lineWidth = 1.5;
-              ctx.setLineDash([4, 4]);
-              ctx.strokeRect(drawX, drawY, cropRect.width, cropRect.height);
-              ctx.setLineDash([]);
-            } else {
-              ctx.drawImage(singleCanvas, pad, pad, Math.max(10, canvas.width - pad * 2), Math.max(10, canvas.height - pad * 2));
-            }
-          }
-        } else {
-          currentCategory.cells.forEach((cell) => {
-            const key = `${cell.row}_${cell.col}`;
-            const cellCanvas = slicedCanvases.get(key);
-            if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+        if (hasExplicitlySliced || slicedCanvases.size > 0) {
+          const isSingleOnly = currentCategory.id === 'single_full_image' || (slicedCanvases.has('0_0') && slicedCanvases.size === 1);
+          if (isSingleOnly) {
+            const singleCanvas = slicedCanvases.get('0_0');
+            if (singleCanvas) {
               const pad = Math.max(0, paddingInset);
-              const rawX0 = colDividers[cell.col];
-              const rawY0 = rowDividers[cell.row];
-              const cellW = Math.max(10, colDividers[cell.col + 1] - rawX0 - pad * 2);
-              const cellH = Math.max(10, rowDividers[cell.row + 1] - rawY0 - pad * 2);
-              const cropRect = cellCropRectsRef?.current?.get(key);
-
+              const cropRect = cellCropRectsRef?.current?.get('0_0');
               if (enableSmartCrop && cropRect) {
-                const drawX = rawX0 + pad + cropRect.left;
-                const drawY = rawY0 + pad + cropRect.top;
-                ctx.drawImage(cellCanvas, drawX, drawY, cropRect.width, cropRect.height);
+                const drawX = pad + cropRect.left;
+                const drawY = pad + cropRect.top;
+                ctx.drawImage(singleCanvas, drawX, drawY, cropRect.width, cropRect.height);
 
-                // Draw Smart Crop dashed boundary box
-                ctx.strokeStyle = '#a855f7';
+                // Draw Smart Crop boundary box
+                ctx.strokeStyle = '#c084fc';
                 ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 3]);
+                ctx.setLineDash([4, 4]);
                 ctx.strokeRect(drawX, drawY, cropRect.width, cropRect.height);
                 ctx.setLineDash([]);
               } else {
-                ctx.drawImage(cellCanvas, rawX0 + pad, rawY0 + pad, cellW, cellH);
+                ctx.drawImage(singleCanvas, pad, pad, Math.max(10, canvas.width - pad * 2), Math.max(10, canvas.height - pad * 2));
               }
+            } else {
+              ctx.drawImage(img, 0, 0);
             }
-          });
+          } else {
+            currentCategory.cells.forEach((cell) => {
+              const key = `${cell.row}_${cell.col}`;
+              const cellCanvas = slicedCanvases.get(key);
+              if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+                const pad = Math.max(0, paddingInset);
+                const rawX0 = colDividers[cell.col];
+                const rawY0 = rowDividers[cell.row];
+                const cellW = Math.max(10, colDividers[cell.col + 1] - rawX0 - pad * 2);
+                const cellH = Math.max(10, rowDividers[cell.row + 1] - rawY0 - pad * 2);
+                const cropRect = cellCropRectsRef?.current?.get(key);
+
+                if (enableSmartCrop && cropRect) {
+                  const drawX = rawX0 + pad + cropRect.left;
+                  const drawY = rawY0 + pad + cropRect.top;
+                  ctx.drawImage(cellCanvas, drawX, drawY, cropRect.width, cropRect.height);
+
+                  // Draw Smart Crop dashed boundary box
+                  ctx.strokeStyle = '#a855f7';
+                  ctx.lineWidth = 1.5;
+                  ctx.setLineDash([4, 3]);
+                  ctx.strokeRect(drawX, drawY, cropRect.width, cropRect.height);
+                  ctx.setLineDash([]);
+                } else {
+                  ctx.drawImage(cellCanvas, rawX0 + pad, rawY0 + pad, cellW, cellH);
+                }
+              }
+            });
+          }
+        } else {
+          ctx.drawImage(img, 0, 0);
         }
       } else {
         ctx.drawImage(img, 0, 0);

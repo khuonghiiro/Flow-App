@@ -51,7 +51,7 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
       }}
     >
       <div style={{ fontSize: 11.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6, letterSpacing: '0.2px' }}>
-        <Sparkles size={14} color="#38bdf8" /> 3. Xuất bản & Lắp ráp 3D
+        <Sparkles size={14} color="#38bdf8" /> 3. Tách Nền & Lưu Kho Chi Tiết
       </div>
 
       {/* Padding Inset Control */}
@@ -225,15 +225,15 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
       >
         {isProcessing ? (
           <>
-            <RefreshCw size={15} className="animate-spin" /> Đang bóc tách từng ô...
+            <RefreshCw size={15} className="animate-spin" /> Đang tách nền từng ô...
           </>
         ) : assemblySuccess ? (
           <>
-            <Check size={15} /> ✓ Đã tách ({slicedCount}/{totalCellCount} ô) & Lắp 3D!
+            <Check size={15} /> ✓ Đã tách nền ({slicedCount}/{totalCellCount} ô) & Sẵn sàng lưu kho!
           </>
         ) : (
           <>
-            <Sparkles size={15} /> ⚡ Bóc tách & Lắp ráp 3D tự động
+            <Sparkles size={15} /> ⚡ Tách Nền & Lưu Chi Tiết Vào Kho
           </>
         )}
       </button>

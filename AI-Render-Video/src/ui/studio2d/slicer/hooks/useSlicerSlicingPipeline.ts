@@ -44,6 +44,7 @@ export interface UseSlicerSlicingPipelineProps {
   onApplyAssembly: (updated: Character2DAssembly) => void;
   threeEngineRef: React.RefObject<ThreeMultiAngleBillboardEngine | null>;
   redrawCanvas: (modeOverride?: 'transparent' | 'original') => void;
+  onSliceSuccess?: (results: Map<string, string>) => void;
 }
 
 export function useSlicerSlicingPipeline({
@@ -80,6 +81,7 @@ export function useSlicerSlicingPipeline({
   onApplyAssembly,
   threeEngineRef,
   redrawCanvas,
+  onSliceSuccess,
 }: UseSlicerSlicingPipelineProps) {
   const [slicedResults, setSlicedResults] = useState<Map<string, string>>(new Map());
   const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
@@ -252,6 +254,7 @@ export function useSlicerSlicingPipeline({
         setIsProcessing(false);
         onApplyAssembly(updatedAssembly);
         if (threeEngineRef.current) threeEngineRef.current.setAssembly(updatedAssembly);
+        if (onSliceSuccess) onSliceSuccess(results);
         redrawCanvas('transparent');
       }, 20);
     },
@@ -289,6 +292,7 @@ export function useSlicerSlicingPipeline({
       onApplyAssembly,
       threeEngineRef,
       redrawCanvas,
+      onSliceSuccess,
     ]
   );
 
