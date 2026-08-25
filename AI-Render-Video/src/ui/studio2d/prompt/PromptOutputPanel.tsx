@@ -10,6 +10,8 @@ interface PromptOutputPanelProps {
   handleCopy: (text: string, id: string) => void;
   batchCount: number;
   setBatchCount: (count: number) => void;
+  baseCount?: number;
+  setBaseCount?: (count: number) => void;
   includeBasePrompt: boolean;
   setIncludeBasePrompt: (inc: boolean) => void;
   jsonExportScope: 'component_all_angles' | 'single_angle' | 'group_all_parts';
@@ -29,6 +31,8 @@ export const PromptOutputPanel: React.FC<PromptOutputPanelProps> = ({
   handleCopy,
   batchCount,
   setBatchCount,
+  baseCount = 1,
+  setBaseCount,
   includeBasePrompt,
   setIncludeBasePrompt,
   jsonExportScope,
@@ -222,51 +226,100 @@ export const PromptOutputPanel: React.FC<PromptOutputPanelProps> = ({
           }}
         >
           {/* Synchronized Count Input Section (Max 4: 1, 2, 3, 4) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#facc15' }}>
-              🔢 Số ảnh sinh (Count 1-4):
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={4}
-              value={batchCount}
-              onChange={(e) => setBatchCount(Math.min(4, Math.max(1, parseInt(e.target.value) || 1)))}
-              style={{
-                width: 40,
-                height: 24,
-                padding: '0 4px',
-                textAlign: 'center',
-                fontSize: 11,
-                fontWeight: 700,
-                background: '#040711',
-                color: '#facc15',
-                border: '1px solid rgba(250, 204, 21, 0.5)',
-                borderRadius: 4,
-              }}
-              title="Đồng bộ số lượng biến thể ảnh sinh (count tối đa 4) cho toàn bộ item trong JSON"
-            />
-            {/* Quick Count Preset Pills: 1, 2, 3, 4 */}
-            <div style={{ display: 'flex', gap: 3 }}>
-              {[1, 2, 3, 4].map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setBatchCount(c)}
-                  style={{
-                    padding: '2px 6px',
-                    fontSize: 9.5,
-                    fontWeight: 700,
-                    borderRadius: 3,
-                    border: batchCount === c ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.08)',
-                    background: batchCount === c ? '#eab308' : 'rgba(255,255,255,0.06)',
-                    color: batchCount === c ? '#000' : '#cbd5e1',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {c}
-                </button>
-              ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {/* 1. Số ảnh chi tiết linh kiện */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: '#facc15' }} title="Số lượng ảnh sinh cho mỗi góc linh kiện (tối đa 4)">
+                🔢 Chi tiết (1-4):
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={4}
+                value={batchCount}
+                onChange={(e) => setBatchCount(Math.min(4, Math.max(1, parseInt(e.target.value) || 1)))}
+                style={{
+                  width: 36,
+                  height: 24,
+                  padding: '0 2px',
+                  textAlign: 'center',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: '#040711',
+                  color: '#facc15',
+                  border: '1px solid rgba(250, 204, 21, 0.5)',
+                  borderRadius: 4,
+                }}
+              />
+              <div style={{ display: 'flex', gap: 2 }}>
+                {[1, 2, 3, 4].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setBatchCount(c)}
+                    style={{
+                      padding: '2px 5px',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      borderRadius: 3,
+                      border: batchCount === c ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.08)',
+                      background: batchCount === c ? '#eab308' : 'rgba(255,255,255,0.06)',
+                      color: batchCount === c ? '#000' : '#cbd5e1',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* 2. Số ảnh Base riêng (base_count) */}
+            {includeBasePrompt && setBaseCount && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(56, 189, 248, 0.1)', padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38bdf8' }} title="Số lượng ảnh sinh riêng cho Base Prompt nhân vật gốc (tối đa 4)">
+                  🖼️ Base (1-4):
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={4}
+                  value={baseCount}
+                  onChange={(e) => setBaseCount(Math.min(4, Math.max(1, parseInt(e.target.value) || 1)))}
+                  style={{
+                    width: 36,
+                    height: 24,
+                    padding: '0 2px',
+                    textAlign: 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: '#040711',
+                    color: '#38bdf8',
+                    border: '1px solid rgba(56, 189, 248, 0.5)',
+                    borderRadius: 4,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {[1, 2, 3, 4].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setBaseCount(c)}
+                      style={{
+                        padding: '2px 5px',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        borderRadius: 3,
+                        border: baseCount === c ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                        background: baseCount === c ? '#0284c7' : 'rgba(255,255,255,0.06)',
+                        color: baseCount === c ? '#fff' : '#cbd5e1',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Toggles & Schema Guide Button */}

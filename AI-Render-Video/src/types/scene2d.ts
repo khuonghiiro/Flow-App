@@ -299,6 +299,9 @@ export interface AIPartPromptConfig {
   include_base_prompt?: boolean;
   json_scope?: 'single_angle' | 'all_angles' | 'all_group_parts';
   batch_count?: number;
+  base_count?: number;
+  custom_rules?: string;
+  rule?: string;
   include_schema_guide?: boolean;
 }
 

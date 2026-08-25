@@ -14,6 +14,7 @@ import {
   getHairAccessoryLabels,
   getBodyProportionLabels,
 } from './PromptLabelHelpers';
+import { buildFilenameVariants } from './PartFilenameParser';
 
 /**
  * Tài liệu chú giải các trường JSON cho AI và người dùng
@@ -21,6 +22,12 @@ import {
 export const JSON_SCHEMA_FIELD_GUIDE = {
   _doc: 'FlowMy 2D Animation Studio - JSON Schema Guide cho AI Image Generator & 2D Rigging',
   base_prompt: 'Chuỗi mô tả ngoại hình gốc của nhân vật (phong cách, màu sắc, trang phục, mái tóc) làm mỏ neo đồng bộ nhất quán giữa tất cả các góc quay và linh kiện.',
+  base_aspect_ratio: 'Tỉ lệ khung hình của ảnh tham chiếu gốc (mặc định 16:9).',
+  base_count: 'Số lượng biến thể ảnh sinh riêng cho base_prompt nhân vật gốc (tối đa 4 ảnh).',
+  base_save_filename: 'Tên tệp đích chuẩn cho ảnh mỏ neo Turnaround.',
+  base_save_filenames: 'Mảng danh sách các tên tệp ứng viên khi sinh nhiều ảnh base (master_character_turnaround_01.png, 02...).',
+  base_candidate_selection: 'Hướng dẫn chọn 1 ảnh base đẹp nhất làm chuẩn chung.',
+  rule: 'Quy tắc kết xuất bắt buộc đính kèm (bắt buộc nền đơn sắc đồng nhất, không bóng đổ, nét vẽ khép kín, không watermark).',
   prompts: 'Danh sách các tác vụ sinh ảnh chi tiết cần thực thi.',
   'prompts[].name': 'Mã định danh duy nhất của layer / góc quay (dùng để lưu file và tự động load vào khớp xương).',
   'prompts[].part_id': 'Mã slot linh kiện 2D giải phẫu (ví dụ: master_character, toc_truoc, khuon_mat, canh_tay_trai, vu_khi).',
@@ -31,16 +38,34 @@ export const JSON_SCHEMA_FIELD_GUIDE = {
   'prompts[].angle_id': 'Mã góc máy chuẩn hóa (000_front, 045_three_quarter, 090_side, 135_rear, 180_back, top_down...).',
   'prompts[].angle_deg': 'Độ góc quay số học (0..360) phục vụ xoay trục không gian và nội suy góc nhìn 3D.',
   'prompts[].z_index': 'Thứ tự sắp xếp độ sâu lớp vẽ từ dưới lên trên (số lớn hơn vẽ đè lên số nhỏ hơn).',
-  'prompts[].save_filename': 'Tên file ảnh xuất ra để phần mềm tự động gán vào đúng vị trí khớp xương trong Studio 2D.',
+  'prompts[].save_filename': 'Tên file ảnh xuất đích thực sau khi chọn lọc để công cụ cắt lưới và Assembler tự động nạp.',
+  'prompts[].save_filename_pattern': 'Mẫu đặt tên khi sinh nhiều biến thể ảnh ({index} = 01, 02...).',
+  'prompts[].save_filenames': 'Danh sách tên tệp cụ thể cho từng ảnh biến thể tương ứng với count.',
+  'prompts[].candidate_selection': 'Quy tắc chọn lọc 1 ảnh biến thể chuẩn nhất gán vào khung xương 2D.',
   'prompts[].view_desc': 'Mô tả góc nhìn và vị trí camera bằng tiếng Việt giúp người dùng và AI hiểu hướng quan sát.',
-  'prompts[].prompt': 'Câu lệnh tạo ảnh chi tiết hoàn chỉnh: mô tả hình dạng, chi tiết bóc tách, màu sắc, những gì cần vẽ và cấm vẽ, phông nền đơn sắc và tỉ lệ khung hình.',
+  'prompts[].rule': 'Quy tắc kết xuất bắt buộc của tác vụ (nền đơn sắc, tách biệt layer, cấm chữ...).',
+  'prompts[].prompt': 'Câu lệnh tạo ảnh chi tiết hoàn chỉnh: mô tả hình dạng, chi tiết bóc tách, màu sắc, những gì cần vẽ và cấm vẽ, phông nền đơn sắc, quy tắc rule và tỉ lệ khung hình.',
   'prompts[].count': 'Số lượng ảnh AI cần sinh cho tác vụ này (đồng bộ theo ô nhập liệu).',
   'prompts[].aspect_ratio': 'Tỉ lệ khung hình của ảnh kết xuất (1:1, 3:4, 4:3, 16:9, 9:16).',
 };
 
+export function getPromptRules(config: AIPartPromptConfig, bgPromptColorEn: string, bgPromptColorHex: string): string {
+  if (config.custom_rules && config.custom_rules.trim().length > 0) {
+    return config.custom_rules.trim();
+  }
+  return `MANDATORY RENDERING RULES: Strictly flat solid uniform pure ${bgPromptColorEn} (${bgPromptColorHex}) background with ZERO gradient and zero ambient shadow. Clean crisp 2D lineart with closed paths for 1-click chroma keying alpha cutout. Strictly NO background scenery, NO cast shadows, NO text, NO labels, NO watermark, NO borders.`;
+}
+
 function clampPromptLength(prompt: string, maxLen = 3900): string {
-  if (prompt.length <= maxLen) return prompt;
-  return prompt.slice(0, maxLen - 3) + '...';
+  const trimmed = prompt.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  const arMatch = trimmed.match(/\s+--ar\s+([0-9]+:[0-9]+)$/);
+  if (arMatch) {
+    const arSuffix = arMatch[0];
+    const maxBodyLen = maxLen - arSuffix.length - 3;
+    return trimmed.slice(0, maxBodyLen) + '...' + arSuffix;
+  }
+  return trimmed.slice(0, maxLen - 3) + '...';
 }
 
 /**
@@ -86,8 +111,9 @@ export function buildStep1MasterPrompt(config: AIPartPromptConfig): AIPromptResu
 
   const selectedAspectRatio = config.aspect_ratio || '16:9';
   const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? config.batch_count : 1;
+  const ruleText = getPromptRules(config, bgPromptColorEn, bgPromptColorHex);
 
-  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero shadows, flat solid ${bgPromptColorEn} background --ar ${selectedAspectRatio}`;
+  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero cast shadows, flat solid ${bgPromptColorEn} background, no scenery, no text, no watermark`;
 
   const promptEnglish = `masterpiece, best quality, ultra detailed, 2D ${artStyleEn} character turnaround sheet, ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER.
 
@@ -113,9 +139,7 @@ CONSISTENCY & RESTRICTIONS:
 - 100% identical character rotated strictly around vertical axis.
 - Clean 2D anime vector-like lineart, flat 2-tone cel shading, zero drop shadows, zero ambient occlusion on ground.
 - Flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background with zero gradients or cast shadows.
-- STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.
-
---ar ${selectedAspectRatio}`;
+- STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.`;
 
   const promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET - ${selectedAspectRatio}) 】
 
@@ -139,9 +163,10 @@ CONSISTENCY & RESTRICTIONS:
 + Góc phụ Đỉnh Đầu (Top-Down): Soi đỉnh đầu từ trên xuống thấy đường rẽ ngôi và trâm cài.
 
 • Nền: ${bgTextVi}.
+• Quy tắc bắt buộc: ${ruleText}.
 • CẤM: KHÔNG CHỮ, KHÔNG SỐ, KHÔNG NHÃN DÁN, KHÔNG ĐƯỜNG KẺ KHUNG ĐEN, KHÔNG WATERMARK.`;
 
-  const commonVisualRules = `Clean crisp 2D anime lineart, flat 2-tone cel shading, vibrant colors, zero cast shadows, on a flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background for 1-click transparency cutout, no text, no watermark, no border --ar ${selectedAspectRatio}`;
+  const commonVisualRules = `Clean crisp 2D anime lineart, flat 2-tone cel shading, vibrant colors, zero cast shadows, solid uniform flat ${bgPromptColorEn} (${bgPromptColorHex}) background, no scenery, no text, no watermark`;
 
   const step1Prompts = [
     {
@@ -254,11 +279,32 @@ CONSISTENCY & RESTRICTIONS:
     },
   ];
 
+  const userBaseCount = typeof config.base_count === 'number' && config.base_count > 0 ? Math.min(4, Math.max(1, config.base_count)) : userBatchCount;
+
+  const step1PromptsWithMeta = step1Prompts.map((p) => {
+    const fnMeta = buildFilenameVariants(p.save_filename, p.count);
+    return {
+      ...p,
+      save_filename: fnMeta.save_filename,
+      save_filename_pattern: fnMeta.save_filename_pattern,
+      save_filenames: fnMeta.save_filenames,
+      candidate_selection: fnMeta.candidate_selection,
+      rule: ruleText,
+    };
+  });
+
   const jsonPayload: any = {};
   if (config.include_base_prompt !== false) {
+    const baseFnMeta = buildFilenameVariants('master_character_turnaround.png', userBaseCount);
     jsonPayload.base_prompt = baseDescEn;
+    jsonPayload.base_aspect_ratio = selectedAspectRatio;
+    jsonPayload.base_count = userBaseCount;
+    jsonPayload.base_save_filename = baseFnMeta.save_filename;
+    jsonPayload.base_save_filenames = baseFnMeta.save_filenames;
+    jsonPayload.base_candidate_selection = baseFnMeta.candidate_selection;
   }
-  jsonPayload.prompts = step1Prompts;
+  jsonPayload.rule = ruleText;
+  jsonPayload.prompts = step1PromptsWithMeta;
 
   const promptJSON = JSON.stringify(jsonPayload, null, 2);
 

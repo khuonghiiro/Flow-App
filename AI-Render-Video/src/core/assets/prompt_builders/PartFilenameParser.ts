@@ -12,15 +12,85 @@ export interface ParsedPartFilenameInfo {
   z_index: number;
   is_master_character: boolean;
   save_filename: string;
+  canonical_filename: string;
+  original_filename: string;
+  variant_index?: number;
 }
 
 /**
- * Parses an asset image filename to auto-detect its character part, angle, z_index, and group
- * @param filename - e.g. "05_toc_truoc_000_front.png", "toc_sau_180_back.jpg", "master_045_three_quarter.png"
+ * Builds filename patterns and full candidate filenames array for multi-image batches (count > 1)
+ */
+export function buildFilenameVariants(baseFilename: string, count: number): {
+  save_filename: string;
+  save_filename_pattern: string;
+  save_filenames: string[];
+  candidate_selection: string;
+} {
+  const dotIdx = baseFilename.lastIndexOf('.');
+  const nameWithoutExt = dotIdx > 0 ? baseFilename.slice(0, dotIdx) : baseFilename;
+  const ext = dotIdx > 0 ? baseFilename.slice(dotIdx) : '.png';
+
+  const save_filename_pattern = `${nameWithoutExt}_{index}${ext}`;
+  const save_filenames: string[] = [];
+  const safeCount = Math.max(1, count);
+
+  for (let i = 1; i <= safeCount; i++) {
+    const pad = String(i).padStart(2, '0');
+    save_filenames.push(`${nameWithoutExt}_${pad}${ext}`);
+  }
+
+  return {
+    save_filename: baseFilename,
+    save_filename_pattern,
+    save_filenames,
+    candidate_selection: safeCount > 1
+      ? `Sinh ${safeCount} ảnh ứng viên (${save_filenames.join(', ')}). Chọn 1 ảnh đẹp & chuẩn nhất để dùng làm tệp gốc: ${baseFilename}`
+      : `Lưu ảnh trực tiếp theo tên tệp chuẩn: ${baseFilename}`,
+  };
+}
+
+/**
+ * Parses an asset image filename to auto-detect its character part, angle, z_index, variant, and group
+ * Handles filenames like:
+ * - "05_toc_truoc_000_front.png"
+ * - "05_toc_truoc_000_front_01.png", "05_toc_truoc_000_front_02.png"
+ * - "05_toc_truoc_000_front_v2.png", "05_toc_truoc_000_front (2).png"
+ * - "master_045_three_quarter_01.png"
  */
 export function parsePartFilename(filename: string): ParsedPartFilenameInfo | null {
   if (!filename) return null;
-  const cleanName = filename.toLowerCase().replace(/\.[a-zA-Z0-9]+$/, '');
+  const rawBase = filename.split(/[/\\]/).pop() || filename;
+  let cleanName = rawBase.toLowerCase().replace(/\.[a-zA-Z0-9]+$/, '');
+
+  let variant_index: number | undefined;
+
+  // 1. Check parenthesized index e.g. " (1)", " (2)"
+  const parenMatch = cleanName.match(/\s*\((\d+)\)$/);
+  if (parenMatch) {
+    variant_index = parseInt(parenMatch[1], 10);
+    cleanName = cleanName.replace(/\s*\(\d+\)$/, '').trim();
+  }
+
+  // 2. Check variant tag e.g. "_v1", "_v02", "_variant_2"
+  const vMatch = cleanName.match(/[_-]v(?:ariant)?[_-]?(\d+)$/i);
+  if (vMatch) {
+    variant_index = parseInt(vMatch[1], 10);
+    cleanName = cleanName.replace(/[_-]v(?:ariant)?[_-]?\d+$/i, '');
+  }
+
+  // 3. Check seed tag e.g. "_seed123456"
+  cleanName = cleanName.replace(/[_-]seed\d+$/i, '');
+
+  // 4. Check trailing numeric index e.g. "_01", "_02", "_1", "_2"
+  const numSuffixMatch = cleanName.match(/[_-](\d{1,3})$/);
+  if (numSuffixMatch) {
+    const numStr = numSuffixMatch[1];
+    // Exclude angle identifiers (000, 045, 090, 135, 180)
+    if (!['000', '045', '090', '135', '180', '45', '90', '180'].includes(numStr)) {
+      variant_index = parseInt(numStr, 10);
+      cleanName = cleanName.replace(/[_-]\d{1,3}$/, '');
+    }
+  }
 
   // Check master character turnaround
   if (cleanName.includes('master') || cleanName.includes('character_turnaround')) {
@@ -50,6 +120,8 @@ export function parsePartFilename(filename: string): ParsedPartFilenameInfo | nu
       angle_name = 'Top-Down (Đỉnh đầu)';
     }
 
+    const canonical_filename = `master_${angle_id}.png`;
+
     return {
       part_id: 'master_character',
       part_name: 'Nhân Vật Gốc Toàn Thân',
@@ -60,7 +132,10 @@ export function parsePartFilename(filename: string): ParsedPartFilenameInfo | nu
       angle_deg,
       z_index: 0,
       is_master_character: true,
-      save_filename: `master_${angle_id}.png`,
+      save_filename: canonical_filename,
+      canonical_filename,
+      original_filename: rawBase,
+      variant_index,
     };
   }
 
@@ -127,6 +202,8 @@ export function parsePartFilename(filename: string): ParsedPartFilenameInfo | nu
         angle_name = 'Low Angle (Dưới hất lên)';
       }
 
+      const canonical_filename = `${meta.filePrefix}_${angle_id}.png`;
+
       return {
         part_id: meta.part_id,
         part_name: meta.part_name,
@@ -137,7 +214,10 @@ export function parsePartFilename(filename: string): ParsedPartFilenameInfo | nu
         angle_name,
         angle_deg,
         is_master_character: false,
-        save_filename: `${meta.filePrefix}_${angle_id}.png`,
+        save_filename: canonical_filename,
+        canonical_filename,
+        original_filename: rawBase,
+        variant_index,
       };
     }
   }

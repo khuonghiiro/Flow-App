@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Move, Undo2, Redo2, Table } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Undo2, Redo2, Table } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../core/assets/GridSliceRegistry';
 
 interface SlicerInteractiveCanvasProps {
   imageCanvasRef: React.RefObject<HTMLCanvasElement>;
   hasImage?: boolean;
+  loadedImage?: HTMLImageElement | null;
   isEyedropperActive?: boolean;
   eyedropperTarget?: 'chroma' | 'fringe' | 'smooth';
   eyedropperHoverColor?: { hex: string; r: number; g: number; b: number; x: number; y: number } | null;
@@ -35,6 +36,7 @@ interface SlicerInteractiveCanvasProps {
 export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = ({
   imageCanvasRef,
   hasImage = false,
+  loadedImage = null,
   isEyedropperActive = false,
   eyedropperTarget = 'chroma',
   eyedropperHoverColor = null,
@@ -68,6 +70,46 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
   const viewportRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Tự động tính toán tỷ lệ zoom tối ưu để ảnh vừa khít và căn giữa hoàn hảo trong khung nhìn (viewport)
+   */
+  const handleAutoFitToViewport = useCallback(() => {
+    const canvas = imageCanvasRef.current;
+    const viewport = viewportRef.current;
+    if (!canvas || !viewport) return;
+
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+    if (!imgW || !imgH) return;
+
+    const vRect = viewport.getBoundingClientRect();
+    const pad = 24; // Padding lề an toàn
+    const availW = Math.max(50, vRect.width - pad);
+    const availH = Math.max(50, vRect.height - pad);
+
+    // Tính tỷ lệ co giãn theo cả 2 trục
+    const fitScale = Math.min(availW / imgW, availH / imgH);
+    const optimalZoom = Math.max(0.05, Math.min(5, Math.round(fitScale * 100) / 100));
+
+    setZoom(optimalZoom);
+    setPanOffset({ x: 0, y: 0 });
+  }, [imageCanvasRef]);
+
+  // Tự động căn giữa và vừa khung khi nạp ảnh mới hoặc khi đổi ảnh
+  useEffect(() => {
+    if (!hasImage) {
+      setZoom(1);
+      setPanOffset({ x: 0, y: 0 });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleAutoFitToViewport();
+    }, 40);
+
+    return () => clearTimeout(timer);
+  }, [hasImage, loadedImage, handleAutoFitToViewport]);
+
   // Spacebar pan listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -98,8 +140,8 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
     const mouseX = e.clientX - (cRect.left + cRect.width / 2);
     const mouseY = e.clientY - (cRect.top + cRect.height / 2);
 
-    const zoomFactor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
-    const newZoom = Math.max(0.5, Math.min(8, Math.round(zoom * zoomFactor * 100) / 100));
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    const newZoom = Math.max(0.05, Math.min(8, Math.round(zoom * zoomFactor * 1000) / 1000));
 
     if (newZoom === zoom) return;
 
@@ -133,6 +175,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
       setIsPanning(false);
     }
   };
+
   const handleModeClick = (mode: 'transparent' | 'original') => {
     if (onTogglePreviewDisplayMode) {
       onTogglePreviewDisplayMode(mode);
@@ -321,7 +364,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
             <button
               onClick={() => {
-                const newZ = Math.max(0.5, Math.round((zoom / 1.2) * 10) / 10);
+                const newZ = Math.max(0.05, Math.round((zoom / 1.2) * 100) / 100);
                 setZoom(newZ);
               }}
               disabled={!hasImage}
@@ -339,12 +382,12 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
             >
               <ZoomOut size={12} />
             </button>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', minWidth: 38, textAlign: 'center', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', minWidth: 40, textAlign: 'center', fontFamily: 'monospace' }}>
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={() => {
-                const newZ = Math.min(8, Math.round((zoom * 1.2) * 10) / 10);
+                const newZ = Math.min(8, Math.round((zoom * 1.2) * 100) / 100);
                 setZoom(newZ);
               }}
               disabled={!hasImage}
@@ -369,7 +412,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               }}
               disabled={!hasImage}
               style={{
-                padding: '2px 5px',
+                padding: '2px 6px',
                 fontSize: 9.5,
                 fontWeight: 600,
                 borderRadius: 4,
@@ -378,18 +421,15 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
                 border: '1px solid rgba(255,255,255,0.08)',
                 cursor: hasImage ? 'pointer' : 'not-allowed',
               }}
-              title="Khôi phục kích thước 100%"
+              title="Khôi phục kích thước 100% (1:1)"
             >
               100%
             </button>
             <button
-              onClick={() => {
-                setZoom(1);
-                setPanOffset({ x: 0, y: 0 });
-              }}
+              onClick={handleAutoFitToViewport}
               disabled={!hasImage}
               style={{
-                padding: '2px 5px',
+                padding: '2px 7px',
                 fontSize: 9.5,
                 fontWeight: 700,
                 borderRadius: 4,
@@ -398,7 +438,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
                 border: '1px solid rgba(56, 189, 248, 0.3)',
                 cursor: hasImage ? 'pointer' : 'not-allowed',
               }}
-              title="Khôi phục vị trí mặc định"
+              title="Tự động căn giữa và co giãn vừa khít khung nhìn"
             >
               Fit
             </button>
@@ -616,7 +656,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
           </div>
         )}
 
-        {/* Scaled and Translated Canvas Container */}
+        {/* Scaled and Translated Canvas Container (Tự động căn giữa và co giãn đúng tỷ lệ) */}
         <div
           style={{
             position: 'relative',
@@ -625,8 +665,10 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
             display: hasImage ? 'flex' : 'none',
             alignItems: 'center',
             justifyContent: 'center',
-            maxWidth: '100%',
-            maxHeight: '100%',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(56, 189, 248, 0.25)',
+            borderRadius: 4,
+            transition: isPanning ? 'none' : 'transform 0.05s ease-out',
+            flexShrink: 0,
           }}
         >
           <canvas
@@ -638,10 +680,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
             onMouseLeave={onMouseLeave || onMouseUp}
             style={{
               display: 'block',
-              maxWidth: '100%',
-              maxHeight: '100%',
-              objectFit: 'contain',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+              borderRadius: 4,
               cursor: isEyedropperActive ? 'crosshair' : isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : 'default',
             }}
           />

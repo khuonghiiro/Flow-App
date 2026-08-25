@@ -287,6 +287,77 @@ export const Step1MasterForm: React.FC<Step1MasterFormProps> = ({ config, setCon
           </button>
         </div>
       </div>
+
+      {/* 7. Quy tắc ràng buộc cuối mỗi prompt (Prompt Rules) */}
+      <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 8, padding: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <label style={{ fontSize: 10.5, fontWeight: 700, color: '#facc15', display: 'flex', alignItems: 'center', gap: 4 }}>
+            📜 Quy tắc ràng buộc (Rules thêm vào cuối mỗi Prompt):
+          </label>
+          <button
+            type="button"
+            onClick={() => setConfig((p) => ({ ...p, custom_rules: '' }))}
+            style={{ fontSize: 9.5, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+            title="Dùng quy tắc tự động chuẩn theo màu nền đã cấu hình"
+          >
+            Mặc định
+          </button>
+        </div>
+        <textarea
+          value={config.custom_rules ?? ''}
+          onChange={(e) => setConfig((p) => ({ ...p, custom_rules: e.target.value }))}
+          placeholder={
+            config.bg_type === 'pure_white'
+              ? 'Bắt buộc nền trắng tinh khiết (#FFFFFF) phẳng 1 màu, không bóng đổ, nét 2D chuẩn tách nền, tuyệt đối không chữ/watermark...'
+              : 'Bắt buộc nền xanh (#00FF00) thuần sắc độ chuẩn, không gradient, không bóng đổ, nét vẽ khép kín, tuyệt đối không chữ/watermark...'
+          }
+          rows={2}
+          style={{
+            width: '100%',
+            padding: '6px 8px',
+            fontSize: 10.5,
+            background: '#040711',
+            color: '#38bdf8',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            borderRadius: 6,
+            boxSizing: 'border-box',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+          }}
+        />
+        {/* Preset tags */}
+        <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() =>
+              setConfig((p) => ({
+                ...p,
+                custom_rules:
+                  'MANDATORY RULES: Strictly flat solid uniform pure ' +
+                  (config.bg_type === 'pure_white' ? 'White (#FFFFFF)' : 'Chroma Green (#00FF00)') +
+                  ' background with zero gradients or cast shadows. Crisp 2D lineart, no background objects, no watermark, no text.',
+              }))
+            }
+            style={{ padding: '2px 6px', fontSize: 9.5, borderRadius: 4, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', cursor: 'pointer' }}
+          >
+            + Nền chuẩn {config.bg_type === 'pure_white' ? '#FFFFFF' : '#00FF00'}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setConfig((p) => ({
+                ...p,
+                custom_rules:
+                  (p.custom_rules ? p.custom_rules + ' ' : '') +
+                  'Strictly NO text, NO labels, NO numbers, NO watermark, NO comic panels.',
+              }))
+            }
+            style={{ padding: '2px 6px', fontSize: 9.5, borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer' }}
+          >
+            + Cấm chữ & watermark
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

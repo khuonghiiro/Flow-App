@@ -15,13 +15,21 @@ import {
   getBodyProportionLabels,
 } from './PromptLabelHelpers';
 import { getComponentDef, Asset2DComponentDef } from './Asset2DComponentDefs';
-import { JSON_SCHEMA_FIELD_GUIDE } from './Step1MasterPromptBuilder';
+import { JSON_SCHEMA_FIELD_GUIDE, getPromptRules } from './Step1MasterPromptBuilder';
+import { buildFilenameVariants } from './PartFilenameParser';
 
 export { type Asset2DComponentDef, getComponentDef } from './Asset2DComponentDefs';
 
 function clampPromptLength(prompt: string, maxLen = 3900): string {
-  if (prompt.length <= maxLen) return prompt;
-  return prompt.slice(0, maxLen - 3) + '...';
+  const trimmed = prompt.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  const arMatch = trimmed.match(/\s+--ar\s+([0-9]+:[0-9]+)$/);
+  if (arMatch) {
+    const arSuffix = arMatch[0];
+    const maxBodyLen = maxLen - arSuffix.length - 3;
+    return trimmed.slice(0, maxBodyLen) + '...' + arSuffix;
+  }
+  return trimmed.slice(0, maxLen - 3) + '...';
 }
 
 /**
@@ -47,7 +55,7 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
     bgTextVi = 'Nền đen tuyền (#000000)';
   }
 
-  const artStyleEn = config.custom_character_style?.trim() || config.character_style?.trim() || '2D Chinese Guoman / Xianxia Anime Artstyle';
+  const artStyleEn = config.custom_character_style?.trim() || config.character_style?.trim() || 'Chinese Guoman / 国漫 Xianxia Chibi Anime';
   const styleLabelVi = getStyleLabel(config.character_style, config.custom_character_style);
 
   const eyeShapeInfo = getEyeShapeLabels(config.eye_shape, config.custom_eye_shape);
@@ -81,7 +89,9 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
     }
   }
 
-  const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? config.batch_count : 1;
+  const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? Math.min(4, Math.max(1, config.batch_count)) : 1;
+  const userBaseCount = typeof config.base_count === 'number' && config.base_count > 0 ? Math.min(4, Math.max(1, config.base_count)) : 1;
+  const ruleText = getPromptRules(config, bgPromptColorEn, bgPromptColorHex);
   const isMale = config.gender === 'nam';
   const genderLabelEn = isMale ? 'Male' : 'Female';
 
@@ -109,17 +119,15 @@ CONSISTENCY & RESTRICTIONS:
 - 100% identical character rotated strictly around vertical axis.
 - Clean 2D anime vector-like lineart, flat 2-tone cel shading, zero drop shadows, zero ambient occlusion on ground.
 - Flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background with zero gradients or cast shadows.
-- STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.
+- STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.`;
 
---ar 16:9`;
-
-  const renderSpecs = `Clean crisp 2D anime lineart, flat 2-tone cel shading, vibrant colors, zero drop shadows, solid uniform ${bgPromptColorEn} (${bgPromptColorHex}) background for 1-click alpha keying, no text, no watermark, no border --ar ${selectedAspectRatio}`;
+  const renderSpecs = `Clean crisp 2D anime lineart, flat 2-tone cel shading, vibrant colors, zero drop shadows, solid uniform flat ${bgPromptColorEn} (${bgPromptColorHex}) background for 1-click alpha keying, no text, no watermark, no border`;
 
   // Helper to build explicit prompt for any angle of a component
   const buildPartAnglePrompt = (angleType: '000_front' | '045_three_quarter' | '090_side' | '135_rear' | '180_back' | 'high_angle' | 'low_angle') => {
     if (angleType === '180_back' && comp.rearVisibility === 'hidden') {
       return clampPromptLength(
-        `pure empty blank canvas, uniform solid ${bgPromptColorEn} background (${bgPromptColorHex}), 100% empty space with zero graphics because ${comp.nameVi} is completely occluded and hidden when viewed from behind, no text, no borders --ar ${selectedAspectRatio}`
+        `pure empty blank canvas, uniform solid ${bgPromptColorEn} background (${bgPromptColorHex}), 100% empty space with zero graphics because ${comp.nameVi} is completely occluded and hidden when viewed from behind, no text, no borders`
       );
     }
 
@@ -149,7 +157,7 @@ CONSISTENCY & RESTRICTIONS:
     }
 
     return clampPromptLength(
-      `masterpiece, ultra-detailed isolated 2D animation layer for 2D skeletal puppet rigging: ${comp.titleEn}. Camera View: ${angleDesc}. Character Artstyle: 2D ${artStyleEn} (${config.gender === 'nam' ? 'Male' : 'Female'}). Layer Details: Include ONLY ${comp.includedGeometry.join(', ')}. Rigging Separation Rule: This component is physically isolated and severed cleanly from the rest of the body. DO NOT include: ${comp.excludedGeometry.slice(0, 8).join(', ')}. ${renderSpecs}`
+      `raw modular 2D anime animation asset, standalone isolated layer sprite: ${comp.titleEn}. Camera View: ${angleDesc}. Art Style: 2D ${artStyleEn}. Component geometry: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero connected anatomy, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. ${renderSpecs}`
     );
   };
 
@@ -193,6 +201,7 @@ CONSISTENCY & RESTRICTIONS:
     save_filename: `${comp.filePrefix}_${angleKey}.png`,
     aspect_ratio: selectedAspectRatio,
     view_desc: angleDescEn,
+    rule: ruleText,
     prompt: buildPartAnglePrompt(angleKey),
     count: userBatchCount,
   };
@@ -214,6 +223,7 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_000_front.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc chính diện 0° lơ lửng độc lập',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('000_front'),
         count: userBatchCount,
       },
@@ -230,6 +240,7 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_045_three_quarter.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc nghiêng 3/4 45 độ',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('045_three_quarter'),
         count: userBatchCount,
       },
@@ -246,6 +257,7 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_090_side.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc nhìn ngang 90 độ',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('090_side'),
         count: userBatchCount,
       },
@@ -262,6 +274,7 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_high_angle_top.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc quay trên cao nhìn chúc xuống',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('high_angle'),
         count: userBatchCount,
       },
@@ -278,61 +291,66 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_low_angle_bottom.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc quay dưới hất ngược lên',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('low_angle'),
         count: userBatchCount,
       },
-      {
-        name: `${comp.filePrefix}_180_back`,
-        part_id: comp.id,
-        part_name: comp.nameVi,
-        group_id: comp.groupId,
-        group_name: comp.groupNameVi,
-        angle: '180° Back (Sau lưng)',
-        angle_id: '180_back',
-        angle_deg: 180,
-        z_index: comp.zIndex,
-        save_filename: `${comp.filePrefix}_180_back.png`,
-        aspect_ratio: selectedAspectRatio,
-        view_desc: comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Góc nhìn từ sau lưng',
-        prompt: buildPartAnglePrompt('180_back'),
-        count: userBatchCount,
-      },
+      ...(comp.rearVisibility !== 'hidden' ? [
+        {
+          name: `${comp.filePrefix}_180_back`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '180° Back (Sau lưng)',
+          angle_id: '180_back',
+          angle_deg: 180,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_180_back.png`,
+          aspect_ratio: selectedAspectRatio,
+          view_desc: 'Góc nhìn từ sau lưng',
+          rule: ruleText,
+          prompt: buildPartAnglePrompt('180_back'),
+          count: userBatchCount,
+        },
+      ] : []),
     ];
 
+    const singleAngleList = (angleKey === '180_back' && comp.rearVisibility === 'hidden')
+      ? []
+      : [singleAnglePromptItem];
+
     const step2Prompts = config.json_scope === 'single_angle'
-      ? [
-          {
-            name: `${comp.filePrefix}_${angleKey}`,
-            part_id: comp.id,
-            part_name: comp.nameVi,
-            group_id: comp.groupId,
-            group_name: comp.groupNameVi,
-            angle: angleLabelVi,
-            angle_id: angleKey,
-            angle_deg: angleKey === '045_three_quarter' ? 45 : angleKey === '090_side' ? 90 : angleKey === '180_back' ? 180 : 0,
-            z_index: comp.zIndex,
-            save_filename: `${comp.filePrefix}_${angleKey}.png`,
-            aspect_ratio: selectedAspectRatio,
-            view_desc: angleDescEn,
-            prompt: buildPartAnglePrompt(angleKey),
-            count: userBatchCount,
-          },
-        ]
+      ? singleAngleList
       : allComponentAnglesPrompts;
 
     const jsonPayload: any = {};
     if (config.include_base_prompt !== false) {
+      const baseFnMeta = buildFilenameVariants('master_character_turnaround.png', userBaseCount);
       jsonPayload.base_prompt = baseRefPrompt;
       jsonPayload.base_aspect_ratio = '16:9';
-      jsonPayload.base_count = userBatchCount;
+      jsonPayload.base_count = userBaseCount;
+      jsonPayload.base_save_filename = baseFnMeta.save_filename;
+      jsonPayload.base_save_filenames = baseFnMeta.save_filenames;
+      jsonPayload.base_candidate_selection = baseFnMeta.candidate_selection;
     }
-    jsonPayload.prompts = step2Prompts;
+    jsonPayload.rule = ruleText;
+    jsonPayload.prompts = step2Prompts.map((p) => {
+      const fnMeta = buildFilenameVariants(p.save_filename, p.count);
+      return {
+        ...p,
+        save_filename: fnMeta.save_filename,
+        save_filename_pattern: fnMeta.save_filename_pattern,
+        save_filenames: fnMeta.save_filenames,
+        candidate_selection: fnMeta.candidate_selection,
+      };
+    });
 
     const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
-    const promptEnglish = `masterpiece, best quality, ultra detailed, ${selectedAspectRatio} aspect ratio, isolated 2D animation puppet layer: ${comp.titleEn}, angle: ${angleLabelVi}. Include ONLY: ${comp.includedGeometry.join(', ')}. DO NOT include: ${comp.excludedGeometry.slice(0, 10).join(', ')}. Solid uniform ${bgPromptColorEn} background, zero shadows, no text --ar ${selectedAspectRatio}`;
-    const promptVietnamese = `【 ẢNH ĐƠN ${selectedAspectRatio} SIÊU NÉT — ${comp.nameVi} (${angleLabelVi}) 】\n• Tiêu đề: ${comp.titleEn}\n• Chi tiết cần vẽ: ${comp.includedGeometry.join(', ')}\n• Tuyệt đối loại trừ: ${comp.excludedGeometry.slice(0, 6).join(', ')}\n• Nền: ${bgTextVi}.`;
-    const negativePrompt = 'full character, full body, head, face, extra limbs, multiple views, turnaround, comic panels, grid lines, borders, frames, divider lines, text, letters, numbers, watermark, signature, blurry, 3D CGI render, glow, rim light, color spill';
+    const promptEnglish = `raw modular 2D anime animation asset, standalone isolated puppet layer sprite: ${comp.titleEn}, angle: ${angleLabelVi}. Art style: 2D ${artStyleEn}. Contains strictly: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero attached body parts, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. Solid uniform flat ${bgPromptColorEn} (${bgPromptColorHex}) background, zero shadows, no text, no watermark`;
+    const promptVietnamese = `【 ẢNH ĐƠN ${selectedAspectRatio} SIÊU NÉT — ${comp.nameVi} (${angleLabelVi}) 】\n• Tiêu đề: ${comp.titleEn}\n• Chi tiết cần vẽ: ${comp.includedGeometry.join(', ')}\n• Quy tắc cô lập: ${comp.isolationRule}\n• Tuyệt đối loại trừ: ${comp.excludedGeometry.slice(0, 6).join(', ')}\n• Nền: ${bgTextVi}.\n• Quy tắc bắt buộc: ${ruleText}.`;
+    const negativePrompt = 'full character, full body, complete person, attached limbs, connected body parts, human silhouette, mannequin head, face, eyes, eyebrows, nose, mouth, skin, torso, arms, legs, extra limbs, back hair, long hair, ponytail, hair bun, braids, rear hair mantle, hair covering shoulders, background scenery, floor shadows, borders, frames, grid lines, text, letters, numbers, watermark, signature, blurry, 3D CGI render, photorealism';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
     return {
@@ -362,6 +380,7 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_000_front.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc chính diện 0° lơ lửng độc lập',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('000_front'),
         count: userBatchCount,
       },
@@ -378,6 +397,7 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_045_three_quarter.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc nghiêng 3/4 45 độ',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('045_three_quarter'),
         count: userBatchCount,
       },
@@ -394,40 +414,63 @@ CONSISTENCY & RESTRICTIONS:
         save_filename: `${comp.filePrefix}_090_side.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc nhìn ngang 90 độ',
+        rule: ruleText,
         prompt: buildPartAnglePrompt('090_side'),
         count: userBatchCount,
       },
-      {
-        name: `${comp.filePrefix}_180_back`,
-        part_id: comp.id,
-        part_name: comp.nameVi,
-        group_id: comp.groupId,
-        group_name: comp.groupNameVi,
-        angle: '180° Back (Sau lưng)',
-        angle_id: '180_back',
-        angle_deg: 180,
-        z_index: comp.zIndex,
-        save_filename: `${comp.filePrefix}_180_back.png`,
-        aspect_ratio: selectedAspectRatio,
-        view_desc: comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Góc nhìn từ sau lưng',
-        prompt: buildPartAnglePrompt('180_back'),
-        count: userBatchCount,
-      },
+      ...(comp.rearVisibility !== 'hidden' ? [
+        {
+          name: `${comp.filePrefix}_180_back`,
+          part_id: comp.id,
+          part_name: comp.nameVi,
+          group_id: comp.groupId,
+          group_name: comp.groupNameVi,
+          angle: '180° Back (Sau lưng)',
+          angle_id: '180_back',
+          angle_deg: 180,
+          z_index: comp.zIndex,
+          save_filename: `${comp.filePrefix}_180_back.png`,
+          aspect_ratio: selectedAspectRatio,
+          view_desc: 'Góc nhìn từ sau lưng',
+          rule: ruleText,
+          prompt: buildPartAnglePrompt('180_back'),
+          count: userBatchCount,
+        },
+      ] : []),
     ];
+
+    const horizontal1x4SingleList = (angleKey === '180_back' && comp.rearVisibility === 'hidden')
+      ? []
+      : [singleAnglePromptItem];
 
     const jsonPayload: any = {};
     if (config.include_base_prompt !== false) {
+      const baseFnMeta = buildFilenameVariants('master_character_turnaround.png', userBaseCount);
       jsonPayload.base_prompt = baseRefPrompt;
       jsonPayload.base_aspect_ratio = '16:9';
-      jsonPayload.base_count = userBatchCount;
+      jsonPayload.base_count = userBaseCount;
+      jsonPayload.base_save_filename = baseFnMeta.save_filename;
+      jsonPayload.base_save_filenames = baseFnMeta.save_filenames;
+      jsonPayload.base_candidate_selection = baseFnMeta.candidate_selection;
     }
-    jsonPayload.prompts = config.json_scope === 'single_angle' ? [singleAnglePromptItem] : horizontal1x4Prompts;
+    jsonPayload.rule = ruleText;
+    const targetPrompts = config.json_scope === 'single_angle' ? horizontal1x4SingleList : horizontal1x4Prompts;
+    jsonPayload.prompts = targetPrompts.map((p) => {
+      const fnMeta = buildFilenameVariants(p.save_filename, p.count);
+      return {
+        ...p,
+        save_filename: fnMeta.save_filename,
+        save_filename_pattern: fnMeta.save_filename_pattern,
+        save_filenames: fnMeta.save_filenames,
+        candidate_selection: fnMeta.candidate_selection,
+      };
+    });
 
     const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
-    const promptEnglish = `masterpiece, 4k resolution, ${selectedAspectRatio}, seamless 4-view horizontal rotation sequence of isolated ${comp.titleEn}: Front 0°, Three-Quarter 45°, Side Profile 90°, Rear Back 180°. Solid flat ${bgPromptColorEn} background, zero shadows, no text --ar ${selectedAspectRatio}`;
-    const promptVietnamese = `【 CHUỖI XOAY NGANG 4 GÓC LIỀN MẠCH — ${comp.nameVi} (${selectedAspectRatio}) 】\n• Bố cục: 4 góc dàn ngang trên 1 hàng (0° ➔ 45° ➔ 90° ➔ 180°)\n• Nền: ${bgTextVi}.`;
-    const negativePrompt = 'grid lines, divider lines, panel borders, box frames, comic panels, full character, full body, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow';
+    const promptEnglish = `raw modular 2D anime animation asset, seamless 4-view horizontal rotation sequence of standalone isolated ${comp.titleEn}: Front 0°, Three-Quarter 45°, Side Profile 90°, Rear Back 180°. Art style: 2D ${artStyleEn}. Contains strictly: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero attached body parts, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. Solid flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background, zero shadows, no text, no watermark`;
+    const promptVietnamese = `【 CHUỖI XOAY NGANG 4 GÓC LIỀN MẠCH — ${comp.nameVi} (${selectedAspectRatio}) 】\n• Bố cục: 4 góc dàn ngang trên 1 hàng (0° ➔ 45° ➔ 90° ➔ 180°)\n• Nền: ${bgTextVi}.\n• Quy tắc cô lập: ${comp.isolationRule}\n• Quy tắc bắt buộc: ${ruleText}.`;
+    const negativePrompt = 'full character, full body, complete person, attached limbs, connected body parts, mannequin, head, face, extra limbs, back hair, long hair, ponytail, hair bun, braids, rear hair mantle, hair covering shoulders, comic panels, panel borders, grid lines, divider lines, text, labels, watermark, blurry, 3D CGI render, photorealism';
     const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
     return {
@@ -456,6 +499,7 @@ CONSISTENCY & RESTRICTIONS:
       save_filename: `${comp.filePrefix}_000_front.png`,
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Hàng trên Ô 1: Góc chính diện 0° lơ lửng độc lập',
+      rule: ruleText,
       prompt: buildPartAnglePrompt('000_front'),
       count: userBatchCount,
     },
@@ -472,6 +516,7 @@ CONSISTENCY & RESTRICTIONS:
       save_filename: `${comp.filePrefix}_045_three_quarter.png`,
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Hàng trên Ô 2: Góc nghiêng 3/4 45 độ',
+      rule: ruleText,
       prompt: buildPartAnglePrompt('045_three_quarter'),
       count: userBatchCount,
     },
@@ -488,6 +533,7 @@ CONSISTENCY & RESTRICTIONS:
       save_filename: `${comp.filePrefix}_090_side.png`,
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Hàng trên Ô 3: Góc nhìn ngang 90 độ',
+      rule: ruleText,
       prompt: buildPartAnglePrompt('090_side'),
       count: userBatchCount,
     },
@@ -504,6 +550,7 @@ CONSISTENCY & RESTRICTIONS:
       save_filename: `${comp.filePrefix}_high_angle_top.png`,
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Hàng dưới Ô 4: Góc quay trên cao nhìn chúc xuống',
+      rule: ruleText,
       prompt: buildPartAnglePrompt('high_angle'),
       count: userBatchCount,
     },
@@ -520,40 +567,63 @@ CONSISTENCY & RESTRICTIONS:
       save_filename: `${comp.filePrefix}_low_angle_bottom.png`,
       aspect_ratio: selectedAspectRatio,
       view_desc: 'Hàng dưới Ô 5: Góc quay dưới hất ngược lên',
+      rule: ruleText,
       prompt: buildPartAnglePrompt('low_angle'),
       count: userBatchCount,
     },
-    {
-      name: `${comp.filePrefix}_180_back`,
-      part_id: comp.id,
-      part_name: comp.nameVi,
-      group_id: comp.groupId,
-      group_name: comp.groupNameVi,
-      angle: '180° Rear Back (Sau lưng)',
-      angle_id: '180_back',
-      angle_deg: 180,
-      z_index: comp.zIndex,
-      save_filename: `${comp.filePrefix}_180_back.png`,
-      aspect_ratio: selectedAspectRatio,
-      view_desc: comp.rearVisibility === 'hidden' ? 'Hàng dưới Ô 6: Bị khuất hoàn toàn (ô rỗng)' : 'Hàng dưới Ô 6: Mặt sau chi tiết',
-      prompt: buildPartAnglePrompt('180_back'),
-      count: userBatchCount,
-    },
+    ...(comp.rearVisibility !== 'hidden' ? [
+      {
+        name: `${comp.filePrefix}_180_back`,
+        part_id: comp.id,
+        part_name: comp.nameVi,
+        group_id: comp.groupId,
+        group_name: comp.groupNameVi,
+        angle: '180° Rear Back (Sau lưng)',
+        angle_id: '180_back',
+        angle_deg: 180,
+        z_index: comp.zIndex,
+        save_filename: `${comp.filePrefix}_180_back.png`,
+        aspect_ratio: selectedAspectRatio,
+        view_desc: 'Hàng dưới Ô 6: Mặt sau chi tiết',
+        rule: ruleText,
+        prompt: buildPartAnglePrompt('180_back'),
+        count: userBatchCount,
+      },
+    ] : []),
   ];
+
+  const multiAngle2x3SingleList = (angleKey === '180_back' && comp.rearVisibility === 'hidden')
+    ? []
+    : [singleAnglePromptItem];
 
   const jsonPayload: any = {};
   if (config.include_base_prompt !== false) {
+    const baseFnMeta = buildFilenameVariants('master_character_turnaround.png', userBaseCount);
     jsonPayload.base_prompt = baseRefPrompt;
     jsonPayload.base_aspect_ratio = '16:9';
-    jsonPayload.base_count = userBatchCount;
+    jsonPayload.base_count = userBaseCount;
+    jsonPayload.base_save_filename = baseFnMeta.save_filename;
+    jsonPayload.base_save_filenames = baseFnMeta.save_filenames;
+    jsonPayload.base_candidate_selection = baseFnMeta.candidate_selection;
   }
-  jsonPayload.prompts = config.json_scope === 'single_angle' ? [singleAnglePromptItem] : multiAngle2x3Prompts;
+  jsonPayload.rule = ruleText;
+  const targetPrompts = config.json_scope === 'single_angle' ? multiAngle2x3SingleList : multiAngle2x3Prompts;
+  jsonPayload.prompts = targetPrompts.map((p) => {
+    const fnMeta = buildFilenameVariants(p.save_filename, p.count);
+    return {
+      ...p,
+      save_filename: fnMeta.save_filename,
+      save_filename_pattern: fnMeta.save_filename_pattern,
+      save_filenames: fnMeta.save_filenames,
+      candidate_selection: fnMeta.candidate_selection,
+    };
+  });
 
   const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
-  const promptEnglish = `masterpiece, 4k resolution, ${selectedAspectRatio}, modular 2D anime sprite sheet of isolated ${comp.titleEn} (6 views arranged in 2 rows of 3). Top: Front 0°, Three-Quarter 45°, Side Profile 90°. Bottom: High Angle, Low Angle, Rear Back 180°. Solid flat ${bgPromptColorEn} background, zero shadows, no text --ar ${selectedAspectRatio}`;
-  const promptVietnamese = `【 BẢNG SPRITE 6 GÓC QUAY ĐIỆN ẢNH CHO 1 CHI TIẾT (LƯỚI 2×3 — ${selectedAspectRatio}) 】\n• Linh kiện: ${comp.nameVi}\n• Hàng trên: 1. Chính diện 0° | 2. Nghiêng 3/4 45° | 3. Nhìn ngang 90°\n• Hàng dưới: 4. Trên cao nhìn xuống | 5. Dưới hất lên | 6. Sau lưng 180°\n• Nền: ${bgTextVi}.`;
-  const negativePrompt = 'grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, head, face, extra limbs, text, labels, watermark, blurry, 3D CGI render, glow, rim light';
+  const promptEnglish = `raw modular 2D anime animation asset, modular 2D anime sprite sheet of standalone isolated ${comp.titleEn} (6 views arranged in 2 rows of 3). Top: Front 0°, Three-Quarter 45°, Side Profile 90°. Bottom: High Angle, Low Angle, Rear Back 180°. Art style: 2D ${artStyleEn}. Contains strictly: ${comp.includedGeometry.join(', ')}. Rigging isolation rule: ${comp.isolationRule}. Strictly zero attached body parts, NO ${comp.excludedGeometry.slice(0, 10).join(', NO ')}. Solid flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background, zero shadows, no text, no watermark`;
+  const promptVietnamese = `【 BẢNG SPRITE 6 GÓC QUAY ĐIỆN ẢNH CHO 1 CHI TIẾT (LƯỚI 2×3 — ${selectedAspectRatio}) 】\n• Linh kiện: ${comp.nameVi}\n• Hàng trên: 1. Chính diện 0° | 2. Nghiêng 3/4 45° | 3. Nhìn ngang 90°\n• Hàng dưới: 4. Trên cao nhìn xuống | 5. Dưới hất lên | 6. Sau lưng 180°\n• Nền: ${bgTextVi}.\n• Quy tắc cô lập: ${comp.isolationRule}\n• Quy tắc bắt buộc: ${ruleText}.`;
+  const negativePrompt = 'grid lines, divider lines, cell borders, panel frames, black outlines around cells, comic panels, full character, full body, complete person, head, face, extra limbs, attached limbs, back hair, long hair, ponytail, hair bun, braids, rear hair mantle, hair covering shoulders, text, labels, watermark, blurry, 3D CGI render, photorealism';
   const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
 
   return {

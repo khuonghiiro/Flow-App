@@ -12,6 +12,8 @@ import { SlicerAIMattingCard } from './sidebar/SlicerAIMattingCard';
 import { SlicerAssemblyActionCard } from './sidebar/SlicerAssemblyActionCard';
 
 export interface SlicerSidebarControlsProps {
+  targetCategory?: string;
+  onSelectTargetCategory?: (cat: string) => void;
   selectedCatId: string;
   onSelectCatId: (id: string) => void;
   customCategory?: GridCategoryDefinition | null;
@@ -22,6 +24,7 @@ export interface SlicerSidebarControlsProps {
   onAutoDetectAngleFromFilename?: () => void;
   onOpenJsonImportModal?: () => void;
   userUploadedImageUrl: string | null;
+  totalLoadedCount?: number;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClearImage?: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
@@ -95,6 +98,8 @@ export interface SlicerSidebarControlsProps {
 }
 
 export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
+  targetCategory = 'character',
+  onSelectTargetCategory,
   selectedCatId,
   onSelectCatId,
   customCategory,
@@ -105,6 +110,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   onAutoDetectAngleFromFilename,
   onOpenJsonImportModal,
   userUploadedImageUrl,
+  totalLoadedCount,
   onFileUpload,
   onClearImage,
   fileInputRef,
@@ -190,9 +196,9 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
     >
       {/* CARD 1: NGUỒN ẢNH & KHUNG LƯỚI */}
       <SlicerSourceImageCard
-        selectedCatId={selectedCatId}
-        onSelectCatId={onSelectCatId}
-        customCategory={customCategory}
+        targetCategory={targetCategory}
+        onSelectTargetCategory={onSelectTargetCategory}
+        isSingleImageMode={selectedCatId === 'single_full_image'}
         singleImageAngle={singleImageAngle}
         onUpdateSingleImageAngle={onUpdateSingleImageAngle}
         singleImageSlot={singleImageSlot}
@@ -200,6 +206,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         onAutoDetectAngleFromFilename={onAutoDetectAngleFromFilename}
         onOpenJsonImportModal={onOpenJsonImportModal}
         userUploadedImageUrl={userUploadedImageUrl}
+        totalLoadedCount={totalLoadedCount}
         onFileUpload={onFileUpload}
         onClearImage={onClearImage}
         fileInputRef={fileInputRef}

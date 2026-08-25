@@ -26,12 +26,14 @@ import { SlicerSidebarControls } from './slicer/SlicerSidebarControls';
 import { SlicerCellAdjustmentBar } from './slicer/SlicerCellAdjustmentBar';
 import { SlicerInteractiveCanvas } from './slicer/SlicerInteractiveCanvas';
 import { Slicer3DTurntablePreview } from './slicer/Slicer3DTurntablePreview';
+import { SlicerLoadedImagesTabs } from './slicer/SlicerLoadedImagesTabs';
 import { useSlicerDividers } from './slicer/hooks/useSlicerDividers';
 import { useSlicerUndoRedo, SlicerHistorySnapshot } from './slicer/hooks/useSlicerUndoRedo';
 import { useSlicerCanvasDrawing } from './slicer/hooks/useSlicerCanvasDrawing';
 import { useSlicerSlicingPipeline } from './slicer/hooks/useSlicerSlicingPipeline';
 import { useSlicerAIMatting } from './slicer/hooks/useSlicerAIMatting';
 import { useSlicerCanvasInteraction } from './slicer/hooks/useSlicerCanvasInteraction';
+import { useSlicerMultiImageGallery, SlicerUploadedImageItem } from './slicer/hooks/useSlicerMultiImageGallery';
 
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
@@ -60,6 +62,21 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const cachedGrid = loadCachedGridConfig();
     return cachedGrid ? `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}` : 'cinematic_single_part_2x3';
   });
+
+  const [targetCategory, setTargetCategory] = useState<string>(() => {
+    try {
+      return localStorage.getItem('flowmy_slicer_target_category') || 'character';
+    } catch {
+      return 'character';
+    }
+  });
+
+  const handleSelectTargetCategory = useCallback((cat: string) => {
+    setTargetCategory(cat);
+    try {
+      localStorage.setItem('flowmy_slicer_target_category', cat);
+    } catch {}
+  }, []);
 
   // Filter & Color Tuning States
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
@@ -309,6 +326,46 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     applySnapshot,
   });
 
+  // 4b. Multi-Image Gallery Hook
+  const handleSelectGalleryImage = useCallback(
+    (item: SlicerUploadedImageItem) => {
+      pushUndoState(`Xem ảnh ${item.name}`);
+      setUserUploadedImageUrl(item.url);
+      setUploadedFileMetadata(item.metadata);
+      setHasExplicitlySliced(false);
+      setSlicedResults(new Map());
+      slicedCanvasesRef.current.clear();
+      setPreviewDisplayMode('original');
+
+      if (item.metadata) {
+        if (item.metadata.part_id) {
+          setSingleImageSlot(item.metadata.part_id as Character2DPartType);
+        }
+        if (item.metadata.angle_id) {
+          const def = getAngleDefinitionById(item.metadata.angle_id);
+          setSingleImageAngle(def.angle);
+        }
+      }
+    },
+    [pushUndoState, setHasExplicitlySliced, setSlicedResults, setPreviewDisplayMode]
+  );
+
+  const {
+    imageList,
+    setImageList,
+    activeImageId,
+    activePartId,
+    partGroups,
+    activeImage,
+    handleAddFiles,
+    handleSelectImage,
+    handleSelectPart,
+    handleRemoveImage,
+    handleClearAll,
+  } = useSlicerMultiImageGallery({
+    onSelectActiveImage: handleSelectGalleryImage,
+  });
+
   // 5. AI Matting Hook
   const { isAIRunning, handleRunAIMatting } = useSlicerAIMatting({
     loadedImageRef,
@@ -500,6 +557,30 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         </div>
       )}
 
+      {/* Multi-Image Gallery & Part Tabs */}
+      {imageList.length > 0 && (
+        <SlicerLoadedImagesTabs
+          partGroups={partGroups}
+          activePartId={activePartId}
+          activeImageId={activeImageId}
+          onSelectPart={handleSelectPart}
+          onSelectImage={handleSelectImage}
+          onRemoveImage={handleRemoveImage}
+          onClearAll={() => {
+            pushUndoState('Xóa tất cả ảnh');
+            handleClearAll();
+            setUserUploadedImageUrl(null);
+            setUploadedFileMetadata(null);
+            setHasExplicitlySliced(false);
+            setSlicedResults(new Map());
+            slicedCanvasesRef.current.clear();
+            setPreviewDisplayMode('original');
+          }}
+          onOpenAddFiles={() => fileInputRef.current?.click()}
+          totalImagesCount={imageList.length}
+        />
+      )}
+
       {/* Auto Detect Metadata Header Bar */}
       {uploadedFileMetadata && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 12px', background: 'linear-gradient(90deg, rgba(2, 132, 199, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%)', borderRadius: 6, border: '1px solid rgba(56, 189, 248, 0.35)', fontSize: 11, color: '#e0f2fe' }}>
@@ -509,9 +590,23 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               {uploadedFileMetadata.part_name} ({uploadedFileMetadata.part_id})
             </span>
             <span>• Góc quay: <b>{uploadedFileMetadata.angle_name}</b></span>
+            {uploadedFileMetadata.variant_index && (
+              <span style={{ background: 'rgba(245, 158, 11, 0.25)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)', padding: '1px 6px', borderRadius: 4, fontWeight: 700, fontSize: 10 }}>
+                Biến thể #{uploadedFileMetadata.variant_index}
+              </span>
+            )}
             <span>• Nhóm: <b>{uploadedFileMetadata.group_name}</b></span>
           </div>
-          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>{uploadedFileMetadata.save_filename}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {uploadedFileMetadata.original_filename && uploadedFileMetadata.original_filename !== uploadedFileMetadata.canonical_filename && (
+              <span style={{ fontSize: 9.5, color: '#64748b', fontFamily: 'monospace' }} title="Tệp nguồn thực tế">
+                [{uploadedFileMetadata.original_filename}] ➔
+              </span>
+            )}
+            <span style={{ fontSize: 10, color: '#38bdf8', fontFamily: 'monospace', fontWeight: 600 }} title="Tên tệp chuẩn dùng trong Pipeline">
+              {uploadedFileMetadata.canonical_filename || uploadedFileMetadata.save_filename}
+            </span>
+          </div>
         </div>
       )}
 
@@ -519,6 +614,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '410px 1fr 380px', gap: 10, minHeight: 0 }}>
         {/* Column 1: Slicer Controls */}
         <SlicerSidebarControls
+          targetCategory={targetCategory}
+          onSelectTargetCategory={handleSelectTargetCategory}
           selectedCatId={selectedCatId}
           onSelectCatId={(catId) => { pushUndoState('Đổi cấu trúc lưới'); handleSelectCatId(catId); }}
           customCategory={customCategory}
@@ -540,21 +637,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           }}
           onOpenJsonImportModal={() => setIsJsonImportOpen(true)}
           userUploadedImageUrl={userUploadedImageUrl}
+          totalLoadedCount={imageList.length}
           onFileUpload={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              pushUndoState('Tải ảnh mới');
-              setUploadedFileMetadata(parsePartFilename(file.name));
-              setUserUploadedImageUrl(URL.createObjectURL(file));
-              setHasExplicitlySliced(false);
-              setSlicedResults(new Map());
-              slicedCanvasesRef.current.clear();
-              setPreviewDisplayMode('original');
+            const files = e.target.files;
+            if (files && files.length > 0) {
+              pushUndoState(`Tải ${files.length} ảnh`);
+              handleAddFiles(files);
             }
           }}
           onClearImage={() => {
             pushUndoState('Xóa ảnh');
+            handleClearAll();
             setUserUploadedImageUrl(null);
+            setUploadedFileMetadata(null);
             setHasExplicitlySliced(false);
             setSlicedResults(new Map());
             slicedCanvasesRef.current.clear();
@@ -631,6 +726,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           <SlicerInteractiveCanvas
             imageCanvasRef={imageCanvasRef}
             hasImage={Boolean(userUploadedImageUrl)}
+            loadedImage={loadedImage}
             previewDisplayMode={previewDisplayMode}
             setPreviewDisplayMode={setPreviewDisplayMode}
             onTogglePreviewDisplayMode={(mode) => {
@@ -775,6 +871,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           onClose={() => setIsSaveKitModalOpen(false)}
           slicedResults={slicedResults}
           categoryLabel={currentCategory.label}
+          initialTargetCategory={targetCategory}
         />
       )}
 

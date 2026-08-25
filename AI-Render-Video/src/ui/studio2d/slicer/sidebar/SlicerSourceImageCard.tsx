@@ -1,13 +1,24 @@
 import React from 'react';
 import { Layers, Upload, Camera, FileCode, Trash2 } from 'lucide-react';
-import { GRID_CATEGORY_DEFINITIONS, GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
 import { STANDARD_ANGLE_DEFINITIONS } from '../../../../core/assets/slicer/SlicerAngleConstants';
 import { Character2DAngle, Character2DPartType } from '../../../../types/scene2d';
 
+export const OBJECT_GENRE_OPTIONS = [
+  { id: 'character', label: '🧑 Nhân Vật (Khớp Xương 2D) [ĐẦY ĐỦ LOGIC]', badge: 'Đầy đủ khớp' },
+  { id: 'animal', label: '🐾 Động Vật & Linh Thú (Creatures & Beasts)', badge: 'Linh thú' },
+  { id: 'tree', label: '🌳 Cây Cối & Thảo Mộc (Vegetation & Trees)', badge: 'Thảo mộc' },
+  { id: 'rock', label: '🪨 Đá Sỏi & Khoáng Thạch (Rocks & Minerals)', badge: 'Khoáng thạch' },
+  { id: 'water', label: '🌊 Sông Nước & Thác Nước (Water & Effects)', badge: 'Sông nước' },
+  { id: 'mountain', label: '🏔️ Đồi Núi & Địa Hình (Terrain & Mountains)', badge: 'Địa hình' },
+  { id: 'building', label: '🏠 Kiến Trúc & Nhà Cửa (Architecture & Buildings)', badge: 'Kiến trúc' },
+  { id: 'weapon_prop', label: '⚔️ Vũ Khí & Đạo Cụ (Props & Weapons)', badge: 'Đạo cụ' },
+  { id: 'vehicle', label: '🚗 Phương Tiện & Thú Cưỡi (Vehicles & Mounts)', badge: 'Phương tiện' },
+];
+
 export interface SlicerSourceImageCardProps {
-  selectedCatId: string;
-  onSelectCatId: (id: string) => void;
-  customCategory?: GridCategoryDefinition | null;
+  targetCategory?: string;
+  onSelectTargetCategory?: (cat: string) => void;
+  isSingleImageMode?: boolean;
   singleImageAngle?: Character2DAngle;
   onUpdateSingleImageAngle?: (angle: Character2DAngle) => void;
   singleImageSlot?: Character2DPartType;
@@ -15,15 +26,16 @@ export interface SlicerSourceImageCardProps {
   onAutoDetectAngleFromFilename?: () => void;
   onOpenJsonImportModal?: () => void;
   userUploadedImageUrl: string | null;
+  totalLoadedCount?: number;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClearImage?: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
 export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
-  selectedCatId,
-  onSelectCatId,
-  customCategory,
+  targetCategory = 'character',
+  onSelectTargetCategory,
+  isSingleImageMode = false,
   singleImageAngle = 'front',
   onUpdateSingleImageAngle,
   singleImageSlot = 'than_co_ban',
@@ -31,15 +43,11 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
   onAutoDetectAngleFromFilename,
   onOpenJsonImportModal,
   userUploadedImageUrl,
+  totalLoadedCount = 0,
   onFileUpload,
   onClearImage,
   fileInputRef,
 }) => {
-  const currentCat =
-    customCategory && customCategory.id === selectedCatId
-      ? customCategory
-      : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) || GRID_CATEGORY_DEFINITIONS[0];
-
   return (
     <div
       style={{
@@ -64,51 +72,49 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
             fontWeight: 600,
             padding: '2px 7px',
             borderRadius: 4,
-            background: selectedCatId === 'single_full_image' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(56, 189, 248, 0.15)',
-            color: selectedCatId === 'single_full_image' ? '#4ade80' : '#38bdf8',
-            border: selectedCatId === 'single_full_image' ? '1px solid #22c55e' : '1px solid rgba(56, 189, 248, 0.3)',
+            background: isSingleImageMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(56, 189, 248, 0.15)',
+            color: isSingleImageMode ? '#4ade80' : '#38bdf8',
+            border: isSingleImageMode ? '1px solid #22c55e' : '1px solid rgba(56, 189, 248, 0.3)',
           }}
         >
-          {selectedCatId === 'single_full_image' ? '🖼️ 1 Ảnh đơn' : `${currentCat.rows} Hàng × ${currentCat.cols} Cột`}
+          {isSingleImageMode ? '🖼️ Ảnh Đơn' : '🔲 Lưới Ma Trận'}
         </span>
       </div>
 
-      {/* Category Preset Dropdown */}
-      <div style={{ display: 'flex', gap: 6 }}>
+      {/* Combobox Thể Loại Đối Tượng (Tương tự Tab 4 Bước 2) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <label style={{ fontSize: 10, fontWeight: 700, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4 }}>
+          📂 Thể Loại Đối Tượng:
+        </label>
         <select
-          value={selectedCatId}
-          onChange={(e) => onSelectCatId(e.target.value)}
+          value={targetCategory}
+          onChange={(e) => onSelectTargetCategory && onSelectTargetCategory(e.target.value)}
           style={{
-            flex: 1,
-            height: 34,
-            padding: '0 10px',
+            width: '100%',
+            height: 32,
+            padding: '0 8px',
             fontSize: 11,
-            background: '#0b1329',
-            color: '#38bdf8',
-            border: '1.5px solid #0284c7',
+            background: '#090d16',
+            color: '#34d399',
+            border: '1.5px solid rgba(52, 211, 153, 0.5)',
             borderRadius: 6,
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: 'pointer',
             outline: 'none',
             boxSizing: 'border-box',
-            minWidth: 0,
+            boxShadow: '0 0 8px rgba(52, 211, 153, 0.15)',
           }}
         >
-          {customCategory && !GRID_CATEGORY_DEFINITIONS.some((c) => c.id === customCategory.id) && (
-            <option value={customCategory.id}>
-              ⭐ {customCategory.label} ({customCategory.rows}x{customCategory.cols})
-            </option>
-          )}
-          {GRID_CATEGORY_DEFINITIONS.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.label} ({cat.rows}x{cat.cols})
+          {OBJECT_GENRE_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
             </option>
           ))}
         </select>
       </div>
 
       {/* Single Image Mode Angle & Slot Configurator */}
-      {selectedCatId === 'single_full_image' && (
+      {isSingleImageMode && (
         <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: 8, borderRadius: 6, border: '1px solid rgba(34, 197, 94, 0.25)', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
             <Camera size={12} /> Cấu hình Góc & Bộ Phận Cho Ảnh Đơn:
@@ -205,6 +211,7 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         onChange={onFileUpload}
         style={{ display: 'none' }}
       />
@@ -229,7 +236,7 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
             boxSizing: 'border-box',
           }}
         >
-          <Upload size={14} /> {userUploadedImageUrl ? '📤 Tải ảnh khác lên' : '📤 Tải ảnh Sprite Sheet lên'}
+          <Upload size={14} /> {totalLoadedCount > 0 ? `📤 Tải thêm ảnh (${totalLoadedCount} ảnh)` : '📤 Tải ảnh lên (Hỗ trợ chọn nhiều ảnh)'}
         </button>
 
         {userUploadedImageUrl && onClearImage && (

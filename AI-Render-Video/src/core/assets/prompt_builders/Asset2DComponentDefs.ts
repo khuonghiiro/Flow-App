@@ -3,6 +3,7 @@ export interface Asset2DComponentDef {
   nameVi: string;
   titleEn: string;
   summaryEn: string;
+  isolationRule: string;
   includedGeometry: string[];
   excludedGeometry: string[];
   rearVisibility: 'visible' | 'hidden' | 'conditional';
@@ -37,17 +38,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'toc_truoc',
         nameVi: 'Mái Tóc Trước (Front Bangs Fringe)',
-        titleEn: 'EXCLUSIVELY THE FLOATING FRONT BANGS / FRONT FRINGE HAIR LAYER.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nThis component is EXCLUSIVELY the front fringe bangs hair layer physically hovering in front of the forehead and face (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}).\nThe front bangs must float as an independent 2D hair cluster, completely separated and severed from the rest of the head, face, and back hair.\nDO NOT attach any back hair, rear hair mantle, ponytail, hair bun, top scalp, or facial skin!\nIn Cell [1,2] (180° Rear Back), because the front bangs are physically located on the front of the head and 100% occluded from behind, THIS CELL MUST REMAIN COMPLETELY EMPTY CHROMA GREEN (#00FF00).`,
+        titleEn: 'STANDALONE CLIP-ON FRONT BANGS FRINGE HAIRPIECE SPRITE (FOREHEAD LAYER ONLY)',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nShort clip-on front bangs fringe hairpiece in hair color (${hairColInfo.en}).\nFloating as an independent 2D foreground hairpiece sticker.\nMaximum vertical length is strictly at eyebrow and cheek level.\nPure solid Chroma Green #00FF00 background is 100% visible directly behind the bangs.\nStrictly ZERO back hair, ZERO long hair, ZERO ponytail, ZERO hair bun, ZERO hair behind neck, ZERO head or skull silhouette!`,
+        isolationRule: 'Forehead fringe bangs hairpiece ONLY. Maximum vertical length reaches eyebrow and cheek level. Pure solid Chroma Green #00FF00 background is 100% visible directly behind the bangs. Strictly ZERO back hair, ZERO long hair, ZERO ponytail, ZERO hair bun, ZERO hair behind neck, ZERO scalp or head silhouette.',
         includedGeometry: [
-          'floating front fringe bangs locks',
-          'hair strands crossing in front of the forehead',
-          'front fringe tips and middle locks belonging strictly to the front-bangs layer',
+          'short floating front fringe hair locks ending at eyebrow level',
+          'short side temple wisps ending above chin level',
+          `thin foreground hair strands in hair color (${hairColInfo.en})`,
+          'top root cut horizontally flat at the hairline',
         ],
         excludedGeometry: [
-          'back hair', 'rear hair mantle', 'hair falling behind the neck or shoulders',
-          'hair bun on the back of the head', 'top scalp hair mass', 'head silhouette',
-          'face', 'forehead skin', 'scalp', 'ears', 'eyebrows', 'eyes', 'eyelashes', 'nose', 'mouth', 'neck', 'body',
+          'full character', 'back hair', 'long hair', 'flowing hair', 'ponytail', 'hair bun', 'rear hair mantle', 'hair behind neck', 'scalp', 'skull', 'head', 'face skin', 'eyes', 'eyebrows', 'nose', 'mouth', 'neck', 'torso', 'body',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -63,11 +64,12 @@ export function getComponentDef(partType: string, options: {
         id: 'toc_sau',
         nameVi: isShortHair ? 'Tóc Sau Gáy Ngắn (Short Back Hair)' : 'Suối Tóc Sau Lưng (Back Hair Mantle)',
         titleEn: isShortHair
-          ? 'EXCLUSIVELY THE SHORT REAR BACK HAIR AND NAPE LOCKS LAYER.'
-          : 'EXCLUSIVELY THE REAR BACK HAIR MANTLE / LONG FLOWING BACK HAIR VOLUME LAYER.',
+          ? 'STANDALONE DETACHED SHORT REAR BACK HAIR AND NAPE LOCKS SPRITE'
+          : 'STANDALONE REAR BACK HAIR MANTLE VOLUME SPRITE (NO FRONT BANGS, HOLLOW FRONT CENTER)',
         summaryEn: isShortHair
           ? `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nShort back hair and nape hair layer (${hairColInfo.en}, ${hairTexInfo.en}, short hair style).\nContains ONLY the rear back head hair volume covering the nape and back of skull.\nDO NOT include any front bangs, forehead fringe, face, or body!`
-          : `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nThe front bangs (mái tóc trước) and facial features have ALREADY been separated into independent layers!\nTherefore, across ALL views, this asset contains ONLY the long back hair mass, rear hair bun/crown, and long flowing hair streams cascading behind the back (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}).\nIn FRONT (0°) and THREE-QUARTER (45°) views, the front-center area where the face and front bangs belong MUST REMAIN A COMPLETELY HOLLOW / EMPTY GAP for later puppet assembly.\nDO NOT include any front bangs, front fringe, forehead locks, forehead skin, or facial features!`,
+          : `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nLong back hair mass, rear hair bun/crown, and flowing hair streams cascading behind the back (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}).\nIn FRONT (0°) and THREE-QUARTER (45°) views, the front-center area where the face and front bangs belong MUST REMAIN A COMPLETELY HOLLOW / EMPTY GAP for later puppet assembly.\nDO NOT include any front bangs, front fringe, face skin, eyes, nose, or mouth!`,
+        isolationRule: 'Contains ONLY the rear back hair volume and back mantle cascading behind the spine. The front center where the face and front bangs go MUST BE A HOLLOW EMPTY GAP showing solid Chroma Green background. Strictly ZERO front bangs, ZERO face.',
         includedGeometry: isShortHair
           ? [
               'short rear back hair volume',
@@ -76,13 +78,12 @@ export function getComponentDef(partType: string, options: {
             ]
           : [
               'rear back hair mass',
-              'flowing back hair mantle cascading behind the shoulders and spine',
+              `flowing back hair mantle cascading behind the shoulders in hair color (${hairColInfo.en})`,
               'rear hair bun / hair crown ornaments on the rear of the head',
-              'hollow empty front-center space in front views where face and bangs assemble',
+              'hollow empty front-center space where face and bangs assemble',
             ],
         excludedGeometry: [
-          'front bangs', 'front fringe', 'forehead hair', 'front facial hair framing the forehead',
-          'forehead skin', 'face silhouette', 'eyes', 'eyebrows', 'nose', 'mouth', 'cheeks', 'chin', 'mannequin head base',
+          'full character', 'front bangs', 'front fringe', 'forehead hair', 'face skin', 'forehead', 'eyes', 'eyebrows', 'nose', 'mouth', 'cheeks', 'chin', 'neck skin', 'body',
         ],
         rearVisibility: 'visible',
         groupId: '01_head_face',
@@ -98,14 +99,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'khuon_mat_no_face',
         nameVi: 'Khuôn Mặt Trần Không Ngũ Quan (Blank Face Base)',
-        titleEn: 'EXCLUSIVELY THE BLANK PORCELAIN FACE SKIN / HEAD BASE (NO HAIR, NO FEATURES).',
+        titleEn: 'BLANK PORCELAIN FACE SKIN MASK SPRITE (COMPLETELY BALD, ZERO FACIAL FEATURES)',
         summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nA completely featureless, blank anime head and facial skin silhouette.\nABSOLUTELY NO hair of any kind (NO front bangs, NO back hair, NO side hair).\nABSOLUTELY NO facial features (NO eyes, NO eyebrows, NO nose, NO mouth).\nPure clean porcelain skin mannequin base for assembling modular eyes, nose, mouth and hair layers.`,
+        isolationRule: 'Completely bald, blank featureless mannequin face mask. Zero hair anywhere on the head, zero front bangs, zero back hair, zero eyes, zero eyebrows, zero nose, zero mouth.',
         includedGeometry: [
-          'blank facial skin silhouette', 'forehead skin surface', 'cheeks', 'jawline', 'chin', 'neck connection base',
+          'completely blank porcelain facial skin silhouette',
+          'smooth jawline and chin',
+          'empty bald forehead surface',
+          'neck connection base',
         ],
         excludedGeometry: [
-          'hair of any kind', 'front bangs', 'front fringe', 'side hair', 'back hair', 'hair accessories',
-          'eyebrows', 'eyes', 'eyelashes', 'iris', 'pupil', 'sclera', 'nose', 'mouth', 'ears', 'clothing', 'body',
+          'hair of any kind', 'bangs', 'back hair', 'eyebrows', 'eyes', 'eyelashes', 'pupils', 'sclera', 'nose', 'mouth', 'lips', 'teeth', 'ears', 'clothes', 'body',
         ],
         rearVisibility: 'visible',
         groupId: '01_head_face',
@@ -119,13 +123,16 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'trong_den_iris',
         nameVi: 'Mống Mắt & Con Ngươi Màu (Iris & Pupil Layer)',
-        titleEn: 'EXCLUSIVELY THE PAIR OF ANIME IRISES AND PUPILS.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated pair of floating circular anime iris discs and pupils (${eyeColInfo.en}) with internal color gradient reflections.\nDO NOT include sclera, eyelids, eyelashes, skin, or head!\nIn Cell [1,2] (180° Rear Back), the eyes are 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
+        titleEn: 'ISOLATED PAIR OF ANIME EYE IRIS DISCS AND PUPILS ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated pair of floating circular anime iris discs and pupils (${eyeColInfo.en}) with internal color gradient reflections.\nDO NOT include sclera, eyelids, eyelashes, skin, or head!`,
+        isolationRule: 'Pair of isolated anime iris discs and pupil stickers only. Zero sclera, zero eyelashes, zero face skin, zero head.',
         includedGeometry: [
-          'left circular iris disc and pupil', 'right circular iris disc and pupil', 'internal iris color gradient and luster',
+          `pair of circular colored anime irises in color (${eyeColInfo.en})`,
+          'crisp circular pupil center',
+          'internal luminous iris gradient reflections',
         ],
         excludedGeometry: [
-          'sclera', 'white of eyes', 'eyelids', 'eyelashes', 'eyebrows', 'face skin', 'head', 'hair',
+          'full character', 'sclera', 'eyeball whites', 'eyelids', 'eyelashes', 'eyebrows', 'face skin', 'forehead', 'head', 'hair', 'body',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -139,13 +146,15 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'trong_trang',
         nameVi: 'Tròng Trắng / Hốc Mắt (Sclera Base Layer)',
-        titleEn: 'EXCLUSIVELY THE PAIR OF ANIME SCLERA (EYE SOCKET WHITES).',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated pair of smooth pure white anime sclera base shapes with subtle upper socket shadow.\nDO NOT include iris, pupil, highlights, eyelids, face skin, or head!\nIn Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
+        titleEn: 'ISOLATED PAIR OF ANIME EYE SCLERA WHITE BASE SHAPES ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated pair of smooth pure white anime sclera base shapes with subtle upper socket shadow.\nDO NOT include iris, pupil, highlights, eyelids, face skin, or head!`,
+        isolationRule: 'Pair of isolated anime sclera eye whites stickers only. Zero iris, zero pupil, zero eyelids, zero face skin.',
         includedGeometry: [
-          'left white sclera shape', 'right white sclera shape', 'subtle upper eye-socket shadow gradient',
+          'pair of pure white almond sclera shapes',
+          'subtle upper eye-socket shadow gradient',
         ],
         excludedGeometry: [
-          'iris', 'pupil', 'highlights', 'eyelids', 'eyelashes', 'eyebrows', 'face skin', 'head', 'hair',
+          'full character', 'iris', 'pupil', 'colored eye', 'eyelids', 'eyelashes', 'eyebrows', 'face skin', 'head', 'hair', 'body',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -159,13 +168,16 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'diem_sang_mat',
         nameVi: 'Điểm Sáng Mắt (Eye Sparkles & Highlights)',
-        titleEn: 'EXCLUSIVELY THE EYE SPARKLES AND HIGHLIGHT GLINTS.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated crisp pure white reflection dots and star glints for anime eyes.\nDO NOT include iris, pupil, sclera, eyelids, face skin, or head!\nIn Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
+        titleEn: 'ISOLATED PAIR OF CRISP WHITE EYE HIGHLIGHT GLINT SPOTS ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated crisp pure white reflection dots and star glints for anime eyes.\nDO NOT include iris, pupil, sclera, eyelids, face skin, or head!`,
+        isolationRule: 'Pair of isolated crisp white highlight glint spots only.',
         includedGeometry: [
-          'crisp circular white glint spots', 'starburst highlight glints', 'reflection sparkle shapes',
+          'crisp circular white glint spots',
+          'starburst highlight glints',
+          'reflection sparkle shapes',
         ],
         excludedGeometry: [
-          'iris', 'pupil', 'sclera', 'eyelids', 'face skin', 'head', 'hair',
+          'full character', 'iris', 'pupil', 'sclera', 'eyelids', 'face skin', 'head', 'hair',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -179,13 +191,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'mi_mat',
         nameVi: 'Mi Mắt & Chớp Mắt (Eyelids & Blink Keyframes)',
-        titleEn: 'EXCLUSIVELY THE EYELIDS AND BLINK KEYFRAME CONTOURS.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated crisp anime upper/lower eyelid lineart and blinking stages.\nDO NOT include iris, pupil, sclera, eyebrows, nose, face skin, or head!\nIn Cell [1,2] (180° Rear Back), Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
+        titleEn: 'ISOLATED ANIME EYELID LASH LINE CONTOURS ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nIsolated crisp anime upper/lower eyelid lineart and blinking stages.\nDO NOT include iris, pupil, sclera, eyebrows, nose, face skin, or head!`,
+        isolationRule: 'Isolated anime eyelid lash line contours only.',
         includedGeometry: [
-          'upper lash line', 'lower lash line', 'eyelid crease line', 'blink keyframe contours (open, half-closed, closed)',
+          'upper lash line',
+          'lower lash line',
+          'eyelid crease line',
+          'blink keyframe contours',
         ],
         excludedGeometry: [
-          'iris', 'pupil', 'sclera', 'eyebrows', 'nose', 'face skin', 'head', 'hair',
+          'full character', 'iris', 'pupil', 'sclera', 'eyebrows', 'nose', 'face skin', 'head', 'hair',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -199,10 +215,15 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'long_may',
         nameVi: 'Cặp Lông Mày (Eyebrows Only)',
-        titleEn: 'EXCLUSIVELY THE PAIR OF ANIME EYEBROWS.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nTwo isolated eyebrow hair strokes floating independently in space.\nDO NOT include forehead skin, DO NOT include eyes, DO NOT include hair, DO NOT include head!\nIn Cell [1,2] (180° Rear Back), the eyebrows are 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
-        includedGeometry: ['left eyebrow stroke', 'right eyebrow stroke'],
-        excludedGeometry: ['forehead skin', 'face skin', 'eyes', 'eyelashes', 'hair', 'nose', 'mouth', 'head'],
+        titleEn: 'ISOLATED PAIR OF ANIME EYEBROW STROKES ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nTwo isolated eyebrow hair strokes floating independently in space.\nDO NOT include forehead skin, DO NOT include eyes, DO NOT include hair, DO NOT include head!`,
+        isolationRule: 'Pair of isolated anime eyebrow line strokes only. Zero forehead skin, zero eyes, zero head.',
+        includedGeometry: [
+          `left and right eyebrow line strokes in hair color (${hairColInfo.en})`,
+        ],
+        excludedGeometry: [
+          'full character', 'forehead skin', 'face skin', 'eyes', 'eyelashes', 'hair', 'nose', 'mouth', 'head',
+        ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
@@ -215,10 +236,16 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'mui',
         nameVi: 'Sống Mũi (Nose Only)',
-        titleEn: 'EXCLUSIVELY THE ANIME NOSE BRIDGE AND NOSE TIP.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nInclude ONLY the delicate anime nose bridge contour and tip (${noseInfo.en}).\nDO NOT include eyes, DO NOT include mouth, DO NOT include chin, DO NOT include cheeks, DO NOT include facial skin outside the nose!\nIn Cell [1,2] (180° Rear Back), the nose is 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
-        includedGeometry: ['nose bridge contour line', 'nose tip outline and subtle minimalist shading dot'],
-        excludedGeometry: ['eyes', 'eyebrows', 'mouth', 'chin', 'cheeks', 'forehead', 'facial skin outside the nose', 'hair', 'head'],
+        titleEn: 'ISOLATED ANIME NOSE BRIDGE AND NOSE TIP CONTOUR ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nInclude ONLY the delicate anime nose bridge contour and tip (${noseInfo.en}).\nDO NOT include eyes, mouth, chin, cheeks, facial skin, or head!`,
+        isolationRule: 'Single isolated anime nose bridge and tip contour line only. Zero eyes, zero mouth, zero face skin.',
+        includedGeometry: [
+          'delicate anime nose bridge contour line',
+          'minimalist nose tip outline and subtle shading dot',
+        ],
+        excludedGeometry: [
+          'full character', 'eyes', 'eyebrows', 'mouth', 'chin', 'cheeks', 'forehead', 'facial skin outside the nose', 'hair', 'head',
+        ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
@@ -232,14 +259,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'doi_tai',
         nameVi: 'Đôi Tai Trái / Phải (Dual Ears 16:9 - 2 Cột)',
-        titleEn: 'EXCLUSIVELY THE PAIR OF ANIME EARS ARRANGED ON A 16:9 WIDESCREEN CANVAS DIVIDED INTO 2 EQUAL SIDE-BY-SIDE COLUMNS (LEFT HALF: LEFT EAR, RIGHT HALF: RIGHT EAR).',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\n16:9 widescreen canvas divided symmetrically into 2 equal side-by-side columns with clean spacing:\n- LEFT COLUMN (Ô Trái): Contains exclusively the floating Left Ear with crisp outer contour, inner cartilage folds, and earlobe.\n- RIGHT COLUMN (Ô Phải): Contains exclusively the floating Right Ear with matching proportion, scale, line weight, and lighting.\nBoth ears float independently as modular 2D puppet stickers.\nDO NOT connect ears to head, face skin, jaw, cheeks, hair, or body!\nSolid flat chroma key green background (#00FF00), zero drop shadows, no text, no dividers.`,
+        titleEn: 'PAIR OF DETACHED ANIME EARS SIDE-BY-SIDE ON 16:9 CANVAS (LEFT HALF: LEFT EAR, RIGHT HALF: RIGHT EAR)',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\n16:9 widescreen canvas divided symmetrically into 2 equal side-by-side columns with clean spacing:\n- LEFT COLUMN: Contains exclusively the floating Left Ear with crisp outer contour, inner cartilage folds, and earlobe.\n- RIGHT COLUMN: Contains exclusively the floating Right Ear with matching proportion, scale, line weight, and lighting.\nDO NOT connect ears to head, face skin, jaw, cheeks, hair, or body!`,
+        isolationRule: 'Pair of isolated ears arranged side-by-side on 16:9 canvas (left half: left ear, right half: right ear). Zero head, zero face, zero hair.',
         includedGeometry: [
           'left column: left ear with detailed inner cartilage and earlobe',
           'right column: right ear with detailed inner cartilage and earlobe',
           'side-by-side 2-column layout on 16:9 canvas',
         ],
-        excludedGeometry: ['face skin', 'forehead', 'jawline', 'hair', 'head', 'neck', 'body', 'middle dividing line'],
+        excludedGeometry: [
+          'full character', 'face skin', 'forehead', 'jawline', 'hair', 'head', 'neck', 'body', 'middle dividing line',
+        ],
         rearVisibility: 'visible',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
@@ -252,10 +282,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'mieng',
         nameVi: 'Khẩu Hình Miệng (Mouth & Lips)',
-        titleEn: 'EXCLUSIVELY THE ANIME MOUTH AND LIP CONTOURS.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nInclude ONLY the lips and mouth opening contour (${mouthInfo.en}).\nThe mouth is an independent floating 2D sticker layer.\nDO NOT include nose, DO NOT include chin, DO NOT include cheeks, DO NOT include surrounding facial skin, DO NOT include head!\nIn Cell [1,2] (180° Rear Back), the mouth is 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
-        includedGeometry: ['upper lip line and color', 'lower lip line and color', 'mouth expression contour'],
-        excludedGeometry: ['nose', 'chin', 'cheeks', 'facial skin surrounding the mouth', 'eyes', 'eyebrows', 'hair', 'head'],
+        titleEn: 'ISOLATED ANIME MOUTH OPENING AND LIP CONTOURS ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nInclude ONLY the lips and mouth opening contour (${mouthInfo.en}).\nThe mouth is an independent floating 2D sticker layer.\nDO NOT include nose, chin, cheeks, facial skin, or head!`,
+        isolationRule: 'Single isolated anime mouth opening and lip contours only. Zero nose, zero chin, zero face skin.',
+        includedGeometry: [
+          'upper lip line and color',
+          'lower lip line and color',
+          'mouth expression opening contour',
+        ],
+        excludedGeometry: [
+          'full character', 'nose', 'chin', 'cheeks', 'facial skin surrounding the mouth', 'eyes', 'eyebrows', 'hair', 'head',
+        ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
@@ -268,14 +305,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'mat',
         nameVi: 'Đôi Mắt Tổng Hợp (Full Anime Eyes)',
-        titleEn: 'EXCLUSIVELY THE COMPLETE PAIR OF ANIME EYES.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nInclude complete pair of anime eyes (${eyeShapeInfo.en}, ${eyeColInfo.en}).\nThe eyes must float as an isolated independent 2D sticker layer.\nDO NOT include face skin, forehead, eyebrows, nose, mouth, hair, or head!\nIn Cell [1,2] (180° Rear Back), the eyes are 100% occluded, so Cell [1,2] MUST REMAIN PURE EMPTY CHROMA GREEN (#00FF00).`,
+        titleEn: 'ISOLATED COMPLETE PAIR OF ANIME EYES ONLY',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nInclude complete pair of anime eyes (${eyeShapeInfo.en}, ${eyeColInfo.en}).\nThe eyes must float as an isolated independent 2D sticker layer.\nDO NOT include face skin, forehead, eyebrows, nose, mouth, hair, or head!`,
+        isolationRule: 'Complete pair of anime eye stickers only. Zero face skin, zero eyebrows, zero nose, zero head.',
         includedGeometry: [
           'left eye complete structure (sclera, iris, pupil, lash line)',
           'right eye complete structure (sclera, iris, pupil, lash line)',
           'internal eye glints and reflections',
         ],
-        excludedGeometry: ['face skin', 'forehead', 'eyebrows', 'nose', 'mouth', 'cheeks', 'hair', 'head'],
+        excludedGeometry: [
+          'full character', 'face skin', 'forehead', 'eyebrows', 'nose', 'mouth', 'cheeks', 'hair', 'head',
+        ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
@@ -288,10 +328,19 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'than_co_ban',
         nameVi: 'Thân Ngực & Eo Áo Giáp (Torso & Chest Armor)',
-        titleEn: 'EXCLUSIVELY THE TORSO AND CHEST OUTFIT SEGMENT.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nCostume chest tunic, waist sash, and collar garment (${costumeInfo.en}, ${costumeColorVi}).\nDO NOT include head, neck, arms, sleeves, hands, legs, feet, or flowing cape!`,
-        includedGeometry: ['chest tunic / armor plate', 'waistband / sash', 'upper torso garment body'],
-        excludedGeometry: ['head', 'neck', 'shoulders / arm sleeves', 'arms', 'hands', 'legs', 'feet', 'flowing cape'],
+        titleEn: 'HEADLESS ARMLESS TORSO COSTUME ROBE GARMENT SPRITE (SEVERED AT NECK AND ARMHOLES)',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nCostume chest tunic, waist sash, and collar garment (${costumeInfo.en}, ${costumeColorVi}).\nCleanly severed at the neck collar, clean armholes severed at shoulders, clean waist cut.\nDO NOT include head, neck, arms, sleeves, hands, legs, feet, or flowing cape!`,
+        isolationRule: 'Headless, neckless, armless costume tunic robe body only. Severed cleanly at collar, severed cleanly at armholes, severed cleanly at waist. Zero head, zero arms, zero legs.',
+        includedGeometry: [
+          'chest tunic / armor plate / robe body',
+          `waistband / sash in color theme (${costumeColorVi})`,
+          'clean collar opening cut at neck',
+          'clean armhole openings cut at shoulders',
+          'clean lower torso waist cut',
+        ],
+        excludedGeometry: [
+          'full character', 'head', 'neck skin', 'face', 'shoulders / arm sleeves', 'arms', 'hands', 'legs', 'feet', 'flowing cape',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -304,10 +353,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'canh_tay_trai',
         nameVi: 'Cánh Tay Trái - Bắp Tay (Left Upper Arm)',
-        titleEn: 'EXCLUSIVELY THE LEFT UPPER ARM SEGMENT FROM SHOULDER TO ELBOW.',
-        summaryEn: `Left upper bicep arm sleeve segment (${costumeColorVi}).\nDO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
-        includedGeometry: ['left upper arm bicep', 'sleeve fabric covering the left upper arm'],
-        excludedGeometry: ['torso', 'chest', 'neck', 'head', 'forearm', 'wrist', 'hand', 'weapon'],
+        titleEn: 'SINGLE ISOLATED LEFT UPPER ARM SLEEVE CYLINDER (CUT AT SHOULDER AND ELBOW JOINTS)',
+        summaryEn: `Left upper bicep arm sleeve segment (${costumeColorVi}).\nSevered cleanly at shoulder joint and elbow joint.\nDO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
+        isolationRule: 'Single isolated upper arm bicep sleeve cylinder only. Severed cleanly at shoulder joint and elbow joint. Zero torso, zero forearm, zero hand.',
+        includedGeometry: [
+          'left upper arm bicep limb tube',
+          `sleeve fabric covering left upper arm in (${costumeColorVi})`,
+          'clean cut line at shoulder joint',
+          'clean cut line at elbow joint',
+        ],
+        excludedGeometry: [
+          'full character', 'torso', 'chest', 'neck', 'head', 'forearm', 'wrist', 'hand', 'weapon', 'other arm',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -320,10 +377,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'cang_tay_trai',
         nameVi: 'Cẳng Tay Trái (Left Forearm)',
-        titleEn: 'EXCLUSIVELY THE LEFT FOREARM SEGMENT FROM ELBOW TO WRIST.',
-        summaryEn: `Left forearm sleeve and bracer segment (${costumeColorVi}).\nDO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
-        includedGeometry: ['left forearm', 'forearm bracer / cuff / sleeve fabric'],
-        excludedGeometry: ['upper arm', 'shoulder', 'torso', 'hand', 'fingers', 'weapon'],
+        titleEn: 'SINGLE ISOLATED LEFT FOREARM BRACER SLEEVE CYLINDER (CUT AT ELBOW AND WRIST JOINTS)',
+        summaryEn: `Left forearm sleeve and bracer segment (${costumeColorVi}).\nSevered cleanly at elbow joint and wrist joint.\nDO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
+        isolationRule: 'Single isolated forearm bracer sleeve cylinder only. Severed cleanly at elbow joint and wrist joint. Zero upper arm, zero hand, zero torso.',
+        includedGeometry: [
+          'left forearm limb tube',
+          `forearm bracer / cuff / sleeve fabric in (${costumeColorVi})`,
+          'clean cut line at elbow joint',
+          'clean cut line at wrist joint',
+        ],
+        excludedGeometry: [
+          'full character', 'upper arm', 'shoulder', 'torso', 'hand', 'fingers', 'weapon', 'other arm',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -336,10 +401,16 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'ban_tay_trai',
         nameVi: 'Bàn Tay Trái (Left Hand & Palm)',
-        titleEn: 'EXCLUSIVELY THE LEFT HAND FROM WRIST TO FINGERTIPS.',
-        summaryEn: 'Left hand, palm, and fingers in specified pose.\nDO NOT include forearm, elbow, arm, torso, or weapon!',
-        includedGeometry: ['left palm', 'left fingers', 'wrist joint connection line'],
-        excludedGeometry: ['forearm', 'elbow', 'upper arm', 'torso', 'weapon'],
+        titleEn: 'SINGLE ISOLATED LEFT ANIME HAND AND FINGERS (SEVERED CLEANLY AT WRIST JOINT)',
+        summaryEn: 'Left hand, palm, and fingers in specified pose.\nSevered cleanly at the wrist joint.\nDO NOT include forearm, elbow, arm, torso, or weapon!',
+        isolationRule: 'Single detached hand only. Cut cleanly at the wrist joint. Zero arm, zero forearm, zero torso.',
+        includedGeometry: [
+          'left palm and fingers in clear gesture',
+          'clean cut boundary at wrist joint',
+        ],
+        excludedGeometry: [
+          'full character', 'forearm', 'elbow', 'upper arm', 'torso', 'body', 'weapon',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -352,10 +423,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'canh_tay_phai',
         nameVi: 'Cánh Tay Phải - Bắp Tay (Right Upper Arm)',
-        titleEn: 'EXCLUSIVELY THE RIGHT UPPER ARM SEGMENT FROM SHOULDER TO ELBOW.',
-        summaryEn: `Right upper bicep arm sleeve segment (${costumeColorVi}).\nDO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
-        includedGeometry: ['right upper arm bicep', 'sleeve fabric covering the right upper arm'],
-        excludedGeometry: ['torso', 'chest', 'neck', 'head', 'forearm', 'wrist', 'hand', 'weapon'],
+        titleEn: 'SINGLE ISOLATED RIGHT UPPER ARM SLEEVE CYLINDER (CUT AT SHOULDER AND ELBOW JOINTS)',
+        summaryEn: `Right upper bicep arm sleeve segment (${costumeColorVi}).\nSevered cleanly at shoulder joint and elbow joint.\nDO NOT include torso, chest, head, forearm, wrist, hand, or weapon!`,
+        isolationRule: 'Single isolated upper arm bicep sleeve cylinder only. Severed cleanly at shoulder joint and elbow joint. Zero torso, zero forearm, zero hand.',
+        includedGeometry: [
+          'right upper arm bicep limb tube',
+          `sleeve fabric covering right upper arm in (${costumeColorVi})`,
+          'clean cut line at shoulder joint',
+          'clean cut line at elbow joint',
+        ],
+        excludedGeometry: [
+          'full character', 'torso', 'chest', 'neck', 'head', 'forearm', 'wrist', 'hand', 'weapon', 'other arm',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -368,10 +447,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'cang_tay_phai',
         nameVi: 'Cẳng Tay Phải (Right Forearm)',
-        titleEn: 'EXCLUSIVELY THE RIGHT FOREARM SEGMENT FROM ELBOW TO WRIST.',
-        summaryEn: `Right forearm sleeve and bracer segment (${costumeColorVi}).\nDO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
-        includedGeometry: ['right forearm', 'forearm bracer / cuff / sleeve fabric'],
-        excludedGeometry: ['upper arm', 'shoulder', 'torso', 'hand', 'fingers', 'weapon'],
+        titleEn: 'SINGLE ISOLATED RIGHT FOREARM BRACER SLEEVE CYLINDER (CUT AT ELBOW AND WRIST JOINTS)',
+        summaryEn: `Right forearm sleeve and bracer segment (${costumeColorVi}).\nSevered cleanly at elbow joint and wrist joint.\nDO NOT include upper arm, shoulder, torso, hand, fingers, or weapon!`,
+        isolationRule: 'Single isolated forearm bracer sleeve cylinder only. Severed cleanly at elbow joint and wrist joint. Zero upper arm, zero hand, zero torso.',
+        includedGeometry: [
+          'right forearm limb tube',
+          `forearm bracer / cuff / sleeve fabric in (${costumeColorVi})`,
+          'clean cut line at elbow joint',
+          'clean cut line at wrist joint',
+        ],
+        excludedGeometry: [
+          'full character', 'upper arm', 'shoulder', 'torso', 'hand', 'fingers', 'weapon', 'other arm',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -384,10 +471,16 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'ban_tay_phai',
         nameVi: 'Bàn Tay Phải (Right Hand & Palm)',
-        titleEn: 'EXCLUSIVELY THE RIGHT HAND FROM WRIST TO FINGERTIPS.',
-        summaryEn: 'Right hand, palm, and fingers in specified pose.\nDO NOT include forearm, elbow, arm, torso, or weapon!',
-        includedGeometry: ['right palm', 'right fingers', 'wrist joint connection line'],
-        excludedGeometry: ['forearm', 'elbow', 'upper arm', 'torso', 'weapon'],
+        titleEn: 'SINGLE ISOLATED RIGHT ANIME HAND AND FINGERS (SEVERED CLEANLY AT WRIST JOINT)',
+        summaryEn: 'Right hand, palm, and fingers in specified pose.\nSevered cleanly at the wrist joint.\nDO NOT include forearm, elbow, arm, torso, or weapon!',
+        isolationRule: 'Single detached hand only. Cut cleanly at the wrist joint. Zero arm, zero forearm, zero torso.',
+        includedGeometry: [
+          'right palm and fingers in clear gesture',
+          'clean cut boundary at wrist joint',
+        ],
+        excludedGeometry: [
+          'full character', 'forearm', 'elbow', 'upper arm', 'torso', 'body', 'weapon',
+        ],
         rearVisibility: 'visible',
         groupId: '02_torso_arms',
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
@@ -400,10 +493,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'dui_trai',
         nameVi: 'Đùi Trái (Left Thigh)',
-        titleEn: 'EXCLUSIVELY THE LEFT THIGH SEGMENT FROM HIP TO KNEE.',
-        summaryEn: `Left thigh garment/pants limb segment (${costumeColorVi}).\nDO NOT include torso, pelvis, shin, boot, or foot!`,
-        includedGeometry: ['left thigh', 'fabric/pants covering the left thigh', 'hip joint connection line'],
-        excludedGeometry: ['torso', 'pelvis', 'shin', 'boot', 'foot'],
+        titleEn: 'SINGLE ISOLATED LEFT THIGH PANTS CYLINDER (CUT AT HIP AND KNEE JOINTS)',
+        summaryEn: `Left thigh garment/pants limb segment (${costumeColorVi}).\nSevered cleanly at hip joint and knee joint.\nDO NOT include torso, pelvis, shin, boot, or foot!`,
+        isolationRule: 'Single isolated thigh pants cylinder only. Severed cleanly at hip joint and knee joint. Zero torso, zero shin, zero foot.',
+        includedGeometry: [
+          'left thigh limb tube',
+          `fabric/pants covering left thigh in (${costumeColorVi})`,
+          'clean cut line at hip joint',
+          'clean cut line at knee joint',
+        ],
+        excludedGeometry: [
+          'full character', 'torso', 'pelvis', 'shin', 'boot', 'foot', 'other leg',
+        ],
         rearVisibility: 'visible',
         groupId: '03_legs_feet',
         groupNameVi: 'Khớp Xương Chân & Giày',
@@ -416,10 +517,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'cang_chan_trai',
         nameVi: 'Cẳng Chân & Giày Ủng Trái (Left Shin & Boot)',
-        titleEn: 'EXCLUSIVELY THE LEFT SHIN AND BOOT SEGMENT FROM KNEE TO FOOT.',
-        summaryEn: `Left lower leg and boot (${costumeColorVi}).\nDO NOT include thigh, hip, torso, or right leg!`,
-        includedGeometry: ['left shin', 'left boot / footwear', 'knee cap guard'],
-        excludedGeometry: ['thigh', 'hip', 'torso', 'right leg'],
+        titleEn: 'SINGLE ISOLATED LEFT SHIN AND BOOT SEGMENT (SEVERED CLEANLY AT KNEE JOINT)',
+        summaryEn: `Left lower leg and boot (${costumeColorVi}).\nSevered cleanly at knee joint.\nDO NOT include thigh, hip, torso, or right leg!`,
+        isolationRule: 'Single isolated lower shin and boot segment only. Severed cleanly at knee joint. Zero thigh, zero torso.',
+        includedGeometry: [
+          'left shin limb tube',
+          `left boot / footwear in (${costumeColorVi})`,
+          'knee cap guard',
+          'clean cut line at knee joint',
+        ],
+        excludedGeometry: [
+          'full character', 'thigh', 'hip', 'torso', 'body', 'other leg',
+        ],
         rearVisibility: 'visible',
         groupId: '03_legs_feet',
         groupNameVi: 'Khớp Xương Chân & Giày',
@@ -432,10 +541,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'dui_phai',
         nameVi: 'Đùi Phải (Right Thigh)',
-        titleEn: 'EXCLUSIVELY THE RIGHT THIGH SEGMENT FROM HIP TO KNEE.',
-        summaryEn: `Right thigh garment/pants limb segment (${costumeColorVi}).\nDO NOT include torso, pelvis, shin, boot, or foot!`,
-        includedGeometry: ['right thigh', 'fabric/pants covering the right thigh', 'hip joint connection line'],
-        excludedGeometry: ['torso', 'pelvis', 'shin', 'boot', 'foot'],
+        titleEn: 'SINGLE ISOLATED RIGHT THIGH PANTS CYLINDER (CUT AT HIP AND KNEE JOINTS)',
+        summaryEn: `Right thigh garment/pants limb segment (${costumeColorVi}).\nSevered cleanly at hip joint and knee joint.\nDO NOT include torso, pelvis, shin, boot, or foot!`,
+        isolationRule: 'Single isolated thigh pants cylinder only. Severed cleanly at hip joint and knee joint. Zero torso, zero shin, zero foot.',
+        includedGeometry: [
+          'right thigh limb tube',
+          `fabric/pants covering right thigh in (${costumeColorVi})`,
+          'clean cut line at hip joint',
+          'clean cut line at knee joint',
+        ],
+        excludedGeometry: [
+          'full character', 'torso', 'pelvis', 'shin', 'boot', 'foot', 'other leg',
+        ],
         rearVisibility: 'visible',
         groupId: '03_legs_feet',
         groupNameVi: 'Khớp Xương Chân & Giày',
@@ -448,10 +565,18 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'cang_chan_phai',
         nameVi: 'Cẳng Chân & Giày Ủng Phải (Right Shin & Boot)',
-        titleEn: 'EXCLUSIVELY THE RIGHT SHIN AND BOOT SEGMENT FROM KNEE TO FOOT.',
-        summaryEn: `Right lower leg and boot (${costumeColorVi}).\nDO NOT include thigh, hip, torso, or left leg!`,
-        includedGeometry: ['right shin', 'right boot / footwear', 'knee cap guard'],
-        excludedGeometry: ['thigh', 'hip', 'torso', 'left leg'],
+        titleEn: 'SINGLE ISOLATED RIGHT SHIN AND BOOT SEGMENT (SEVERED CLEANLY AT KNEE JOINT)',
+        summaryEn: `Right lower leg and boot (${costumeColorVi}).\nSevered cleanly at knee joint.\nDO NOT include thigh, hip, torso, or left leg!`,
+        isolationRule: 'Single isolated lower shin and boot segment only. Severed cleanly at knee joint. Zero thigh, zero torso.',
+        includedGeometry: [
+          'right shin limb tube',
+          `right boot / footwear in (${costumeColorVi})`,
+          'knee cap guard',
+          'clean cut line at knee joint',
+        ],
+        excludedGeometry: [
+          'full character', 'thigh', 'hip', 'torso', 'body', 'other leg',
+        ],
         rearVisibility: 'visible',
         groupId: '03_legs_feet',
         groupNameVi: 'Khớp Xương Chân & Giày',
@@ -465,10 +590,17 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'ao_choang',
         nameVi: 'Áo Choàng / Tà Áo Bay (Cape & Robe Flow)',
-        titleEn: 'EXCLUSIVELY THE FLOWING CAPE / MANTLE FABRIC LAYER.',
-        summaryEn: `Flowing cape and fabric ribbons (${costumeColorVi}).\nDO NOT include character body, chest, arms, hands, legs, or head!`,
-        includedGeometry: ['back cape drape', 'flowing ribbon tails', 'shoulder clasp attachments'],
-        excludedGeometry: ['torso', 'chest', 'arms', 'hands', 'legs', 'head', 'character body'],
+        titleEn: 'ISOLATED FLOWING CAPE / MANTLE FABRIC SPRITE (ZERO CHARACTER BODY)',
+        summaryEn: `Flowing cape and fabric ribbons (${costumeColorVi}).\nFloating as an independent garment piece.\nDO NOT include character body, chest, arms, hands, legs, or head!`,
+        isolationRule: 'Detached flowing cape cloth mantle sprite only floating in mid-air. Zero character body, zero head, zero limbs.',
+        includedGeometry: [
+          `back cape drape fabric in (${costumeColorVi})`,
+          'flowing ribbon tails',
+          'shoulder clasp attachments',
+        ],
+        excludedGeometry: [
+          'full character', 'torso', 'chest', 'arms', 'hands', 'legs', 'head', 'character body',
+        ],
         rearVisibility: 'visible',
         groupId: '04_props_costumes',
         groupNameVi: 'Trang Phục Bay & Vũ Khí',
@@ -482,10 +614,16 @@ export function getComponentDef(partType: string, options: {
       return {
         id: 'vu_khi',
         nameVi: 'Vũ Khí & Pháp Bảo (Weapons & Props)',
-        titleEn: 'EXCLUSIVELY THE WEAPON / PROP ARTIFACT.',
-        summaryEn: `Isolated weapon artifact (${propInfo.en}).\nDO NOT include character, hands, arms, body, or scenery!`,
-        includedGeometry: ['blade / weapon body', 'hilt / handle', 'magical glow / aura directly emanating from weapon'],
-        excludedGeometry: ['character', 'hands', 'arms', 'body', 'background scenery'],
+        titleEn: 'ISOLATED WEAPON / MAGICAL PROP ITEM SPRITE (ZERO CHARACTER, ZERO HANDS)',
+        summaryEn: `Isolated weapon artifact (${propInfo.en}).\nFloating as a standalone game inventory item prop.\nDO NOT include character, hands, arms, body, or scenery!`,
+        isolationRule: 'Standalone weapon prop item sprite only floating in space. Zero character, zero hands holding weapon, zero body.',
+        includedGeometry: [
+          'complete weapon blade, hilt, scabbard',
+          'clean silhouette of magical prop',
+        ],
+        excludedGeometry: [
+          'full character', 'character figure', 'hands holding weapon', 'arms', 'body', 'background scenery',
+        ],
         rearVisibility: 'visible',
         groupId: '04_props_costumes',
         groupNameVi: 'Trang Phục Bay & Vũ Khí',

@@ -15,6 +15,12 @@ const FIELD_DOCUMENTATION_ROWS = [
     purpose: 'Làm mỏ neo trực quan xác lập ngoại hình, màu sắc, phong cách nghệ thuật đồng bộ cho tất cả các góc quay và linh kiện.',
   },
   {
+    field: 'base_count',
+    type: 'number (1..4)',
+    desc: 'Số lượng ảnh Base sinh riêng',
+    purpose: 'Số lượng biến thể ảnh AI cần tạo riêng cho base_prompt nhân vật gốc (tối đa 4 ảnh).',
+  },
+  {
     field: 'prompts',
     type: 'Array<PromptItem>',
     desc: 'Danh sách các prompt',
@@ -71,8 +77,32 @@ const FIELD_DOCUMENTATION_ROWS = [
   {
     field: 'prompts[].save_filename',
     type: 'string',
-    desc: 'Tên file ảnh xuất',
-    purpose: 'Tên file PNG chuẩn để công cụ cắt lưới (Grid Slicer) và Assembler tự động nạp vào bộ nhớ.',
+    desc: 'Tên file ảnh xuất chuẩn đích',
+    purpose: 'Tên file PNG chuẩn sau khi lọc để công cụ cắt lưới (Grid Slicer) và Assembler tự động nạp vào bộ nhớ.',
+  },
+  {
+    field: 'prompts[].save_filename_pattern',
+    type: 'string',
+    desc: 'Mẫu tên file biến thể ({index})',
+    purpose: 'Mẫu định dạng đặt tên tự động khi tải nhiều biến thể ảnh AI (ví dụ: `05_toc_truoc_000_front_{index}.png`).',
+  },
+  {
+    field: 'prompts[].save_filenames',
+    type: 'Array<string>',
+    desc: 'Danh sách tên file ứng viên cụ thể',
+    purpose: 'Mảng chứa danh sách tên từng tệp PNG ứng viên tương ứng với số lượng count (ví dụ: `["..._01.png", "..._02.png"]`).',
+  },
+  {
+    field: 'prompts[].candidate_selection',
+    type: 'string',
+    desc: 'Cơ chế lọc ảnh chuẩn',
+    purpose: 'Hướng dẫn chọn lọc 1 ảnh biến thể tốt nhất trong số các ảnh sinh ra để dùng làm linh kiện chính thức.',
+  },
+  {
+    field: 'rule',
+    type: 'string',
+    desc: 'Quy tắc kết xuất bắt buộc',
+    purpose: 'Ràng buộc chất lượng toàn cục (bắt buộc nền xanh/trắng, nét vẽ khép kín, không bóng đổ, không watermark).',
   },
   {
     field: 'prompts[].view_desc',
@@ -81,10 +111,16 @@ const FIELD_DOCUMENTATION_ROWS = [
     purpose: 'Giải thích hướng quan sát và mục đích của góc quay cho người dùng và AI hiểu bố cục hình ảnh.',
   },
   {
+    field: 'prompts[].rule',
+    type: 'string',
+    desc: 'Quy tắc ràng buộc của tác vụ',
+    purpose: 'Quy tắc kết xuất bắt buộc cho từng layer riêng lẻ (nền phẳng, tách biệt layer, cấm chữ...).',
+  },
+  {
     field: 'prompts[].prompt',
     type: 'string (<4000 ký tự)',
     desc: 'Câu lệnh sinh ảnh AI',
-    purpose: 'Câu lệnh chi tiết hoàn chỉnh mô tả bóc tách, góc máy, chi tiết cần vẽ & cấm vẽ, phông nền đơn sắc và tỉ lệ khung hình.',
+    purpose: 'Câu lệnh chi tiết hoàn chỉnh mô tả bóc tách, góc máy, chi tiết cần vẽ & cấm vẽ, phông nền đơn sắc và quy tắc rule ở dòng cuối.',
   },
   {
     field: 'prompts[].count',

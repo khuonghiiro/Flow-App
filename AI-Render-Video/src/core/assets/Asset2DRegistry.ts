@@ -38,6 +38,7 @@ export {
 export {
   type ParsedPartFilenameInfo,
   parsePartFilename,
+  buildFilenameVariants,
 } from './prompt_builders/PartFilenameParser';
 
 // 5. Specialized Prompt Builders

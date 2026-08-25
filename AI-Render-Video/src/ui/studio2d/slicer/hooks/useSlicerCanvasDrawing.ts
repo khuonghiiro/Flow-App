@@ -90,33 +90,45 @@ export function useSlicerCanvasDrawing({
       if (currentCategory.id !== 'single_full_image') {
         const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
           if (isBorder) {
-            ctx.lineWidth = 2.5;
             ctx.setLineDash([]);
+            ctx.lineDashOffset = 0;
+            ctx.lineWidth = 3.0;
             ctx.strokeStyle = '#000000';
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
-            ctx.lineWidth = 1.2;
+
+            ctx.lineWidth = 1.5;
             ctx.strokeStyle = '#38bdf8';
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
           } else {
-            ctx.lineWidth = 2.0;
+            // Lớp 1: Nét đứt màu đen [8, 8] offset 0
+            ctx.lineWidth = 2.5;
             ctx.strokeStyle = '#000000';
-            ctx.setLineDash([6, 6]);
+            ctx.setLineDash([8, 8]);
+            ctx.lineDashOffset = 0;
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
+
+            // Lớp 2: Nét đứt màu trắng [8, 8] offset 8 xen kẽ chính xác vào khoảng trống
+            ctx.lineWidth = 2.5;
             ctx.strokeStyle = '#ffffff';
-            ctx.lineDashOffset = 6;
+            ctx.setLineDash([8, 8]);
+            ctx.lineDashOffset = 8;
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
+
+            // Reset dash và offset
+            ctx.setLineDash([]);
+            ctx.lineDashOffset = 0;
           }
         };
 

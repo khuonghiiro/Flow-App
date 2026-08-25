@@ -6,7 +6,7 @@ import {
   Swords,
 } from 'lucide-react';
 import { AIPartPromptConfig, Character2DPartType } from '../../types/scene2d';
-import { buildAIPromptForPart, AIPromptResult } from '../../core/assets/Asset2DRegistry';
+import { buildAIPromptForPart, buildFilenameVariants, AIPromptResult } from '../../core/assets/Asset2DRegistry';
 import { Step1MasterForm } from './prompt/Step1MasterForm';
 import { Step2DecomposedForm, CHARACTER_PART_GROUPS } from './prompt/Step2DecomposedForm';
 import { PromptOutputPanel } from './prompt/PromptOutputPanel';
@@ -46,7 +46,7 @@ export const AIPromptGenerator2D: React.FC = () => {
     color_theme: 'Trắng bạch kim phối tím nhạt viền ngọc bích',
     special_features: 'Linh lực phát sáng nhẹ, tà áo bay phất phơ',
     clean_background: true,
-    aspect_ratio: '16:9',
+    aspect_ratio: 'auto',
     bg_type: 'chroma_green',
     // Five Senses & Facial (Step 1)
     eye_shape: 'Mắt anime to tròn long lanh tinh anh',
@@ -75,7 +75,10 @@ export const AIPromptGenerator2D: React.FC = () => {
     hair_accessories: 'Trâm cài ngọc bích đính dải lụa xanh ngọc',
     custom_hair_accessories: '',
     batch_count: 1,
+    base_count: 1,
   });
+
+  const [baseCount, setBaseCount] = useState<number>(1);
 
   // Action Sequence Generator State (Step 3)
   const [actionType, setActionType] = useState<'combat' | 'dialogue' | 'emotion' | 'eat' | 'transition'>('combat');
@@ -98,6 +101,7 @@ export const AIPromptGenerator2D: React.FC = () => {
     aspect_ratio: workflowTab === 'step1_master' ? '16:9' : (config.aspect_ratio || 'auto'),
     include_base_prompt: includeBasePrompt,
     batch_count: batchCount,
+    base_count: baseCount,
     json_scope: jsonExportScope === 'single_angle' ? 'single_angle' : 'all_angles',
   };
 
@@ -126,16 +130,25 @@ export const AIPromptGenerator2D: React.FC = () => {
 
     const baseRef = buildAIPromptForPart({ ...effectiveConfig, part_type: selectedTag, include_base_prompt: true }).promptJSON;
     let baseText = '';
+    let baseRule = '';
     try {
       const parsed = JSON.parse(baseRef);
       baseText = parsed.base_prompt || '';
+      baseRule = parsed.rule || '';
     } catch (e) {}
 
     const jsonPayload: any = {};
     if (includeBasePrompt && baseText) {
+      const baseFnMeta = buildFilenameVariants('master_character_turnaround.png', baseCount);
       jsonPayload.base_prompt = baseText;
       jsonPayload.base_aspect_ratio = '16:9';
-      jsonPayload.base_count = batchCount;
+      jsonPayload.base_count = baseCount;
+      jsonPayload.base_save_filename = baseFnMeta.save_filename;
+      jsonPayload.base_save_filenames = baseFnMeta.save_filenames;
+      jsonPayload.base_candidate_selection = baseFnMeta.candidate_selection;
+    }
+    if (baseRule) {
+      jsonPayload.rule = baseRule;
     }
     jsonPayload.prompts = groupPrompts;
 
@@ -362,6 +375,11 @@ export const AIPromptGenerator2D: React.FC = () => {
         setBatchCount={(cnt) => {
           setBatchCount(cnt);
           setConfig((p) => ({ ...p, batch_count: cnt }));
+        }}
+        baseCount={baseCount}
+        setBaseCount={(cnt) => {
+          setBaseCount(cnt);
+          setConfig((p) => ({ ...p, base_count: cnt }));
         }}
         includeBasePrompt={includeBasePrompt}
         setIncludeBasePrompt={setIncludeBasePrompt}
