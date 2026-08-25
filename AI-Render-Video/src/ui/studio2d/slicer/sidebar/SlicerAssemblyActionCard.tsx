@@ -18,7 +18,6 @@ export interface SlicerAssemblyActionCardProps {
   onOpenSaveKitModal?: () => void;
   onOpenCatalogModal?: () => void;
   onApplyAsNewBaseImage?: () => void;
-  onOpenSmartCrop?: () => void;
 }
 
 export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> = ({
@@ -37,7 +36,6 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
   onOpenSaveKitModal,
   onOpenCatalogModal,
   onApplyAsNewBaseImage,
-  onOpenSmartCrop,
 }) => {
   return (
     <div
@@ -284,30 +282,6 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
             }}
           >
             📦 Mở kho linh kiện (Catalog)
-          </button>
-        )}
-
-        {onOpenSmartCrop && (
-          <button
-            onClick={onOpenSmartCrop}
-            style={{
-              height: 32,
-              fontSize: 10.5,
-              fontWeight: 700,
-              borderRadius: 6,
-              background: 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
-              color: '#ffffff',
-              border: '1px solid #c084fc',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              boxShadow: '0 2px 10px rgba(147, 51, 234, 0.35)',
-            }}
-            title="Tự động quét tìm viền pixel và cắt gọt kèm khoảng đệm Slider để lưu vào kho"
-          >
-            <Scissors size={13} /> ✂️ Cắt Bounding Box & Lưu Kho
           </button>
         )}
       </div>

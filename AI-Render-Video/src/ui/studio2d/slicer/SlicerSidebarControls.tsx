@@ -99,7 +99,6 @@ export interface SlicerSidebarControlsProps {
   totalCellCount: number;
   onOpenSaveKitModal?: () => void;
   onOpenCatalogModal?: () => void;
-  onOpenSmartCrop?: () => void;
 }
 
 export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
@@ -190,7 +189,6 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   totalCellCount,
   onOpenSaveKitModal,
   onOpenCatalogModal,
-  onOpenSmartCrop,
 }) => {
   return (
     <div
@@ -396,7 +394,6 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         onOpenSaveKitModal={onOpenSaveKitModal}
         onOpenCatalogModal={onOpenCatalogModal}
         onApplyAsNewBaseImage={onApplyAsNewBaseImage}
-        onOpenSmartCrop={onOpenSmartCrop}
       />
     </div>
   );

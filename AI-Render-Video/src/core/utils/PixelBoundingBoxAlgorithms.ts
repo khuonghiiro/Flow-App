@@ -23,17 +23,18 @@ export interface PaddedCropRect {
 }
 
 /**
- * Scans an HTML5 Canvas or ImageData to find the exact bounding box of non-transparent pixels
+ * Scans an HTML5 Canvas or ImageData to find the exact bounding box of non-transparent pixels.
+ * Scans minX, maxX, minY, maxY based on first non-transparent pixel (alpha > alphaThreshold).
  * @param ctx 2D Canvas rendering context
  * @param width Canvas width
  * @param height Canvas height
- * @param alphaThreshold Minimum alpha value (0-255) to consider as visible content
+ * @param alphaThreshold Minimum alpha value (0-255) to consider as visible content (default 0)
  */
 export function detectPixelContentBoundingBox(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  alphaThreshold = 10
+  alphaThreshold = 0
 ): PixelBoundingBox {
   const imgData = ctx.getImageData(0, 0, width, height);
   const data = imgData.data;
@@ -81,8 +82,8 @@ export function detectPixelContentBoundingBox(
 }
 
 /**
- * Computes a padded bounding box expanding outwards from the detected content
- * Clamped within image boundaries [0, imageWidth] and [0, imageHeight]
+ * Computes a padded bounding box expanding outwards from the detected content.
+ * Clamped within image boundaries [0, imageWidth - 1] and [0, imageHeight - 1].
  */
 export function computePaddedBoundingBox(
   bbox: PixelBoundingBox,
@@ -135,3 +136,41 @@ export function cropCanvasWithPadding(
     rect,
   };
 }
+
+import { ChromaProcessOptions, processCellChromaAndDespeckle } from './ChromaDespeckleProcessor';
+
+/**
+ * Detects the bounding box rectangle of the non-transparent/foreground subject in an image.
+ * Uses chroma key processing if specified to find the subject even on colored backgrounds.
+ */
+export function detectImageBBoxRect(
+  source: HTMLImageElement | HTMLCanvasElement,
+  chromaOpts?: ChromaProcessOptions,
+  paddingPx: number = 0,
+  alphaThreshold = 20
+): PaddedCropRect | null {
+  const w = source instanceof HTMLImageElement ? (source.naturalWidth || source.width) : source.width;
+  const h = source instanceof HTMLImageElement ? (source.naturalHeight || source.height) : source.height;
+  if (!w || !h) return null;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  const ctx = tempCanvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+
+  ctx.drawImage(source, 0, 0);
+  if (chromaOpts && chromaOpts.keyColorType) {
+    processCellChromaAndDespeckle(ctx, w, h, {
+      ...chromaOpts,
+      despeckleSize: Math.max(chromaOpts.despeckleSize || 0, 4),
+      whiteSpeckleSensitivity: Math.max(chromaOpts.whiteSpeckleSensitivity || 0, 30),
+    });
+  }
+
+  const bbox = detectPixelContentBoundingBox(ctx, w, h, alphaThreshold);
+  if (!bbox.hasContent) return null;
+
+  return computePaddedBoundingBox(bbox, w, h, paddingPx);
+}
+

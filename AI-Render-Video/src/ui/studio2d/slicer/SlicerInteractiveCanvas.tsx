@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Undo2, Redo2, Table } from 'lucide-react';
+import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Undo2, Redo2, Table, Scissors, X, Check } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../core/assets/GridSliceRegistry';
 
 interface SlicerInteractiveCanvasProps {
@@ -31,6 +31,13 @@ interface SlicerInteractiveCanvasProps {
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseLeave?: () => void;
   onMouseUp: () => void;
+
+  // Direct Bounding Box Crop
+  isDirectBBoxCropActive?: boolean;
+  onToggleDirectBBoxCrop?: () => void;
+  directBBoxPadding?: number;
+  setDirectBBoxPadding?: (pad: number) => void;
+  onApplyDirectBBoxCrop?: () => void;
 }
 
 export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = ({
@@ -62,6 +69,11 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   onMouseMove,
   onMouseLeave,
   onMouseUp,
+  isDirectBBoxCropActive = false,
+  onToggleDirectBBoxCrop,
+  directBBoxPadding = 0,
+  setDirectBBoxPadding,
+  onApplyDirectBBoxCrop,
 }) => {
   const [zoom, setZoom] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -87,9 +99,9 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
     const availW = Math.max(50, vRect.width - pad);
     const availH = Math.max(50, vRect.height - pad);
 
-    // Tính tỷ lệ co giãn theo cả 2 trục
+    // Tính tỷ lệ co giãn theo cả 2 trục (nếu ảnh nhỏ hơn khung nhìn, giữ 1.0 để thấy đúng kích thước thật)
     const fitScale = Math.min(availW / imgW, availH / imgH);
-    const optimalZoom = Math.max(0.05, Math.min(5, Math.round(fitScale * 100) / 100));
+    const optimalZoom = Math.max(0.05, Math.min(1.0, Math.round(fitScale * 100) / 100));
 
     setZoom(optimalZoom);
     setPanOffset({ x: 0, y: 0 });
@@ -207,6 +219,66 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
             <Layers size={13} /> {currentCategory.id === 'single_full_image' ? 'Khung cắt: Ảnh đơn (Đã tắt lưới)' : `Khung lưới cắt (${currentCategory.rows} hàng × ${currentCategory.cols} cột)`}
           </div>
 
+          {/* Image Dimensions Badge */}
+          {loadedImage && (
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#4ade80',
+                background: 'rgba(34, 197, 94, 0.15)',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                borderRadius: 4,
+                padding: '2px 7px',
+                fontFamily: 'monospace',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              title="Kích thước thực của ảnh đang chỉnh sửa"
+            >
+              <span>📐 {loadedImage.naturalWidth || loadedImage.width}×{loadedImage.naturalHeight || loadedImage.height}px</span>
+            </div>
+          )}
+
+          {/* Zoom controls: 100% & Fit */}
+          {hasImage && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.3)', padding: 1, borderRadius: 4, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <button
+                onClick={() => { setZoom(1.0); setPanOffset({ x: 0, y: 0 }); }}
+                style={{
+                  padding: '2px 6px',
+                  fontSize: 9.5,
+                  fontWeight: 600,
+                  borderRadius: 3,
+                  background: Math.abs(zoom - 1.0) < 0.05 ? '#0284c7' : 'transparent',
+                  color: Math.abs(zoom - 1.0) < 0.05 ? '#ffffff' : '#94a3b8',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                title="Xem kích thước thật 100% (1:1)"
+              >
+                100%
+              </button>
+              <button
+                onClick={handleAutoFitToViewport}
+                style={{
+                  padding: '2px 6px',
+                  fontSize: 9.5,
+                  fontWeight: 600,
+                  borderRadius: 3,
+                  background: 'transparent',
+                  color: '#94a3b8',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+                title="Căn vừa khung nhìn"
+              >
+                🔍 Fit ({Math.round(zoom * 100)}%)
+              </button>
+            </div>
+          )}
+
           {/* Button Ma Trận Lưới nằm ở bên phải tiêu đề Khung cắt lưới với icon Table */}
           {onOpenGridTablePicker && (
             <button
@@ -260,6 +332,39 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               }
             >
               <span>{isSingleImageMode ? '🖼️ Ảnh Đơn: BẬT' : '🔲 Ảnh Lưới: BẬT'}</span>
+            </button>
+          )}
+
+          {/* Toggle Button Bật / Tắt Cắt Bounding Box Tự Động */}
+          {onToggleDirectBBoxCrop && (
+            <button
+              onClick={onToggleDirectBBoxCrop}
+              disabled={!hasImage}
+              style={{
+                padding: '3px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: isDirectBBoxCropActive
+                  ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(147, 51, 234, 0.4))'
+                  : 'rgba(255, 255, 255, 0.08)',
+                color: isDirectBBoxCropActive ? '#d8b4fe' : hasImage ? '#cbd5e1' : '#475569',
+                border: isDirectBBoxCropActive ? '1.5px solid #c084fc' : '1px solid rgba(255, 255, 255, 0.15)',
+                cursor: hasImage ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: isDirectBBoxCropActive ? '0 0 10px rgba(192, 132, 252, 0.4)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title={
+                isDirectBBoxCropActive
+                  ? 'Đang bật chế độ Cắt Bounding Box - Nhấp để tắt'
+                  : 'Bật chế độ Cắt Bounding Box tự động trực tiếp trên khung cắt'
+              }
+            >
+              <Scissors size={12} />
+              <span>{isDirectBBoxCropActive ? '✂️ BBox: BẬT' : '✂️ BBox: TẮT'}</span>
             </button>
           )}
         </div>
@@ -715,31 +820,122 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
           </div>
         )}
 
-        {/* Floating Zoom & Pan Guide Badge */}
-        {hasImage && (
+        {/* Floating Bottom-Left Card: Direct Bounding Box Crop Controls */}
+        {isDirectBBoxCropActive && hasImage && (
           <div
             style={{
               position: 'absolute',
-              bottom: 8,
-              right: 8,
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: 5,
-              padding: '4px 10px',
-              fontSize: 10,
-              color: '#94a3b8',
-              backdropFilter: 'blur(6px)',
-              pointerEvents: 'none',
+              bottom: 12,
+              left: 12,
+              zIndex: 35,
+              background: 'rgba(15, 23, 42, 0.95)',
+              backdropFilter: 'blur(12px)',
+              border: '1.5px solid #c084fc',
+              borderRadius: 8,
+              padding: '10px 12px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 16px rgba(192, 132, 252, 0.3)',
               display: 'flex',
-              alignItems: 'center',
-              gap: 6,
+              flexDirection: 'column',
+              gap: 8,
+              minWidth: 260,
+              maxWidth: 320,
+              fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
             }}
           >
-            <span>🔍 <b>{Math.round(zoom * 100)}%</b></span>
-            <span>•</span>
-            <span>🖱️ Cuộn chuột để Zoom</span>
-            <span>•</span>
-            <span>✋ Giữ Space để kéo</span>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 5 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#e9d5ff', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Scissors size={13} color="#c084fc" /> ✂️ Cắt Bounding Box Tự Động
+              </div>
+              {onToggleDirectBBoxCrop && (
+                <button
+                  onClick={onToggleDirectBBoxCrop}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Đóng / Tắt chế độ cắt"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Slider & Presets */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1' }}>
+                <span style={{ color: '#c084fc', fontWeight: 600 }}>Khoảng cách lề (Padding):</span>
+                <span style={{ color: '#4ade80', fontWeight: 800, fontFamily: 'monospace' }}>
+                  +{directBBoxPadding}px
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="50"
+                  step="1"
+                  value={directBBoxPadding}
+                  onChange={(e) => setDirectBBoxPadding && setDirectBBoxPadding(parseInt(e.target.value, 10))}
+                  style={{ flex: 1, accentColor: '#a855f7', cursor: 'pointer' }}
+                />
+              </div>
+
+              {/* Quick presets */}
+              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                {[0, 5, 10, 15, 20, 30].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => setDirectBBoxPadding && setDirectBBoxPadding(val)}
+                    style={{
+                      flex: 1,
+                      height: 20,
+                      fontSize: 9,
+                      fontWeight: 600,
+                      borderRadius: 3,
+                      background: directBBoxPadding === val ? '#9333ea' : 'rgba(255,255,255,0.06)',
+                      color: directBBoxPadding === val ? '#ffffff' : '#cbd5e1',
+                      border: directBBoxPadding === val ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {val === 0 ? '0px' : `+${val}px`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Apply Button */}
+            {onApplyDirectBBoxCrop && (
+              <button
+                onClick={onApplyDirectBBoxCrop}
+                style={{
+                  height: 30,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                  color: '#ffffff',
+                  border: '1px solid #c084fc',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                  boxShadow: '0 2px 10px rgba(147, 51, 234, 0.4)',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Cắt gọt ảnh theo Bounding Box và thay thế làm ảnh nguồn hiện tại"
+              >
+                <Check size={13} /> ✓ Áp dụng cắt ảnh
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -8,7 +8,6 @@ interface SlicerCellAdjustmentBarProps {
   selectedCell: GridCellDefinition | null;
   slicedCellDataUrl: string | undefined;
   onOpenCellPixelEditor: (cell: GridCellDefinition) => void;
-  onOpenSmartCrop?: (cell: GridCellDefinition) => void;
   onAdjustColWidth: (deltaPx: number) => void;
   onResetAllDividers: () => void;
   onUpdateCellAngle?: (cell: GridCellDefinition, angle: Character2DAngle, mirrorAngle?: Character2DAngle) => void;
@@ -33,7 +32,6 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
   selectedCell,
   slicedCellDataUrl,
   onOpenCellPixelEditor,
-  onOpenSmartCrop,
   onAdjustColWidth,
   onResetAllDividers,
   onUpdateCellAngle,
@@ -51,7 +49,7 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
 
   return (
     <div style={{ background: '#0b1329', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #0284c7', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Top row: Title + Slot Selector + Angle Selector + Smart Crop & Eraser */}
+      {/* Top row: Title + Slot Selector + Angle Selector + Eraser */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div>
@@ -129,7 +127,7 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
           </div>
         </div>
 
-        {/* Right side: Preview Image & Actions (Smart Crop + Eraser) */}
+        {/* Right side: Preview Image & Actions (Eraser) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {slicedCellDataUrl && (
             <img
@@ -137,30 +135,6 @@ export const SlicerCellAdjustmentBar: React.FC<SlicerCellAdjustmentBarProps> = (
               alt="Cell preview"
               style={{ width: 32, height: 32, objectFit: 'contain', background: '#000', borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)' }}
             />
-          )}
-
-          {/* Smart Bounding Box Auto-Trim & Vault Save Button */}
-          {onOpenSmartCrop && (
-            <button
-              onClick={() => onOpenSmartCrop(selectedCell)}
-              style={{
-                padding: '5px 10px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 5,
-                background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
-                color: '#ffffff',
-                border: '1px solid #c084fc',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.4)',
-              }}
-              title="Tự động quét tìm viền pixel và cắt gọt kèm khoảng đệm Slider để lưu vào kho"
-            >
-              <Scissors size={12} /> ✂️ Cắt Bounding Box & Lưu Kho
-            </button>
           )}
 
           <button

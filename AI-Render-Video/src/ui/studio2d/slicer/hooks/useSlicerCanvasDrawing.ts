@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { GridCategoryDefinition, GridCellDefinition } from '../../../../core/assets/GridSliceRegistry';
 import { STANDARD_ANGLE_DEFINITIONS, CheckerboardTheme } from '../../../../core/assets/slicer/SlicerAngleConstants';
-import { PaddedCropRect } from '../../../../core/utils/PixelBoundingBoxAlgorithms';
+import { PaddedCropRect, detectImageBBoxRect } from '../../../../core/utils/PixelBoundingBoxAlgorithms';
+import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
 
 export interface UseSlicerCanvasDrawingProps {
   imageCanvasRef: React.RefObject<HTMLCanvasElement>;
@@ -19,6 +20,14 @@ export interface UseSlicerCanvasDrawingProps {
   colDividers: number[];
   rowDividers: number[];
   selectedCell: GridCellDefinition | null;
+  isDirectBBoxCropActive?: boolean;
+  directBBoxPadding?: number;
+  currentBBoxRectRef?: React.MutableRefObject<PaddedCropRect | null>;
+  keyColorType?: 'chroma_green' | 'pure_white' | 'custom';
+  keyColorHex?: string;
+  isolationMode?: 'all' | 'outer_only';
+  tolerance?: number;
+  feather?: number;
 }
 
 export function useSlicerCanvasDrawing({
@@ -37,6 +46,14 @@ export function useSlicerCanvasDrawing({
   colDividers,
   rowDividers,
   selectedCell,
+  isDirectBBoxCropActive = false,
+  directBBoxPadding = 0,
+  currentBBoxRectRef,
+  keyColorType,
+  keyColorHex,
+  isolationMode,
+  tolerance,
+  feather,
 }: UseSlicerCanvasDrawingProps) {
   const redrawCanvas = useCallback(
     (modeOverride?: 'transparent' | 'original') => {
@@ -207,6 +224,85 @@ export function useSlicerCanvasDrawing({
           ctx.strokeRect(x0, y0, w, h);
         }
       }
+
+      // Draw Direct Bounding Box Crop Overlay (when active)
+      if (isDirectBBoxCropActive && canvas.width > 0 && canvas.height > 0) {
+        const chromaOpts: ChromaProcessOptions | undefined = keyColorType
+          ? {
+              keyColorType,
+              keyColorHex: keyColorHex || '#00ff00',
+              isolationMode: isolationMode || 'all',
+              tolerance: tolerance ?? 35,
+              feather: feather ?? 2,
+              shadowRetention: 0,
+              strokeWidth: 0,
+              strokeColorHex: '#000000',
+              despeckleSize: 0,
+              whiteSpeckleSensitivity: 0,
+              keepLargestIslandOnly: false,
+              fringeColorType: 'chroma_green',
+              fringeColorHex: '#00ff00',
+              defringeStrength: 0,
+              edgeChoke: 0,
+              edgeSmooth: 0,
+              smoothColorType: 'black',
+              smoothColorHex: '#000000',
+              cleanupMode: 'all',
+            }
+          : undefined;
+
+        const rect = detectImageBBoxRect(img, chromaOpts, directBBoxPadding, 20);
+        if (currentBBoxRectRef) {
+          currentBBoxRectRef.current = rect;
+        }
+        if (rect) {
+          // Semi-transparent dark mask outside crop region
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+          // Top
+          ctx.fillRect(0, 0, canvas.width, rect.top);
+          // Bottom
+          ctx.fillRect(0, rect.bottom + 1, canvas.width, canvas.height - (rect.bottom + 1));
+          // Left
+          ctx.fillRect(0, rect.top, rect.left, rect.height);
+          // Right
+          ctx.fillRect(rect.right + 1, rect.top, canvas.width - (rect.right + 1), rect.height);
+
+          // Alternating black & white dashed border (Marching ants / Dual dash)
+          // Layer 1: Black dash [6, 6] offset 0
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#000000';
+          ctx.setLineDash([6, 6]);
+          ctx.lineDashOffset = 0;
+          ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+
+          // Layer 2: White dash [6, 6] offset 6
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.setLineDash([6, 6]);
+          ctx.lineDashOffset = 6;
+          ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+
+          // Draw dimension badge at top-left of crop box
+          const badgeText = `✂️ BBox: ${rect.width}×${rect.height}px (+${directBBoxPadding}px)`;
+          ctx.font = 'bold 11px sans-serif';
+          const badgeMetrics = ctx.measureText(badgeText);
+          const bW = badgeMetrics.width + 12;
+          const bH = 20;
+          const bX = Math.max(4, Math.min(canvas.width - bW - 4, rect.left));
+          const bY = Math.max(4, rect.top > bH + 4 ? rect.top - bH - 2 : rect.top + 4);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.fillRect(bX, bY, bW, bH);
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(bX, bY, bW, bH);
+          ctx.fillStyle = '#f0abfc';
+          ctx.fillText(badgeText, bX + 6, bY + 14);
+        }
+      }
     },
     [
       imageCanvasRef,
@@ -221,6 +317,8 @@ export function useSlicerCanvasDrawing({
       colDividers,
       rowDividers,
       selectedCell,
+      isDirectBBoxCropActive,
+      directBBoxPadding,
     ]
   );
 

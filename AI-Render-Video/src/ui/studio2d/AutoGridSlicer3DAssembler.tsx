@@ -9,9 +9,13 @@ import { parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Ass
 import { GridTablePickerModal } from './slicer/GridTablePickerModal';
 import { JsonPromptImportModal, ParsedJsonMetadataItem } from './slicer/JsonPromptImportModal';
 import { SlicerSaveKitModal } from './slicer/modals/SlicerSaveKitModal';
-import { SlicerSmartCropModal } from './slicer/modals/SlicerSmartCropModal';
 import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
-import { PaddedCropRect } from '../../core/utils/PixelBoundingBoxAlgorithms';
+import {
+  PaddedCropRect,
+  detectImageBBoxRect,
+  detectPixelContentBoundingBox,
+  cropCanvasWithPadding,
+} from '../../core/utils/PixelBoundingBoxAlgorithms';
 import {
   CheckerboardTheme,
   loadCachedCheckerTheme,
@@ -29,14 +33,14 @@ import { SlicerSidebarControls } from './slicer/SlicerSidebarControls';
 import { SlicerCellAdjustmentBar } from './slicer/SlicerCellAdjustmentBar';
 import { SlicerInteractiveCanvas } from './slicer/SlicerInteractiveCanvas';
 import { Slicer3DTurntablePreview } from './slicer/Slicer3DTurntablePreview';
-import { SlicerLoadedImagesTabs } from './slicer/SlicerLoadedImagesTabs';
+import { SlicerVerticalGalleryColumn } from './slicer/SlicerVerticalGalleryColumn';
 import { useSlicerDividers } from './slicer/hooks/useSlicerDividers';
 import { useSlicerUndoRedo, SlicerHistorySnapshot } from './slicer/hooks/useSlicerUndoRedo';
 import { useSlicerCanvasDrawing } from './slicer/hooks/useSlicerCanvasDrawing';
 import { useSlicerSlicingPipeline } from './slicer/hooks/useSlicerSlicingPipeline';
 import { useSlicerAIMatting } from './slicer/hooks/useSlicerAIMatting';
 import { useSlicerCanvasInteraction } from './slicer/hooks/useSlicerCanvasInteraction';
-import { useSlicerMultiImageGallery, SlicerUploadedImageItem } from './slicer/hooks/useSlicerMultiImageGallery';
+import { useSlicerMultiImageGallery, SlicerUploadedImageItem, detectAspectRatioLabel } from './slicer/hooks/useSlicerMultiImageGallery';
 
 interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
@@ -150,9 +154,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [isTunerOpen, setIsTunerOpen] = useState<boolean>(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
   const [isSaveKitModalOpen, setIsSaveKitModalOpen] = useState<boolean>(false);
-  const [isSmartCropOpen, setIsSmartCropOpen] = useState<boolean>(false);
-  const [smartCropTargetCell, setSmartCropTargetCell] = useState<GridCellDefinition | null>(null);
-  const [smartCropTargetDataUrl, setSmartCropTargetDataUrl] = useState<string>('');
+
+  // Direct Interactive Bounding Box Auto-Trim States
+  const [isDirectBBoxCropActive, setIsDirectBBoxCropActive] = useState<boolean>(false);
+  const [directBBoxPadding, setDirectBBoxPadding] = useState<number>(10);
+  const currentBBoxRectRef = useRef<PaddedCropRect | null>(null);
 
   // Smart Auto-Trim Bounding Box States
   const [enableSmartCrop, setEnableSmartCrop] = useState<boolean>(false);
@@ -232,6 +238,14 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     colDividers,
     rowDividers,
     selectedCell,
+    isDirectBBoxCropActive,
+    directBBoxPadding,
+    currentBBoxRectRef,
+    keyColorType,
+    keyColorHex,
+    isolationMode,
+    tolerance,
+    feather,
   });
 
   // 4. Undo/Redo Hook
@@ -444,8 +458,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   }, []);
 
   // External Image Listeners
+  const lastLoadedExternalUrlRef = useRef<string | null>(null);
   useEffect(() => {
-    if (externalImageUrl) {
+    if (externalImageUrl && externalImageUrl !== lastLoadedExternalUrlRef.current) {
+      lastLoadedExternalUrlRef.current = externalImageUrl;
       setUploadedFileMetadata(parsePartFilename(externalImageUrl));
       setUserUploadedImageUrl(externalImageUrl);
       setHasExplicitlySliced(false);
@@ -454,7 +470,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       setPreviewDisplayMode('original');
       if (externalCategoryId) setSelectedCatId(externalCategoryId);
     }
-  }, [externalImageUrl, externalCategoryId, setHasExplicitlySliced, setSlicedResults, setPreviewDisplayMode]);
+  }, [externalImageUrl, externalCategoryId]);
 
   // Initialize 3D Engine
   useEffect(() => {
@@ -494,7 +510,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       loadedImageRef.current = img;
       setLoadedImage(img);
       autoFitDividers(img, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
-      setPreviewDisplayMode('original');
       setHasExplicitlySliced(false);
       slicedCanvasesRef.current.clear();
       setSlicedResults(new Map());
@@ -561,134 +576,154 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     [loadedImage, autoFitDividers, keyColorType, keyColorHex, setHasExplicitlySliced, setPreviewDisplayMode, setSlicedResults]
   );
 
-  const handleOpenSmartCropForCell = useCallback(
-    (cell: GridCellDefinition) => {
-      const key = `${cell.row}_${cell.col}`;
-      const cellDataUrl = slicedResults.get(key);
-      if (cellDataUrl) {
-        setSmartCropTargetCell(cell);
-        setSmartCropTargetDataUrl(cellDataUrl);
-        setIsSmartCropOpen(true);
-        return;
-      }
-      const img = loadedImage || loadedImageRef.current;
-      if (!img) return;
-      const colIdx = cell.col;
-      const rowIdx = cell.row;
-      if (colDividers.length <= colIdx + 1 || rowDividers.length <= rowIdx + 1) return;
-      const x0 = colDividers[colIdx];
-      const y0 = rowDividers[rowIdx];
-      const w = Math.max(10, colDividers[colIdx + 1] - x0);
-      const h = Math.max(10, rowDividers[rowIdx + 1] - y0);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (ctx) {
-        ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
-        processCellChromaAndDespeckle(ctx, w, h, {
-          keyColorType,
-          keyColorHex,
-          isolationMode,
-          tolerance,
-          feather,
-          shadowRetention,
-          strokeWidth,
-          strokeColorHex,
-          despeckleSize,
-          whiteSpeckleSensitivity,
-          keepLargestIslandOnly,
-          fringeColorType,
-          fringeColorHex,
-          defringeStrength,
-          edgeChoke,
-          edgeSmooth,
-          smoothColorType,
-          smoothColorHex,
-          cleanupMode,
-        });
-        setSmartCropTargetCell(cell);
-        setSmartCropTargetDataUrl(canvas.toDataURL('image/png'));
-        setIsSmartCropOpen(true);
-      }
-    },
-    [
-      slicedResults,
-      loadedImage,
-      colDividers,
-      rowDividers,
-      keyColorType,
-      keyColorHex,
-      isolationMode,
-      tolerance,
-      feather,
-      shadowRetention,
-      strokeWidth,
-      strokeColorHex,
-      despeckleSize,
-      whiteSpeckleSensitivity,
-      keepLargestIslandOnly,
-      fringeColorType,
-      fringeColorHex,
-      defringeStrength,
-      edgeChoke,
-      edgeSmooth,
-      smoothColorType,
-      smoothColorHex,
-      cleanupMode,
-    ]
-  );
+  const handleToggleDirectBBoxCrop = useCallback(() => {
+    setIsDirectBBoxCropActive((prev) => !prev);
+  }, []);
 
-  const handleOpenSmartCropForMainImage = useCallback(() => {
-    if (selectedCell) {
-      handleOpenSmartCropForCell(selectedCell);
-      return;
-    }
-    if (selectedCatId === 'single_full_image' && slicedResults.get('0_0')) {
-      setSmartCropTargetCell(null);
-      setSmartCropTargetDataUrl(slicedResults.get('0_0')!);
-      setIsSmartCropOpen(true);
-      return;
-    }
+  const handleApplyDirectBBoxCrop = useCallback(() => {
     const img = loadedImage || loadedImageRef.current;
     if (!img) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (ctx) {
-      ctx.drawImage(img, 0, 0);
-      processCellChromaAndDespeckle(ctx, img.width, img.height, {
-        keyColorType,
-        keyColorHex,
-        isolationMode,
-        tolerance,
-        feather,
-        shadowRetention,
-        strokeWidth,
-        strokeColorHex,
-        despeckleSize,
-        whiteSpeckleSensitivity,
-        keepLargestIslandOnly,
-        fringeColorType,
-        fringeColorHex,
-        defringeStrength,
-        edgeChoke,
-        edgeSmooth,
-        smoothColorType,
-        smoothColorHex,
-        cleanupMode,
-      });
-      setSmartCropTargetCell(null);
-      setSmartCropTargetDataUrl(canvas.toDataURL('image/png'));
-      setIsSmartCropOpen(true);
+
+    const chromaOpts = keyColorType
+      ? {
+          keyColorType,
+          keyColorHex: keyColorHex || '#00ff00',
+          isolationMode: isolationMode || 'all',
+          tolerance: tolerance ?? 35,
+          feather: feather ?? 2,
+          shadowRetention: shadowRetention ?? 0,
+          strokeWidth: strokeWidth ?? 0,
+          strokeColorHex: strokeColorHex || '#000000',
+          despeckleSize: despeckleSize ?? 0,
+          whiteSpeckleSensitivity: whiteSpeckleSensitivity ?? 0,
+          keepLargestIslandOnly: keepLargestIslandOnly ?? false,
+          fringeColorType: fringeColorType || 'chroma_green',
+          fringeColorHex: fringeColorHex || '#00ff00',
+          defringeStrength: defringeStrength ?? 0,
+          edgeChoke: edgeChoke ?? 0,
+          edgeSmooth: edgeSmooth ?? 0,
+          smoothColorType: smoothColorType || 'black',
+          smoothColorHex: smoothColorHex || '#000000',
+          cleanupMode: cleanupMode || 'all',
+        }
+      : undefined;
+
+    // 1. Get the EXACT rect that is currently displayed on the screen
+    let rect = currentBBoxRectRef.current;
+
+    // Fallback if not cached
+    if (!rect) {
+      rect = detectImageBBoxRect(img, chromaOpts, directBBoxPadding, 20);
     }
+
+    if (!rect) {
+      showToast('⚠️ Không tìm thấy đối tượng trong ảnh để cắt!', 'undo');
+      return;
+    }
+
+    const imgW = img.naturalWidth || img.width;
+    const imgH = img.naturalHeight || img.height;
+
+    // Safety clamp rect within image bounds
+    const safeLeft = Math.max(0, Math.min(imgW - 1, rect.left));
+    const safeTop = Math.max(0, Math.min(imgH - 1, rect.top));
+    const safeWidth = Math.max(1, Math.min(imgW - safeLeft, rect.width));
+    const safeHeight = Math.max(1, Math.min(imgH - safeTop, rect.height));
+
+    // 2 LOẠI CẮT ĐỘC LẬP:
+    // 1. Chế độ xem Ảnh Gốc (previewDisplayMode === 'original'):
+    //    -> Cắt trực tiếp từ ảnh gốc (giữ nguyên màu nền gốc, chỉ cắt khung ảnh).
+    // 2. Chế độ xem Đã Tách Nền (previewDisplayMode === 'transparent'):
+    //    -> Cắt từ ảnh đã tách nền trong suốt.
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = safeWidth;
+    croppedCanvas.height = safeHeight;
+    const cropCtx = croppedCanvas.getContext('2d', { willReadFrequently: true });
+    if (!cropCtx) return;
+
+    const fullCanvas = document.createElement('canvas');
+    fullCanvas.width = imgW;
+    fullCanvas.height = imgH;
+    const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
+    if (!fullCtx) return;
+    fullCtx.drawImage(img, 0, 0, imgW, imgH);
+
+    if (previewDisplayMode === 'original') {
+      // Cắt trực tiếp từ ảnh gốc (chỉ cắt ảnh, giữ nguyên nền)
+      cropCtx.drawImage(
+        fullCanvas,
+        safeLeft,
+        safeTop,
+        safeWidth,
+        safeHeight,
+        0,
+        0,
+        safeWidth,
+        safeHeight
+      );
+    } else {
+      // Cắt từ ảnh đã tách nền trong suốt
+      if (chromaOpts) {
+        processCellChromaAndDespeckle(fullCtx, imgW, imgH, chromaOpts);
+      }
+      cropCtx.drawImage(
+        fullCanvas,
+        safeLeft,
+        safeTop,
+        safeWidth,
+        safeHeight,
+        0,
+        0,
+        safeWidth,
+        safeHeight
+      );
+    }
+
+    const dataUrl = croppedCanvas.toDataURL('image/png');
+
+    pushUndoState(previewDisplayMode === 'original' ? 'Cắt ảnh gốc theo BBox' : 'Cắt ảnh trong suốt theo BBox');
+    
+    // Load and update image immediately
+    const nextImg = new Image();
+    nextImg.crossOrigin = 'anonymous';
+    nextImg.onload = () => {
+      loadedImageRef.current = nextImg;
+      setLoadedImage(nextImg);
+      setUserUploadedImageUrl(dataUrl);
+      autoFitDividers(nextImg, currentCategory.cols, currentCategory.rows, keyColorType, keyColorHex);
+    };
+    nextImg.src = dataUrl;
+
+    if (selectedCatId === 'single_full_image' && previewDisplayMode === 'transparent') {
+      slicedCanvasesRef.current.set('0_0', croppedCanvas);
+      setSlicedResults(new Map([['0_0', dataUrl]]));
+      setHasExplicitlySliced(true);
+    }
+
+    // Update in multi-image gallery if active
+    if (activeImageId) {
+      setImageList((prev) =>
+        prev.map((item) =>
+          item.id === activeImageId
+            ? {
+                ...item,
+                url: dataUrl,
+                width: rect.width,
+                height: rect.height,
+                aspectRatio: rect.width / rect.height,
+                aspectRatioLabel: detectAspectRatioLabel(rect.width, rect.height),
+              }
+            : item
+        )
+      );
+    }
+
+    setIsDirectBBoxCropActive(false);
+    showToast(`✓ Đã cắt ảnh thành công (${rect.width}×${rect.height}px)!`, 'redo');
   }, [
-    selectedCell,
-    handleOpenSmartCropForCell,
-    selectedCatId,
-    slicedResults,
     loadedImage,
+    loadedImageRef,
+    previewDisplayMode,
     keyColorType,
     keyColorHex,
     isolationMode,
@@ -708,73 +743,15 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     smoothColorType,
     smoothColorHex,
     cleanupMode,
+    selectedCatId,
+    directBBoxPadding,
+    activeImageId,
+    pushUndoState,
+    setImageList,
+    showToast,
+    setSlicedResults,
+    setHasExplicitlySliced,
   ]);
-
-  const handleApplySmartCrop = useCallback(
-    (croppedDataUrl: string, rect: PaddedCropRect) => {
-      if (smartCropTargetCell) {
-        const key = `${smartCropTargetCell.row}_${smartCropTargetCell.col}`;
-        setSlicedResults((prev) => new Map(prev).set(key, croppedDataUrl));
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0);
-            slicedCanvasesRef.current.set(key, canvas);
-            redrawCanvas('transparent');
-          }
-        };
-        img.src = croppedDataUrl;
-
-        if (smartCropTargetCell.partSlot) {
-          const slot = smartCropTargetCell.partSlot;
-          const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
-          if (!updatedAssembly.parts[slot]) {
-            updatedAssembly.parts[slot] = {
-              path: croppedDataUrl,
-              offset: [0, 0],
-              scale: [1, 1],
-              rotation: 0,
-              pivot: [0.5, 0.5],
-              flipX: false,
-              flipY: false,
-              z_index: 1,
-              opacity: 1,
-              angles: {},
-            };
-          }
-          const part = updatedAssembly.parts[slot]!;
-          if (smartCropTargetCell.angle === 'front' || smartCropTargetCell.col === 0) part.path = croppedDataUrl;
-          if (smartCropTargetCell.angle) {
-            if (!part.angles) part.angles = {};
-            part.angles[smartCropTargetCell.angle] = croppedDataUrl;
-          }
-          onApplyAssembly(updatedAssembly);
-          if (threeEngineRef.current) threeEngineRef.current.setAssembly(updatedAssembly);
-        }
-      } else if (selectedCatId === 'single_full_image') {
-        setSlicedResults((prev) => new Map(prev).set('0_0', croppedDataUrl));
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0);
-            slicedCanvasesRef.current.set('0_0', canvas);
-            redrawCanvas('transparent');
-          }
-        };
-        img.src = croppedDataUrl;
-      }
-      showToast('✓ Đã cắt gọt viền Bounding Box và cập nhật linh kiện thành công!', 'redo');
-    },
-    [smartCropTargetCell, selectedCatId, currentAssembly, onApplyAssembly, threeEngineRef, redrawCanvas, showToast, setSlicedResults]
-  );
 
   useEffect(() => {
     redrawCanvas();
@@ -787,30 +764,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: historyToast.type === 'undo' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.95)', color: '#fff', padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, zIndex: 9999, boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
           {historyToast.message}
         </div>
-      )}
-
-      {/* Multi-Image Gallery & Part Tabs */}
-      {imageList.length > 0 && (
-        <SlicerLoadedImagesTabs
-          partGroups={partGroups}
-          activePartId={activePartId}
-          activeImageId={activeImageId}
-          onSelectPart={handleSelectPart}
-          onSelectImage={handleSelectImage}
-          onRemoveImage={handleRemoveImage}
-          onClearAll={() => {
-            pushUndoState('Xóa tất cả ảnh');
-            handleClearAll();
-            setUserUploadedImageUrl(null);
-            setUploadedFileMetadata(null);
-            setHasExplicitlySliced(false);
-            setSlicedResults(new Map());
-            slicedCanvasesRef.current.clear();
-            setPreviewDisplayMode('original');
-          }}
-          onOpenAddFiles={() => fileInputRef.current?.click()}
-          totalImagesCount={imageList.length}
-        />
       )}
 
       {/* Auto Detect Metadata Header Bar */}
@@ -842,8 +795,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         </div>
       )}
 
-      {/* Main 3-Column Studio Grid: 410px Sidebar, 1fr Canvas, 380px 3D Preview */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '410px 1fr 380px', gap: 10, minHeight: 0 }}>
+      {/* Main Studio Grid: Sidebar, Canvas, Vertical Gallery (when images exist), 3D Turntable Preview */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: imageList.length > 0 ? '380px 1fr 145px 360px' : '410px 1fr 380px', gap: 10, minHeight: 0 }}>
         {/* Column 1: Slicer Controls */}
         <SlicerSidebarControls
           targetCategory={targetCategory}
@@ -955,7 +908,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           totalCellCount={currentCategory.id === 'single_full_image' ? 1 : currentCategory.cells.length}
           onOpenSaveKitModal={() => setIsSaveKitModalOpen(true)}
           onOpenCatalogModal={() => setIsCatalogOpen(true)}
-          onOpenSmartCrop={handleOpenSmartCropForMainImage}
         />
 
         {/* Column 2: Interactive Canvas */}
@@ -1001,6 +953,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             onMouseLeave={() => { setEyedropperHoverColor(null); draggingDividerRef.current = null; }}
             onMouseUp={() => { draggingDividerRef.current = null; }}
             onDoubleClick={() => { if (selectedCell) openCellPixelEditor(selectedCell); }}
+            isDirectBBoxCropActive={isDirectBBoxCropActive}
+            onToggleDirectBBoxCrop={handleToggleDirectBBoxCrop}
+            directBBoxPadding={directBBoxPadding}
+            setDirectBBoxPadding={setDirectBBoxPadding}
+            onApplyDirectBBoxCrop={handleApplyDirectBBoxCrop}
           />
 
           {selectedCell && (
@@ -1008,7 +965,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               selectedCell={selectedCell}
               slicedCellDataUrl={slicedResults.get(`${selectedCell.row}_${selectedCell.col}`)}
               onOpenCellPixelEditor={(cell) => openCellPixelEditor(cell)}
-              onOpenSmartCrop={(cell) => handleOpenSmartCropForCell(cell)}
               onAdjustColWidth={(delta) => { adjustColWidth(selectedCell, delta); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
               onResetAllDividers={() => { resetAllDividers(loadedImageRef.current, currentCategory.cols, currentCategory.rows); if (hasExplicitlySliced) handleAutoSliceAndAssemble(); }}
               onUpdateCellAngle={(cell, angle, mirror) => {
@@ -1021,6 +977,30 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             />
           )}
         </div>
+
+        {/* Column 2.5: Vertical Gallery Column (left of 3D Turntable Preview) */}
+        {imageList.length > 0 && (
+          <SlicerVerticalGalleryColumn
+            partGroups={partGroups}
+            activePartId={activePartId}
+            activeImageId={activeImageId}
+            onSelectPart={handleSelectPart}
+            onSelectImage={handleSelectImage}
+            onRemoveImage={handleRemoveImage}
+            onClearAll={() => {
+              pushUndoState('Xóa tất cả ảnh');
+              handleClearAll();
+              setUserUploadedImageUrl(null);
+              setUploadedFileMetadata(null);
+              setHasExplicitlySliced(false);
+              setSlicedResults(new Map());
+              slicedCanvasesRef.current.clear();
+              setPreviewDisplayMode('original');
+            }}
+            onOpenAddFiles={() => fileInputRef.current?.click()}
+            totalImagesCount={imageList.length}
+          />
+        )}
 
         {/* Column 3: 3D Turntable Preview */}
         <Slicer3DTurntablePreview
@@ -1048,26 +1028,6 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       </div>
 
       {/* Modals */}
-      {isSmartCropOpen && smartCropTargetDataUrl && (
-        <SlicerSmartCropModal
-          isOpen={isSmartCropOpen}
-          onClose={() => {
-            setIsSmartCropOpen(false);
-            setSmartCropTargetCell(null);
-            setSmartCropTargetDataUrl('');
-          }}
-          imageDataUrl={smartCropTargetDataUrl}
-          defaultTitle={
-            smartCropTargetCell
-              ? smartCropTargetCell.label || `Linh Kiện [${smartCropTargetCell.row + 1}, ${smartCropTargetCell.col + 1}]`
-              : (selectedCatId === 'single_full_image' ? 'Linh Kiện Ảnh Đơn' : 'Linh Kiện Bóc Tách')
-          }
-          defaultCategory={targetCategory === 'character' ? 'toc' : 'custom_slices'}
-          defaultPartSlot={smartCropTargetCell?.partSlot || singleImageSlot || 'toc_truoc'}
-          defaultAngle={smartCropTargetCell?.angle || singleImageAngle || 'front'}
-          onApplyCroppedImage={handleApplySmartCrop}
-        />
-      )}
 
       {isEraserOpen && editingCellDef && (
         <CellPixelEraserModal
