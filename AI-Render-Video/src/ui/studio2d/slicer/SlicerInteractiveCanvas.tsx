@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Move, Undo2, Redo2 } from 'lucide-react';
+import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Move, Undo2, Redo2, Table } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../core/assets/GridSliceRegistry';
 
 interface SlicerInteractiveCanvasProps {
@@ -11,6 +11,11 @@ interface SlicerInteractiveCanvasProps {
   previewDisplayMode: 'transparent' | 'original';
   setPreviewDisplayMode: (mode: 'transparent' | 'original') => void;
   onTogglePreviewDisplayMode?: (mode: 'transparent' | 'original') => void;
+  checkerTheme?: 'dark' | 'light';
+  onToggleCheckerTheme?: () => void;
+  onOpenGridTablePicker?: () => void;
+  isSingleImageMode?: boolean;
+  onToggleSingleImageMode?: () => void;
   hasExplicitlySliced: boolean;
   currentCategory: GridCategoryDefinition;
   onAutoFitGrid?: () => void;
@@ -36,6 +41,11 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   previewDisplayMode,
   setPreviewDisplayMode,
   onTogglePreviewDisplayMode,
+  checkerTheme = 'dark',
+  onToggleCheckerTheme,
+  onOpenGridTablePicker,
+  isSingleImageMode = false,
+  onToggleSingleImageMode,
   hasExplicitlySliced,
   currentCategory,
   onAutoFitGrid,
@@ -149,8 +159,66 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
     >
       {/* Top Canvas Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Layers size={13} /> {currentCategory.id === 'single_full_image' ? '🖼️ Chế độ ảnh đơn (Đã tắt khung lưới)' : `Khung lưới cắt (${currentCategory.rows} hàng × ${currentCategory.cols} cột)`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Layers size={13} /> {currentCategory.id === 'single_full_image' ? 'Khung cắt: Ảnh đơn (Đã tắt lưới)' : `Khung lưới cắt (${currentCategory.rows} hàng × ${currentCategory.cols} cột)`}
+          </div>
+
+          {/* Button Ma Trận Lưới nằm ở bên phải tiêu đề Khung cắt lưới với icon Table */}
+          {onOpenGridTablePicker && (
+            <button
+              onClick={onOpenGridTablePicker}
+              style={{
+                padding: '3px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(56, 189, 248, 0.4))',
+                color: '#38bdf8',
+                border: '1.5px solid rgba(56, 189, 248, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: '0 0 8px rgba(56, 189, 248, 0.25)',
+                transition: 'all 0.15s ease',
+              }}
+              title="Mở bảng chọn ma trận dòng × cột kiểu bảng Word"
+            >
+              <Table size={12} /> Ma Trận Lưới...
+            </button>
+          )}
+
+          {/* Toggle Button Bật Ảnh Đơn / Tắt để theo ma trận lưới */}
+          {onToggleSingleImageMode && (
+            <button
+              onClick={onToggleSingleImageMode}
+              style={{
+                padding: '3px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: isSingleImageMode
+                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(16, 185, 129, 0.3))'
+                  : 'rgba(255, 255, 255, 0.08)',
+                color: isSingleImageMode ? '#4ade80' : '#94a3b8',
+                border: isSingleImageMode ? '1.5px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.15)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: isSingleImageMode ? '0 0 8px rgba(34, 197, 94, 0.3)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title={
+                isSingleImageMode
+                  ? 'Đang bật Ảnh Đơn (Tắt khung lưới) - Nhấp để chuyển sang Ảnh Lưới theo ma trận'
+                  : 'Đang bật Ảnh Lưới - Nhấp để chuyển sang Ảnh Đơn'
+              }
+            >
+              <span>{isSingleImageMode ? '🖼️ Ảnh Đơn: BẬT' : '🔲 Ảnh Lưới: BẬT'}</span>
+            </button>
+          )}
         </div>
 
         {/* Action Controls: Auto-Fit + Reset Uniform + Preview Mode Toggle */}
@@ -335,6 +403,35 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               Fit
             </button>
           </div>
+
+          {/* Caro Theme Toggle Button */}
+          {onToggleCheckerTheme && (
+            <button
+              onClick={onToggleCheckerTheme}
+              style={{
+                padding: '4px 9px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: checkerTheme === 'light' ? 'linear-gradient(135deg, #ffffff, #e2e8f0)' : 'rgba(255, 255, 255, 0.08)',
+                color: checkerTheme === 'light' ? '#0f172a' : '#cbd5e1',
+                border: checkerTheme === 'light' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.15)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: checkerTheme === 'light' ? '0 0 10px rgba(56, 189, 248, 0.5)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title={
+                checkerTheme === 'light'
+                  ? 'Đang bật Caro Sáng (Trắng/Xám nhạt) để soi rõ chi tiết tối. Nhấp để chuyển sang Caro Tối'
+                  : 'Đang bật Caro Tối (Đen/Xanh đậm). Nhấp để chuyển sang Caro Sáng'
+              }
+            >
+              <span>{checkerTheme === 'light' ? '🏁 Caro Sáng (Bật)' : '🏁 Caro Tối (Bật)'}</span>
+            </button>
+          )}
 
           {/* Preview Mode Toggle */}
           <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>

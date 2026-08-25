@@ -16,23 +16,51 @@ import {
 } from './PromptLabelHelpers';
 
 /**
+ * Tài liệu chú giải các trường JSON cho AI và người dùng
+ */
+export const JSON_SCHEMA_FIELD_GUIDE = {
+  _doc: 'FlowMy 2D Animation Studio - JSON Schema Guide cho AI Image Generator & 2D Rigging',
+  base_prompt: 'Chuỗi mô tả ngoại hình gốc của nhân vật (phong cách, màu sắc, trang phục, mái tóc) làm mỏ neo đồng bộ nhất quán giữa tất cả các góc quay và linh kiện.',
+  prompts: 'Danh sách các tác vụ sinh ảnh chi tiết cần thực thi.',
+  'prompts[].name': 'Mã định danh duy nhất của layer / góc quay (dùng để lưu file và tự động load vào khớp xương).',
+  'prompts[].part_id': 'Mã slot linh kiện 2D giải phẫu (ví dụ: master_character, toc_truoc, khuon_mat, canh_tay_trai, vu_khi).',
+  'prompts[].part_name': 'Tên tiếng Việt của bộ phận / khớp xương.',
+  'prompts[].group_id': 'Mã nhóm giải phẫu (01_head_face, 02_torso_arms, 03_legs_feet, 04_props_costumes, step1_master).',
+  'prompts[].group_name': 'Tên tiếng Việt của nhóm giải phẫu.',
+  'prompts[].angle': 'Tên góc quay hiển thị (Chính diện 0°, Nghiêng 3/4 45°, Nhìn ngang 90°, Sau lưng 180°...).',
+  'prompts[].angle_id': 'Mã góc máy chuẩn hóa (000_front, 045_three_quarter, 090_side, 135_rear, 180_back, top_down...).',
+  'prompts[].angle_deg': 'Độ góc quay số học (0..360) phục vụ xoay trục không gian và nội suy góc nhìn 3D.',
+  'prompts[].z_index': 'Thứ tự sắp xếp độ sâu lớp vẽ từ dưới lên trên (số lớn hơn vẽ đè lên số nhỏ hơn).',
+  'prompts[].save_filename': 'Tên file ảnh xuất ra để phần mềm tự động gán vào đúng vị trí khớp xương trong Studio 2D.',
+  'prompts[].view_desc': 'Mô tả góc nhìn và vị trí camera bằng tiếng Việt giúp người dùng và AI hiểu hướng quan sát.',
+  'prompts[].prompt': 'Câu lệnh tạo ảnh chi tiết hoàn chỉnh: mô tả hình dạng, chi tiết bóc tách, màu sắc, những gì cần vẽ và cấm vẽ, phông nền đơn sắc và tỉ lệ khung hình.',
+  'prompts[].count': 'Số lượng ảnh AI cần sinh cho tác vụ này (đồng bộ theo ô nhập liệu).',
+  'prompts[].aspect_ratio': 'Tỉ lệ khung hình của ảnh kết xuất (1:1, 3:4, 4:3, 16:9, 9:16).',
+};
+
+function clampPromptLength(prompt: string, maxLen = 3900): string {
+  if (prompt.length <= maxLen) return prompt;
+  return prompt.slice(0, maxLen - 3) + '...';
+}
+
+/**
  * Builds Step 1 Master Turnaround Prompts and JSON for 2D Character Reference
  */
 export function buildStep1MasterPrompt(config: AIPartPromptConfig): AIPromptResult {
-  let bgPromptColorEn = 'pure Chroma Green #00FF00';
+  let bgPromptColorEn = 'pure solid Chroma Green #00FF00';
   let bgPromptColorHex = '#00FF00';
   let bgTextVi = 'Nền xanh lá Chroma Green (#00FF00) phẳng 1 màu dứt khoát';
 
   if (config.bg_type === 'pure_white') {
-    bgPromptColorEn = 'pure White #FFFFFF';
+    bgPromptColorEn = 'pure solid White #FFFFFF';
     bgPromptColorHex = '#FFFFFF';
     bgTextVi = 'Nền trắng tinh khiết (#FFFFFF) phẳng 1 màu';
   } else if (config.bg_type === 'chroma_gray') {
-    bgPromptColorEn = 'neutral Dark Gray #333333';
+    bgPromptColorEn = 'neutral solid Dark Gray #333333';
     bgPromptColorHex = '#333333';
     bgTextVi = 'Nền xám đậm trung tính (#333333)';
   } else if (config.bg_type === 'pure_black') {
-    bgPromptColorEn = 'pure Black #000000';
+    bgPromptColorEn = 'pure solid Black #000000';
     bgPromptColorHex = '#000000';
     bgTextVi = 'Nền đen tuyền (#000000)';
   }
@@ -40,7 +68,7 @@ export function buildStep1MasterPrompt(config: AIPartPromptConfig): AIPromptResu
   const isMale = config.gender === 'nam';
   const genderLabelEn = isMale ? 'Male' : 'Female';
   const genderLabelVi = isMale ? 'Nam' : 'Nữ';
-  const artStyleEn = config.custom_character_style?.trim() || config.character_style?.trim() || 'Chinese Guoman / 国漫 Xianxia Chibi';
+  const artStyleEn = config.custom_character_style?.trim() || config.character_style?.trim() || 'Chinese Guoman / 国漫 Xianxia Chibi Anime';
   const artStyleVi = getStyleLabel(config.character_style, config.custom_character_style);
 
   const eyeShapeInfo = getEyeShapeLabels(config.eye_shape, config.custom_eye_shape);
@@ -56,7 +84,10 @@ export function buildStep1MasterPrompt(config: AIPartPromptConfig): AIPromptResu
   const hairAccInfo = getHairAccessoryLabels(config.hair_accessories, config.custom_hair_accessories);
   const bodyPropInfo = getBodyProportionLabels(config.body_proportion, config.custom_body_proportion);
 
-  const baseDescEn = `2D ${artStyleEn} character turnaround sheet, ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color: ${costumeColorVi}), weapon: ${propInfo.en}, flat ${bgPromptColorEn} background, clean anime lineart, cel shading, zero shadows, no text, no borders --ar 16:9`;
+  const selectedAspectRatio = config.aspect_ratio || '16:9';
+  const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? config.batch_count : 1;
+
+  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero shadows, flat solid ${bgPromptColorEn} background --ar ${selectedAspectRatio}`;
 
   const promptEnglish = `masterpiece, best quality, ultra detailed, 2D ${artStyleEn} character turnaround sheet, ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER.
 
@@ -70,23 +101,23 @@ CHARACTER SPECIFICATIONS:
 - Costume: ${costumeInfo.en} (Color: ${costumeColorVi})
 - Weapon / Props: ${propInfo.en}
 
-TURNAROUND 5-VIEW SEQUENCE (16:9 Canvas):
-1. VIEW 1 — FRONT (0°): Direct frontal view, full body from head to feet.
-2. VIEW 2 — THREE-QUARTER (45°): 45-degree angle showing face depth and shoulder.
-3. VIEW 3 — SIDE PROFILE (90°): 90-degree clean side silhouette and nose profile.
-4. VIEW 4 — REAR THREE-QUARTER (135°): 135-degree angle showing back sash and rear hair.
-5. VIEW 5 — BACK (180°): Full rear view showing back hair mantle and robe spine.
-+ TOP-DOWN REFERENCE: One smaller top-down view showing head crown and parting.
+TURNAROUND 5-VIEW SEQUENCE (${selectedAspectRatio} Canvas):
+1. VIEW 1 — FRONT (0°): Direct frontal orthographic view, full body from head to feet.
+2. VIEW 2 — THREE-QUARTER (45°): 45-degree angle showing face depth, cheek, and shoulder curve.
+3. VIEW 3 — SIDE PROFILE (90°): 90-degree clean lateral side profile showing nose bridge and spine silhouette.
+4. VIEW 4 — REAR THREE-QUARTER (135°): 135-degree rear angle showing back waist sash and rear hair flow.
+5. VIEW 5 — BACK (180°): Full rear back view showing back hair mantle, shoulder blade lines, and robe spine.
++ TOP-DOWN REFERENCE: Top-down view looking downward at the head crown and hair parting.
 
 CONSISTENCY & RESTRICTIONS:
-- 100% identical character rotated around vertical axis.
-- Clean 2D anime lineart, flat cel shading, readable silhouettes for 2D rigging.
-- Flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background with zero shadows.
+- 100% identical character rotated strictly around vertical axis.
+- Clean 2D anime vector-like lineart, flat 2-tone cel shading, zero drop shadows, zero ambient occlusion on ground.
+- Flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background with zero gradients or cast shadows.
 - STRICTLY NO text, NO letters, NO numbers, NO labels, NO watermark, NO grid borders.
 
---ar 16:9`;
+--ar ${selectedAspectRatio}`;
 
-  const promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET - 16:9) 】
+  const promptVietnamese = `【 BẢNG THIẾT KẾ NHÂN VẬT GỐC ĐA GÓC QUAY (CHARACTER TURNAROUND SHEET - ${selectedAspectRatio}) 】
 
 ════════════════════════════════════════════════════════════
 1. THUỘC TÍNH NHÂN VẬT:
@@ -98,10 +129,10 @@ CONSISTENCY & RESTRICTIONS:
 • Vũ khí / Pháp bảo: ${propInfo.vi}
 
 ════════════════════════════════════════════════════════════
-2. BỐ CỤC 5 GÓC XOAY TOÀN THÂN (16:9):
+2. BỐ CỤC 5 GÓC XOAY TOÀN THÂN (${selectedAspectRatio}):
 ════════════════════════════════════════════════════════════
-1. Front (0° Chính diện): Mẫu tham chiếu chính, toàn thân thẳng góc máy.
-2. 45° (Nghiêng 3/4): Thấy độ sâu khuôn mặt, tóc mai và vai.
+1. Front (0° Chính diện): Mẫu tham chiếu chính, toàn thân thẳng đứng trực diện góc máy.
+2. 45° (Nghiêng 3/4): Thấy độ sâu khuôn mặt, má, tóc mai và vai.
 3. Side (90° Nhìn ngang): Thấy sống mũi, cằm, vành tai và dáng suối tóc.
 4. 135° (Nghiêng sau): Thấy tà áo choàng, thắt lưng và búi tóc sau gáy.
 5. Back (180° Sau lưng): Thấy toàn bộ suối tóc và lưng áo.
@@ -109,6 +140,8 @@ CONSISTENCY & RESTRICTIONS:
 
 • Nền: ${bgTextVi}.
 • CẤM: KHÔNG CHỮ, KHÔNG SỐ, KHÔNG NHÃN DÁN, KHÔNG ĐƯỜNG KẺ KHUNG ĐEN, KHÔNG WATERMARK.`;
+
+  const commonVisualRules = `Clean crisp 2D anime lineart, flat 2-tone cel shading, vibrant colors, zero cast shadows, on a flat uniform ${bgPromptColorEn} (${bgPromptColorHex}) background for 1-click transparency cutout, no text, no watermark, no border --ar ${selectedAspectRatio}`;
 
   const step1Prompts = [
     {
@@ -122,9 +155,12 @@ CONSISTENCY & RESTRICTIONS:
       angle_deg: 0,
       z_index: 0,
       save_filename: 'master_000_front.png',
+      aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc nhìn chính diện 0° toàn thân làm chuẩn tham chiếu chính',
-      prompt: `0° front view of the character, facing camera, full body, head to feet, clear eyes and bangs, uniform solid ${bgPromptColorEn} background --ar 16:9`,
-      count: 4,
+      prompt: clampPromptLength(
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Direct 0° orthographic front view facing the viewer squarely, full body from head crown to shoes, standing upright with relaxed arms. Character features: face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), outfit (${costumeInfo.en}, color: ${costumeColorVi}), holding weapon (${propInfo.en}). ${commonVisualRules}`
+      ),
+      count: userBatchCount,
     },
     {
       name: 'master_045_three_quarter',
@@ -137,9 +173,12 @@ CONSISTENCY & RESTRICTIONS:
       angle_deg: 45,
       z_index: 0,
       save_filename: 'master_045_three_quarter.png',
+      aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc xoay 45° hiển thị độ sâu ngũ quan, tóc mai và vai',
-      prompt: `45° three-quarter angle view of the exact same character, depth of face and hair, uniform solid ${bgPromptColorEn} background --ar 16:9`,
-      count: 2,
+      prompt: clampPromptLength(
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: 45° three-quarter oblique angle view, full body from head to feet, clearly showing cheekbone depth, 3/4 facial contour, nose bridge curve, chest garment depth, and shoulder angle. Hair: (${hairColInfo.en}, ${hairTexInfo.en}). Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). Weapon: (${propInfo.en}). ${commonVisualRules}`
+      ),
+      count: userBatchCount,
     },
     {
       name: 'master_090_side',
@@ -152,9 +191,12 @@ CONSISTENCY & RESTRICTIONS:
       angle_deg: 90,
       z_index: 0,
       save_filename: 'master_090_side.png',
+      aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc nhìn ngang 90° thấy sống mũi, cằm, tai và dáng suối tóc',
-      prompt: `90° side profile view of the exact same character, clean facial silhouette and spine posture, uniform solid ${bgPromptColorEn} background --ar 16:9`,
-      count: 2,
+      prompt: clampPromptLength(
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Pure 90° lateral side profile view, full body from head to feet, showing clean facial silhouette with nose bridge, lips, chin, ear placement, spine posture, and flowing back hair cascading down the spine. Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). ${commonVisualRules}`
+      ),
+      count: userBatchCount,
     },
     {
       name: 'master_135_rear',
@@ -167,9 +209,12 @@ CONSISTENCY & RESTRICTIONS:
       angle_deg: 135,
       z_index: 0,
       save_filename: 'master_135_rear.png',
+      aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc xoay 135° thấy tà áo sau, thắt lưng và búi tóc',
-      prompt: `135° rear three-quarter view of the exact same character, back of hair bun and sash, uniform solid ${bgPromptColorEn} background --ar 16:9`,
-      count: 1,
+      prompt: clampPromptLength(
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: 135° rear three-quarter oblique view from behind, full body, showing rear back of hair bun, hair ribbons, back neckline, shoulder blades, waist sash buckle, and flowing robe mantle. ${commonVisualRules}`
+      ),
+      count: userBatchCount,
     },
     {
       name: 'master_180_back',
@@ -182,9 +227,12 @@ CONSISTENCY & RESTRICTIONS:
       angle_deg: 180,
       z_index: 0,
       save_filename: 'master_180_back.png',
+      aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc sau lưng 180° thấy trọn vẹn suối tóc và lưng áo',
-      prompt: `180° rear back view of the exact same character, complete back hair mantle and costume spine, uniform solid ${bgPromptColorEn} background --ar 16:9`,
-      count: 1,
+      prompt: clampPromptLength(
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: 180° direct rear back orthographic view facing away from camera, full body from head crown to heels. Complete back hair mantle (${hairColInfo.en}, ${hairLenInfo.en}), back of costume robe spine (${costumeInfo.en}, color: ${costumeColorVi}), back of sash. Zero front face visible. ${commonVisualRules}`
+      ),
+      count: userBatchCount,
     },
     {
       name: 'master_top_down',
@@ -197,19 +245,22 @@ CONSISTENCY & RESTRICTIONS:
       angle_deg: 90,
       z_index: 0,
       save_filename: 'master_top_down.png',
+      aspect_ratio: selectedAspectRatio,
       view_desc: 'Góc phụ soi đỉnh đầu từ trên xuống thấy đường rẽ ngôi và trâm cài',
-      prompt: `Top-down view looking downward at the character head crown, hair parting and hair accessories, uniform solid ${bgPromptColorEn} background --ar 16:9`,
-      count: 1,
+      prompt: clampPromptLength(
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character reference. Camera: Top-down vertical bird's-eye view looking directly down at the character's head crown, clearly showing the hair parting line, hair crown volume, top hair accessories (${hairAccInfo.en}), and shoulder top silhouette. Hair: (${hairColInfo.en}, ${hairTexInfo.en}). ${commonVisualRules}`
+      ),
+      count: userBatchCount,
     },
   ];
 
-  const promptJSON = JSON.stringify(
-    config.include_base_prompt === false
-      ? { prompts: step1Prompts }
-      : { base_prompt: baseDescEn, prompts: step1Prompts },
-    null,
-    2
-  );
+  const jsonPayload: any = {};
+  if (config.include_base_prompt !== false) {
+    jsonPayload.base_prompt = baseDescEn;
+  }
+  jsonPayload.prompts = step1Prompts;
+
+  const promptJSON = JSON.stringify(jsonPayload, null, 2);
 
   const negativePrompt = 'realistic human face, small realistic eyes, 3D CGI render, photorealism, live-action, western comic style, ugly anatomy, deformed face, muddy colors, bad eyes, realistic skin texture, realistic wrinkles, dull eyes, pores, text, letters, words, labels, watermark, signature, bad proportions, divider lines, grid frames';
   const fullCopyText = `${promptEnglish}\n\nNegative prompt:\n${negativePrompt}`;
@@ -220,8 +271,9 @@ CONSISTENCY & RESTRICTIONS:
     promptVietnamese,
     promptJSON,
     promptGemini,
-    gridStructureGuide: '📐 Bảng Xoay Nhân Vật: 5 góc toàn thân chuẩn 16:9.',
+    gridStructureGuide: `📐 Bảng Xoay Nhân Vật: 5 góc toàn thân chuẩn ${selectedAspectRatio}.`,
     negativePrompt,
     fullCopyText,
   };
 }
+

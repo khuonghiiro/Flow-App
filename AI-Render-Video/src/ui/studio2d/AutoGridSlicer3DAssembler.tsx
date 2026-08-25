@@ -23,6 +23,20 @@ import { saveCustomResourceKit } from '../../core/assets/CharacterKitStorage';
 import { processCellChromaAndDespeckle } from '../../core/utils/ChromaDespeckleProcessor';
 import { detectAndFitGridDividers } from '../../core/utils/GridAutoFitDetector';
 import { PART_HIERARCHY_CONFIG, parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Asset2DRegistry';
+import { GridTablePickerModal } from './slicer/GridTablePickerModal';
+import { JsonPromptImportModal, ParsedJsonMetadataItem } from './slicer/JsonPromptImportModal';
+import {
+  CheckerboardTheme,
+  loadCachedCheckerTheme,
+  saveCachedCheckerTheme,
+  loadCachedSingleMode,
+  saveCachedSingleMode,
+  loadCachedGridConfig,
+  saveCachedGridConfig,
+  createDynamicGridCategory,
+  STANDARD_ANGLE_DEFINITIONS,
+  getAngleDefinitionById,
+} from '../../core/assets/slicer/SlicerAngleConstants';
 
 // Subcomponents
 import { SlicerSidebarControls } from './slicer/SlicerSidebarControls';
@@ -79,8 +93,20 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   externalImageUrl,
   externalCategoryId,
 }) => {
-  // Slicing & Category Configuration (Default to modern Cinematic 6-Angle Grid for single components)
-  const [selectedCatId, setSelectedCatId] = useState<string>(externalCategoryId || 'cinematic_single_part_2x3');
+  // Category & Single Mode Configuration with LocalStorage Cache
+  const [lastUsedGridCatId, setLastUsedGridCatId] = useState<string>(() => {
+    const cachedGrid = loadCachedGridConfig();
+    if (cachedGrid) return `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}`;
+    return externalCategoryId || 'cinematic_single_part_2x3';
+  });
+
+  const [selectedCatId, setSelectedCatId] = useState<string>(() => {
+    if (loadCachedSingleMode()) return 'single_full_image';
+    if (externalCategoryId) return externalCategoryId;
+    const cachedGrid = loadCachedGridConfig();
+    if (cachedGrid) return `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}`;
+    return 'cinematic_single_part_2x3';
+  });
   const [activeDemoKey, setActiveDemoKey] = useState<'default' | 'chibi' | 'irregular_ai'>('chibi');
   const [keyColorType, setKeyColorType] = useState<'chroma_green' | 'pure_white' | 'custom'>('chroma_green');
   const [keyColorHex, setKeyColorHex] = useState<string>('#00ff00');
@@ -179,9 +205,31 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Checkerboard Theme State (Dark vs Light) & LocalStorage Cache
+  const [checkerTheme, setCheckerTheme] = useState<CheckerboardTheme>(loadCachedCheckerTheme);
+
+  // Custom Grid Category from Table Matrix Picker & LocalStorage Cache
+  const [customCategory, setCustomCategory] = useState<GridCategoryDefinition | null>(() => {
+    const cached = loadCachedGridConfig();
+    if (cached) {
+      return createDynamicGridCategory(cached.rows, cached.cols);
+    }
+    return null;
+  });
+
+  // Modal Open States
+  const [isTablePickerOpen, setIsTablePickerOpen] = useState<boolean>(false);
+  const [isJsonImportOpen, setIsJsonImportOpen] = useState<boolean>(false);
+
+  // Single Image Mode Angle & Slot State
+  const [singleImageAngle, setSingleImageAngle] = useState<Character2DAngle>('front');
+  const [singleImageSlot, setSingleImageSlot] = useState<Character2DPartType>('than_co_ban');
+
   const currentCategory: GridCategoryDefinition =
-    GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) ||
-    GRID_CATEGORY_DEFINITIONS[0];
+    customCategory && selectedCatId === customCategory.id
+      ? customCategory
+      : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) ||
+        GRID_CATEGORY_DEFINITIONS[0];
 
   const [previewDisplayMode, setPreviewDisplayMode] = useState<'transparent' | 'original'>('original');
   const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
@@ -329,10 +377,60 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   // Handle Category / Mode Switching (Single Image vs Grid Sprite)
   const handleSelectCatId = useCallback((newCatId: string) => {
     setSelectedCatId(newCatId);
-    const cat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
+    if (newCatId !== 'single_full_image') {
+      setLastUsedGridCatId(newCatId);
+      saveCachedSingleMode(false);
+    } else {
+      saveCachedSingleMode(true);
+    }
+    const cat =
+      customCategory && customCategory.id === newCatId
+        ? customCategory
+        : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
     const img = loadedImage || loadedImageRef.current;
     if (img) {
       autoFitDividers(img, cat.cols, cat.rows, keyColorType, keyColorHex);
+    }
+    setSelectedCell(null);
+    setHasExplicitlySliced(false);
+    slicedCanvasesRef.current.clear();
+    setSlicedResults(new Map());
+    setPreviewDisplayMode('original');
+  }, [loadedImage, autoFitDividers, keyColorType, keyColorHex, customCategory]);
+
+  // Toggle Single Image Mode (Bật để ảnh đơn, Tắt để theo ma trận lưới đã chọn)
+  const handleToggleSingleImageMode = useCallback(() => {
+    if (selectedCatId === 'single_full_image') {
+      const targetCatId =
+        customCategory?.id || (lastUsedGridCatId !== 'single_full_image' ? lastUsedGridCatId : 'cinematic_single_part_2x3');
+      saveCachedSingleMode(false);
+      handleSelectCatId(targetCatId);
+    } else {
+      setLastUsedGridCatId(selectedCatId);
+      saveCachedSingleMode(true);
+      handleSelectCatId('single_full_image');
+    }
+  }, [selectedCatId, customCategory, lastUsedGridCatId, handleSelectCatId]);
+
+  // Toggle Caro Sáng / Tối (Checkerboard Dark vs Light)
+  const handleToggleCheckerTheme = useCallback(() => {
+    setCheckerTheme((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      saveCachedCheckerTheme(next);
+      return next;
+    });
+  }, []);
+
+  // Handle Custom Grid Selection from Word-Style Table Matrix Picker Modal
+  const handleSelectGridMatrix = useCallback((rows: number, cols: number) => {
+    const newCat = createDynamicGridCategory(rows, cols);
+    setCustomCategory(newCat);
+    setLastUsedGridCatId(newCat.id);
+    saveCachedSingleMode(false);
+    setSelectedCatId(newCat.id);
+    const img = loadedImage || loadedImageRef.current;
+    if (img) {
+      autoFitDividers(img, newCat.cols, newCat.rows, keyColorType, keyColorHex);
     }
     setSelectedCell(null);
     setHasExplicitlySliced(false);
@@ -360,11 +458,15 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     const effectiveMode = modeOverride ?? previewDisplayMode;
 
     if (effectiveMode === 'transparent' && (hasExplicitlySliced || slicedCanvasesRef.current.size > 0)) {
-      // Checkerboard transparency pattern
+      // Checkerboard transparency pattern (Dark vs Light based on checkerTheme)
       const size = 16;
+      const isLight = checkerTheme === 'light';
+      const colorA = isLight ? '#ffffff' : '#182030';
+      const colorB = isLight ? '#e2e8f0' : '#0c1220';
+
       for (let x = 0; x < canvas.width; x += size) {
         for (let y = 0; y < canvas.height; y += size) {
-          ctx.fillStyle = (Math.floor(x / size) + Math.floor(y / size)) % 2 === 0 ? '#182030' : '#0c1220';
+          ctx.fillStyle = (Math.floor(x / size) + Math.floor(y / size)) % 2 === 0 ? colorA : colorB;
           ctx.fillRect(x, y, size, size);
         }
       }
@@ -404,7 +506,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       ctx.drawImage(img, 0, 0);
     }
 
-    // Draw Grid Lines (ONLY when NOT single full image)
+    // Draw Grid Lines & Angle Badges (ONLY when NOT single full image)
     if (currentCategory.id !== 'single_full_image') {
       const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
         if (isBorder) {
@@ -457,6 +559,39 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       ctx.setLineDash([]);
       ctx.lineDashOffset = 0;
 
+      // Draw Angle Badges in top-left of each cell
+      currentCategory.cells.forEach((cell) => {
+        if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+          const x0 = colDividers[cell.col];
+          const y0 = rowDividers[cell.row];
+          const w = colDividers[cell.col + 1] - x0;
+          const h = rowDividers[cell.row + 1] - y0;
+          if (w > 45 && h > 28) {
+            const angleDef = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === cell.angle) || STANDARD_ANGLE_DEFINITIONS[0];
+            const badgeText = angleDef.shortLabel || '0° Front';
+            ctx.font = 'bold 10.5px sans-serif';
+            const textMetrics = ctx.measureText(badgeText);
+            const badgeW = Math.max(50, textMetrics.width + 12);
+            const badgeH = 18;
+
+            ctx.fillStyle = 'rgba(11, 15, 25, 0.85)';
+            ctx.beginPath();
+            if ((ctx as any).roundRect) {
+              (ctx as any).roundRect(x0 + 5, y0 + 5, badgeW, badgeH, 4);
+            } else {
+              ctx.rect(x0 + 5, y0 + 5, badgeW, badgeH);
+            }
+            ctx.fill();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText(badgeText, x0 + 10, y0 + 18);
+          }
+        }
+      });
+
       // Highlight Selected Cell with High-Contrast Dual Stroke
       if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
         const x0 = colDividers[selectedCell.col];
@@ -479,7 +614,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         ctx.strokeRect(x0, y0, w, h);
       }
     }
-  }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults, paddingInset]);
+  }, [loadedImage, previewDisplayMode, hasExplicitlySliced, currentCategory, colDividers, rowDividers, selectedCell, slicedResults, paddingInset, checkerTheme]);
 
   useEffect(() => {
     redrawCanvas();
@@ -1127,10 +1262,13 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         slicedCanvasesRef.current.set(key, cellCanvas);
 
         // Map to 3D Assembly part (ensure part exists in assembly)
-        if (cell.partSlot) {
-          const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
-          if (!updatedAssembly.parts[cell.partSlot]) {
-            updatedAssembly.parts[cell.partSlot] = {
+        const targetSlot = currentCategory.id === 'single_full_image' ? singleImageSlot : cell.partSlot;
+        const targetAngle = currentCategory.id === 'single_full_image' ? singleImageAngle : cell.angle;
+
+        if (targetSlot) {
+          const hierarchy = PART_HIERARCHY_CONFIG[targetSlot];
+          if (!updatedAssembly.parts[targetSlot]) {
+            updatedAssembly.parts[targetSlot] = {
               path: dataUrl,
               offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
               scale: [1, 1],
@@ -1144,16 +1282,16 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               angles: {},
             };
           }
-          const part = updatedAssembly.parts[cell.partSlot]!;
+          const part = updatedAssembly.parts[targetSlot]!;
           if (!part.offset || (part.offset[0] === 0 && part.offset[1] === 0 && hierarchy?.defaultOffset)) {
             part.offset = [...hierarchy.defaultOffset];
           }
-          if (cell.angle === 'front' || cell.col === 0) {
+          if (targetAngle === 'front' || cell.col === 0) {
             part.path = dataUrl;
           }
-          if (cell.angle) {
+          if (targetAngle) {
             if (!part.angles) part.angles = {};
-            part.angles[cell.angle] = dataUrl;
+            part.angles[targetAngle] = dataUrl;
             if (cell.mirrorAngle) {
               part.angles[cell.mirrorAngle] = dataUrl;
             }
@@ -1198,6 +1336,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     smoothColorHex,
     cleanupMode,
     paddingInset,
+    singleImageSlot,
+    singleImageAngle,
     onApplyAssembly,
     redrawCanvas,
   ]);
@@ -1228,6 +1368,85 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
       }
     }
   };
+
+  // Per-cell Angle & Slot Updaters
+  const handleUpdateCellAngle = useCallback((cell: GridCellDefinition, angle: Character2DAngle, mirrorAngle?: Character2DAngle) => {
+    cell.angle = angle;
+    cell.mirrorAngle = mirrorAngle;
+    const def = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === angle);
+    if (def) {
+      cell.label = `Ô [${cell.row + 1}, ${cell.col + 1}]: ${def.shortLabel}`;
+    }
+    if (hasExplicitlySliced) {
+      handleAutoSliceAndAssemble();
+    } else {
+      redrawCanvas();
+    }
+  }, [hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
+
+  const handleUpdateCellSlot = useCallback((cell: GridCellDefinition, partSlot: Character2DPartType) => {
+    cell.partSlot = partSlot;
+    if (hasExplicitlySliced) {
+      handleAutoSliceAndAssemble();
+    }
+  }, [hasExplicitlySliced, handleAutoSliceAndAssemble]);
+
+  // Auto Detect Angle from Filename (Standard Tab 4 Format)
+  const handleAutoDetectAngleFromFilename = useCallback(() => {
+    if (!uploadedFileMetadata && !userUploadedImageUrl) return;
+    const meta = uploadedFileMetadata || (userUploadedImageUrl ? parsePartFilename(userUploadedImageUrl) : null);
+    if (!meta) return;
+
+    if (selectedCatId === 'single_full_image') {
+      const def = getAngleDefinitionById(meta.angle_id);
+      setSingleImageAngle(def.angle);
+      if (meta.part_id) {
+        setSingleImageSlot(meta.part_id as Character2DPartType);
+      }
+      setHistoryToast({ message: `✓ Đã tự động nhận diện: ${meta.part_name} (${meta.angle_name})`, type: 'redo' });
+      setTimeout(() => setHistoryToast(null), 3000);
+      if (hasExplicitlySliced) {
+        handleAutoSliceAndAssemble();
+      }
+    } else {
+      const def = getAngleDefinitionById(meta.angle_id);
+      if (currentCategory.cells.length > 0) {
+        currentCategory.cells[0].angle = def.angle;
+        if (meta.part_id) currentCategory.cells[0].partSlot = meta.part_id as Character2DPartType;
+      }
+      setHistoryToast({ message: `✓ Đã tự động gắn góc: ${meta.angle_name} cho ô đầu tiên`, type: 'redo' });
+      setTimeout(() => setHistoryToast(null), 3000);
+      redrawCanvas();
+    }
+  }, [uploadedFileMetadata, userUploadedImageUrl, selectedCatId, currentCategory, hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
+
+  // Apply Prompt JSON Metadata from Tab 4
+  const handleApplyJsonMetadata = useCallback((metadataList: ParsedJsonMetadataItem[]) => {
+    if (!metadataList || metadataList.length === 0) return;
+
+    if (selectedCatId === 'single_full_image') {
+      const first = metadataList[0];
+      if (first.angle) setSingleImageAngle(first.angle);
+      if (first.part_id) setSingleImageSlot(first.part_id);
+    } else {
+      metadataList.forEach((item, idx) => {
+        if (idx < currentCategory.cells.length) {
+          const cell = currentCategory.cells[idx];
+          if (item.angle) cell.angle = item.angle;
+          if (item.part_id) cell.partSlot = item.part_id;
+          if (item.name || item.part_name) cell.label = `${item.part_name || item.name} (${item.angle_label || item.angle_id || ''})`;
+        }
+      });
+    }
+
+    setHistoryToast({ message: `✓ Đã nạp thành công ${metadataList.length} metadata từ JSON Tab 4!`, type: 'redo' });
+    setTimeout(() => setHistoryToast(null), 3000);
+    if (hasExplicitlySliced) {
+      handleAutoSliceAndAssemble();
+    } else {
+      redrawCanvas();
+    }
+  }, [selectedCatId, currentCategory, hasExplicitlySliced, handleAutoSliceAndAssemble, redrawCanvas]);
 
   // Commit current transparent slice result as the new active base image
   const handleCommitAsNewBase = useCallback(() => {
@@ -1630,6 +1849,24 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             pushUndoState('Đổi cấu trúc lưới');
             handleSelectCatId(catId);
           }}
+          customCategory={customCategory}
+          onOpenGridTablePicker={() => setIsTablePickerOpen(true)}
+          singleImageAngle={singleImageAngle}
+          onUpdateSingleImageAngle={(ang) => {
+            setSingleImageAngle(ang);
+            if (hasExplicitlySliced) {
+              handleAutoSliceAndAssemble();
+            }
+          }}
+          singleImageSlot={singleImageSlot}
+          onUpdateSingleImageSlot={(slot) => {
+            setSingleImageSlot(slot);
+            if (hasExplicitlySliced) {
+              handleAutoSliceAndAssemble();
+            }
+          }}
+          onAutoDetectAngleFromFilename={handleAutoDetectAngleFromFilename}
+          onOpenJsonImportModal={() => setIsJsonImportOpen(true)}
           userUploadedImageUrl={userUploadedImageUrl}
           onFileUpload={(e) => {
             const file = e.target.files?.[0];
@@ -1781,6 +2018,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
               pushUndoState('Đặt lại lưới đều');
               resetAllDividers();
             }}
+            onUpdateCellAngle={handleUpdateCellAngle}
+            onUpdateCellSlot={handleUpdateCellSlot}
           />
 
           <SlicerInteractiveCanvas
@@ -1792,6 +2031,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             previewDisplayMode={previewDisplayMode}
             setPreviewDisplayMode={setPreviewDisplayMode}
             onTogglePreviewDisplayMode={handleTogglePreviewDisplayMode}
+            checkerTheme={checkerTheme}
+            onToggleCheckerTheme={handleToggleCheckerTheme}
+            onOpenGridTablePicker={() => setIsTablePickerOpen(true)}
+            isSingleImageMode={selectedCatId === 'single_full_image'}
+            onToggleSingleImageMode={handleToggleSingleImageMode}
             hasExplicitlySliced={hasExplicitlySliced}
             currentCategory={currentCategory}
             onAutoFitGrid={() => {
@@ -1970,6 +2214,26 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Word-Style Grid Table Matrix Picker Modal */}
+      {isTablePickerOpen && (
+        <GridTablePickerModal
+          isOpen={isTablePickerOpen}
+          onClose={() => setIsTablePickerOpen(false)}
+          currentRows={currentCategory.rows}
+          currentCols={currentCategory.cols}
+          onSelectGrid={handleSelectGridMatrix}
+        />
+      )}
+
+      {/* JSON Prompt Metadata Import Modal */}
+      {isJsonImportOpen && (
+        <JsonPromptImportModal
+          isOpen={isJsonImportOpen}
+          onClose={() => setIsJsonImportOpen(false)}
+          onApplyJsonMetadata={handleApplyJsonMetadata}
+        />
       )}
     </div>
   );

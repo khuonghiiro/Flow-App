@@ -258,7 +258,7 @@ export interface AIPartPromptConfig {
   color_theme: string;
   special_features: string;
   clean_background: boolean;
-  aspect_ratio?: '1:1' | '3:4' | '16:9' | '9:16' | string;
+  aspect_ratio?: '1:1' | '3:4' | '4:3' | '16:9' | '9:16' | string;
   bg_type?: 'chroma_green' | 'pure_white' | 'chroma_gray' | 'pure_black' | string;
   // Body & Proportions
   body_proportion?: string;
@@ -295,9 +295,11 @@ export interface AIPartPromptConfig {
   // Weapon specific
   weapon_type?: string;
   weapon_element?: string;
-  // Banana Pro options
+  // Banana Pro & Export options
   include_base_prompt?: boolean;
   json_scope?: 'single_angle' | 'all_angles' | 'all_group_parts';
+  batch_count?: number;
+  include_schema_guide?: boolean;
 }
 
 

@@ -10,6 +10,7 @@ export interface Asset2DComponentDef {
   groupNameVi: string;
   zIndex: number;
   filePrefix: string;
+  idealAspectRatio: '1:1' | '3:4' | '4:3' | '16:9' | '9:16';
 }
 
 export function getComponentDef(partType: string, options: {
@@ -53,20 +54,32 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 50,
         filePrefix: '05_toc_truoc',
+        idealAspectRatio: '3:4',
       };
 
-    case 'toc_sau':
+    case 'toc_sau': {
+      const isShortHair = /ngắn|short|bob|tém|pixie|shoulder|vai/i.test(hairLenInfo.vi + ' ' + hairLenInfo.en);
       return {
         id: 'toc_sau',
-        nameVi: 'Suối Tóc Sau Lưng (Back Hair Mantle)',
-        titleEn: 'EXCLUSIVELY THE REAR BACK HAIR MANTLE / BACK HAIR VOLUME LAYER.',
-        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nThe front bangs (mái tóc trước) and facial features have ALREADY been separated into independent layers!\nTherefore, across ALL 6 views (including Front 0°, 45°, 90°, High Angle, Low Angle, and 180° Back), this asset contains ONLY the back hair mass, rear hair bun/crown, and long flowing hair streams behind the back (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}).\nIn FRONT (0°) and THREE-QUARTER (45°) views, the front-center area where the face and front bangs belong MUST REMAIN A COMPLETELY HOLLOW / EMPTY GAP for later puppet assembly.\nDO NOT include any front bangs, front fringe, forehead locks, forehead skin, or facial features!`,
-        includedGeometry: [
-          'rear back hair mass',
-          'flowing back hair mantle cascading behind the shoulders and spine',
-          'rear hair bun / hair crown ornaments on the rear of the head',
-          'hollow empty front-center space in front views where face and bangs assemble',
-        ],
+        nameVi: isShortHair ? 'Tóc Sau Gáy Ngắn (Short Back Hair)' : 'Suối Tóc Sau Lưng (Back Hair Mantle)',
+        titleEn: isShortHair
+          ? 'EXCLUSIVELY THE SHORT REAR BACK HAIR AND NAPE LOCKS LAYER.'
+          : 'EXCLUSIVELY THE REAR BACK HAIR MANTLE / LONG FLOWING BACK HAIR VOLUME LAYER.',
+        summaryEn: isShortHair
+          ? `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nShort back hair and nape hair layer (${hairColInfo.en}, ${hairTexInfo.en}, short hair style).\nContains ONLY the rear back head hair volume covering the nape and back of skull.\nDO NOT include any front bangs, forehead fringe, face, or body!`
+          : `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\nThe front bangs (mái tóc trước) and facial features have ALREADY been separated into independent layers!\nTherefore, across ALL views, this asset contains ONLY the long back hair mass, rear hair bun/crown, and long flowing hair streams cascading behind the back (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}).\nIn FRONT (0°) and THREE-QUARTER (45°) views, the front-center area where the face and front bangs belong MUST REMAIN A COMPLETELY HOLLOW / EMPTY GAP for later puppet assembly.\nDO NOT include any front bangs, front fringe, forehead locks, forehead skin, or facial features!`,
+        includedGeometry: isShortHair
+          ? [
+              'short rear back hair volume',
+              'nape hair locks contour',
+              'rear crown hair texture',
+            ]
+          : [
+              'rear back hair mass',
+              'flowing back hair mantle cascading behind the shoulders and spine',
+              'rear hair bun / hair crown ornaments on the rear of the head',
+              'hollow empty front-center space in front views where face and bangs assemble',
+            ],
         excludedGeometry: [
           'front bangs', 'front fringe', 'forehead hair', 'front facial hair framing the forehead',
           'forehead skin', 'face silhouette', 'eyes', 'eyebrows', 'nose', 'mouth', 'cheeks', 'chin', 'mannequin head base',
@@ -76,7 +89,9 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 10,
         filePrefix: '01_toc_sau',
+        idealAspectRatio: isShortHair ? '3:4' : '9:16',
       };
+    }
 
     case 'khuon_mat_no_face':
     case 'khuon_mat':
@@ -97,6 +112,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 30,
         filePrefix: '03_khuon_mat',
+        idealAspectRatio: '3:4',
       };
 
     case 'trong_den_iris':
@@ -116,6 +132,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 42,
         filePrefix: '04a_trong_den_iris',
+        idealAspectRatio: '1:1',
       };
 
     case 'trong_trang':
@@ -135,6 +152,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 41,
         filePrefix: '04b_trong_trang',
+        idealAspectRatio: '1:1',
       };
 
     case 'diem_sang_mat':
@@ -154,6 +172,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 43,
         filePrefix: '04c_diem_sang_mat',
+        idealAspectRatio: '1:1',
       };
 
     case 'mi_mat':
@@ -173,6 +192,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 44,
         filePrefix: '04d_mi_mat',
+        idealAspectRatio: '1:1',
       };
 
     case 'long_may':
@@ -188,6 +208,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 45,
         filePrefix: '04e_long_may',
+        idealAspectRatio: '1:1',
       };
 
     case 'mui':
@@ -203,22 +224,28 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 35,
         filePrefix: '04f_mui',
+        idealAspectRatio: '1:1',
       };
 
     case 'doi_tai':
     case 'mui_tai':
       return {
         id: 'doi_tai',
-        nameVi: 'Đôi Tai (Ears Only)',
-        titleEn: 'EXCLUSIVELY THE PAIR OF ANIME EARS.',
-        summaryEn: 'Isolated pair of anime ears with earlobe contour and inner ear cartilage lines.\nDO NOT include face skin, hair, head, neck, or body!',
-        includedGeometry: ['left ear outer and inner cartilage', 'right ear outer and inner cartilage', 'earlobes'],
-        excludedGeometry: ['face skin', 'hair', 'head', 'neck', 'body'],
+        nameVi: 'Đôi Tai Trái / Phải (Dual Ears 16:9 - 2 Cột)',
+        titleEn: 'EXCLUSIVELY THE PAIR OF ANIME EARS ARRANGED ON A 16:9 WIDESCREEN CANVAS DIVIDED INTO 2 EQUAL SIDE-BY-SIDE COLUMNS (LEFT HALF: LEFT EAR, RIGHT HALF: RIGHT EAR).',
+        summaryEn: `CRITICAL 2D MODEL RIGGING DECOMPOSITION RULE:\n16:9 widescreen canvas divided symmetrically into 2 equal side-by-side columns with clean spacing:\n- LEFT COLUMN (Ô Trái): Contains exclusively the floating Left Ear with crisp outer contour, inner cartilage folds, and earlobe.\n- RIGHT COLUMN (Ô Phải): Contains exclusively the floating Right Ear with matching proportion, scale, line weight, and lighting.\nBoth ears float independently as modular 2D puppet stickers.\nDO NOT connect ears to head, face skin, jaw, cheeks, hair, or body!\nSolid flat chroma key green background (#00FF00), zero drop shadows, no text, no dividers.`,
+        includedGeometry: [
+          'left column: left ear with detailed inner cartilage and earlobe',
+          'right column: right ear with detailed inner cartilage and earlobe',
+          'side-by-side 2-column layout on 16:9 canvas',
+        ],
+        excludedGeometry: ['face skin', 'forehead', 'jawline', 'hair', 'head', 'neck', 'body', 'middle dividing line'],
         rearVisibility: 'visible',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 26,
         filePrefix: '04g_doi_tai',
+        idealAspectRatio: '16:9',
       };
 
     case 'mieng':
@@ -234,6 +261,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 36,
         filePrefix: '04h_mieng',
+        idealAspectRatio: '1:1',
       };
 
     case 'mat':
@@ -253,6 +281,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 40,
         filePrefix: '04_ngu_quan_mat',
+        idealAspectRatio: '1:1',
       };
 
     case 'than_co_ban':
@@ -268,6 +297,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 20,
         filePrefix: '02_than_co_ban',
+        idealAspectRatio: '3:4',
       };
 
     case 'canh_tay_trai':
@@ -283,6 +313,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 21,
         filePrefix: '02a_canh_tay_trai',
+        idealAspectRatio: '3:4',
       };
 
     case 'cang_tay_trai':
@@ -298,6 +329,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 22,
         filePrefix: '02b_cang_tay_trai',
+        idealAspectRatio: '3:4',
       };
 
     case 'ban_tay_trai':
@@ -313,6 +345,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 23,
         filePrefix: '02c_ban_tay_trai',
+        idealAspectRatio: '1:1',
       };
 
     case 'canh_tay_phai':
@@ -328,6 +361,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 19,
         filePrefix: '02d_canh_tay_phai',
+        idealAspectRatio: '3:4',
       };
 
     case 'cang_tay_phai':
@@ -343,6 +377,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 18,
         filePrefix: '02e_cang_tay_phai',
+        idealAspectRatio: '3:4',
       };
 
     case 'ban_tay_phai':
@@ -358,6 +393,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Thân & Cánh Tay',
         zIndex: 17,
         filePrefix: '02f_ban_tay_phai',
+        idealAspectRatio: '1:1',
       };
 
     case 'dui_trai':
@@ -373,6 +409,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Chân & Giày',
         zIndex: 15,
         filePrefix: '03a_dui_trai',
+        idealAspectRatio: '9:16',
       };
 
     case 'cang_chan_trai':
@@ -388,6 +425,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Chân & Giày',
         zIndex: 16,
         filePrefix: '03b_cang_chan_trai',
+        idealAspectRatio: '9:16',
       };
 
     case 'dui_phai':
@@ -403,6 +441,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Chân & Giày',
         zIndex: 13,
         filePrefix: '03c_dui_phai',
+        idealAspectRatio: '9:16',
       };
 
     case 'cang_chan_phai':
@@ -418,6 +457,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Khớp Xương Chân & Giày',
         zIndex: 14,
         filePrefix: '03d_cang_chan_phai',
+        idealAspectRatio: '9:16',
       };
 
     case 'ao_choang':
@@ -434,6 +474,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Trang Phục Bay & Vũ Khí',
         zIndex: 8,
         filePrefix: '06a_ao_choang',
+        idealAspectRatio: '9:16',
       };
 
     case 'vu_khi':
@@ -450,6 +491,7 @@ export function getComponentDef(partType: string, options: {
         groupNameVi: 'Trang Phục Bay & Vũ Khí',
         zIndex: 60,
         filePrefix: '06_vu_khi',
+        idealAspectRatio: '9:16',
       };
   }
 }

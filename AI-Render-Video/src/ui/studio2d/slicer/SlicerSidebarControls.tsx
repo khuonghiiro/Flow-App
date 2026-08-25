@@ -12,16 +12,30 @@ import {
   Info,
   Palette,
   Pipette,
+  Grid,
+  Camera,
+  FileCode,
 } from 'lucide-react';
 import {
   GRID_CATEGORY_DEFINITIONS,
+  GridCategoryDefinition,
 } from '../../../core/assets/GridSliceRegistry';
+import { STANDARD_ANGLE_DEFINITIONS } from '../../../core/assets/slicer/SlicerAngleConstants';
+import { Character2DAngle, Character2DPartType } from '../../../types/scene2d';
 
 import { ChromaProcessOptions } from '../../../core/utils/ChromaDespeckleProcessor';
 
 export interface SlicerSidebarControlsProps {
   selectedCatId: string;
   onSelectCatId: (id: string) => void;
+  customCategory?: GridCategoryDefinition | null;
+  onOpenGridTablePicker?: () => void;
+  singleImageAngle?: Character2DAngle;
+  onUpdateSingleImageAngle?: (angle: Character2DAngle) => void;
+  singleImageSlot?: Character2DPartType;
+  onUpdateSingleImageSlot?: (slot: Character2DPartType) => void;
+  onAutoDetectAngleFromFilename?: () => void;
+  onOpenJsonImportModal?: () => void;
   userUploadedImageUrl: string | null;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onResetToDemoImage: (key?: 'default' | 'chibi' | 'irregular_ai') => void;
@@ -106,6 +120,14 @@ export interface SlicerSidebarControlsProps {
 export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   selectedCatId,
   onSelectCatId,
+  customCategory,
+  onOpenGridTablePicker,
+  singleImageAngle = 'front',
+  onUpdateSingleImageAngle,
+  singleImageSlot = 'than_co_ban',
+  onUpdateSingleImageSlot,
+  onAutoDetectAngleFromFilename,
+  onOpenJsonImportModal,
   userUploadedImageUrl,
   onFileUpload,
   onResetToDemoImage,
@@ -179,7 +201,9 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   onOpenCatalogModal,
   onCommitSliderChange,
 }) => {
-  const currentCat = GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) || GRID_CATEGORY_DEFINITIONS[0];
+  const currentCat = (customCategory && selectedCatId === customCategory.id)
+    ? customCategory
+    : (GRID_CATEGORY_DEFINITIONS.find((c) => c.id === selectedCatId) || GRID_CATEGORY_DEFINITIONS[0]);
 
   return (
     <div
@@ -232,83 +256,168 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
           </span>
         </div>
 
-        {/* Row 1: Mode Switcher (Ảnh đơn vs Cắt lưới Sprite) - Synchronized height: 32px */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          <button
-            onClick={() => onSelectCatId('single_full_image')}
+        {/* Category Preset Dropdown */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <select
+            value={selectedCatId}
+            onChange={(e) => onSelectCatId(e.target.value)}
             style={{
-              height: 32,
-              fontSize: 10.5,
-              fontWeight: 600,
+              flex: 1,
+              height: 34,
+              padding: '0 10px',
+              fontSize: 11,
+              background: '#0b1329',
+              color: '#38bdf8',
+              border: '1.5px solid #0284c7',
               borderRadius: 6,
-              border: selectedCatId === 'single_full_image' ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
-              background: selectedCatId === 'single_full_image' ? 'linear-gradient(135deg, #15803d, #166534)' : 'rgba(0,0,0,0.3)',
-              color: selectedCatId === 'single_full_image' ? '#ffffff' : '#94a3b8',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              boxShadow: selectedCatId === 'single_full_image' ? '0 2px 8px rgba(34, 197, 94, 0.4)' : 'none',
-              boxSizing: 'border-box',
-            }}
-            title="Tắt khung lưới, xử lý toàn bộ bức ảnh tải lên như 1 vật thể hoàn chỉnh"
-          >
-            🖼️ Ảnh đơn (Tắt lưới)
-          </button>
-          <button
-            onClick={() => {
-              if (selectedCatId === 'single_full_image') {
-                onSelectCatId('hair_multi_angle_grid');
-              }
-            }}
-            style={{
-              height: 32,
-              fontSize: 10.5,
               fontWeight: 600,
-              borderRadius: 6,
-              border: selectedCatId !== 'single_full_image' ? '1.5px solid #0284c7' : '1px solid rgba(255,255,255,0.1)',
-              background: selectedCatId !== 'single_full_image' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'rgba(0,0,0,0.3)',
-              color: selectedCatId !== 'single_full_image' ? '#ffffff' : '#94a3b8',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              boxShadow: selectedCatId !== 'single_full_image' ? '0 2px 8px rgba(2, 132, 199, 0.4)' : 'none',
+              outline: 'none',
               boxSizing: 'border-box',
+              minWidth: 0,
             }}
-            title="Bật khung lưới để cắt ảnh Sprite Sheet thành nhiều ô"
           >
-            🔲 Cắt lưới Sprite
-          </button>
+            {customCategory && !GRID_CATEGORY_DEFINITIONS.some((c) => c.id === customCategory.id) && (
+              <option value={customCategory.id}>
+                ⭐ {customCategory.label} ({customCategory.rows}x{customCategory.cols})
+              </option>
+            )}
+            {GRID_CATEGORY_DEFINITIONS.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label} ({cat.rows}x{cat.cols})
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Row 2: Category Dropdown (Synchronized height: 34px) */}
-        <select
-          value={selectedCatId}
-          onChange={(e) => onSelectCatId(e.target.value)}
-          style={{
-            width: '100%',
-            height: 34,
-            padding: '0 10px',
-            fontSize: 11,
-            background: '#0b1329',
-            color: '#38bdf8',
-            border: '1.5px solid #0284c7',
-            borderRadius: 6,
-            fontWeight: 600,
-            cursor: 'pointer',
-            outline: 'none',
-            boxSizing: 'border-box',
-          }}
-        >
-          {GRID_CATEGORY_DEFINITIONS.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.label} ({cat.rows}x{cat.cols})
-            </option>
-          ))}
-        </select>
+        {/* Single Image Mode Angle & Slot Configurator */}
+        {selectedCatId === 'single_full_image' && (
+          <div
+            style={{
+              background: 'rgba(2, 132, 199, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              borderRadius: 6,
+              padding: '6px 8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Camera size={12} /> Cấu hình Góc Quay cho Ảnh Đơn:
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <div>
+                <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 2 }}>Vị trí góc:</div>
+                <select
+                  value={singleImageAngle || 'front'}
+                  onChange={(e) => onUpdateSingleImageAngle && onUpdateSingleImageAngle(e.target.value as Character2DAngle)}
+                  style={{
+                    width: '100%',
+                    height: 28,
+                    background: '#0b1329',
+                    color: '#38bdf8',
+                    border: '1px solid #0284c7',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {STANDARD_ANGLE_DEFINITIONS.map((ang) => (
+                    <option key={ang.id} value={ang.angle}>
+                      {ang.iconText} {ang.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 9.5, color: '#94a3b8', marginBottom: 2 }}>Linh kiện slot:</div>
+                <select
+                  value={singleImageSlot || 'than_co_ban'}
+                  onChange={(e) => onUpdateSingleImageSlot && onUpdateSingleImageSlot(e.target.value as Character2DPartType)}
+                  style={{
+                    width: '100%',
+                    height: 28,
+                    background: '#0b1329',
+                    color: '#e2e8f0',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="toc_truoc">✂️ Mái Tóc Trước</option>
+                  <option value="toc_sau">🌊 Suối Tóc Sau</option>
+                  <option value="khuon_mat">🎭 Khuôn Mặt</option>
+                  <option value="mat">👁️ Đôi Mắt</option>
+                  <option value="than_co_ban">🥋 Thân Áo</option>
+                  <option value="canh_tay_trai">💪 Tay Trái</option>
+                  <option value="canh_tay_phai">💪 Tay Phải</option>
+                  <option value="dui_trai">🦵 Chân Trái</option>
+                  <option value="dui_phai">🦵 Chân Phải</option>
+                  <option value="ao_choang">🧣 Áo Choàng</option>
+                  <option value="vu_khi">⚔️ Vũ Khí</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Auto Angle Detection & Tab 4 Metadata Sync Buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <button
+            onClick={onAutoDetectAngleFromFilename}
+            disabled={!userUploadedImageUrl}
+            style={{
+              height: 30,
+              fontSize: 10,
+              fontWeight: 700,
+              borderRadius: 5,
+              background: userUploadedImageUrl
+                ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25))'
+                : 'rgba(255,255,255,0.03)',
+              color: userUploadedImageUrl ? '#4ade80' : '#475569',
+              border: userUploadedImageUrl ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255,255,255,0.08)',
+              cursor: userUploadedImageUrl ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              boxShadow: userUploadedImageUrl ? '0 0 8px rgba(74, 222, 128, 0.2)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+            title="Tự động nhận diện góc quay và slot từ tên file ảnh tải lên (chuẩn Tab 4)"
+          >
+            ⚡ Đặt Góc Theo Tên Ảnh
+          </button>
+
+          {onOpenJsonImportModal && (
+            <button
+              onClick={onOpenJsonImportModal}
+              style={{
+                height: 30,
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 5,
+                background: 'rgba(168, 85, 247, 0.2)',
+                color: '#c084fc',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                boxShadow: '0 0 8px rgba(168, 85, 247, 0.2)',
+                transition: 'all 0.15s ease',
+              }}
+              title="Dán cấu trúc JSON prompt từ Tab 4 để tự động gán metadata cho các góc quay"
+            >
+              <FileCode size={12} /> Nạp JSON Tab 4
+            </button>
+          )}
+        </div>
 
         {/* Row 3: Upload Main Action Button (Synchronized height: 34px) */}
         <input
