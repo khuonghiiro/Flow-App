@@ -14,6 +14,7 @@ import {
   getHairAccessoryLabels,
   getBangsStyleLabels,
   getBodyProportionLabels,
+  getSkinToneLabels,
 } from './PromptLabelHelpers';
 import { buildFilenameVariants } from './PartFilenameParser';
 
@@ -110,18 +111,20 @@ export function buildStep1MasterPrompt(config: AIPartPromptConfig): AIPromptResu
   const hairAccInfo = getHairAccessoryLabels(config.hair_accessories, config.custom_hair_accessories);
   const bangsStyleInfo = getBangsStyleLabels(config.bangs_style, config.custom_bangs_style);
   const bodyPropInfo = getBodyProportionLabels(config.body_proportion, config.custom_body_proportion);
+  const skinToneInfo = getSkinToneLabels(config.skin_tone, config.custom_skin_tone);
 
   const selectedAspectRatio = config.aspect_ratio || '16:9';
   const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? config.batch_count : 1;
   const ruleText = getPromptRules(config, bgPromptColorEn, bgPromptColorHex);
 
-  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}, front bangs style: ${bangsStyleInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero cast shadows, flat solid ${bgPromptColorEn} background, no scenery, no text, no watermark`;
+  const baseDescEn = `masterpiece, ultra-detailed 2D ${artStyleEn} character reference: ${genderLabelEn}, ${bodyPropInfo.en}, skin: ${skinToneInfo.en}, face (${eyeShapeInfo.en}, ${eyeColInfo.en}, ${noseInfo.en}, ${mouthInfo.en}), hair (${hairColInfo.en}, ${hairTexInfo.en}, ${hairLenInfo.en}, front bangs style: ${bangsStyleInfo.en}${hairAccInfo.en !== 'none' ? `, ${hairAccInfo.en}` : ''}), costume (${costumeInfo.en}, color theme: ${costumeColorVi}), weapon/prop: ${propInfo.en}, clean crisp 2D anime lineart, flat cel shading, zero cast shadows, flat solid ${bgPromptColorEn} background, no scenery, no text, no watermark`;
 
   const promptEnglish = `masterpiece, best quality, ultra detailed, 2D ${artStyleEn} character turnaround sheet, ONE SINGLE IDENTICAL ${genderLabelEn.toUpperCase()} CHARACTER.
 
 CHARACTER SPECIFICATIONS:
 - Gender: ${genderLabelEn}
 - Art Style: ${artStyleEn}
+- Skin Tone: ${skinToneInfo.en}
 - Proportion: ${bodyPropInfo.en}
 - Eyes: ${eyeShapeInfo.en}, ${eyeColInfo.en}
 - Nose & Mouth: ${noseInfo.en}, ${mouthInfo.en}
@@ -130,10 +133,10 @@ CHARACTER SPECIFICATIONS:
 - Weapon / Props: ${propInfo.en}
 
 TURNAROUND 5-VIEW SEQUENCE (${selectedAspectRatio} Canvas):
-1. VIEW 1 — FRONT (0°): Direct frontal orthographic view, full body from head to feet.
-2. VIEW 2 — THREE-QUARTER (45°): 45-degree angle showing face depth, cheek, and shoulder curve.
-3. VIEW 3 — SIDE PROFILE (90°): 90-degree clean lateral side profile showing nose bridge and spine silhouette.
-4. VIEW 4 — REAR THREE-QUARTER (135°): 135-degree rear angle showing back waist sash and rear hair flow.
+1. VIEW 1 — FRONT (0°): Direct frontal orthographic view, bilateral symmetry, full body from head to feet.
+2. VIEW 2 — THREE-QUARTER LEFT (45°): 45-degree angle turned towards viewer's left showing face depth, cheek, and shoulder curve.
+3. VIEW 3 — SIDE PROFILE LEFT (90°): 90-degree clean lateral side profile facing sideways to the left showing nose bridge and spine silhouette.
+4. VIEW 4 — REAR THREE-QUARTER LEFT (135°): 135-degree rear angle turned towards rear left showing back waist sash and rear hair flow.
 5. VIEW 5 — BACK (180°): Full rear back view showing back hair mantle, shoulder blade lines, and robe spine.
 + TOP-DOWN REFERENCE: Top-down view looking downward at the head crown and hair parting.
 
@@ -157,11 +160,11 @@ CONSISTENCY & RESTRICTIONS:
 ════════════════════════════════════════════════════════════
 2. BỐ CỤC 5 GÓC XOAY TOÀN THÂN (${selectedAspectRatio}):
 ════════════════════════════════════════════════════════════
-1. Front (0° Chính diện): Mẫu tham chiếu chính, toàn thân thẳng đứng trực diện góc máy.
-2. 45° (Nghiêng 3/4): Thấy độ sâu khuôn mặt, má, tóc mai và vai.
-3. Side (90° Nhìn ngang): Thấy sống mũi, cằm, vành tai và dáng suối tóc.
-4. 135° (Nghiêng sau): Thấy tà áo choàng, thắt lưng và búi tóc sau gáy.
-5. Back (180° Sau lưng): Thấy toàn bộ suối tóc và lưng áo.
+1. Front (0° Chính diện - Đối xứng): Mẫu tham chiếu chính, toàn thân thẳng đứng trực diện góc máy.
+2. 45° (Nghiêng 3/4 Trái): Thấy độ sâu khuôn mặt, má, tóc mai và vai quay 45° sang trái.
+3. Side (90° Nhìn ngang Trái): Thấy sống mũi, cằm, vành tai và dáng suối tóc nhìn nghiêng sang trái.
+4. 135° (Nghiêng sau Trái): Thấy tà áo choàng, thắt lưng và búi tóc sau gáy quay 135° sang trái.
+5. Back (180° Sau lưng): Thấy toàn bộ suối tóc và lưng áo từ phía sau.
 + Góc phụ Đỉnh Đầu (Top-Down): Soi đỉnh đầu từ trên xuống thấy đường rẽ ngôi và trâm cài.
 
 • Nền: ${bgTextVi}.
@@ -177,7 +180,7 @@ CONSISTENCY & RESTRICTIONS:
       part_name: 'Nhân Vật Gốc Toàn Thân',
       group_id: 'step1_master',
       group_name: 'Bảng Xoay Nhân Vật Gốc',
-      angle: '0° Front (Chính diện)',
+      angle: '0° Front (Chính diện - Đối xứng)',
       angle_id: '000_front',
       angle_deg: 0,
       z_index: 0,
@@ -195,15 +198,15 @@ CONSISTENCY & RESTRICTIONS:
       part_name: 'Nhân Vật Gốc Toàn Thân',
       group_id: 'step1_master',
       group_name: 'Bảng Xoay Nhân Vật Gốc',
-      angle: '45° Three-Quarter (Nghiêng 3/4)',
+      angle: '45° Three-Quarter Left (Nghiêng 3/4 Trái)',
       angle_id: '045_three_quarter',
       angle_deg: 45,
       z_index: 0,
       save_filename: 'master_045_three_quarter.png',
       aspect_ratio: selectedAspectRatio,
-      view_desc: 'Góc xoay 45° hiển thị độ sâu ngũ quan, tóc mai và vai',
+      view_desc: 'Góc xoay 45° sang trái hiển thị độ sâu ngũ quan, tóc mai và vai',
       prompt: clampPromptLength(
-        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: 45° three-quarter oblique angle view, full body from head to feet, clearly showing cheekbone depth, 3/4 facial contour, nose bridge curve, chest garment depth, and shoulder angle. Hair: (${hairColInfo.en}, ${hairTexInfo.en}, front bangs style: ${bangsStyleInfo.en}). Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). Weapon: (${propInfo.en}). ${commonVisualRules}`
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Standard 45° three-quarter oblique angle view turned towards viewer's left, full body from head to feet, clearly showing cheekbone depth, 3/4 facial contour, nose bridge curve, chest garment depth, and shoulder angle with near/far perspective foreshortening. Hair: (${hairColInfo.en}, ${hairTexInfo.en}, front bangs style: ${bangsStyleInfo.en}). Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). Weapon: (${propInfo.en}). ${commonVisualRules}`
       ),
       count: userBatchCount,
     },
@@ -213,15 +216,15 @@ CONSISTENCY & RESTRICTIONS:
       part_name: 'Nhân Vật Gốc Toàn Thân',
       group_id: 'step1_master',
       group_name: 'Bảng Xoay Nhân Vật Gốc',
-      angle: '90° Side Profile (Nhìn ngang)',
+      angle: '90° Side Profile Left (Nhìn ngang Trái)',
       angle_id: '090_side',
       angle_deg: 90,
       z_index: 0,
       save_filename: 'master_090_side.png',
       aspect_ratio: selectedAspectRatio,
-      view_desc: 'Góc nhìn ngang 90° thấy sống mũi, cằm, tai và dáng suối tóc',
+      view_desc: 'Góc nhìn ngang 90° sang trái thấy sống mũi, cằm, tai và dáng suối tóc',
       prompt: clampPromptLength(
-        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Pure 90° lateral side profile view, full body from head to feet, showing clean facial silhouette with nose bridge, lips, chin, ear placement, spine posture, front bangs style: ${bangsStyleInfo.en}, and flowing back hair cascading down the spine. Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). ${commonVisualRules}`
+        `masterpiece, ultra-detailed 2D ${artStyleEn} character, 100% identical ${genderLabelEn}, ${bodyPropInfo.en}. Camera: Pure 90° lateral side profile view facing sideways to the viewer's left, full body from head to feet, showing clean facial silhouette with nose bridge, lips, chin, ear placement, spine posture, front bangs style: ${bangsStyleInfo.en}, and flowing back hair cascading down the spine. Outfit: (${costumeInfo.en}, color: ${costumeColorVi}). ${commonVisualRules}`
       ),
       count: userBatchCount,
     },

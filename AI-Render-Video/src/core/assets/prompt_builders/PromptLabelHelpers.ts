@@ -201,3 +201,37 @@ export const getBangsStyleLabels = (bangs?: string, custom?: string) => {
   }
 };
 
+export const getSkinToneLabels = (tone?: string, custom?: string) => {
+  if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
+  if (!tone) {
+    return {
+      vi: '🌸 Da Anime Trắng Hồng Sứ (Fair porcelain, rosy-pink)',
+      en: 'fair porcelain anime skin tone, soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading at cheeks and joints, smooth cel-shaded soft gradient anime skin (no realistic pores/texture)',
+    };
+  }
+  switch (tone) {
+    case 'fair_porcelain_pink':
+      return {
+        vi: '🌸 Da Anime Trắng Hồng Sứ (Fair porcelain, rosy-pink)',
+        en: 'fair porcelain anime skin tone, soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading at cheeks and joints, smooth cel-shaded soft gradient anime skin (no realistic pores/texture)',
+      };
+    case 'porcelain_white':
+      return {
+        vi: '⚪ Da Trắng Sứ BJD (Pure porcelain white)',
+        en: 'pure porcelain white bjd mannequin skin, smooth milky ivory tone, clean cel-shaded anime skin',
+      };
+    case 'warm_peach':
+      return {
+        vi: '🍑 Da Đào Tự Nhiên (Warm peach / beige)',
+        en: 'warm light peach beige anime skin tone, natural soft warmth, smooth cel-shaded anime skin',
+      };
+    case 'tan_sunkissed':
+      return {
+        vi: '🍫 Da Ngăm Khỏe Khoắn (Tan / sun-kissed)',
+        en: 'healthy tan sun-kissed warm bronze anime skin tone, athletic radiant glow, smooth cel-shaded anime skin',
+      };
+    default:
+      return { vi: tone, en: tone };
+  }
+};
+

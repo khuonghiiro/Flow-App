@@ -10,54 +10,59 @@ export interface CharacterTagItem {
 }
 
 export interface CharacterPartGroup {
+  id: '01_mannequin_limbs' | '02_face_features' | '03_costume_clothes';
   groupTitle: string;
+  folderName: string;
   items: CharacterTagItem[];
 }
 
 export const CHARACTER_PART_GROUPS: CharacterPartGroup[] = [
   {
-    groupTitle: '👤 1. Khuôn Mặt & Ngũ Quan (Tách Rời Từng Lớp)',
+    id: '01_mannequin_limbs',
+    groupTitle: '🧍 1. Khung Xương Mannequin Cơ Thể (Z-Index: 11 - 14)',
+    folderName: '01_mannequin_limbs',
     items: [
-      { id: 'toc_truoc', label: 'Mái Tóc Trước', icon: '💇', desc: 'Mái trước 6 góc (Ô 180° để rỗng)' },
-      { id: 'toc_sau', label: 'Suối Tóc Sau', icon: '🌊', desc: 'Tóc sau phủ kín lưng 180°' },
-      { id: 'khuon_mat_no_face', label: 'Mặt Trần (No Face)', icon: '👤', desc: 'Đầu trần V-line không ngũ quan' },
-      { id: 'trong_den_iris', label: 'Mống Mắt (Đổi Màu)', icon: '🔮', desc: 'Tròng đen & mống mắt màu tách rời để dễ thay màu' },
-      { id: 'trong_trang', label: 'Tròng Trắng (Sclera)', icon: '⚪', desc: 'Hốc tròng trắng làm nền lót' },
-      { id: 'diem_sang_mat', label: 'Điểm Sáng (Highlight)', icon: '✨', desc: 'Chấm sáng lấp lánh phản chiếu mắt' },
-      { id: 'mi_mat', label: 'Mi Mắt & Chớp Mắt', icon: '👁️', desc: 'Mí mắt trên/dưới & nháy mắt 3 trạng thái' },
-      { id: 'long_may', label: 'Cặp Lông Mày', icon: '✏️', desc: 'Lông mày biểu cảm độc lập' },
-      { id: 'mui', label: 'Sống Mũi', icon: '👃', desc: 'Sống mũi nhỏ thanh tú' },
-      { id: 'doi_tai', label: 'Đôi Tai', icon: '👂', desc: 'Vành tai trái / phải' },
-      { id: 'mieng', label: 'Khẩu Hình Miệng', icon: '👄', desc: 'Khẩu hình nói chuyện & cười' },
-      { id: 'mat', label: 'Đôi Mắt Tổng Hợp', icon: '👀', desc: 'Mắt đầy đủ cả tròng và nền' },
+      { id: 'than_mannequin', label: 'Thân Mannequin [Z:11]', icon: '🥋', desc: 'Thân ngực eo hông có chỏm lồi vòng cung ở cổ, vai, háng' },
+      { id: 'bap_tay', label: 'Bắp Tay [Z:12]', icon: '🦾', desc: 'Bắp tay có chỏm lồi vòng cung 2 đầu (vai ➔ khuỷu)' },
+      { id: 'cang_tay', label: 'Cẳng Tay [Z:13]', icon: '🦾', desc: 'Cẳng tay có chỏm lồi vòng cung 2 đầu (khuỷu ➔ cổ tay)' },
+      { id: 'ban_tay', label: 'Bàn Tay [Z:14]', icon: '🖐️', desc: 'Bàn tay có chỏm lồi cổ tay + 5 ngón xòe mở' },
+      { id: 'dui', label: 'Đùi Mannequin [Z:12]', icon: '🦵', desc: 'Khớp đùi có chỏm lồi vòng cung 2 đầu (hông ➔ gối)' },
+      { id: 'cang_chan', label: 'Cẳng Chân [Z:13]', icon: '🦵', desc: 'Cẳng chân có chỏm lồi vòng cung 2 đầu (gối ➔ mắt cá)' },
+      { id: 'ban_chan', label: 'Bàn Chân [Z:14]', icon: '🦶', desc: 'Bàn chân có chỏm lồi mắt cá + ngón flat' },
     ],
   },
   {
-    groupTitle: '🦾 2. Khớp Xương Cánh Tay & Bàn Tay (Trái / Phải)',
+    id: '02_face_features',
+    groupTitle: '👤 2. Khuôn Mặt & Ngũ Quan Bóc Tách (Z-Index: 15 - 50)',
+    folderName: '02_face_features',
     items: [
-      { id: 'than_co_ban', label: 'Thân Ngực & Eo', icon: '🥋', desc: 'Thân áo giáp không tay chân' },
-      { id: 'canh_tay_trai', label: 'Cánh Tay Trái (Vai→Khuỷu)', icon: '🦾', desc: 'Bắp tay trái' },
-      { id: 'cang_tay_trai', label: 'Cẳng Tay Trái (Khuỷu→Cổ)', icon: '🦾', desc: 'Cẳng tay trái' },
-      { id: 'ban_tay_trai', label: 'Bàn Tay Trái', icon: '🖐️', desc: 'Bàn tay xòe/kiếm ấn trái' },
-      { id: 'canh_tay_phai', label: 'Cánh Tay Phải (Vai→Khuỷu)', icon: '🦾', desc: 'Bắp tay phải' },
-      { id: 'cang_tay_phai', label: 'Cẳng Tay Phải (Khuỷu→Cổ)', icon: '🦾', desc: 'Cẳng tay phải' },
-      { id: 'ban_tay_phai', label: 'Bàn Tay Phải', icon: '🖐️', desc: 'Bàn tay cầm kiếm/quyết phải' },
+      { id: 'khuon_mat_no_face', label: 'Mặt Trần & Cổ [Z:11]', icon: '👤', desc: 'Đầu trần mannequin + cổ xuống xương quai xanh' },
+      { id: 'doi_tai', label: 'Vành Tai [Z:15]', icon: '👂', desc: '1 tai đối xứng (0°/90°) & góc nghiêng (45°)' },
+      { id: 'trong_trang', label: 'Lòng Trắng Mắt [Z:21]', icon: '⚪', desc: 'Lòng trắng có dải bóng đổ hốc mắt trên' },
+      { id: 'trong_den_iris', label: 'Mống Mắt (Iris) [Z:22]', icon: '🔮', desc: 'Đĩa con ngươi màu độc lập dễ thay đổi texture' },
+      { id: 'diem_sang_mat', label: 'Điểm Sáng [Z:23]', icon: '✨', desc: 'Chấm sáng lấp lánh phản chiếu mắt' },
+      { id: 'mi_mat', label: 'Mi Mắt (Pure Lashes) [Z:24]', icon: '👁️', desc: 'Viền mi mắt đen sắc sảo, lòng rỗng xuyên thấu' },
+      { id: 'long_may', label: 'Lông Mày [Z:25]', icon: '✏️', desc: '1 lông mày (0°/90°) & cặp phối cảnh (45°)' },
+      { id: 'mui', label: 'Sống Mũi [Z:25]', icon: '👃', desc: 'Sống mũi thanh tú & góc nghiêng' },
+      { id: 'mieng', label: 'Khẩu Hình Miệng [Z:25]', icon: '👄', desc: 'Khẩu hình nói chuyện & cười' },
+      { id: 'mat', label: 'Mắt Tổng Hợp [Z:20]', icon: '👀', desc: '1 mắt đối xứng (0°/90°) & cặp phối cảnh (45°)' },
+      { id: 'toc_truoc', label: 'Mái Tóc Trước [Z:50]', icon: '💇', desc: 'Mái trước độc lập bám theo vòm trán (180° để rỗng)' },
+      { id: 'toc_sau', label: 'Suối Tóc Sau [Z:1]', icon: '🌊', desc: 'Tóc nền sau lưng trơn 180°' },
     ],
   },
   {
-    groupTitle: '🦵 3. Khớp Xương Đùi, Cẳng Chân & Giày (Trái / Phải)',
+    id: '03_costume_clothes',
+    groupTitle: '👘 3. Trang Phục & Y Phục Bóc Tách (Z-Index: 51 - 60)',
+    folderName: '03_costume_clothes',
     items: [
-      { id: 'dui_trai', label: 'Đùi Trái (Hông→Gối)', icon: '🦵', desc: 'Khớp đùi trái' },
-      { id: 'cang_chan_trai', label: 'Cẳng Chân & Ủng Trái', icon: '🥾', desc: 'Cẳng chân và ủng trái' },
-      { id: 'dui_phai', label: 'Đùi Phải (Hông→Gối)', icon: '🦵', desc: 'Khớp đùi phải' },
-      { id: 'cang_chan_phai', label: 'Cẳng Chân & Ủng Phải', icon: '🥾', desc: 'Cẳng chân và ủng phải' },
-    ],
-  },
-  {
-    groupTitle: '👘 4. Trang Phục Bay & Vũ Khí Pháp Bảo',
-    items: [
-      { id: 'ao_choang', label: 'Áo Choàng / Tà Áo Bay', icon: '👘', desc: 'Áo choàng lưng buông bay' },
-      { id: 'vu_khi', label: 'Vũ Khí & Pháp Bảo', icon: '🗡️', desc: 'Phi kiếm, quạt, bảo bối' },
+      { id: 'than_co_ban', label: 'Thân Áo & Quần [Z:51]', icon: '🥋', desc: 'Áo giáp / y phục thân khoét cổ & nách khớp mannequin' },
+      { id: 'dai_lung', label: 'Đai Lưng Thắt Eo [Z:52]', icon: '🎗️', desc: 'Đai thắt eo ngọc bội nằm giữa ranh giới áo và quần' },
+      { id: 'ong_ao_bap_tay', label: 'Ống Áo Bắp Tay [Z:53]', icon: '👘', desc: 'Ống bọc bắp tay khoét rỗng 2 đầu' },
+      { id: 'ong_tay_xoe', label: 'Ống Tay Xòe & Hộ Uyển [Z:54]', icon: '👘', desc: 'Ống tay áo tiên hiệp xòe rộng & bao cổ tay' },
+      { id: 'ung_giay', label: 'Ủng Giày Tiên Hiệp [Z:54]', icon: '🥾', desc: 'Đôi ủng cao cổ khoét miệng khớp cẳng chân' },
+      { id: 'vat_ao_duoi', label: 'Vạt Áo / Tà Áo Dưới Eo [Z:55]', icon: '👗', desc: 'Tà áo buông rủ từ thắt lưng xuống gối' },
+      { id: 'ao_choang', label: 'Áo Choàng / Tà Áo Bay [Z:2]', icon: '🥻', desc: 'Áo choàng sau lưng buông bay' },
+      { id: 'vu_khi', label: 'Vũ Khí & Pháp Bảo [Z:60]', icon: '🗡️', desc: 'Phi kiếm, quạt, pháp bảo, linh phù' },
     ],
   },
 ];
@@ -82,6 +87,7 @@ interface Step2DecomposedFormProps {
   setTargetCategory: (cat: any) => void;
   selectedTag: Character2DPartType;
   setSelectedTag: (tag: Character2DPartType) => void;
+  activeStepFilter?: '01_mannequin_limbs' | '02_face_features' | '03_costume_clothes' | 'all';
 }
 
 export const Step2DecomposedForm: React.FC<Step2DecomposedFormProps> = ({
@@ -95,21 +101,60 @@ export const Step2DecomposedForm: React.FC<Step2DecomposedFormProps> = ({
   setTargetCategory,
   selectedTag,
   setSelectedTag,
+  activeStepFilter = 'all',
 }) => {
+  const getBannerInfo = () => {
+    if (activeStepFilter === '01_mannequin_limbs') {
+      return {
+        bg: 'rgba(16, 185, 129, 0.12)',
+        border: '1px solid rgba(16, 185, 129, 0.35)',
+        color: '#d1fae5',
+        text: '🦾 BƯỚC 2: Bóc tách khung xương Mannequin (01_mannequin_limbs) với chỏm lồi hình vòng cung (convex dome overlap cap) để bù phần khuyết khi xoay khớp!',
+      };
+    }
+    if (activeStepFilter === '02_face_features') {
+      return {
+        bg: 'rgba(56, 189, 248, 0.12)',
+        border: '1px solid rgba(56, 189, 248, 0.35)',
+        color: '#e0f2fe',
+        text: '👤 BƯỚC 3: Bóc tách ngũ quan & khuôn mặt (02_face_features) tách riêng từng layer (mắt, mày, mũi, miệng, tai, tóc) để tạo animation biểu cảm động!',
+      };
+    }
+    if (activeStepFilter === '03_costume_clothes') {
+      return {
+        bg: 'rgba(236, 72, 153, 0.12)',
+        border: '1px solid rgba(236, 72, 153, 0.35)',
+        color: '#fce7f3',
+        text: '👘 BƯỚC 4: Bóc tách trang phục & y phục (03_costume_clothes) gồm áo vest, đai lưng, ống tay, ủng giày, áo choàng, vũ khí để mặc lên khung mannequin!',
+      };
+    }
+    return {
+      bg: 'rgba(16, 185, 129, 0.12)',
+      border: '1px solid rgba(16, 185, 129, 0.35)',
+      color: '#d1fae5',
+      text: '✂️ Giải phẫu bóc tách từng linh kiện & khớp xương phục vụ gắn xương IK/FK và chuyển động hoạt ảnh 2D mượt mà!',
+    };
+  };
+
+  const banner = getBannerInfo();
+  const displayedGroups = activeStepFilter === 'all'
+    ? CHARACTER_PART_GROUPS
+    : CHARACTER_PART_GROUPS.filter((g) => g.id === activeStepFilter);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div
         style={{
-          background: 'rgba(16, 185, 129, 0.12)',
+          background: banner.bg,
           padding: '8px 12px',
           borderRadius: 8,
-          border: '1px solid rgba(16, 185, 129, 0.35)',
+          border: banner.border,
           fontSize: 11,
-          color: '#d1fae5',
+          color: banner.color,
           lineHeight: 1.4,
         }}
       >
-        ✂️ <b>Giải phẫu bóc tách từng linh kiện & khớp xương</b> phục vụ gắn xương IK/FK và chuyển động hoạt ảnh 2D mượt mà!
+        {banner.text}
       </div>
 
       {/* Bố Cục Bóc Tách (Layout Mode) */}
@@ -192,9 +237,9 @@ export const Step2DecomposedForm: React.FC<Step2DecomposedFormProps> = ({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
             {[
-              { id: 'front', label: '0° Chính diện' },
-              { id: 'three_quarter', label: '45° Nghiêng 3/4' },
-              { id: 'profile_side', label: '90° Nhìn ngang' },
+              { id: 'front', label: '0° Chính diện (Đối xứng)' },
+              { id: 'three_quarter', label: '45° Nghiêng 3/4 Trái' },
+              { id: 'profile_side', label: '90° Nhìn ngang Trái' },
               { id: 'back', label: '180° Sau lưng' },
               { id: 'high_angle', label: 'Trên nhìn xuống' },
               { id: 'low_angle', label: 'Dưới hất lên' },
@@ -265,7 +310,7 @@ export const Step2DecomposedForm: React.FC<Step2DecomposedFormProps> = ({
       {/* Phân Nhóm Giải Phẫu Khớp Xương */}
       {targetCategory === 'character' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {CHARACTER_PART_GROUPS.map((group, gIdx) => (
+          {displayedGroups.map((group, gIdx) => (
             <div
               key={gIdx}
               style={{

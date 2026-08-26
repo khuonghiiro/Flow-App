@@ -29,12 +29,16 @@ export function getComponentDef(partType: string, options: {
   costumeInfo: { en: string; vi: string };
   costumeColorVi: string;
   propInfo: { en: string; vi: string };
-}): Asset2DComponentDef {
+}, angleType?: string): Asset2DComponentDef {
   const {
     hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
     eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
     costumeInfo, costumeColorVi, propInfo
   } = options;
+
+  const isAngle0 = !angleType || angleType === '000_front' || angleType === 'front';
+  const isAngle45 = angleType === '045_three_quarter' || angleType === 'three_quarter' || angleType === '45';
+  const isAngle90 = angleType === '090_side' || angleType === 'profile_side' || angleType === '90';
 
   switch (partType) {
     case 'toc_truoc': {
@@ -46,16 +50,16 @@ export function getComponentDef(partType: string, options: {
         titleEn: 'STANDALONE FRONT BANGS CLIP-ON HAIR ACCESSORY SPRITE',
         assetTag: 'FRONT_BANGS_HAIR_ACCESSORY_ATTACHMENT_ONLY',
         summaryEn: `Standalone clip-on front bangs hair accessory piece in hair color (${hairColInfo.en}), styled as ${bangsDescEn}, floating alone on empty green canvas like a decorative hair attachment.`,
-        positiveContent: `An independent decorative clip-on front bangs hair accessory attachment in hair color (${hairColInfo.en}), featuring ${bangsDescEn} with a clean cut top attachment edge. It is a standalone decorative hair overlay asset floating completely alone in mid-air on empty green screen, designed to be placed onto a bald/plain base head. The area behind the bangs is 100% pure flat Chroma Green #00FF00 with zero skull mass and zero back hair.`,
-        excludeShort: 'base head, back hair, rear hair mass, long hair behind, ponytail, hair bun, head, skull, face, eyes, neck, body',
+        positiveContent: `An independent standalone stylized front bangs hair layer in hair color (${hairColInfo.en}), featuring ${bangsDescEn} framing the forehead, textured layered front hair locks, and side temple wisps ending near cheekbone level, with the top root following the natural rounded arc of the forehead hairline. Floating completely alone in mid-air on empty green screen like an overlay hair piece ready to place onto a bald mannequin head. The area behind the bangs is 100% pure flat Chroma Green #00FF00 with zero skull, zero face, and zero back hair.`,
+        excludeShort: 'base head, back hair, rear hair mass, long hair behind, ponytail, hair bun, head, skull, face, eyes, neck, body, straight geometric box cut',
         includedGeometry: [
           `clip-on front bangs hair accessory in style: ${bangsDescEn}`,
           'side temple wisps ending above chin level',
           `thin foreground hair strands in hair color (${hairColInfo.en})`,
-          'top root attachment edge cut horizontally flat',
+          'natural rounded root arc matching forehead hairline',
         ],
         excludedGeometry: [
-          'base head', 'back hair', 'rear hair mass', 'long hair behind', 'ponytail', 'hair bun', 'head', 'skull', 'face', 'eyes', 'neck', 'body',
+          'base head', 'back hair', 'rear hair mass', 'long hair behind', 'ponytail', 'hair bun', 'head', 'skull', 'face', 'eyes', 'neck', 'body', 'straight box cut',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -110,20 +114,20 @@ export function getComponentDef(partType: string, options: {
     case 'khuon_mat':
       return {
         id: 'khuon_mat_no_face',
-        nameVi: 'Khuôn Mặt Trần Không Ngũ Quan (Blank Face Base)',
-        titleEn: 'BLANK PORCELAIN FACE SKIN MASK SPRITE',
-        assetTag: 'BLANK_PORCELAIN_FACE_BASE_ONLY',
-        summaryEn: 'Completely featureless blank porcelain anime head and facial skin silhouette, zero facial features and bald scalp.',
-        positiveContent: 'A completely featureless blank porcelain anime head and facial skin silhouette with smooth bare chin and jawline, zero facial features and bald scalp, like a smooth blank mannequin mask ready for modular layers.',
-        excludeShort: 'hair, front bangs, back hair, eyes, eyebrows, nose, mouth, clothes, body',
+        nameVi: 'Khuôn Mặt Trần & Cổ (Blank Head & Neck Base)',
+        titleEn: 'BLANK PORCELAIN HEAD AND NECK BASE SPRITE',
+        assetTag: 'BLANK_PORCELAIN_HEAD_AND_NECK_BASE_ONLY',
+        summaryEn: 'Completely featureless blank porcelain anime head, face, and full neck base down to collarbone line, zero facial features and bald scalp.',
+        positiveContent: 'A completely featureless blank porcelain anime head and full neck extending down to collarbone line, with smooth bare chin and jawline, zero facial features and bald scalp, like a smooth blank mannequin head-neck base ready for modular layers and costume rigging.',
+        excludeShort: 'hair, front bangs, back hair, eyes, eyebrows, nose, mouth, body below collarbone, clothes',
         includedGeometry: [
           'completely blank porcelain facial skin silhouette',
           'smooth jawline and chin',
-          'empty bald forehead surface',
-          'neck connection base',
+          'empty bald forehead and scalp surface',
+          'full neck extending down to collarbone base',
         ],
         excludedGeometry: [
-          'hair of any kind', 'bangs', 'back hair', 'eyebrows', 'eyes', 'nose', 'mouth', 'body',
+          'hair of any kind', 'bangs', 'back hair', 'eyebrows', 'eyes', 'nose', 'mouth', 'body below collarbone', 'clothes',
         ],
         rearVisibility: 'visible',
         groupId: '01_head_face',
@@ -136,20 +140,38 @@ export function getComponentDef(partType: string, options: {
     case 'trong_den_iris':
       return {
         id: 'trong_den_iris',
-        nameVi: 'Mống Mắt & Con Ngươi Màu (Iris & Pupil Layer)',
-        titleEn: 'ISOLATED PAIR OF ANIME EYE IRIS DISCS AND PUPILS ONLY',
-        assetTag: 'EYE_IRIS_AND_PUPIL_DISCS_ONLY',
-        summaryEn: `Pair of circular anime eye iris discs and pupils (${eyeColInfo.en}) with internal color gradient reflections.`,
-        positiveContent: `A pair of circular anime eye iris discs and dark pupil centers in color (${eyeColInfo.en}) with internal luminous gradient reflections, floating as isolated graphic stickers.`,
-        excludeShort: 'sclera, eyeball whites, eyelids, eyelashes, face skin, head',
-        includedGeometry: [
-          `pair of circular colored anime irises in color (${eyeColInfo.en})`,
-          'crisp circular pupil center',
-          'internal luminous iris gradient reflections',
-        ],
-        excludedGeometry: [
-          'sclera', 'eyelids', 'eyelashes', 'face skin', 'head', 'body',
-        ],
+        nameVi: isAngle0
+          ? 'Mống Mắt Đơn Đối Xứng (Single Iris 1:1)'
+          : isAngle45
+            ? 'Cặp Mống Mắt Phối Cảnh 3/4 (3/4 Perspective Irises)'
+            : 'Mống Mắt Nhìn Ngang (Single Profile Iris)',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE ANIME EYE IRIS DISC AND PUPIL ONLY'
+          : isAngle45
+            ? 'PAIR OF ANIME EYE IRIS DISCS IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL PROFILE ANIME IRIS DISC',
+        assetTag: isAngle0
+          ? 'SINGLE_EYE_IRIS_AND_PUPIL_DISC_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_PAIR_OF_IRIS_DISCS_ONLY'
+            : 'SINGLE_LATERAL_PROFILE_IRIS_DISC_ONLY',
+        summaryEn: isAngle0
+          ? `Single circular anime eye iris disc and pupil (${eyeColInfo.en}) with internal color gradient reflections.`
+          : isAngle45
+            ? `Pair of anime eye iris discs (${eyeColInfo.en}) in 45° three-quarter perspective turned towards viewer's left.`
+            : `Single anime eye iris disc in lateral 90° profile view.`,
+        positiveContent: isAngle0
+          ? `A single isolated circular anime eye iris disc and dark pupil center in color (${eyeColInfo.en}) with internal luminous gradient reflections, floating as an isolated graphic sticker (bilaterally symmetrical single iris asset).`
+          : isAngle45
+            ? `A pair of anime eye iris discs in color (${eyeColInfo.en}) arranged in 45° three-quarter perspective turned towards the viewer's left (near iris circular and wide, far iris perspective-compressed and slightly oval), floating as isolated graphic stickers.`
+            : `A single isolated anime eye iris disc seen in lateral 90° profile view (curved dome slice in color (${eyeColInfo.en}) with pupil edge), floating as an isolated graphic sticker.`,
+        excludeShort: isAngle0
+          ? 'pair of irises, second iris, other eye, sclera, eyeball whites, eyelids, eyelashes, face skin, head'
+          : 'sclera, eyeball whites, eyelids, eyelashes, face skin, head',
+        includedGeometry: isAngle0
+          ? [`single circular colored anime iris in color (${eyeColInfo.en})`, 'crisp circular pupil center', 'internal luminous iris gradient reflections']
+          : [`colored anime irises in color (${eyeColInfo.en})`, 'pupil center', 'gradient reflections'],
+        excludedGeometry: ['sclera', 'eyelids', 'eyelashes', 'face skin', 'head', 'body'],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
@@ -161,15 +183,37 @@ export function getComponentDef(partType: string, options: {
     case 'trong_trang':
       return {
         id: 'trong_trang',
-        nameVi: 'Tròng Trắng / Hốc Mắt (Sclera Base Layer)',
-        titleEn: 'ISOLATED PAIR OF ANIME EYE SCLERA WHITE BASE SHAPES ONLY',
-        assetTag: 'EYE_SCLERA_WHITES_ONLY',
-        summaryEn: 'Pair of smooth pure white anime sclera base shapes with subtle upper socket shadow.',
-        positiveContent: 'A pair of pure white anime eye sclera almond base shapes with subtle upper shadow shading, floating as isolated sticker graphics.',
-        excludeShort: 'iris, pupil, colored eyes, eyelids, eyelashes, face skin, head',
+        nameVi: isAngle0
+          ? 'Tròng Trắng Đơn Có Bóng Hốc Mắt (Single Sclera Base 1:1)'
+          : isAngle45
+            ? 'Cặp Tròng Trắng Phối Cảnh 3/4 (3/4 Perspective Scleras)'
+            : 'Tròng Trắng Nhìn Ngang (Single Profile Sclera)',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE ANIME EYE SCLERA WHITE BASE WITH UPPER SOCKET SHADOW ONLY'
+          : isAngle45
+            ? 'PAIR OF ANIME EYE SCLERA BASE SHAPES IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL PROFILE SCLERA SHAPE',
+        assetTag: isAngle0
+          ? 'SINGLE_EYE_SCLERA_WHITE_WITH_SOCKET_SHADOW_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_PAIR_OF_SCLERA_WHITES_ONLY'
+            : 'SINGLE_LATERAL_PROFILE_SCLERA_WHITE_ONLY',
+        summaryEn: isAngle0
+          ? 'Single smooth pure white anime sclera base shape with realistic upper socket shadow gradient.'
+          : isAngle45
+            ? 'Pair of pure white anime sclera base shapes in 45° three-quarter perspective.'
+            : 'Single anime sclera shape in lateral 90° profile.',
+        positiveContent: isAngle0
+          ? 'A single isolated almond-shaped pure white anime eye sclera base with a soft smooth dark purple-gray ambient upper eye-socket shadow gradient along the upper curved border (reproducing the realistic shadow cast by the upper eyelid onto the white eyeball), floating as an independent sticker graphic on green screen (bilaterally symmetrical single sclera asset).'
+          : isAngle45
+            ? 'A pair of pure white anime eye sclera base shapes with upper shadow gradient arranged in 45° three-quarter perspective turned towards the viewer\'s left (near sclera almond and wide, far sclera perspective-foreshortened), floating as isolated sticker graphics.'
+            : 'A single isolated pure white anime eye sclera triangular slice in lateral 90° side profile view with upper shadow, floating as an isolated sticker graphic.',
+        excludeShort: isAngle0
+          ? 'iris, pupil, black eyelash lines, eyebrows, face skin, head, body'
+          : 'iris, pupil, black eyelash lines, eyebrows, face skin, head, body',
         includedGeometry: [
-          'pair of pure white almond sclera shapes',
-          'subtle upper eye-socket shadow gradient',
+          'pure white almond sclera shapes',
+          'smooth upper eye-socket ambient shadow gradient',
         ],
         excludedGeometry: [
           'iris', 'pupil', 'eyelids', 'eyelashes', 'face skin', 'head', 'body',
@@ -185,12 +229,30 @@ export function getComponentDef(partType: string, options: {
     case 'diem_sang_mat':
       return {
         id: 'diem_sang_mat',
-        nameVi: 'Điểm Sáng Mắt (Eye Sparkles & Highlights)',
-        titleEn: 'ISOLATED PAIR OF CRISP WHITE EYE HIGHLIGHT GLINT SPOTS ONLY',
-        assetTag: 'EYE_HIGHLIGHT_SPARKLES_ONLY',
+        nameVi: isAngle0
+          ? 'Điểm Sáng Mắt Đơn Đối Xứng (Single Highlight 1:1)'
+          : isAngle45
+            ? 'Cặp Điểm Sáng Mắt Phối Cảnh 3/4'
+            : 'Điểm Sáng Mắt Nhìn Ngang',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE ANIME EYE HIGHLIGHT GLINT SPOTS ONLY'
+          : isAngle45
+            ? 'PAIR OF ANIME EYE HIGHLIGHT GLINT SPOTS IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL PROFILE EYE HIGHLIGHT GLINT',
+        assetTag: isAngle0
+          ? 'SINGLE_EYE_HIGHLIGHT_SPARKLES_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_PAIR_OF_HIGHLIGHT_SPARKLES_ONLY'
+            : 'SINGLE_LATERAL_PROFILE_HIGHLIGHT_SPARKLES_ONLY',
         summaryEn: 'Crisp pure white reflection dots and star glints for anime eyes.',
-        positiveContent: 'A pair of crisp pure white anime eye highlight glint dots and star reflection shapes, floating as isolated sticker graphics.',
-        excludeShort: 'iris, pupil, sclera, eyelids, face skin, head',
+        positiveContent: isAngle0
+          ? 'A single isolated cluster of crisp pure white anime eye highlight glint dots and star reflection shapes, floating as an isolated sticker graphic (bilaterally symmetrical single highlight asset).'
+          : isAngle45
+            ? 'A pair of crisp pure white anime eye highlight glint clusters arranged in 45° three-quarter perspective turned towards the viewer\'s left (near cluster wider, far cluster perspective-compressed), floating as isolated sticker graphics.'
+            : 'A single isolated cluster of crisp pure white anime eye highlight glints in lateral 90° profile view, floating as an isolated sticker graphic.',
+        excludeShort: isAngle0
+          ? 'pair of highlights, second eye highlights, iris, pupil, sclera, eyelids, face skin, head'
+          : 'iris, pupil, sclera, eyelids, face skin, head',
         includedGeometry: [
           'crisp circular white glint spots',
           'starburst highlight glints',
@@ -210,19 +272,37 @@ export function getComponentDef(partType: string, options: {
     case 'mi_mat':
       return {
         id: 'mi_mat',
-        nameVi: 'Mi Mắt & Chớp Mắt (Eyelids & Blink Keyframes)',
-        titleEn: 'ISOLATED ANIME EYELID LASH LINE CONTOURS ONLY',
-        assetTag: 'EYELID_LASH_LINES_ONLY',
-        summaryEn: 'Crisp anime upper/lower eyelid lineart and blinking keyframe contours.',
-        positiveContent: 'A pair of crisp anime upper and lower eyelid line contours and lash strokes, floating as isolated lineart sticker graphics.',
-        excludeShort: 'iris, pupil, sclera, eyebrows, nose, face skin, head',
+        nameVi: isAngle0
+          ? 'Mi Mắt Đơn Đối Xứng (Single Eyelash Contour 1:1)'
+          : isAngle45
+            ? 'Cặp Mi Mắt Phối Cảnh 3/4 (3/4 Perspective Eyelashes)'
+            : 'Mi Mắt Nhìn Ngang (Single Profile Eyelash)',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE ANIME PURE EYELASH LINE CONTOUR ONLY'
+          : isAngle45
+            ? 'PAIR OF ANIME EYELASH LINE CONTOURS IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL PROFILE EYELASH LINE',
+        assetTag: isAngle0
+          ? 'SINGLE_EYELASH_CONTOUR_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_PAIR_OF_EYELASH_CONTOURS_ONLY'
+            : 'SINGLE_LATERAL_PROFILE_EYELASH_CONTOUR_ONLY',
+        summaryEn: 'Crisp anime upper/lower eyelash lineart without any inner circular iris outlines or white fill.',
+        positiveContent: isAngle0
+          ? 'A single isolated pair of crisp sharp anime black upper and lower eyelash line curves with delicate corner lash strokes matching an almond anime eye shape. The middle area between the upper and lower lash lines is 100% pure flat Chroma Green #00FF00 empty background, completely hollow with zero circles, zero iris lines, and zero white fill, floating as a standalone lineart overlay sticker (bilaterally symmetrical single eyelid asset).'
+          : isAngle45
+            ? 'A pair of crisp sharp anime black upper and lower eyelash line curves arranged in 45° three-quarter perspective turned towards the viewer\'s left (near lash line wider and fully contoured, far lash line foreshortened), with hollow green center, floating as isolated lineart sticker graphics.'
+            : 'A single isolated crisp sharp anime black eyelash line curve seen in lateral 90° side profile view facing sideways to the viewer\'s left, floating as an isolated lineart sticker graphic.',
+        excludeShort: isAngle0
+          ? 'circular iris outline, round circle in center, pupil, sclera white fill, eyeball, eyebrows, face skin, head, body'
+          : 'circular iris outline, round circle in center, pupil, sclera white fill, eyeball, eyebrows, face skin, head, body',
         includedGeometry: [
-          'upper lash line',
-          'lower lash line',
-          'eyelid crease line',
+          'sharp black upper lash line curve',
+          'sharp black lower lash line curve',
+          'corner eyelashes',
         ],
         excludedGeometry: [
-          'iris', 'pupil', 'sclera', 'eyebrows', 'face skin', 'head',
+          'circular iris outline', 'pupil', 'sclera white fill', 'eyebrows', 'face skin', 'head',
         ],
         rearVisibility: 'hidden',
         groupId: '01_head_face',
@@ -235,14 +315,36 @@ export function getComponentDef(partType: string, options: {
     case 'long_may':
       return {
         id: 'long_may',
-        nameVi: 'Cặp Lông Mày (Eyebrows Only)',
-        titleEn: 'ISOLATED PAIR OF ANIME EYEBROW STROKES ONLY',
-        assetTag: 'EYEBROW_STROKES_ONLY',
-        summaryEn: `Two isolated eyebrow hair strokes in hair color (${hairColInfo.en}).`,
-        positiveContent: `A pair of isolated anime eyebrow line strokes in hair color (${hairColInfo.en}), floating as isolated lineart graphics.`,
-        excludeShort: 'eyes, eyelids, forehead skin, face, head, body',
+        nameVi: isAngle0
+          ? 'Lông Mày Đơn Đối Xứng (Single Eyebrow 1:1)'
+          : isAngle45
+            ? 'Cặp Lông Mày Phối Cảnh 3/4 (3/4 Perspective Eyebrows)'
+            : 'Lông Mày Nhìn Ngang (Single Profile Eyebrow)',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE ANIME EYEBROW STROKE ONLY'
+          : isAngle45
+            ? 'PAIR OF ANIME EYEBROWS IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL PROFILE ANIME EYEBROW STROKE',
+        assetTag: isAngle0
+          ? 'SINGLE_EYEBROW_STROKE_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_PAIR_OF_ANIME_EYEBROWS_ONLY'
+            : 'SINGLE_LATERAL_PROFILE_EYEBROW_ONLY',
+        summaryEn: isAngle0
+          ? `Single isolated eyebrow hair stroke in hair color (${hairColInfo.en}).`
+          : isAngle45
+            ? `Pair of anime eyebrows in hair color (${hairColInfo.en}) in 45° three-quarter perspective.`
+            : `Single anime eyebrow stroke in lateral 90° profile.`,
+        positiveContent: isAngle0
+          ? `A single isolated delicate anime eyebrow line stroke in hair color (${hairColInfo.en}), elegant tapered calligraphy arch stroke, floating as an independent lineart graphic (bilaterally symmetrical single eyebrow asset).`
+          : isAngle45
+            ? `A pair of anime eyebrows arranged in 45° three-quarter perspective turned towards the viewer's left (the near left-side eyebrow is longer, wider, and arched; the far right-side eyebrow is shorter and foreshortened in perspective depth) in hair color (${hairColInfo.en}), floating as independent lineart graphics.`
+            : `A single isolated anime eyebrow stroke seen in lateral 90° side profile view facing sideways to the viewer's left in hair color (${hairColInfo.en}), floating as an independent lineart graphic.`,
+        excludeShort: isAngle0
+          ? 'pair of eyebrows, second eyebrow, other eyebrow, eyes, eyelids, forehead skin, face, head, body'
+          : 'eyes, eyelids, forehead skin, face, head, body',
         includedGeometry: [
-          `left and right eyebrow line strokes in hair color (${hairColInfo.en})`,
+          `eyebrow line stroke in hair color (${hairColInfo.en})`,
         ],
         excludedGeometry: [
           'forehead skin', 'face skin', 'eyes', 'hair', 'head', 'body',
@@ -258,11 +360,15 @@ export function getComponentDef(partType: string, options: {
     case 'mui':
       return {
         id: 'mui',
-        nameVi: 'Sống Mũi (Nose Only)',
+        nameVi: isAngle90 ? 'Sống Mũi Nhìn Ngang (Side Profile Nose)' : 'Sống Mũi Thanh Tú (Nose Only)',
         titleEn: 'ISOLATED ANIME NOSE BRIDGE AND TIP CONTOUR ONLY',
         assetTag: 'NOSE_BRIDGE_CONTOUR_ONLY',
         summaryEn: `Delicate anime nose bridge contour and tip (${noseInfo.en}).`,
-        positiveContent: `A delicate anime nose bridge contour line and subtle nose tip outline (${noseInfo.en}), floating as a single minimalist lineart graphic.`,
+        positiveContent: isAngle90
+          ? `A single isolated anime nose bridge and tip contour seen in lateral 90° side profile view facing sideways to the viewer's left (${noseInfo.en}), floating as a single minimalist lineart graphic.`
+          : isAngle45
+            ? `A delicate anime nose bridge contour line and subtle nose tip outline in 45° three-quarter perspective turned towards viewer's left (${noseInfo.en}), floating as a single minimalist lineart graphic.`
+            : `A delicate minimalist anime nose bridge contour line and subtle nose tip outline with soft bottom shadow dot (${noseInfo.en}), floating as a single minimalist lineart graphic sticker.`,
         excludeShort: 'eyes, mouth, chin, cheeks, face skin, head',
         includedGeometry: [
           'delicate anime nose bridge contour line',
@@ -281,18 +387,40 @@ export function getComponentDef(partType: string, options: {
 
     case 'doi_tai':
     case 'mui_tai':
+    case 'tai':
       return {
         id: 'doi_tai',
-        nameVi: 'Đôi Tai Trái / Phải (Dual Ears 16:9 - 2 Cột)',
-        titleEn: 'PAIR OF DETACHED ANIME EARS SIDE-BY-SIDE ON 16:9 CANVAS',
-        assetTag: 'PAIR_OF_DETACHED_EARS_2_COLUMNS',
-        summaryEn: 'Side-by-side pair of anime ears on 16:9 canvas (left half: left ear, right half: right ear).',
-        positiveContent: 'A side-by-side pair of anime ears arranged on 16:9 canvas (left half contains the left ear with detailed cartilage folds; right half contains the right ear with matching proportion and lighting), floating as detached prosthetic ear sprites.',
-        excludeShort: 'head, face skin, jaw, hair, neck, body, middle dividing border line',
+        nameVi: isAngle0
+          ? 'Vành Tai Đơn Đối Xứng (Single Ear 1:1)'
+          : isAngle45
+            ? 'Vành Tai Góc Nghiêng 3/4 (3/4 Perspective Ear)'
+            : 'Vành Tai Nhìn Ngang (Single Profile Ear)',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE DETACHED ANIME EAR SPRITE'
+          : isAngle45
+            ? 'ISOLATED ANIME EAR IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL SIDE PROFILE EAR SPRITE',
+        assetTag: isAngle0
+          ? 'SINGLE_DETACHED_ANIME_EAR_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_ANIME_EAR_ONLY'
+            : 'SINGLE_LATERAL_SIDE_PROFILE_EAR_ONLY',
+        summaryEn: isAngle0
+          ? 'Single isolated anime ear on 1:1 canvas (bilaterally symmetrical single ear asset).'
+          : isAngle45
+            ? 'Single anime ear seen in 45° three-quarter view.'
+            : 'Single anime ear seen in lateral 90° side profile.',
+        positiveContent: isAngle0
+          ? 'A single isolated anime ear with detailed inner cartilage curves, earlobe, and smooth porcelain skin tone, cut cleanly at the base where it attaches to the side of the head, floating as an independent prosthetic ear sticker (bilaterally symmetrical single ear asset).'
+          : isAngle45
+            ? 'A single isolated anime ear seen in 45° three-quarter perspective turned towards viewer\'s left, showing outer helix curvature, antihelix fold, and earlobe depth, floating as an independent prosthetic ear sticker.'
+            : 'A single isolated anime ear seen in lateral 90° side profile view facing sideways to the viewer\'s left, showing clear outer helix rim, antihelix fold, tragus, and earlobe in smooth anime skin tone, floating as an independent prosthetic ear sticker.',
+        excludeShort: isAngle0
+          ? 'pair of ears, second ear, other ear, head, face skin, jaw, hair, neck, body'
+          : 'head, face skin, jaw, hair, neck, body',
         includedGeometry: [
-          'left column: left ear with detailed inner cartilage and earlobe',
-          'right column: right ear with detailed inner cartilage and earlobe',
-          'side-by-side 2-column layout on 16:9 canvas',
+          'single ear with detailed inner cartilage and earlobe',
+          'clean cut at base connection to head',
         ],
         excludedGeometry: [
           'face skin', 'forehead', 'jawline', 'hair', 'head', 'neck', 'body',
@@ -301,8 +429,8 @@ export function getComponentDef(partType: string, options: {
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 26,
-        filePrefix: '04g_doi_tai',
-        idealAspectRatio: '16:9',
+        filePrefix: '04g_tai',
+        idealAspectRatio: '1:1',
       };
 
     case 'mieng':
@@ -312,7 +440,11 @@ export function getComponentDef(partType: string, options: {
         titleEn: 'ISOLATED ANIME MOUTH OPENING AND LIP CONTOURS ONLY',
         assetTag: 'MOUTH_AND_LIP_CONTOUR_ONLY',
         summaryEn: `Lip and mouth opening contour (${mouthInfo.en}).`,
-        positiveContent: `An isolated anime mouth opening contour with upper and lower lip curves (${mouthInfo.en}), floating as an independent graphic sticker.`,
+        positiveContent: isAngle90
+          ? `An isolated anime mouth opening contour seen in lateral 90° side profile view facing sideways to the viewer's left (${mouthInfo.en}), floating as an independent graphic sticker.`
+          : isAngle45
+            ? `An isolated anime mouth opening contour with upper and lower lip curves in 45° three-quarter perspective turned towards viewer's left (${mouthInfo.en}), floating as an independent graphic sticker.`
+            : `An isolated anime mouth opening contour with upper and lower lip curves (${mouthInfo.en}) and soft pink inner tone, floating as an independent graphic sticker.`,
         excludeShort: 'nose, chin, cheeks, face skin, head',
         includedGeometry: [
           'upper lip line and color',
@@ -333,15 +465,36 @@ export function getComponentDef(partType: string, options: {
     case 'mat':
       return {
         id: 'mat',
-        nameVi: 'Đôi Mắt Tổng Hợp (Full Anime Eyes)',
-        titleEn: 'ISOLATED COMPLETE PAIR OF ANIME EYES ONLY',
-        assetTag: 'COMPLETE_PAIR_OF_ANIME_EYES_ONLY',
-        summaryEn: `Complete pair of anime eyes (${eyeShapeInfo.en}, ${eyeColInfo.en}).`,
-        positiveContent: `A complete pair of anime eyes (${eyeShapeInfo.en}, ${eyeColInfo.en}) including sclera, colored irises, pupils, lash lines, and glints, floating as isolated sticker graphics.`,
-        excludeShort: 'face skin, forehead, eyebrows, nose, mouth, head',
+        nameVi: isAngle0
+          ? 'Con Mắt Đơn Đối Xứng (Single Complete Eye 1:1)'
+          : isAngle45
+            ? 'Cặp Mắt Phối Cảnh 3/4 (3/4 Perspective Pair of Eyes)'
+            : 'Con Mắt Nhìn Ngang (Single Profile Eye)',
+        titleEn: isAngle0
+          ? 'ISOLATED SINGLE COMPLETE ANIME EYE SPRITE'
+          : isAngle45
+            ? 'PAIR OF ANIME EYES IN 45° THREE-QUARTER PERSPECTIVE'
+            : 'ISOLATED SINGLE LATERAL SIDE PROFILE ANIME EYE SPRITE',
+        assetTag: isAngle0
+          ? 'SINGLE_COMPLETE_ANIME_EYE_ONLY'
+          : isAngle45
+            ? 'THREE_QUARTER_PAIR_OF_ANIME_EYES_ONLY'
+            : 'SINGLE_LATERAL_SIDE_PROFILE_ANIME_EYE_ONLY',
+        summaryEn: isAngle0
+          ? `Single complete anime eye (${eyeShapeInfo.en}, ${eyeColInfo.en}).`
+          : isAngle45
+            ? `Pair of anime eyes (${eyeShapeInfo.en}, ${eyeColInfo.en}) in 45° three-quarter perspective.`
+            : `Single anime eye in lateral 90° profile.`,
+        positiveContent: isAngle0
+          ? `A single isolated complete anime eye (large expressive almond eye, pure white sclera, vibrant crystal iris in color (${eyeColInfo.en}) with detailed radial light reflections and dark pupil center, sharp black upper anime lash line with delicate corner lashes, and crisp pure white highlight glints), floating as an independent sticker graphic (bilaterally symmetrical single eye asset).`
+          : isAngle45
+            ? `A pair of anime eyes arranged in 45° three-quarter perspective turned towards the viewer's left (the near left-side eye is larger, wider, and fully open; the far right-side eye is narrower and foreshortened in perspective depth). Both eyes have pure white sclera, luminous crystal irises in color (${eyeColInfo.en}) with pupil dots, sharp anime lash lines, and crisp glints, floating as isolated sticker graphics.`
+            : `A single isolated anime eye seen in lateral 90° side profile view facing sideways to the viewer's left (characteristic triangular conical anime eye profile silhouette, curved upper lash angle, curved iris dome in (${eyeColInfo.en}) with glowing pupil reflections, and white sclera triangular corner), floating as an independent sticker graphic.`,
+        excludeShort: isAngle0
+          ? 'pair of eyes, second eye, other eye, eyebrows, face skin, forehead, nose, mouth, head'
+          : 'face skin, forehead, eyebrows, nose, mouth, head, body',
         includedGeometry: [
-          'left eye complete structure (sclera, iris, pupil, lash line)',
-          'right eye complete structure (sclera, iris, pupil, lash line)',
+          'complete eye structure (sclera, iris, pupil, lash line)',
           'internal eye glints and reflections',
         ],
         excludedGeometry: [
@@ -351,291 +504,346 @@ export function getComponentDef(partType: string, options: {
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 40,
-        filePrefix: '04_ngu_quan_mat',
+        filePrefix: '04_mat',
+        idealAspectRatio: '1:1',
+      };
+
+    case 'than_mannequin':
+      return {
+        id: 'than_mannequin',
+        nameVi: 'Thân Mannequin (Chỏm lồi cổ, vai, háng)',
+        titleEn: 'CHIBI MANNEQUIN TORSO WITH CONVEX DOME CAPS',
+        assetTag: 'CHIBI_TORSO_CONVEX_DOME_CAPS',
+        summaryEn: 'Fair porcelain anime torso with soft rosy-pink undertone and convex rounded dome caps at neck, shoulders, and hips.',
+        positiveContent: 'Isolated 2D cutout rigging asset: The TORSO segment of a cute 2.5-heads chibi character. Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading, smooth cel-shaded soft gradient shading (no realistic pores/texture). Core body from neck base to pelvis crotch after removing head, arms, and legs. CONVEX JOINT CAPS: At each disconnection point (neck base, left shoulder, right shoulder, left hip, right hip), the joint end bulges outward with a smooth convex rounded arc (dome-shaped overlap cap) extending slightly outward past the cut line, so no concave gap appears when parts are separated for 2D puppet rigging. Front view 0° orthographic, centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'head, arms, hands, thighs, legs, feet, clothes',
+        includedGeometry: [
+          'fair porcelain torso with rosy-pink undertone',
+          'convex dome cap at neck base',
+          'convex dome caps at left and right shoulders',
+          'convex dome caps at left and right hips',
+        ],
+        excludedGeometry: [
+          'head', 'upper arms', 'forearms', 'hands', 'thighs', 'shins', 'feet', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 11,
+        filePrefix: '02_than_mannequin',
+        idealAspectRatio: '3:4',
+      };
+
+    case 'bap_tay':
+    case 'canh_tay_trai':
+    case 'canh_tay_phai':
+      return {
+        id: 'bap_tay',
+        nameVi: 'Bắp Tay (Chỏm lồi vai & khuỷu)',
+        titleEn: 'CHIBI UPPER ARM WITH CONVEX DOME CAPS',
+        assetTag: 'CHIBI_UPPER_ARM_CONVEX_DOME_CAPS',
+        summaryEn: 'Fair porcelain upper arm segment with convex rounded dome caps at shoulder and elbow. Angled ~45°.',
+        positiveContent: 'Isolated 2D cutout rigging asset: A SINGLE SHORT UPPER ARM SEGMENT ONLY (shoulder to elbow). Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading at joints, smooth cel-shaded anime shading. Single short tapered cylinder angled ~45° outward. CONVEX JOINT CAPS: Both the top end (shoulder) and bottom end (elbow) terminate with a smooth convex rounded arc (dome-shaped overlap cap) that bulges outward slightly past the cut line for seamless 2D cutout puppet rigging. Centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'torso, forearm, hand, clothes',
+        includedGeometry: [
+          'fair porcelain upper arm at 45°',
+          'convex dome cap at shoulder (top)',
+          'convex dome cap at elbow (bottom)',
+        ],
+        excludedGeometry: [
+          'torso', 'forearm', 'hand', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 12,
+        filePrefix: '02a_bap_tay',
+        idealAspectRatio: '3:4',
+      };
+
+    case 'cang_tay':
+    case 'cang_tay_trai':
+    case 'cang_tay_phai':
+      return {
+        id: 'cang_tay',
+        nameVi: 'Cẳng Tay (Chỏm lồi khuỷu & cổ tay)',
+        titleEn: 'CHIBI FOREARM WITH CONVEX DOME CAPS',
+        assetTag: 'CHIBI_FOREARM_CONVEX_DOME_CAPS',
+        summaryEn: 'Fair porcelain forearm segment with convex rounded dome caps at elbow and wrist. Angled ~45°.',
+        positiveContent: 'Isolated 2D cutout rigging asset: A SINGLE SHORT FOREARM SEGMENT ONLY (elbow to wrist). Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading at joints, smooth cel-shaded anime shading. Single short tapered cylinder angled ~45° outward. CONVEX JOINT CAPS: Both the top end (elbow) and bottom end (wrist) terminate with a smooth convex rounded arc (dome-shaped overlap cap) that bulges outward slightly past the cut line for seamless overlap in 2D puppet rigging. Centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'upper arm, hand, torso, clothes',
+        includedGeometry: [
+          'fair porcelain forearm at 45°',
+          'convex dome cap at elbow (top)',
+          'convex dome cap at wrist (bottom)',
+        ],
+        excludedGeometry: [
+          'upper arm', 'hand', 'torso', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 13,
+        filePrefix: '02b_cang_tay',
+        idealAspectRatio: '3:4',
+      };
+
+    case 'ban_tay':
+    case 'ban_tay_trai':
+    case 'ban_tay_phai':
+      return {
+        id: 'ban_tay',
+        nameVi: 'Bàn Tay (Chỏm lồi cổ tay + 5 ngón)',
+        titleEn: 'CHIBI HAND WITH CONVEX WRIST CAP',
+        assetTag: 'CHIBI_HAND_CONVEX_WRIST_CAP',
+        summaryEn: 'Fair porcelain hand with convex rounded dome cap at wrist and 5 spread fingers.',
+        positiveContent: 'Isolated 2D cutout rigging asset: The LEFT HAND from wrist to fingertips with 5 spread open fingers. Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading, smooth cel-shaded anime shading. CONVEX JOINT CAP: At the top (wrist connection), the wrist end terminates with a smooth convex rounded arc (dome-shaped overlap cap) bulging outward slightly past the cut line, so when connected to the forearm in 2D puppet rigging there is no concave gap. Centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'forearm, arm, torso, clothes',
+        includedGeometry: [
+          'fair porcelain palm and 5 spread fingers',
+          'convex dome cap at wrist (top)',
+        ],
+        excludedGeometry: [
+          'forearm', 'arm', 'torso', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 14,
+        filePrefix: '02c_ban_tay',
+        idealAspectRatio: '1:1',
+      };
+
+    case 'dui':
+    case 'dui_trai':
+    case 'dui_phai':
+      return {
+        id: 'dui',
+        nameVi: 'Đùi (Chỏm lồi háng & gối)',
+        titleEn: 'CHIBI THIGH WITH CONVEX DOME CAPS',
+        assetTag: 'CHIBI_THIGH_CONVEX_DOME_CAPS',
+        summaryEn: 'Fair porcelain thigh segment with convex rounded dome caps at hip and knee. Front view.',
+        positiveContent: 'Isolated 2D cutout rigging asset: The LEFT THIGH segment between hip and knee, viewed from the FRONT (0° orthographic) at slight outward angle. Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading, smooth cel-shaded anime shading. CONVEX JOINT CAPS: Both the top end (hip connection) and bottom end (knee connection) terminate with a smooth convex rounded arc (dome-shaped overlap cap) that bulges outward slightly past the cut line, so when connected and rotated in 2D puppet rigging there is no concave gap. Centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'torso, shin, foot, clothes',
+        includedGeometry: [
+          'fair porcelain thigh front view',
+          'convex dome cap at hip (top)',
+          'convex dome cap at knee (bottom)',
+        ],
+        excludedGeometry: [
+          'torso', 'shin', 'foot', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 12,
+        filePrefix: '03a_dui',
+        idealAspectRatio: '3:4',
+      };
+
+    case 'cang_chan':
+    case 'cang_chan_trai':
+    case 'cang_chan_phai':
+      return {
+        id: 'cang_chan',
+        nameVi: 'Cẳng Chân (Chỏm lồi gối & mắt cá)',
+        titleEn: 'CHIBI SHIN WITH CONVEX DOME CAPS',
+        assetTag: 'CHIBI_SHIN_CONVEX_DOME_CAPS',
+        summaryEn: 'Fair porcelain shin segment with convex rounded dome caps at knee and ankle. Front view.',
+        positiveContent: 'Isolated 2D cutout rigging asset: The LEFT SHIN segment between knee and ankle, viewed from the FRONT (0° orthographic). Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading, smooth cel-shaded anime shading. CONVEX JOINT CAPS: Both the top end (knee connection) and bottom end (ankle connection) terminate with a smooth convex rounded arc (dome-shaped overlap cap) that bulges outward slightly past the cut line for seamless 2D cutout puppet rigging. Centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'thigh, foot, torso, clothes',
+        includedGeometry: [
+          'fair porcelain shin front view',
+          'convex dome cap at knee (top)',
+          'convex dome cap at ankle (bottom)',
+        ],
+        excludedGeometry: [
+          'thigh', 'foot', 'torso', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 13,
+        filePrefix: '03b_cang_chan',
+        idealAspectRatio: '3:4',
+      };
+
+    case 'ban_chan':
+      return {
+        id: 'ban_chan',
+        nameVi: 'Bàn Chân (Chỏm lồi mắt cá → Ngón)',
+        titleEn: 'CHIBI FOOT WITH CONVEX ANKLE CAP',
+        assetTag: 'CHIBI_FOOT_CONVEX_ANKLE_CAP',
+        summaryEn: 'Fair porcelain foot with convex rounded dome cap at ankle. Front view.',
+        positiveContent: 'Isolated 2D cutout rigging asset: The LEFT FOOT from ankle to toes, viewed from the FRONT (0° orthographic) flat on the ground. Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading, smooth cel-shaded anime shading. CONVEX JOINT CAP: At the top (ankle connection), the ankle end terminates with a smooth convex rounded arc (dome-shaped overlap cap) that bulges outward upward past the cut line, so when connected to the shin in 2D puppet rigging there is no concave gap. Centered on solid bright green chroma-key background (#00FF00).',
+        excludeShort: 'shin, leg, torso, clothes, shoes',
+        includedGeometry: [
+          'fair porcelain foot with toes front view',
+          'convex dome cap at ankle (top)',
+        ],
+        excludedGeometry: [
+          'shin', 'leg', 'thigh', 'shoes', 'boots', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 14,
+        filePrefix: '03c_ban_chan',
         idealAspectRatio: '1:1',
       };
 
     case 'than_co_ban':
       return {
         id: 'than_co_ban',
-        nameVi: 'Thân Ngực & Eo Áo Giáp (Torso & Chest Armor)',
-        titleEn: 'HEADLESS ARMLESS TORSO COSTUME ROBE GARMENT SPRITE',
-        assetTag: 'HEADLESS_ARMLESS_TORSO_COSTUME_ONLY',
-        summaryEn: `Costume chest tunic, waist sash, and collar garment (${costumeInfo.en}, ${costumeColorVi}).`,
-        positiveContent: `A headless, armless costume tunic and waist sash robe garment in color theme (${costumeColorVi}, ${costumeInfo.en}), with clean hollow collar cut at neck, clean hollow armholes at shoulders, and clean waist cut, as if displayed on an invisible torso mannequin.`,
-        excludeShort: 'head, neck skin, arms, hands, legs, feet, flowing cape',
+        nameVi: 'Thân Áo Vest V-Neck (Đơn Giản, Không Vòng Cổ)',
+        titleEn: 'SIMPLE V-NECK SLEEVELESS VEST NO COLLAR BAND',
+        assetTag: 'SIMPLE_VNECK_VEST_NO_COLLAR_BAND_ONLY',
+        summaryEn: `Simple V-neck vest, V opening is green screen, no collar band (${costumeInfo.en}, ${costumeColorVi}).`,
+        positiveContent: `A standalone simple xianxia cultivator sleeveless vest/bodice in color theme (${costumeColorVi}, ${costumeInfo.en}). The vest has a simple V-neckline — just two front fabric panels that cross at the chest forming a V shape. The triangular V opening area is pure #00FF00 green screen (showing through to character chest skin beneath). There is NO collar band, NO collar ring, NO neckline loop above the V — the vest fabric simply ends at the shoulder straps and the V lapels, nothing connects them across the top. Open armholes. Clean flat waist bottom hem. Floating on green screen (bilaterally symmetrical garment asset).`,
+        excludeShort: 'collar band, collar ring, neckline loop, sleeves, belt, skirt, bare skin, head, neck, arms, hands, legs, feet, cape',
         includedGeometry: [
-          'chest tunic / armor plate / robe body',
-          `waistband / sash in color theme (${costumeColorVi})`,
-          'clean collar opening cut at neck',
-          'clean armhole openings cut at shoulders',
-          'clean lower torso waist cut',
+          'front vest body with two crossing V-neck lapels',
+          'V-neck opening as pure green screen',
+          'shoulder straps (no collar band connecting them)',
+          'open armholes',
+          'clean flat waist bottom hem',
         ],
         excludedGeometry: [
-          'head', 'neck skin', 'arms', 'hands', 'legs', 'feet', 'cape',
+          'collar band', 'collar ring', 'neckline loop', 'sleeves', 'belt', 'skirt', 'head', 'neck skin', 'arms', 'hands', 'legs', 'feet', 'cape',
         ],
         rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
-        zIndex: 20,
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
+        zIndex: 51,
         filePrefix: '02_than_co_ban',
         idealAspectRatio: '3:4',
       };
 
-    case 'canh_tay_trai':
+    case 'ong_tay_xoe':
       return {
-        id: 'canh_tay_trai',
-        nameVi: 'Cánh Tay Trái - Bắp Tay (Left Upper Arm)',
-        titleEn: 'SINGLE ISOLATED LEFT UPPER ARM SLEEVE CYLINDER',
-        assetTag: 'LEFT_UPPER_ARM_SLEEVE_ONLY',
-        summaryEn: `Left upper bicep arm sleeve segment (${costumeColorVi}).`,
-        positiveContent: `A single isolated left upper arm sleeve cylinder in color (${costumeColorVi}), cut cleanly at the shoulder joint and elbow joint, floating as a detached limb segment.`,
-        excludeShort: 'torso, chest, head, forearm, hand, other arm',
+        id: 'ong_tay_xoe',
+        nameVi: 'Ống Tay Áo Xòe & Bao Cổ Tay (Flowing Sleeves & Bracers)',
+        titleEn: 'MODULAR FLOWING LOWER SLEEVE GARMENT SPRITE',
+        assetTag: 'MODULAR_FLOWING_LOWER_SLEEVE_GARMENT_ONLY',
+        summaryEn: `Flowing lower sleeve garment and inner bracer wrap (${costumeColorVi}).`,
+        positiveContent: `A single isolated xianxia cultivator wide flowing lower sleeve garment piece in color theme (${costumeColorVi}), with decorative border trims and forearm bracer wrap, hollow at the elbow joint top and hollow at the wrist exit, designed to slide over an anime forearm for 2D puppet rigging, floating alone on green screen (bilaterally symmetrical single sleeve asset).`,
+        excludeShort: 'bare skin, arm, hand, torso, chest, body, head, legs',
         includedGeometry: [
-          'left upper arm bicep limb tube',
-          `sleeve fabric covering left upper arm in (${costumeColorVi})`,
-          'clean cut line at shoulder joint',
-          'clean cut line at elbow joint',
+          `flowing sleeve fabric drape in (${costumeColorVi})`,
+          'inner forearm bracer wrap and decorative cuff',
+          'hollow elbow top opening',
+          'hollow wrist bottom opening',
         ],
         excludedGeometry: [
-          'torso', 'chest', 'neck', 'head', 'forearm', 'hand', 'other arm',
+          'bare skin', 'arm', 'hand', 'torso', 'head', 'legs',
         ],
         rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
-        zIndex: 21,
-        filePrefix: '02a_canh_tay_trai',
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
+        zIndex: 25,
+        filePrefix: '06c_ong_tay_xoe',
         idealAspectRatio: '3:4',
       };
 
-    case 'cang_tay_trai':
+    case 'vat_ao_duoi':
       return {
-        id: 'cang_tay_trai',
-        nameVi: 'Cẳng Tay Trái (Left Forearm)',
-        titleEn: 'SINGLE ISOLATED LEFT FOREARM BRACER SLEEVE CYLINDER',
-        assetTag: 'LEFT_FOREARM_BRACER_ONLY',
-        summaryEn: `Left forearm sleeve and bracer segment (${costumeColorVi}).`,
-        positiveContent: `A single isolated left forearm bracer sleeve cylinder in color (${costumeColorVi}), cut cleanly at the elbow joint and wrist joint, floating as a detached limb segment.`,
-        excludeShort: 'upper arm, shoulder, torso, hand, fingers, other arm',
+        id: 'vat_ao_duoi',
+        nameVi: 'Vạt Áo / Tà Áo Dưới Thắt Lưng (Robe Skirt Flap)',
+        titleEn: 'MODULAR LOWER ROBE SKIRT FLAP SPRITE',
+        assetTag: 'MODULAR_LOWER_ROBE_SKIRT_FLAP_ONLY',
+        summaryEn: `Lower robe skirt garment and decorative tassels (${costumeColorVi}).`,
+        positiveContent: `A standalone xianxia cultivator lower robe skirt garment piece in color theme (${costumeColorVi}), with decorative border trims and side hanging pendant knot tassels, cut cleanly with a hollow upper waist band opening, designed to drape from the waist down over the thighs and knees, floating alone on green screen (bilaterally symmetrical single garment asset).`,
+        excludeShort: 'chest, torso, arms, bare skin, thighs, legs, feet, head',
         includedGeometry: [
-          'left forearm limb tube',
-          `forearm bracer / cuff / sleeve fabric in (${costumeColorVi})`,
-          'clean cut line at elbow joint',
-          'clean cut line at wrist joint',
+          `lower robe skirt drape fabric in (${costumeColorVi})`,
+          'front center flap and side tails',
+          'hanging pendant knot tassels',
+          'hollow upper waist opening',
         ],
         excludedGeometry: [
-          'upper arm', 'shoulder', 'torso', 'hand', 'fingers', 'other arm',
+          'chest', 'torso', 'arms', 'bare skin', 'legs', 'head',
         ],
         rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
         zIndex: 22,
-        filePrefix: '02b_cang_tay_trai',
+        filePrefix: '06b_vat_ao_duoi',
         idealAspectRatio: '3:4',
       };
 
-    case 'ban_tay_trai':
+    case 'ung_giay':
       return {
-        id: 'ban_tay_trai',
-        nameVi: 'Bàn Tay Trái (Left Hand & Palm)',
-        titleEn: 'SINGLE ISOLATED LEFT ANIME HAND AND FINGERS',
-        assetTag: 'LEFT_HAND_AND_FINGERS_ONLY',
-        summaryEn: 'Left hand, palm, and fingers severed cleanly at wrist joint.',
-        positiveContent: 'A single isolated left anime hand and fingers in clear gesture, cut cleanly at the wrist joint, floating as a detached glove/hand sprite.',
-        excludeShort: 'forearm, arm, torso, body, weapon',
+        id: 'ung_giay',
+        nameVi: 'Ủng Giày Tiên Hiệp (Cultivator Boots)',
+        titleEn: 'MODULAR CULTIVATOR BOOTS SPRITE',
+        assetTag: 'MODULAR_CULTIVATOR_BOOTS_ONLY',
+        summaryEn: `Knee-high cultivator boots with border trims (${costumeColorVi}).`,
+        positiveContent: `A single isolated pair of xianxia cultivator knee-high boots in color theme (${costumeColorVi}) with decorative border trim and reinforced soles, hollow at the knee top opening, designed to slide over bare anime shins and feet for 2D puppet rigging, floating alone on green screen (bilaterally symmetrical boots asset).`,
+        excludeShort: 'bare skin, thighs, torso, arms, head, body',
         includedGeometry: [
-          'left palm and fingers in clear gesture',
-          'clean cut boundary at wrist joint',
+          `knee-high boot shafts and soles in (${costumeColorVi})`,
+          'decorative border trims',
+          'hollow knee top openings',
         ],
         excludedGeometry: [
-          'forearm', 'elbow', 'arm', 'torso', 'body', 'weapon',
+          'bare skin', 'thighs', 'torso', 'arms', 'head', 'body',
         ],
         rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
-        zIndex: 23,
-        filePrefix: '02c_ban_tay_trai',
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
+        zIndex: 24,
+        filePrefix: '06d_ung_giay',
+        idealAspectRatio: '9:16',
+      };
+
+    case 'ong_ao_bap_tay':
+      return {
+        id: 'ong_ao_bap_tay',
+        nameVi: 'Ống Áo Bắp Tay (Upper Arm Sleeve)',
+        titleEn: 'MODULAR UPPER ARM BICEP SLEEVE GARMENT SPRITE',
+        assetTag: 'MODULAR_UPPER_ARM_SLEEVE_GARMENT_ONLY',
+        summaryEn: `Upper bicep sleeve garment segment (${costumeColorVi}).`,
+        positiveContent: `A single isolated xianxia cultivator upper bicep arm sleeve segment in color theme (${costumeColorVi}) with decorative trim borders, hollow at the shoulder joint top opening and hollow at the elbow bottom opening, designed to slide over an anime upper arm (Z-index 53), floating alone on green screen (bilaterally symmetrical single sleeve asset).`,
+        excludeShort: 'bare skin, forearm, hand, torso, chest, body, head',
+        includedGeometry: [
+          `upper arm sleeve fabric drape in (${costumeColorVi})`,
+          'hollow shoulder top opening',
+          'hollow elbow bottom opening',
+        ],
+        excludedGeometry: [
+          'bare skin', 'forearm', 'hand', 'torso', 'head', 'body',
+        ],
+        rearVisibility: 'visible',
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
+        zIndex: 53,
+        filePrefix: '06e_ong_ao_bap_tay',
+        idealAspectRatio: '3:4',
+      };
+
+    case 'dai_lung':
+      return {
+        id: 'dai_lung',
+        nameVi: 'Đai Lưng Thắt Eo (Flat Front Waist Sash & Jade Pendant)',
+        titleEn: 'MODULAR FLAT FRONT XIANXIA WAIST SASH BELT SPRITE',
+        assetTag: 'MODULAR_FLAT_FRONT_WAIST_SASH_BELT_ONLY',
+        summaryEn: `Flat front waistband with center buckle and hanging jade pendant knot (${costumeColorVi}).`,
+        positiveContent: `A standalone flat front xianxia cultivator waist sash belt (front view only: horizontal cloth sash band in color theme (${costumeColorVi}) across the waist with ornate golden center buckle and hanging circular jade knot tassel pendant), strictly front-facing 2D flat silhouette, ZERO 3D oval loop, zero visible rear ring, zero backside perspective, strictly front flat band designed to overlay across the waist seam between tunic and pants (Z-index 52), floating alone on green screen (bilaterally symmetrical single belt asset).`,
+        excludeShort: '3D ring loop, backside of belt, open oval, chest, torso, legs, pants, arms, bare skin, head',
+        includedGeometry: [
+          `flat front waistband sash fabric in (${costumeColorVi})`,
+          'central gold clasp or buckle',
+          'hanging circular jade knot tassel pendant',
+        ],
+        excludedGeometry: [
+          '3D ring loop', 'backside of belt', 'open oval', 'chest', 'torso', 'legs', 'pants', 'arms', 'bare skin', 'head',
+        ],
+        rearVisibility: 'visible',
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
+        zIndex: 52,
+        filePrefix: '06f_dai_lung',
         idealAspectRatio: '1:1',
-      };
-
-    case 'canh_tay_phai':
-      return {
-        id: 'canh_tay_phai',
-        nameVi: 'Cánh Tay Phải - Bắp Tay (Right Upper Arm)',
-        titleEn: 'SINGLE ISOLATED RIGHT UPPER ARM SLEEVE CYLINDER',
-        assetTag: 'RIGHT_UPPER_ARM_SLEEVE_ONLY',
-        summaryEn: `Right upper bicep arm sleeve segment (${costumeColorVi}).`,
-        positiveContent: `A single isolated right upper arm sleeve cylinder in color (${costumeColorVi}), cut cleanly at the shoulder joint and elbow joint, floating as a detached limb segment.`,
-        excludeShort: 'torso, chest, head, forearm, hand, other arm',
-        includedGeometry: [
-          'right upper arm bicep limb tube',
-          `sleeve fabric covering right upper arm in (${costumeColorVi})`,
-          'clean cut line at shoulder joint',
-          'clean cut line at elbow joint',
-        ],
-        excludedGeometry: [
-          'torso', 'chest', 'neck', 'head', 'forearm', 'hand', 'other arm',
-        ],
-        rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
-        zIndex: 19,
-        filePrefix: '02d_canh_tay_phai',
-        idealAspectRatio: '3:4',
-      };
-
-    case 'cang_tay_phai':
-      return {
-        id: 'cang_tay_phai',
-        nameVi: 'Cẳng Tay Phải (Right Forearm)',
-        titleEn: 'SINGLE ISOLATED RIGHT FOREARM BRACER SLEEVE CYLINDER',
-        assetTag: 'RIGHT_FOREARM_BRACER_ONLY',
-        summaryEn: `Right forearm sleeve and bracer segment (${costumeColorVi}).`,
-        positiveContent: `A single isolated right forearm bracer sleeve cylinder in color (${costumeColorVi}), cut cleanly at the elbow joint and wrist joint, floating as a detached limb segment.`,
-        excludeShort: 'upper arm, shoulder, torso, hand, fingers, other arm',
-        includedGeometry: [
-          'right forearm limb tube',
-          `forearm bracer / cuff / sleeve fabric in (${costumeColorVi})`,
-          'clean cut line at elbow joint',
-          'clean cut line at wrist joint',
-        ],
-        excludedGeometry: [
-          'upper arm', 'shoulder', 'torso', 'hand', 'fingers', 'other arm',
-        ],
-        rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
-        zIndex: 18,
-        filePrefix: '02e_cang_tay_phai',
-        idealAspectRatio: '3:4',
-      };
-
-    case 'ban_tay_phai':
-      return {
-        id: 'ban_tay_phai',
-        nameVi: 'Bàn Tay Phải (Right Hand & Palm)',
-        titleEn: 'SINGLE ISOLATED RIGHT ANIME HAND AND FINGERS',
-        assetTag: 'RIGHT_HAND_AND_FINGERS_ONLY',
-        summaryEn: 'Right hand, palm, and fingers severed cleanly at wrist joint.',
-        positiveContent: 'A single isolated right anime hand and fingers in clear gesture, cut cleanly at the wrist joint, floating as a detached glove/hand sprite.',
-        excludeShort: 'forearm, arm, torso, body, weapon',
-        includedGeometry: [
-          'right palm and fingers in clear gesture',
-          'clean cut boundary at wrist joint',
-        ],
-        excludedGeometry: [
-          'forearm', 'elbow', 'arm', 'torso', 'body', 'weapon',
-        ],
-        rearVisibility: 'visible',
-        groupId: '02_torso_arms',
-        groupNameVi: 'Khớp Xương Thân & Cánh Tay',
-        zIndex: 17,
-        filePrefix: '02f_ban_tay_phai',
-        idealAspectRatio: '1:1',
-      };
-
-    case 'dui_trai':
-      return {
-        id: 'dui_trai',
-        nameVi: 'Đùi Trái (Left Thigh)',
-        titleEn: 'SINGLE ISOLATED LEFT THIGH PANTS CYLINDER',
-        assetTag: 'LEFT_THIGH_PANTS_CYLINDER_ONLY',
-        summaryEn: `Left thigh garment/pants limb segment (${costumeColorVi}).`,
-        positiveContent: `A single isolated left thigh pants limb tube in color (${costumeColorVi}), cut cleanly at the hip joint and knee joint, floating as a detached limb segment.`,
-        excludeShort: 'torso, pelvis, shin, boot, foot, other leg',
-        includedGeometry: [
-          'left thigh limb tube',
-          `fabric/pants covering left thigh in (${costumeColorVi})`,
-          'clean cut line at hip joint',
-          'clean cut line at knee joint',
-        ],
-        excludedGeometry: [
-          'torso', 'pelvis', 'shin', 'boot', 'foot', 'other leg',
-        ],
-        rearVisibility: 'visible',
-        groupId: '03_legs_feet',
-        groupNameVi: 'Khớp Xương Chân & Giày',
-        zIndex: 15,
-        filePrefix: '03a_dui_trai',
-        idealAspectRatio: '9:16',
-      };
-
-    case 'cang_chan_trai':
-      return {
-        id: 'cang_chan_trai',
-        nameVi: 'Cẳng Chân & Giày Ủng Trái (Left Shin & Boot)',
-        titleEn: 'SINGLE ISOLATED LEFT SHIN AND BOOT SEGMENT',
-        assetTag: 'LEFT_SHIN_AND_BOOT_ONLY',
-        summaryEn: `Left lower leg and boot (${costumeColorVi}).`,
-        positiveContent: `A single isolated left lower shin and boot segment in color (${costumeColorVi}) with knee guard, cut cleanly at the knee joint, floating as a detached boot sprite.`,
-        excludeShort: 'thigh, hip, torso, body, other leg',
-        includedGeometry: [
-          'left shin limb tube',
-          `left boot / footwear in (${costumeColorVi})`,
-          'knee cap guard',
-          'clean cut line at knee joint',
-        ],
-        excludedGeometry: [
-          'thigh', 'hip', 'torso', 'body', 'other leg',
-        ],
-        rearVisibility: 'visible',
-        groupId: '03_legs_feet',
-        groupNameVi: 'Khớp Xương Chân & Giày',
-        zIndex: 16,
-        filePrefix: '03b_cang_chan_trai',
-        idealAspectRatio: '9:16',
-      };
-
-    case 'dui_phai':
-      return {
-        id: 'dui_phai',
-        nameVi: 'Đùi Phải (Right Thigh)',
-        titleEn: 'SINGLE ISOLATED RIGHT THIGH PANTS CYLINDER',
-        assetTag: 'RIGHT_THIGH_PANTS_CYLINDER_ONLY',
-        summaryEn: `Right thigh garment/pants limb segment (${costumeColorVi}).`,
-        positiveContent: `A single isolated right thigh pants limb tube in color (${costumeColorVi}), cut cleanly at the hip joint and knee joint, floating as a detached limb segment.`,
-        excludeShort: 'torso, pelvis, shin, boot, foot, other leg',
-        includedGeometry: [
-          'right thigh limb tube',
-          `fabric/pants covering right thigh in (${costumeColorVi})`,
-          'clean cut line at hip joint',
-          'clean cut line at knee joint',
-        ],
-        excludedGeometry: [
-          'torso', 'pelvis', 'shin', 'boot', 'foot', 'other leg',
-        ],
-        rearVisibility: 'visible',
-        groupId: '03_legs_feet',
-        groupNameVi: 'Khớp Xương Chân & Giày',
-        zIndex: 13,
-        filePrefix: '03c_dui_phai',
-        idealAspectRatio: '9:16',
-      };
-
-    case 'cang_chan_phai':
-      return {
-        id: 'cang_chan_phai',
-        nameVi: 'Cẳng Chân & Giày Ủng Phải (Right Shin & Boot)',
-        titleEn: 'SINGLE ISOLATED RIGHT SHIN AND BOOT SEGMENT',
-        assetTag: 'RIGHT_SHIN_AND_BOOT_ONLY',
-        summaryEn: `Right lower leg and boot (${costumeColorVi}).`,
-        positiveContent: `A single isolated right lower shin and boot segment in color (${costumeColorVi}) with knee guard, cut cleanly at the knee joint, floating as a detached boot sprite.`,
-        excludeShort: 'thigh, hip, torso, body, other leg',
-        includedGeometry: [
-          'right shin limb tube',
-          `right boot / footwear in (${costumeColorVi})`,
-          'knee cap guard',
-          'clean cut line at knee joint',
-        ],
-        excludedGeometry: [
-          'thigh', 'hip', 'torso', 'body', 'other leg',
-        ],
-        rearVisibility: 'visible',
-        groupId: '03_legs_feet',
-        groupNameVi: 'Khớp Xương Chân & Giày',
-        zIndex: 14,
-        filePrefix: '03d_cang_chan_phai',
-        idealAspectRatio: '9:16',
       };
 
     case 'ao_choang':
@@ -657,9 +865,9 @@ export function getComponentDef(partType: string, options: {
           'torso', 'chest', 'arms', 'hands', 'legs', 'head', 'character body',
         ],
         rearVisibility: 'visible',
-        groupId: '04_props_costumes',
-        groupNameVi: 'Trang Phục Bay & Vũ Khí',
-        zIndex: 8,
+        groupId: '03_props_costumes',
+        groupNameVi: 'Trang Phục & Y Phục Bóc Tách',
+        zIndex: 2,
         filePrefix: '06a_ao_choang',
         idealAspectRatio: '9:16',
       };
@@ -682,8 +890,8 @@ export function getComponentDef(partType: string, options: {
           'character figure', 'hands holding weapon', 'arms', 'body', 'background scenery',
         ],
         rearVisibility: 'visible',
-        groupId: '04_props_costumes',
-        groupNameVi: 'Trang Phục Bay & Vũ Khí',
+        groupId: '04_props_weapons',
+        groupNameVi: 'Vũ Khí & Pháp Bảo Tiên Hiệp',
         zIndex: 60,
         filePrefix: '06_vu_khi',
         idealAspectRatio: '9:16',

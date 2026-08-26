@@ -2,7 +2,7 @@ import React from 'react';
 import { BookOpen, Check, Copy } from 'lucide-react';
 
 interface PromptOutputPanelProps {
-  workflowTab: 'step1_master' | 'step2_decomposed_parts' | 'step3_actions';
+  workflowTab: 'step1_master' | 'step2_limbs' | 'step3_face' | 'step4_costume' | 'step5_actions' | string;
   promptFormatTab: 'en' | 'vi' | 'json';
   setPromptFormatTab: (tab: 'en' | 'vi' | 'json') => void;
   activePromptText: string;
@@ -47,18 +47,18 @@ export const PromptOutputPanel: React.FC<PromptOutputPanelProps> = ({
 
   const renderHeaderTitle = () => {
     if (workflowTab === 'step1_master') {
-      return '👤 BƯỚC 1: PROMPT BẢNG XOAY NHÂN VẬT GỐC (16:9 — 5 GÓC + ĐỈNH ĐẦU)';
+      return '👤 BƯỚC 1: PROMPT MANNEQUIN GỐC / BẢNG XOAY NHÂN VẬT';
     }
-    if (workflowTab === 'step2_decomposed_parts') {
-      if (step2Layout === 'single_isolated_1x1') {
-        return '✂️ BƯỚC 2: BÓC TÁCH ẢNH ĐƠN 4K BIỆT LẬP (KHÔNG LƯỚI)';
-      }
-      if (step2Layout === 'seamless_turnaround_1x4') {
-        return '✂️ BƯỚC 2: CHUỖI XOAY 4 GÓC LIỀN MẠCH (1 HÀNG)';
-      }
-      return '✂️ BƯỚC 2: BÓC TÁCH 6 GÓC ĐIỆN ẢNH (LƯỚI 2×3)';
+    if (workflowTab === 'step2_limbs') {
+      return '🦾 BƯỚC 2: BÓC TÁCH KHUNG XƯƠNG CƠ THỂ (01_MANNEQUIN_LIMBS)';
     }
-    return '⚔️ BƯỚC 3: KỊCH BẢN HÀNH ĐỘNG & BIỂU CẢM 4K';
+    if (workflowTab === 'step3_face') {
+      return '👤 BƯỚC 3: BÓC TÁCH NGŨ QUAN & KHUÔN MẶT (02_FACE_FEATURES)';
+    }
+    if (workflowTab === 'step4_costume') {
+      return '👘 BƯỚC 4: BÓC TÁCH TRANG PHỤC & Y PHỤC (03_COSTUME_CLOTHES)';
+    }
+    return '⚔️ BƯỚC 5: KỊCH BẢN HÀNH ĐỘNG & BIỂU CẢM 4K';
   };
 
   const getCopyButtonLabel = () => {

@@ -98,7 +98,41 @@ export const Step1MasterForm: React.FC<Step1MasterFormProps> = ({ config, setCon
         </div>
       </div>
 
-      {/* 2. Tỷ lệ cơ thể & Tỉ lệ khung hình Aspect Ratio */}
+      {/* 2. Tông Màu Da & Kiểu Khớp Mannequin */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+        <div style={{ background: 'rgba(244, 114, 182, 0.05)', padding: 8, borderRadius: 8, border: '1px solid rgba(244, 114, 182, 0.25)' }}>
+          <label style={{ fontSize: 10.5, fontWeight: 700, color: '#f472b6', display: 'block', marginBottom: 3 }}>
+            🌸 Tông Màu Da (Skin Tone):
+          </label>
+          <select
+            value={config.skin_tone || 'fair_porcelain_pink'}
+            onChange={(e) => setConfig((p) => ({ ...p, skin_tone: e.target.value }))}
+            style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fbcfe8', border: '1px solid rgba(244, 114, 182, 0.4)', borderRadius: 5 }}
+          >
+            <option value="fair_porcelain_pink">🌸 Trắng Hồng Sứ Anime (Fair Porcelain Rosy - Chuẩn Live2D)</option>
+            <option value="porcelain_white">⚪ Trắng Sứ BJD (Pure Porcelain White)</option>
+            <option value="warm_peach">🍑 Da Đào Tự Nhiên (Warm Peach / Beige)</option>
+            <option value="tan_sunkissed">🍫 Da Ngăm Khỏe Khoắn (Tan / Sun-kissed)</option>
+          </select>
+        </div>
+
+        <div style={{ background: 'rgba(52, 211, 153, 0.05)', padding: 8, borderRadius: 8, border: '1px solid rgba(52, 211, 153, 0.25)' }}>
+          <label style={{ fontSize: 10.5, fontWeight: 700, color: '#34d399', display: 'block', marginBottom: 3 }}>
+            ⭕ Khớp Nối & Vạch Cắt (Joints):
+          </label>
+          <select
+            value={config.mannequin_joint_style || 'convex_dome_caps'}
+            onChange={(e) => setConfig((p) => ({ ...p, mannequin_joint_style: e.target.value }))}
+            style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#6ee7b7', border: '1px solid rgba(52, 211, 153, 0.4)', borderRadius: 5 }}
+          >
+            <option value="convex_dome_caps">⭕ Chỏm Lồi Vòng Cung (Convex Dome Cap - Chuẩn Rig 2D)</option>
+            <option value="arc_lines">〰️ Vạch Cung Chỉ Dẫn (Arc Guide Lines)</option>
+            <option value="clean_flat_cut">✂️ Cắt Phẳng Tự Nhiên (Clean Flat Cut)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 3. Tỷ lệ cơ thể & Tỉ lệ khung hình Aspect Ratio */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
         <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: 8, borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <label style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', display: 'block', marginBottom: 3 }}>
@@ -109,7 +143,7 @@ export const Step1MasterForm: React.FC<Step1MasterFormProps> = ({ config, setCon
             onChange={(e) => setConfig((p) => ({ ...p, body_proportion: e.target.value }))}
             style={{ width: '100%', height: 30, padding: '4px 6px', fontSize: 10.5, background: '#040711', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 5 }}
           >
-            <option value="chibi_2_5">Chibi 2.5 đầu (Đầu to, thân gọn cute)</option>
+            <option value="chibi_2_5">Chibi 2.5 đầu (Đầu to, thân gọn cute - Khuyên dùng)</option>
             <option value="chibi_2_heads">Super Chibi 2 đầu (Siêu dễ thương)</option>
             <option value="anime_standard">Anime tiêu chuẩn 6-7 đầu (Thon thả)</option>
             <option value="heroic_martial">Hiệp khách 7.5 đầu (Oai phong)</option>

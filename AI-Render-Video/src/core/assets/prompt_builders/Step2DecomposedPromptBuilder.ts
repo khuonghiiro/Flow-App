@@ -74,11 +74,38 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
   const bangsStyleInfo = getBangsStyleLabels(config.bangs_style, config.custom_bangs_style);
   const bodyPropInfo = getBodyProportionLabels(config.body_proportion, config.custom_body_proportion);
 
+  const angle = config.view_angle || 'front';
+  let angleKey: '000_front' | '045_three_quarter' | '090_side' | '180_back' | 'high_angle' | 'low_angle' = '000_front';
+  let angleLabelVi = '0° Chính diện (Front 0° - Đối xứng)';
+  let angleDescEn = 'Strictly 0° dead-center orthographic front-facing view, perfectly perpendicular to camera, facing directly straight forward at the lens, perfect bilateral symmetry along vertical center axis, strictly ZERO yaw angle rotation, ZERO tilt, strictly NO 3/4 turn';
+
+  if (angle === 'three_quarter' || angle === '45' || angle === 'three_quarter_45') {
+    angleKey = '045_three_quarter';
+    angleLabelVi = '45° Nghiêng 3/4 Trái (3/4 Left 45°)';
+    angleDescEn = 'Standard 45° three-quarter oblique view, turned precisely 45 degrees towards the viewer\'s left (3/4 left turn), showing dimensional depth with near and far perspective foreshortening';
+  } else if (angle === 'profile_side' || angle === '90' || angle === 'side_90') {
+    angleKey = '090_side';
+    angleLabelVi = '90° Nhìn ngang Trái (Side Profile Left 90°)';
+    angleDescEn = 'Pure 90° lateral side profile view facing sideways to the viewer\'s left, perfectly perpendicular sideways, exactly 90 degrees turned, showing flat lateral silhouette with zero front face visible';
+  } else if (angle === 'back' || angle === '180' || angle === 'rear_180') {
+    angleKey = '180_back';
+    angleLabelVi = '180° Sau lưng (Rear Back 180°)';
+    angleDescEn = 'Strictly 180° direct rear back orthographic view, facing completely away from camera, bilateral symmetry from behind, zero front features visible';
+  } else if (angle === 'high_angle' || angle === 'top_down') {
+    angleKey = 'high_angle';
+    angleLabelVi = 'Trên cao nhìn xuống (High Angle)';
+    angleDescEn = 'Strictly high-angle top-down bird-eye perspective looking directly downward at the asset';
+  } else if (angle === 'low_angle' || angle === 'bottom_up') {
+    angleKey = 'low_angle';
+    angleLabelVi = 'Dưới hất lên (Low Angle)';
+    angleDescEn = 'Strictly low-angle bottom-up worm-eye perspective looking directly upward from below';
+  }
+
   const comp = getComponentDef(config.part_type || 'toc_truoc', {
     hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
     eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
     costumeInfo, costumeColorVi, propInfo,
-  });
+  }, angleKey);
 
   // Tự động chọn tỉ lệ khung hình lý tưởng theo từng linh kiện hoặc theo lựa chọn người dùng
   let selectedAspectRatio: '1:1' | '3:4' | '4:3' | '16:9' | '9:16' | string = comp.idealAspectRatio || '1:1';
@@ -103,9 +130,15 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
 
   // Helper to build explicit prompt for any angle of a component using Google Pseudo-Code standard
   const buildPartAnglePrompt = (angleType: '000_front' | '045_three_quarter' | '090_side' | '135_rear' | '180_back' | 'high_angle' | 'low_angle') => {
-    if (angleType === '180_back' && comp.rearVisibility === 'hidden') {
+    const currentComp = getComponentDef(config.part_type || 'toc_truoc', {
+      hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
+      eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
+      costumeInfo, costumeColorVi, propInfo,
+    }, angleType);
+
+    if (angleType === '180_back' && currentComp.rearVisibility === 'hidden') {
       return clampPromptLength(
-        `Generate an isolated sprite:\nASSET: EMPTY_BLANK_CANVAS\nCONTENT: Pure empty canvas with zero graphics, completely hollow space because ${comp.nameVi} is completely hidden and occluded from the rear.\nVIEW: 180° rear back view\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, 100% empty space.`
+        `Generate an isolated sprite:\nASSET: EMPTY_BLANK_CANVAS\nCONTENT: Pure empty canvas with zero graphics, completely hollow space because ${currentComp.nameVi} is completely hidden and occluded from the rear.\nVIEW: 180° rear back view\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, 100% empty space.`
       );
     }
 
@@ -115,13 +148,13 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
         angleDesc = 'Strictly 0° dead-center orthographic front-facing view, perfectly perpendicular to camera, facing directly straight forward at the lens, perfect bilateral symmetry along vertical center axis, strictly ZERO yaw angle rotation, ZERO tilt, strictly NO 3/4 turn';
         break;
       case '045_three_quarter':
-        angleDesc = 'Standard 45° three-quarter oblique view, turned precisely 45 degrees, showing dimensional depth and 3/4 contour';
+        angleDesc = 'Standard 45° three-quarter oblique view, turned precisely 45 degrees towards the viewer\'s left (3/4 left turn), showing dimensional depth with near and far perspective foreshortening';
         break;
       case '090_side':
-        angleDesc = 'Pure 90° lateral side profile view, perfectly perpendicular sideways, exactly 90 degrees turned, showing flat lateral silhouette with zero front face visible';
+        angleDesc = 'Pure 90° lateral side profile view facing sideways to the viewer\'s left, perfectly perpendicular sideways, exactly 90 degrees turned, showing flat lateral silhouette with zero front face visible';
         break;
       case '135_rear':
-        angleDesc = 'Standard 135° rear three-quarter oblique view from behind, turned 135 degrees, showing back profile and rear volume';
+        angleDesc = 'Standard 135° rear three-quarter oblique view from behind turned 135 degrees towards the rear left, showing back profile and rear volume';
         break;
       case '180_back':
         angleDesc = 'Strictly 180° direct rear back orthographic view, facing completely away from camera, bilateral symmetry from behind, zero front features visible';
@@ -134,46 +167,19 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
         break;
     }
 
-    const bangsField = comp.id === 'toc_truoc' ? `\nBANGS_STYLE: ${bangsStyleInfo.en}` : '';
-    let extractionRule = `Replicate the EXACT ${comp.titleEn} shape, silhouette, and colors from the reference character if provided. Strictly omit all surrounding body parts.`;
+    const bangsField = currentComp.id === 'toc_truoc' ? `\nBANGS_STYLE: ${bangsStyleInfo.en}` : '';
+    let extractionRule = `Replicate the EXACT ${currentComp.titleEn} shape, silhouette, and colors from the reference character if provided. Strictly omit all surrounding body parts.`;
 
-    if (comp.id === 'toc_truoc') {
+    if (currentComp.id === 'toc_truoc') {
       extractionRule = `Extract/Generate ONLY the standalone front bangs clip-on hair accessory (${bangsStyleInfo.en}) as a detached decorative hair attachment floating alone on green screen. Strictly erase, omit, and replace with green background: all back hair, rear hair mantle, head, skull, face, eyes, and body.`;
-    } else if (comp.id === 'toc_sau') {
+    } else if (currentComp.id === 'toc_sau') {
       extractionRule = `Extract/Generate ONLY the plain base rear back hair (${hairLenInfo.en}, ${hairTexInfo.en}) with clean exposed forehead and pulled-back hairline. Strictly zero decorative front bangs or forehead fringe.`;
     }
 
     return clampPromptLength(
-      `Task: Extract isolated 2D anime layer sprite.\nASSET: ${comp.assetTag}\nCONTENT: ${comp.positiveContent}${bangsField}\nVIEW: ${angleDesc}\nCOMPOSITION: Perfectly centered horizontally and vertically at the exact middle of the canvas, floating standalone with generous equal green padding on all 4 borders (top, bottom, left, right), zero cropping, fully contained inside the frame.\nSTYLE: 2D ${artStyleEn}, clean crisp anime lineart, flat 2-tone cel shading\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, dead-center placement, nothing else visible except the asset itself\nEXTRACTION_DIRECTIVE: ${extractionRule}\nEXCLUDE: ${comp.excludeShort}, off-center placement, shifted to edges, touching canvas border, cropped sprite, 3/4 angled turn on front view, rotated yaw angle, tilted camera, off-center perspective, dynamic pose tilt, Dutch angle.`
+      `Task: Extract isolated 2D anime layer sprite.\nASSET: ${currentComp.assetTag}\nCONTENT: ${currentComp.positiveContent}${bangsField}\nVIEW: ${angleDesc}\nCOMPOSITION: Perfectly centered horizontally and vertically at the exact middle of the canvas, floating standalone with generous equal green padding on all 4 borders (top, bottom, left, right), zero cropping, fully contained inside the frame.\nSTYLE: 2D ${artStyleEn}, clean crisp anime lineart, flat 2-tone cel shading\nCANVAS: solid ${bgPromptColorHex} ${bgPromptColorEn}, dead-center placement, nothing else visible except the asset itself\nEXTRACTION_DIRECTIVE: ${extractionRule}\nEXCLUDE: ${currentComp.excludeShort}, off-center placement, shifted to edges, touching canvas border, cropped sprite, 3/4 angled turn on front view, rotated yaw angle, tilted camera, off-center perspective, dynamic pose tilt, Dutch angle.`
     );
   };
-
-  const angle = config.view_angle || 'front';
-  let angleKey: '000_front' | '045_three_quarter' | '090_side' | '180_back' | 'high_angle' | 'low_angle' = '000_front';
-  let angleLabelVi = '0° Chính diện (Front 0°)';
-  let angleDescEn = 'Strictly 0° dead-center orthographic front-facing view, perfectly perpendicular to camera, facing directly straight forward at the lens, perfect bilateral symmetry along vertical center axis, strictly ZERO yaw angle rotation, ZERO tilt, strictly NO 3/4 turn';
-
-  if (angle === 'three_quarter' || angle === '45' || angle === 'three_quarter_45') {
-    angleKey = '045_three_quarter';
-    angleLabelVi = '45° Nghiêng 3/4 (Three-Quarter 45°)';
-    angleDescEn = 'Standard 45° three-quarter oblique view, turned precisely 45 degrees, showing dimensional depth and 3/4 contour';
-  } else if (angle === 'profile_side' || angle === '90' || angle === 'side_90') {
-    angleKey = '090_side';
-    angleLabelVi = '90° Nhìn ngang (Side Profile 90°)';
-    angleDescEn = 'Pure 90° lateral side profile view, perfectly perpendicular sideways, exactly 90 degrees turned, showing flat lateral silhouette with zero front face visible';
-  } else if (angle === 'back' || angle === '180' || angle === 'rear_180') {
-    angleKey = '180_back';
-    angleLabelVi = '180° Sau lưng (Rear Back 180°)';
-    angleDescEn = comp.rearVisibility === 'hidden' ? 'Bị khuất từ sau lưng (ô rỗng)' : 'Strictly 180° direct rear back orthographic view, facing completely away from camera, bilateral symmetry from behind, zero front features visible';
-  } else if (angle === 'high_angle' || angle === 'top_down') {
-    angleKey = 'high_angle';
-    angleLabelVi = 'Trên cao nhìn xuống (High Angle)';
-    angleDescEn = 'Strictly high-angle top-down bird-eye perspective looking directly downward at the asset';
-  } else if (angle === 'low_angle' || angle === 'bottom_up') {
-    angleKey = 'low_angle';
-    angleLabelVi = 'Dưới hất lên (Low Angle)';
-    angleDescEn = 'Strictly low-angle bottom-up worm-eye perspective looking directly upward from below';
-  }
 
   const singleAnglePromptItem = {
     name: `${comp.filePrefix}_${angleKey}`,
@@ -195,19 +201,36 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
 
   // 1:1 SINGLE ASSET MODE
   if (sheet === 'single_isolated_1x1' || sheet === 'single_part') {
+    const comp000 = getComponentDef(config.part_type || 'toc_truoc', {
+      hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
+      eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
+      costumeInfo, costumeColorVi, propInfo,
+    }, '000_front');
+
+    const comp045 = getComponentDef(config.part_type || 'toc_truoc', {
+      hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
+      eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
+      costumeInfo, costumeColorVi, propInfo,
+    }, '045_three_quarter');
+
+    const comp090 = getComponentDef(config.part_type || 'toc_truoc', {
+      hairColInfo, hairTexInfo, hairLenInfo, hairAccInfo, bangsStyleInfo,
+      eyeShapeInfo, eyeColInfo, noseInfo, mouthInfo,
+      costumeInfo, costumeColorVi, propInfo,
+    }, '090_side');
 
     const allComponentAnglesPrompts = [
       {
-        name: `${comp.filePrefix}_000_front`,
-        part_id: comp.id,
-        part_name: comp.nameVi,
-        group_id: comp.groupId,
-        group_name: comp.groupNameVi,
-        angle: '0° Front (Chính diện)',
+        name: `${comp000.filePrefix}_000_front`,
+        part_id: comp000.id,
+        part_name: comp000.nameVi,
+        group_id: comp000.groupId,
+        group_name: comp000.groupNameVi,
+        angle: '0° Front (Chính diện - Đối xứng)',
         angle_id: '000_front',
         angle_deg: 0,
-        z_index: comp.zIndex,
-        save_filename: `${comp.filePrefix}_000_front.png`,
+        z_index: comp000.zIndex,
+        save_filename: `${comp000.filePrefix}_000_front.png`,
         aspect_ratio: selectedAspectRatio,
         view_desc: 'Góc chính diện 0° lơ lửng độc lập',
         rule: ruleText,
@@ -215,35 +238,35 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
         count: userBatchCount,
       },
       {
-        name: `${comp.filePrefix}_045_three_quarter`,
-        part_id: comp.id,
-        part_name: comp.nameVi,
-        group_id: comp.groupId,
-        group_name: comp.groupNameVi,
-        angle: '45° Three-Quarter (Nghiêng 3/4)',
+        name: `${comp045.filePrefix}_045_three_quarter`,
+        part_id: comp045.id,
+        part_name: comp045.nameVi,
+        group_id: comp045.groupId,
+        group_name: comp045.groupNameVi,
+        angle: '45° Three-Quarter Left (Nghiêng 3/4 Trái)',
         angle_id: '045_three_quarter',
         angle_deg: 45,
-        z_index: comp.zIndex,
-        save_filename: `${comp.filePrefix}_045_three_quarter.png`,
+        z_index: comp045.zIndex,
+        save_filename: `${comp045.filePrefix}_045_three_quarter.png`,
         aspect_ratio: selectedAspectRatio,
-        view_desc: 'Góc nghiêng 3/4 45 độ',
+        view_desc: 'Góc nghiêng 3/4 45 độ quay sang trái',
         rule: ruleText,
         prompt: buildPartAnglePrompt('045_three_quarter'),
         count: userBatchCount,
       },
       {
-        name: `${comp.filePrefix}_090_side`,
-        part_id: comp.id,
-        part_name: comp.nameVi,
-        group_id: comp.groupId,
-        group_name: comp.groupNameVi,
-        angle: '90° Side Profile (Nhìn ngang)',
+        name: `${comp090.filePrefix}_090_side`,
+        part_id: comp090.id,
+        part_name: comp090.nameVi,
+        group_id: comp090.groupId,
+        group_name: comp090.groupNameVi,
+        angle: '90° Side Profile Left (Nhìn ngang Trái)',
         angle_id: '090_side',
         angle_deg: 90,
-        z_index: comp.zIndex,
-        save_filename: `${comp.filePrefix}_090_side.png`,
+        z_index: comp090.zIndex,
+        save_filename: `${comp090.filePrefix}_090_side.png`,
         aspect_ratio: selectedAspectRatio,
-        view_desc: 'Góc nhìn ngang 90 độ',
+        view_desc: 'Góc nhìn ngang 90 độ quay sang trái',
         rule: ruleText,
         prompt: buildPartAnglePrompt('090_side'),
         count: userBatchCount,

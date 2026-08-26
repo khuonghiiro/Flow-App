@@ -16,6 +16,13 @@ export type Character2DPartType =
   | 'mieng'
   | 'toc_truoc'
   | 'toc_sau'
+  | 'than_mannequin'
+  | 'bap_tay'
+  | 'cang_tay'
+  | 'ban_tay'
+  | 'dui'
+  | 'cang_chan'
+  | 'ban_chan'
   | 'than_co_ban'
   | 'canh_tay_trai'
   | 'cang_tay_trai'
@@ -28,6 +35,11 @@ export type Character2DPartType =
   | 'cang_chan_trai'
   | 'dui_phai'
   | 'cang_chan_phai'
+  | 'ong_ao_bap_tay'
+  | 'ong_tay_xoe'
+  | 'dai_lung'
+  | 'vat_ao_duoi'
+  | 'ung_giay'
   | 'trang_phuc'
   | 'ao_choang'
   | 'vu_khi';
@@ -263,6 +275,9 @@ export interface AIPartPromptConfig {
   // Body & Proportions
   body_proportion?: string;
   custom_body_proportion?: string;
+  skin_tone?: 'fair_porcelain_pink' | 'porcelain_white' | 'warm_peach' | 'tan_sunkissed' | string;
+  custom_skin_tone?: string;
+  mannequin_joint_style?: 'convex_dome_caps' | 'arc_lines' | 'clean_flat_cut' | string;
   // Hair specific
   hair_length?: string;
   custom_hair_length?: string;

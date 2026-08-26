@@ -4,6 +4,8 @@ import {
   Scissors,
   User,
   Swords,
+  Eye,
+  Shirt,
 } from 'lucide-react';
 import { AIPartPromptConfig, Character2DPartType } from '../../types/scene2d';
 import { buildAIPromptForPart, buildFilenameVariants, AIPromptResult } from '../../core/assets/Asset2DRegistry';
@@ -13,19 +15,21 @@ import { PromptOutputPanel } from './prompt/PromptOutputPanel';
 import { JsonSchemaGuideModal } from './prompt/JsonSchemaGuideModal';
 
 export const AIPromptGenerator2D: React.FC = () => {
-  const [workflowTab, setWorkflowTab] = useState<'step1_master' | 'step2_decomposed_parts' | 'step3_actions'>('step1_master');
+  const [workflowTab, setWorkflowTab] = useState<
+    'step1_master' | 'step2_limbs' | 'step3_face' | 'step4_costume' | 'step5_actions'
+  >('step1_master');
   const [promptFormatTab, setPromptFormatTab] = useState<'en' | 'vi' | 'json'>('en');
 
-  // Category & Decomposed selection state (Step 2)
+  // Category & Decomposed selection state (Step 2, 3, 4)
   const [targetCategory, setTargetCategory] = useState<
     'character' | 'animal' | 'tree' | 'rock' | 'water' | 'mountain' | 'building'
   >('character');
-  const [selectedTag, setSelectedTag] = useState<Character2DPartType>('toc_truoc');
+  const [selectedTag, setSelectedTag] = useState<Character2DPartType>('than_mannequin');
   const [step2Layout, setStep2Layout] = useState<'single_isolated_1x1' | 'seamless_turnaround_1x4' | 'cinematic_single_part_2x3'>('single_isolated_1x1');
   const [step2Angle, setStep2Angle] = useState<'front' | 'three_quarter' | 'profile_side' | 'back' | 'high_angle' | 'low_angle'>('front');
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
 
-  // Sync Count, Base Prompt & Scope options (Step 2)
+  // Sync Count, Base Prompt & Scope options
   const [batchCount, setBatchCount] = useState<number>(1);
   const [includeBasePrompt, setIncludeBasePrompt] = useState<boolean>(true);
   const [jsonExportScope, setJsonExportScope] = useState<'component_all_angles' | 'single_angle' | 'group_all_parts'>('component_all_angles');
@@ -35,12 +39,14 @@ export const AIPromptGenerator2D: React.FC = () => {
   const [config, setConfig] = useState<AIPartPromptConfig>({
     workflow_step: 'step1_master_character',
     sheet_type: 'single_isolated_1x1',
-    part_type: 'toc_truoc',
+    part_type: 'than_mannequin',
     character_style: 'Chinese Guoman / 国漫 Xianxia Chibi Anime',
     custom_character_style: '',
     gender: 'nu',
     body_proportion: 'chibi_2_5',
     custom_body_proportion: '',
+    skin_tone: 'fair_porcelain_pink',
+    mannequin_joint_style: 'convex_dome_caps',
     view_angle: 'front',
     action_or_expression: 'Mỉm cười thanh tao nhẹ nhàng, thần thái tiên tử bí ẩn',
     color_theme: 'Trắng bạch kim phối tím nhạt viền ngọc bích',
@@ -48,7 +54,7 @@ export const AIPromptGenerator2D: React.FC = () => {
     clean_background: true,
     aspect_ratio: 'auto',
     bg_type: 'chroma_green',
-    // Five Senses & Facial (Step 1)
+    // Five Senses & Facial (Step 3)
     eye_shape: 'Mắt anime to tròn long lanh tinh anh',
     custom_eye_shape: '',
     eye_color: 'Lam ngọc sáng lấp lánh (Sparkling Platinum Blue)',
@@ -58,14 +64,14 @@ export const AIPromptGenerator2D: React.FC = () => {
     mouth_style: 'Khẩu hình cười mỉm nhỏ nhắn môi mảnh',
     custom_mouth_style: '',
     ear_style: 'human_natural',
-    // Costume & Robes (Step 1)
+    // Costume & Robes (Step 4)
     costume_style: 'Đạo bào Hanfu tu tiên trắng lụa, viền tím nhạt, tà áo thướt tha dải lụa bay',
     custom_costume_style: '',
     costume_color: 'Trắng bạch kim phối tím nhạt viền ngọc bích',
-    // Weapon & Prop Item (Step 1)
+    // Weapon & Prop Item
     prop_item: 'Kiếm tiên phát sáng linh lực lam ngọc',
     custom_prop_item: '',
-    // Hair (Step 1 & Step 2)
+    // Hair
     hair_length: 'Dài quá eo buông xõa mượt mà',
     custom_hair_length: '',
     hair_texture: 'Tóc thẳng suôn mượt rẽ ngôi giữa kèm 2 lọn ôm má',
@@ -82,8 +88,13 @@ export const AIPromptGenerator2D: React.FC = () => {
 
   const [baseCount, setBaseCount] = useState<number>(1);
 
-  // Action Sequence Generator State (Step 3)
+  // Action Sequence Generator State (Step 5)
   const [actionType, setActionType] = useState<'combat' | 'dialogue' | 'emotion' | 'eat' | 'transition'>('combat');
+
+  const isDecomposedStep =
+    workflowTab === 'step2_limbs' ||
+    workflowTab === 'step3_face' ||
+    workflowTab === 'step4_costume';
 
   // Derive Effective Prompt Config based on active workflow step
   const effectiveConfig: AIPartPromptConfig = {
@@ -91,7 +102,7 @@ export const AIPromptGenerator2D: React.FC = () => {
     workflow_step:
       workflowTab === 'step1_master'
         ? 'step1_master_character'
-        : workflowTab === 'step2_decomposed_parts'
+        : isDecomposedStep
         ? 'step2_decomposed_parts'
         : undefined,
     sheet_type:
@@ -99,7 +110,7 @@ export const AIPromptGenerator2D: React.FC = () => {
         ? 'body_turnaround_grid'
         : step2Layout,
     part_type: selectedTag,
-    view_angle: workflowTab === 'step2_decomposed_parts' ? step2Angle : config.view_angle,
+    view_angle: isDecomposedStep ? step2Angle : config.view_angle,
     aspect_ratio: workflowTab === 'step1_master' ? '16:9' : (config.aspect_ratio || 'auto'),
     include_base_prompt: includeBasePrompt,
     batch_count: batchCount,
@@ -196,12 +207,12 @@ export const AIPromptGenerator2D: React.FC = () => {
   const currentAction = generateActionSequencePrompt();
 
   const getActivePromptText = () => {
-    if (workflowTab === 'step3_actions') return currentAction.promptVi;
+    if (workflowTab === 'step5_actions') return currentAction.promptVi;
     if (workflowTab === 'step1_master') {
       if (promptFormatTab === 'vi') return promptResult.promptVietnamese;
       return promptResult.promptEnglish;
     }
-    // step2_decomposed_parts
+    // Decomposed steps (2, 3, 4)
     if (promptFormatTab === 'en') return promptResult.promptEnglish;
     if (promptFormatTab === 'vi') return promptResult.promptVietnamese;
     if (jsonExportScope === 'group_all_parts') {
@@ -214,7 +225,7 @@ export const AIPromptGenerator2D: React.FC = () => {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(460px, 520px) 1fr',
+        gridTemplateColumns: 'minmax(480px, 540px) 1fr',
         gap: 16,
         height: '100%',
         padding: '12px 16px',
@@ -223,7 +234,7 @@ export const AIPromptGenerator2D: React.FC = () => {
         color: '#f8fafc',
       }}
     >
-      {/* ─── CỘT TRÁI: CẤU HÌNH BƯỚC 1 - 2 - 3 ─── */}
+      {/* ─── CỘT TRÁI: CẤU HÌNH THEO THỨ TỰ CÁC BƯỚC (BƯỚC 1 -> 4) ─── */}
       <div
         style={{
           display: 'flex',
@@ -236,23 +247,24 @@ export const AIPromptGenerator2D: React.FC = () => {
           overflow: 'hidden',
         }}
       >
-        {/* Header Tabs */}
+        {/* Header Tabs 5 Bước Tuần Tự */}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={16} color="#38bdf8" /> Trợ Lý Tạo Prompt Hoạt Ảnh 2D
+            <Sparkles size={16} color="#38bdf8" /> Trợ Lý Tạo Prompt Hoạt Ảnh 2D (Theo Bước)
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
+            {/* BƯỚC 1: Mannequin Gốc */}
             <button
               onClick={() => {
                 setWorkflowTab('step1_master');
                 setPromptFormatTab('en');
               }}
               style={{
-                padding: '8px 6px',
-                fontSize: 11,
+                padding: '6px 4px',
+                fontSize: 10,
                 fontWeight: 700,
-                borderRadius: 8,
+                borderRadius: 6,
                 border: workflowTab === 'step1_master' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
                 background: workflowTab === 'step1_master' ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'rgba(255,255,255,0.03)',
                 color: workflowTab === 'step1_master' ? '#ffffff' : '#94a3b8',
@@ -261,58 +273,123 @@ export const AIPromptGenerator2D: React.FC = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 2,
+                textAlign: 'center',
               }}
             >
-              <User size={14} />
+              <User size={13} />
               <span>BƯỚC 1</span>
-              <span style={{ fontSize: 9.5, opacity: 0.9 }}>Bảng Xoay 16:9</span>
+              <span style={{ fontSize: 8.5, opacity: 0.9 }}>Mannequin</span>
             </button>
 
+            {/* BƯỚC 2: 01_mannequin_limbs */}
             <button
               onClick={() => {
-                setWorkflowTab('step2_decomposed_parts');
+                setWorkflowTab('step2_limbs');
                 setPromptFormatTab('json');
+                setSelectedTag('than_mannequin');
+                setConfig((p) => ({ ...p, part_type: 'than_mannequin' }));
               }}
               style={{
-                padding: '8px 6px',
-                fontSize: 11,
+                padding: '6px 4px',
+                fontSize: 10,
                 fontWeight: 700,
-                borderRadius: 8,
-                border: workflowTab === 'step2_decomposed_parts' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.08)',
-                background: workflowTab === 'step2_decomposed_parts' ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.03)',
-                color: workflowTab === 'step2_decomposed_parts' ? '#ffffff' : '#94a3b8',
+                borderRadius: 6,
+                border: workflowTab === 'step2_limbs' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.08)',
+                background: workflowTab === 'step2_limbs' ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.03)',
+                color: workflowTab === 'step2_limbs' ? '#ffffff' : '#94a3b8',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 2,
+                textAlign: 'center',
               }}
             >
-              <Scissors size={14} />
+              <Scissors size={13} />
               <span>BƯỚC 2</span>
-              <span style={{ fontSize: 9.5, opacity: 0.9 }}>Bóc Tách Khớp Xương</span>
+              <span style={{ fontSize: 8.5, opacity: 0.9 }}>01_Limbs</span>
             </button>
 
+            {/* BƯỚC 3: 02_face_features */}
             <button
-              onClick={() => setWorkflowTab('step3_actions')}
+              onClick={() => {
+                setWorkflowTab('step3_face');
+                setPromptFormatTab('json');
+                setSelectedTag('khuon_mat_no_face');
+                setConfig((p) => ({ ...p, part_type: 'khuon_mat_no_face' }));
+              }}
               style={{
-                padding: '8px 6px',
-                fontSize: 11,
+                padding: '6px 4px',
+                fontSize: 10,
                 fontWeight: 700,
-                borderRadius: 8,
-                border: workflowTab === 'step3_actions' ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
-                background: workflowTab === 'step3_actions' ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : 'rgba(255,255,255,0.03)',
-                color: workflowTab === 'step3_actions' ? '#ffffff' : '#94a3b8',
+                borderRadius: 6,
+                border: workflowTab === 'step3_face' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                background: workflowTab === 'step3_face' ? 'linear-gradient(135deg, #0ea5e9, #0284c7)' : 'rgba(255,255,255,0.03)',
+                color: workflowTab === 'step3_face' ? '#ffffff' : '#94a3b8',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 2,
+                textAlign: 'center',
               }}
             >
-              <Swords size={14} />
+              <Eye size={13} />
               <span>BƯỚC 3</span>
-              <span style={{ fontSize: 9.5, opacity: 0.9 }}>Kịch Bản 4K</span>
+              <span style={{ fontSize: 8.5, opacity: 0.9 }}>02_Face</span>
+            </button>
+
+            {/* BƯỚC 4: 03_costume_clothes */}
+            <button
+              onClick={() => {
+                setWorkflowTab('step4_costume');
+                setPromptFormatTab('json');
+                setSelectedTag('than_co_ban');
+                setConfig((p) => ({ ...p, part_type: 'than_co_ban' }));
+              }}
+              style={{
+                padding: '6px 4px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 6,
+                border: workflowTab === 'step4_costume' ? '1px solid #f472b6' : '1px solid rgba(255,255,255,0.08)',
+                background: workflowTab === 'step4_costume' ? 'linear-gradient(135deg, #ec4899, #db2777)' : 'rgba(255,255,255,0.03)',
+                color: workflowTab === 'step4_costume' ? '#ffffff' : '#94a3b8',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                textAlign: 'center',
+              }}
+            >
+              <Shirt size={13} />
+              <span>BƯỚC 4</span>
+              <span style={{ fontSize: 8.5, opacity: 0.9 }}>03_Costume</span>
+            </button>
+
+            {/* BƯỚC 5: Kịch bản Action */}
+            <button
+              onClick={() => setWorkflowTab('step5_actions')}
+              style={{
+                padding: '6px 4px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 6,
+                border: workflowTab === 'step5_actions' ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
+                background: workflowTab === 'step5_actions' ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : 'rgba(255,255,255,0.03)',
+                color: workflowTab === 'step5_actions' ? '#ffffff' : '#94a3b8',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                textAlign: 'center',
+              }}
+            >
+              <Swords size={13} />
+              <span>BƯỚC 5</span>
+              <span style={{ fontSize: 8.5, opacity: 0.9 }}>Kịch Bản</span>
             </button>
           </div>
         </div>
@@ -323,7 +400,7 @@ export const AIPromptGenerator2D: React.FC = () => {
             <Step1MasterForm config={config} setConfig={setConfig} />
           )}
 
-          {workflowTab === 'step2_decomposed_parts' && (
+          {workflowTab === 'step2_limbs' && (
             <Step2DecomposedForm
               config={config}
               setConfig={setConfig}
@@ -335,10 +412,43 @@ export const AIPromptGenerator2D: React.FC = () => {
               setTargetCategory={setTargetCategory}
               selectedTag={selectedTag}
               setSelectedTag={setSelectedTag}
+              activeStepFilter="01_mannequin_limbs"
             />
           )}
 
-          {workflowTab === 'step3_actions' && (
+          {workflowTab === 'step3_face' && (
+            <Step2DecomposedForm
+              config={config}
+              setConfig={setConfig}
+              step2Layout={step2Layout}
+              setStep2Layout={setStep2Layout}
+              step2Angle={step2Angle}
+              setStep2Angle={setStep2Angle}
+              targetCategory={targetCategory}
+              setTargetCategory={setTargetCategory}
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+              activeStepFilter="02_face_features"
+            />
+          )}
+
+          {workflowTab === 'step4_costume' && (
+            <Step2DecomposedForm
+              config={config}
+              setConfig={setConfig}
+              step2Layout={step2Layout}
+              setStep2Layout={setStep2Layout}
+              step2Angle={step2Angle}
+              setStep2Angle={setStep2Angle}
+              targetCategory={targetCategory}
+              setTargetCategory={setTargetCategory}
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+              activeStepFilter="03_costume_clothes"
+            />
+          )}
+
+          {workflowTab === 'step5_actions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ background: 'rgba(168, 85, 247, 0.12)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.35)', fontSize: 11, color: '#f3e8ff', lineHeight: 1.4 }}>
                 ⚔️ <b>Sinh kịch bản chuyển cảnh, tung chiêu và biểu cảm cho Motion Comic 4K</b>.
@@ -390,7 +500,7 @@ export const AIPromptGenerator2D: React.FC = () => {
         step2Layout={step2Layout}
         activeGroupItemCount={activeGroup.items.length}
         onOpenSchemaGuide={() => setIsSchemaModalOpen(true)}
-        cameraGuide={workflowTab === 'step3_actions' ? currentAction.cameraGuide : undefined}
+        cameraGuide={workflowTab === 'step5_actions' ? currentAction.cameraGuide : undefined}
       />
 
       {/* ─── MODAL TRA CỨU JSON SCHEMA GUIDE ─── */}
