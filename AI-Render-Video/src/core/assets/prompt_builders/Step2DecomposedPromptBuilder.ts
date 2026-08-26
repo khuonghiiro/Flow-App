@@ -121,7 +121,7 @@ export function buildStep2DecomposedPrompt(config: AIPartPromptConfig): AIPrompt
 
   const userBatchCount = typeof config.batch_count === 'number' && config.batch_count > 0 ? Math.min(4, Math.max(1, config.batch_count)) : 1;
   const userBaseCount = typeof config.base_count === 'number' && config.base_count > 0 ? Math.min(4, Math.max(1, config.base_count)) : 1;
-  
+
   const ruleText = config.custom_rules?.trim() ||
     `MANDATORY: Solid flat ${bgPromptColorHex} ${bgPromptColorEn} background, zero shadows, no text, no watermark. Subject MUST be positioned exactly at the dead-center (centered horizontally and vertically on both X and Y axes) with generous equal green padding on all 4 borders, fully visible, zero cropping, nothing touching edges. If reference image is provided, use it ONLY for color/style matching — do NOT reproduce full character, body pose, or other anatomy.`;
 

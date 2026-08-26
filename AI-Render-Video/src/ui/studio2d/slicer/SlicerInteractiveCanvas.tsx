@@ -1,8 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, Layers, ZoomIn, ZoomOut, Target, Grid, Undo2, Redo2, Table, Scissors, X, Check } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../core/assets/GridSliceRegistry';
+import { SlicerUploadedImageItem } from './hooks/useSlicerMultiImageGallery';
+import { ChromaProcessOptions } from '../../../core/utils/ChromaDespeckleProcessor';
 
-interface SlicerInteractiveCanvasProps {
+// Subcomponents
+import { SlicerCanvasTopBar } from './canvas/SlicerCanvasTopBar';
+import { SlicerGridCardWithBBox } from './canvas/SlicerGridCardWithBBox';
+import { SlicerBBoxControlCard } from './canvas/SlicerBBoxControlCard';
+import { SlicerEyedropperOverlay } from './canvas/SlicerEyedropperOverlay';
+
+export interface SlicerInteractiveCanvasProps {
   imageCanvasRef: React.RefObject<HTMLCanvasElement>;
   hasImage?: boolean;
   loadedImage?: HTMLImageElement | null;
@@ -38,6 +45,18 @@ interface SlicerInteractiveCanvasProps {
   directBBoxPadding?: number;
   setDirectBBoxPadding?: (pad: number) => void;
   onApplyDirectBBoxCrop?: () => void;
+  chromaOptions?: ChromaProcessOptions;
+
+  // Checked images grid mode
+  checkedImageItems?: SlicerUploadedImageItem[];
+  activeImageId?: string;
+  onSelectCheckedImage?: (id: string) => void;
+  onToggleCheckedItem?: (id: string) => void;
+  onClearCheckedImages?: () => void;
+
+  // Eyedropper callbacks
+  onPickColor?: (hex: string) => void;
+  onHoverColor?: (c: { hex: string; r: number; g: number; b: number; x: number; y: number } | null) => void;
 }
 
 export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = ({
@@ -74,6 +93,14 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   directBBoxPadding = 0,
   setDirectBBoxPadding,
   onApplyDirectBBoxCrop,
+  chromaOptions,
+  checkedImageItems = [],
+  activeImageId,
+  onSelectCheckedImage,
+  onToggleCheckedItem,
+  onClearCheckedImages,
+  onPickColor,
+  onHoverColor,
 }) => {
   const [zoom, setZoom] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -82,57 +109,35 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Tự động tính toán tỷ lệ zoom tối ưu để ảnh vừa khít và căn giữa hoàn hảo trong khung nhìn (viewport)
-   */
   const handleAutoFitToViewport = useCallback(() => {
     const canvas = imageCanvasRef.current;
     const viewport = viewportRef.current;
     if (!canvas || !viewport) return;
-
-    const imgW = canvas.width;
-    const imgH = canvas.height;
-    if (!imgW || !imgH) return;
-
-    const vRect = viewport.getBoundingClientRect();
-    const pad = 24; // Padding lề an toàn
-    const availW = Math.max(50, vRect.width - pad);
-    const availH = Math.max(50, vRect.height - pad);
-
-    // Tính tỷ lệ co giãn theo cả 2 trục (nếu ảnh nhỏ hơn khung nhìn, giữ 1.0 để thấy đúng kích thước thật)
-    const fitScale = Math.min(availW / imgW, availH / imgH);
-    const optimalZoom = Math.max(0.05, Math.min(1.0, Math.round(fitScale * 100) / 100));
-
-    setZoom(optimalZoom);
+    const vpW = viewport.clientWidth - 40;
+    const vpH = viewport.clientHeight - 40;
+    if (vpW <= 0 || vpH <= 0 || canvas.width <= 0 || canvas.height <= 0) return;
+    const scale = Math.min(vpW / canvas.width, vpH / canvas.height, 1.0);
+    setZoom(Math.max(0.1, Math.round(scale * 100) / 100));
     setPanOffset({ x: 0, y: 0 });
   }, [imageCanvasRef]);
 
-  // Tự động căn giữa và vừa khung khi nạp ảnh mới hoặc khi đổi ảnh
   useEffect(() => {
-    if (!hasImage) {
-      setZoom(1);
-      setPanOffset({ x: 0, y: 0 });
-      return;
-    }
-
-    const timer = setTimeout(() => {
+    if (hasImage && checkedImageItems.length <= 1) {
       handleAutoFitToViewport();
-    }, 40);
+    }
+  }, [hasImage, checkedImageItems.length, handleAutoFitToViewport]);
 
-    return () => clearTimeout(timer);
-  }, [hasImage, loadedImage, handleAutoFitToViewport]);
-
-  // Spacebar pan listener
+  // Spacebar pan navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-        e.preventDefault();
+      if (e.code === 'Space' && !e.repeat && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         setIsSpacePressed(true);
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         setIsSpacePressed(false);
+        setIsPanning(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -144,29 +149,21 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   }, []);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!hasImage || isEyedropperActive) return;
-    e.preventDefault();
-    if (!viewportRef.current) return;
-
-    const cRect = viewportRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - (cRect.left + cRect.width / 2);
-    const mouseY = e.clientY - (cRect.top + cRect.height / 2);
-
-    const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-    const newZoom = Math.max(0.05, Math.min(8, Math.round(zoom * zoomFactor * 1000) / 1000));
-
-    if (newZoom === zoom) return;
-
-    const scaleRatio = newZoom / zoom;
-    const newPanX = mouseX - (mouseX - panOffset.x) * scaleRatio;
-    const newPanY = mouseY - (mouseY - panOffset.y) * scaleRatio;
-
-    setZoom(newZoom);
-    setPanOffset({ x: newPanX, y: newPanY });
+    if (checkedImageItems.length > 1) return;
+    if (e.ctrlKey || e.metaKey || isSpacePressed) {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      setZoom((prev) => Math.min(8.0, Math.max(0.05, Math.round(prev * zoomFactor * 100) / 100)));
+    } else {
+      setPanOffset((prev) => ({
+        x: prev.x - e.deltaX * 0.8,
+        y: prev.y - e.deltaY * 0.8,
+      }));
+    }
   };
 
   const handleContainerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1 || e.button === 2 || isSpacePressed) {
+    if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
@@ -183,9 +180,7 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   };
 
   const handleContainerMouseUp = () => {
-    if (isPanning) {
-      setIsPanning(false);
-    }
+    setIsPanning(false);
   };
 
   const handleModeClick = (mode: 'transparent' | 'original') => {
@@ -193,6 +188,63 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
       onTogglePreviewDisplayMode(mode);
     } else {
       setPreviewDisplayMode(mode);
+    }
+  };
+
+  // Grid card click and mouse move for eyedropper sampling
+  const handleGridImageClick = (e: React.MouseEvent<HTMLDivElement>, item: SlicerUploadedImageItem) => {
+    if (isEyedropperActive) {
+      const card = e.currentTarget;
+      const canvas = card.querySelector('canvas');
+      if (canvas && onPickColor) {
+        const rect = canvas.getBoundingClientRect();
+        const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          const pxX = Math.min(canvas.width - 1, Math.max(0, Math.floor(normX * canvas.width)));
+          const pxY = Math.min(canvas.height - 1, Math.max(0, Math.floor(normY * canvas.height)));
+          const pixel = ctx.getImageData(pxX, pxY, 1, 1).data;
+          const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
+          onPickColor(hex);
+        }
+      }
+      return;
+    }
+
+    if (e.ctrlKey || e.metaKey) {
+      onToggleCheckedItem?.(item.id);
+    } else {
+      onSelectCheckedImage?.(item.id);
+    }
+  };
+
+  const handleGridImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isEyedropperActive && onHoverColor) {
+      const card = e.currentTarget;
+      const canvas = card.querySelector('canvas');
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          const pxX = Math.min(canvas.width - 1, Math.max(0, Math.floor(normX * canvas.width)));
+          const pxY = Math.min(canvas.height - 1, Math.max(0, Math.floor(normY * canvas.height)));
+          const pixel = ctx.getImageData(pxX, pxY, 1, 1).data;
+          const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
+          onHoverColor({
+            hex,
+            r: pixel[0],
+            g: pixel[1],
+            b: pixel[2],
+            x: e.clientX,
+            y: e.clientY,
+          });
+        }
+      }
     }
   };
 
@@ -212,424 +264,34 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
         fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
       }}
     >
-      {/* Top Canvas Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <Layers size={13} /> {currentCategory.id === 'single_full_image' ? 'Khung cắt: Ảnh đơn (Đã tắt lưới)' : `Khung lưới cắt (${currentCategory.rows} hàng × ${currentCategory.cols} cột)`}
-          </div>
+      {/* Top Control Bar */}
+      <SlicerCanvasTopBar
+        currentCategory={currentCategory}
+        hasImage={hasImage}
+        loadedImage={loadedImage}
+        checkedCount={checkedImageItems.length}
+        zoom={zoom}
+        setZoom={setZoom}
+        setPanOffset={setPanOffset}
+        onAutoFitToViewport={handleAutoFitToViewport}
+        onOpenGridTablePicker={onOpenGridTablePicker}
+        isSingleImageMode={isSingleImageMode}
+        onToggleSingleImageMode={onToggleSingleImageMode}
+        isDirectBBoxCropActive={isDirectBBoxCropActive}
+        onToggleDirectBBoxCrop={onToggleDirectBBoxCrop}
+        onAutoFitGrid={onAutoFitGrid}
+        onResetUniformGrid={onResetUniformGrid}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        checkerTheme={checkerTheme}
+        onToggleCheckerTheme={onToggleCheckerTheme}
+        previewDisplayMode={previewDisplayMode}
+        onModeClick={handleModeClick}
+      />
 
-          {/* Image Dimensions Badge */}
-          {loadedImage && (
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: '#4ade80',
-                background: 'rgba(34, 197, 94, 0.15)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                borderRadius: 4,
-                padding: '2px 7px',
-                fontFamily: 'monospace',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-              title="Kích thước thực của ảnh đang chỉnh sửa"
-            >
-              <span>📐 {loadedImage.naturalWidth || loadedImage.width}×{loadedImage.naturalHeight || loadedImage.height}px</span>
-            </div>
-          )}
-
-          {/* Zoom controls: 100% & Fit */}
-          {hasImage && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.3)', padding: 1, borderRadius: 4, border: '1px solid rgba(255,255,255,0.06)' }}>
-              <button
-                onClick={() => { setZoom(1.0); setPanOffset({ x: 0, y: 0 }); }}
-                style={{
-                  padding: '2px 6px',
-                  fontSize: 9.5,
-                  fontWeight: 600,
-                  borderRadius: 3,
-                  background: Math.abs(zoom - 1.0) < 0.05 ? '#0284c7' : 'transparent',
-                  color: Math.abs(zoom - 1.0) < 0.05 ? '#ffffff' : '#94a3b8',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-                title="Xem kích thước thật 100% (1:1)"
-              >
-                100%
-              </button>
-              <button
-                onClick={handleAutoFitToViewport}
-                style={{
-                  padding: '2px 6px',
-                  fontSize: 9.5,
-                  fontWeight: 600,
-                  borderRadius: 3,
-                  background: 'transparent',
-                  color: '#94a3b8',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-                title="Căn vừa khung nhìn"
-              >
-                🔍 Fit ({Math.round(zoom * 100)}%)
-              </button>
-            </div>
-          )}
-
-          {/* Button Ma Trận Lưới nằm ở bên phải tiêu đề Khung cắt lưới với icon Table */}
-          {onOpenGridTablePicker && (
-            <button
-              onClick={onOpenGridTablePicker}
-              style={{
-                padding: '3px 8px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 4,
-                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(56, 189, 248, 0.4))',
-                color: '#38bdf8',
-                border: '1.5px solid rgba(56, 189, 248, 0.6)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                boxShadow: '0 0 8px rgba(56, 189, 248, 0.25)',
-                transition: 'all 0.15s ease',
-              }}
-              title="Mở bảng chọn ma trận dòng × cột kiểu bảng Word"
-            >
-              <Table size={12} /> Ma Trận Lưới...
-            </button>
-          )}
-
-          {/* Toggle Button Bật Ảnh Đơn / Tắt để theo ma trận lưới */}
-          {onToggleSingleImageMode && (
-            <button
-              onClick={onToggleSingleImageMode}
-              style={{
-                padding: '3px 8px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 4,
-                background: isSingleImageMode
-                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(16, 185, 129, 0.3))'
-                  : 'rgba(255, 255, 255, 0.08)',
-                color: isSingleImageMode ? '#4ade80' : '#94a3b8',
-                border: isSingleImageMode ? '1.5px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.15)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: isSingleImageMode ? '0 0 8px rgba(34, 197, 94, 0.3)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-              title={
-                isSingleImageMode
-                  ? 'Đang bật Ảnh Đơn (Tắt khung lưới) - Nhấp để chuyển sang Ảnh Lưới theo ma trận'
-                  : 'Đang bật Ảnh Lưới - Nhấp để chuyển sang Ảnh Đơn'
-              }
-            >
-              <span>{isSingleImageMode ? '🖼️ Ảnh Đơn: BẬT' : '🔲 Ảnh Lưới: BẬT'}</span>
-            </button>
-          )}
-
-          {/* Toggle Button Bật / Tắt Cắt Bounding Box Tự Động */}
-          {onToggleDirectBBoxCrop && (
-            <button
-              onClick={onToggleDirectBBoxCrop}
-              disabled={!hasImage}
-              style={{
-                padding: '3px 8px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 4,
-                background: isDirectBBoxCropActive
-                  ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(147, 51, 234, 0.4))'
-                  : 'rgba(255, 255, 255, 0.08)',
-                color: isDirectBBoxCropActive ? '#d8b4fe' : hasImage ? '#cbd5e1' : '#475569',
-                border: isDirectBBoxCropActive ? '1.5px solid #c084fc' : '1px solid rgba(255, 255, 255, 0.15)',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: isDirectBBoxCropActive ? '0 0 10px rgba(192, 132, 252, 0.4)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-              title={
-                isDirectBBoxCropActive
-                  ? 'Đang bật chế độ Cắt Bounding Box - Nhấp để tắt'
-                  : 'Bật chế độ Cắt Bounding Box tự động trực tiếp trên khung cắt'
-              }
-            >
-              <Scissors size={12} />
-              <span>{isDirectBBoxCropActive ? '✂️ BBox: BẬT' : '✂️ BBox: TẮT'}</span>
-            </button>
-          )}
-        </div>
-
-        {/* Action Controls: Auto-Fit + Reset Uniform + Preview Mode Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {currentCategory.id !== 'single_full_image' && (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button
-                onClick={onAutoFitGrid}
-                disabled={!hasImage}
-                style={{
-                  padding: '4px 9px',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  borderRadius: 4,
-                  background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(139, 92, 246, 0.3))',
-                  color: hasImage ? '#38bdf8' : '#475569',
-                  border: '1px solid rgba(56, 189, 248, 0.35)',
-                  cursor: hasImage ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  boxShadow: hasImage ? '0 0 8px rgba(56, 189, 248, 0.2)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-                title="Tự động quét và căn chỉnh các đường lưới ôm khớp khít từng linh kiện theo ảnh AI"
-              >
-                <Target size={11} /> 🎯 Tự Căn Khung (Auto-Fit)
-              </button>
-
-              <button
-                onClick={onResetUniformGrid}
-                disabled={!hasImage}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  borderRadius: 4,
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: hasImage ? '#94a3b8' : '#475569',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  cursor: hasImage ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-                title="Đặt lại các ô lưới chia đều nhau theo chiều ngang và dọc"
-              >
-                <Grid size={11} /> 📐 Lưới Đều
-              </button>
-            </div>
-          )}
-
-          {/* Undo / Redo Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.4)', padding: '2px 4px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
-            <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              style={{
-                padding: '3px 7px',
-                borderRadius: 4,
-                background: canUndo ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.04)',
-                color: canUndo ? '#38bdf8' : '#475569',
-                border: canUndo ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
-                cursor: canUndo ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 10,
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-              }}
-              title="Hoàn tác thao tác trước (Ctrl + Z)"
-            >
-              <Undo2 size={12} /> Hoàn tác
-            </button>
-            <button
-              onClick={onRedo}
-              disabled={!canRedo}
-              style={{
-                padding: '3px 7px',
-                borderRadius: 4,
-                background: canRedo ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.04)',
-                color: canRedo ? '#38bdf8' : '#475569',
-                border: canRedo ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
-                cursor: canRedo ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 10,
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-              }}
-              title="Làm lại thao tác vừa hoàn tác (Ctrl + Y)"
-            >
-              <Redo2 size={12} /> Làm lại
-            </button>
-          </div>
-
-          {/* Zoom Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
-            <button
-              onClick={() => {
-                const newZ = Math.max(0.05, Math.round((zoom / 1.2) * 100) / 100);
-                setZoom(newZ);
-              }}
-              disabled={!hasImage}
-              style={{
-                padding: '3px 6px',
-                borderRadius: 4,
-                background: 'rgba(255,255,255,0.08)',
-                color: hasImage ? '#fff' : '#475569',
-                border: 'none',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="Thu nhỏ (-)"
-            >
-              <ZoomOut size={12} />
-            </button>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', minWidth: 40, textAlign: 'center', fontFamily: 'monospace' }}>
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              onClick={() => {
-                const newZ = Math.min(8, Math.round((zoom * 1.2) * 100) / 100);
-                setZoom(newZ);
-              }}
-              disabled={!hasImage}
-              style={{
-                padding: '3px 6px',
-                borderRadius: 4,
-                background: 'rgba(255,255,255,0.08)',
-                color: hasImage ? '#fff' : '#475569',
-                border: 'none',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="Phóng to (+)"
-            >
-              <ZoomIn size={12} />
-            </button>
-            <button
-              onClick={() => {
-                setZoom(1);
-                setPanOffset({ x: 0, y: 0 });
-              }}
-              disabled={!hasImage}
-              style={{
-                padding: '2px 6px',
-                fontSize: 9.5,
-                fontWeight: 600,
-                borderRadius: 4,
-                background: 'rgba(255,255,255,0.06)',
-                color: hasImage ? '#94a3b8' : '#475569',
-                border: '1px solid rgba(255,255,255,0.08)',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-              }}
-              title="Khôi phục kích thước 100% (1:1)"
-            >
-              100%
-            </button>
-            <button
-              onClick={handleAutoFitToViewport}
-              disabled={!hasImage}
-              style={{
-                padding: '2px 7px',
-                fontSize: 9.5,
-                fontWeight: 700,
-                borderRadius: 4,
-                background: 'rgba(56, 189, 248, 0.15)',
-                color: hasImage ? '#38bdf8' : '#475569',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-              }}
-              title="Tự động căn giữa và co giãn vừa khít khung nhìn"
-            >
-              Fit
-            </button>
-          </div>
-
-          {/* Caro Theme Toggle Button */}
-          {onToggleCheckerTheme && (
-            <button
-              onClick={onToggleCheckerTheme}
-              style={{
-                padding: '4px 9px',
-                fontSize: 10,
-                fontWeight: 700,
-                borderRadius: 4,
-                background: checkerTheme === 'light' ? 'linear-gradient(135deg, #ffffff, #e2e8f0)' : 'rgba(255, 255, 255, 0.08)',
-                color: checkerTheme === 'light' ? '#0f172a' : '#cbd5e1',
-                border: checkerTheme === 'light' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.15)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                boxShadow: checkerTheme === 'light' ? '0 0 10px rgba(56, 189, 248, 0.5)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-              title={
-                checkerTheme === 'light'
-                  ? 'Đang bật Caro Sáng (Trắng/Xám nhạt) để soi rõ chi tiết tối. Nhấp để chuyển sang Caro Tối'
-                  : 'Đang bật Caro Tối (Đen/Xanh đậm). Nhấp để chuyển sang Caro Sáng'
-              }
-            >
-              <span>{checkerTheme === 'light' ? '🏁 Caro Sáng (Bật)' : '🏁 Caro Tối (Bật)'}</span>
-            </button>
-          )}
-
-          {/* Preview Mode Toggle */}
-          <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.4)', padding: 2, borderRadius: 5 }}>
-            <button
-              onClick={() => handleModeClick('transparent')}
-              disabled={!hasImage}
-              style={{
-                padding: '4px 9px',
-                fontSize: 10,
-                fontWeight: 600,
-                borderRadius: 4,
-                background: previewDisplayMode === 'transparent' ? '#0284c7' : 'transparent',
-                color: previewDisplayMode === 'transparent' ? '#ffffff' : hasImage ? '#94a3b8' : '#475569',
-                border: previewDisplayMode === 'transparent' ? '1px solid #38bdf8' : '1px solid transparent',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: previewDisplayMode === 'transparent' ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-              title="Xem kết quả sau khi đã bóc tách nền (trong suốt)"
-            >
-              <Layers size={12} /> 🏁 Đã tách nền
-            </button>
-
-            <button
-              onClick={() => handleModeClick('original')}
-              disabled={!hasImage}
-              style={{
-                padding: '4px 9px',
-                fontSize: 10,
-                fontWeight: 600,
-                borderRadius: 4,
-                background: previewDisplayMode === 'original' && hasImage ? '#0284c7' : 'transparent',
-                color: hasImage ? (previewDisplayMode === 'original' ? '#ffffff' : '#94a3b8') : '#475569',
-                border: previewDisplayMode === 'original' && hasImage ? '1px solid #38bdf8' : '1px solid transparent',
-                cursor: hasImage ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                boxShadow: previewDisplayMode === 'original' && hasImage ? '0 0 8px rgba(56,189,248,0.3)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-              title="Xem bức ảnh gốc ban đầu"
-            >
-              <Eye size={12} /> 👁️ Ảnh gốc
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Canvas Display Viewport */}
+      {/* Main Viewport */}
       <div
         ref={viewportRef}
         onWheel={handleWheel}
@@ -653,145 +315,138 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               ? 'grabbing'
               : 'grab'
             : isEyedropperActive
-              ? 'crosshair'
-              : 'default',
+            ? 'crosshair'
+            : 'default',
         }}
       >
-        {/* Top Eyedropper Guidance Banner */}
-        {isEyedropperActive && hasImage && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 12,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'rgba(15, 23, 42, 0.94)',
-              border: eyedropperTarget === 'smooth' ? '1.5px solid #38bdf8' : eyedropperTarget === 'fringe' ? '1.5px solid #10b981' : '1.5px solid #f59e0b',
-              borderRadius: 20,
-              padding: '5px 14px',
-              color: eyedropperTarget === 'smooth' ? '#38bdf8' : eyedropperTarget === 'fringe' ? '#a7f3d0' : '#fef08a',
-              fontSize: 10.5,
-              fontWeight: 600,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.7), 0 0 12px rgba(56,189,248,0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              zIndex: 30,
-              pointerEvents: 'none',
-              fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
-            }}
-          >
-            <span>
-              {eyedropperTarget === 'smooth'
-                ? '🎯 Chế độ hút màu viền làm mịn: Rê chuột và nhấp vào nét vẽ để chọn màu viền khử răng cưa'
-                : eyedropperTarget === 'fringe'
-                  ? '🎯 Chế độ hút màu viền rác: Rê chuột và nhấp vào vùng viền sượng/sạn để chọn màu khử'
-                  : '🎯 Chế độ hút màu nền: Rê chuột lên ảnh và nhấp chuột để chọn mã màu nền cần tách'}
-            </span>
-          </div>
-        )}
+        {/* Eyedropper Guidance & Loupe Overlay */}
+        <SlicerEyedropperOverlay
+          isEyedropperActive={isEyedropperActive}
+          eyedropperTarget={eyedropperTarget}
+          eyedropperHoverColor={eyedropperHoverColor}
+        />
 
-        {/* Photoshop CS6 Style Floating Loupe / Color Preview Swatch */}
-        {isEyedropperActive && eyedropperHoverColor && (
+        {/* Multi-Image Checked Grid Mode OR Single Canvas Mode */}
+        {checkedImageItems.length > 1 ? (
           <div
             style={{
-              position: 'fixed',
-              left: eyedropperHoverColor.x + 18,
-              top: eyedropperHoverColor.y - 45,
-              pointerEvents: 'none',
-              zIndex: 9999,
-              background: 'rgba(15, 23, 42, 0.94)',
-              backdropFilter: 'blur(8px)',
-              border: '1.5px solid #38bdf8',
-              borderRadius: 8,
-              padding: '6px 10px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.85), 0 0 14px rgba(56,189,248,0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              transform: 'translate3d(0,0,0)',
-              fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
-            }}
-          >
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: '50%',
-                background: eyedropperHoverColor.hex,
-                border: '2.5px solid #ffffff',
-                boxShadow: '0 0 0 1.5px #000000, 0 2px 6px rgba(0,0,0,0.5)',
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', letterSpacing: 0.5 }}>
-                {eyedropperHoverColor.hex}
-              </div>
-              <div style={{ fontSize: 9, color: '#94a3b8', fontFamily: 'monospace' }}>
-                RGB({eyedropperHoverColor.r}, {eyedropperHoverColor.g}, {eyedropperHoverColor.b})
-              </div>
-              <div style={{ fontSize: 8.5, color: '#4ade80', fontWeight: 600 }}>
-                👆 Nhấp chuột để lấy màu
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!hasImage && (
-          <div
-            style={{
+              width: '100%',
+              height: '100%',
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#64748b',
-              fontSize: 12,
               gap: 6,
-              padding: 24,
-              textAlign: 'center',
-              userSelect: 'none',
+              padding: 8,
+              overflow: 'hidden',
             }}
           >
-            <div style={{ fontSize: 32, opacity: 0.5 }}>🖼️</div>
-            <div style={{ fontWeight: 600, color: '#94a3b8' }}>Khung ảnh đang trống</div>
-            <div style={{ fontSize: 11, color: '#475569', maxWidth: 280 }}>
-              Vui lòng tải ảnh sprite sheet lên hoặc chọn ảnh mẫu bên trái để hiển thị
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 5 }}>
+                🎯 Đang chọn: <span style={{ color: '#38bdf8', fontWeight: 900 }}>{checkedImageItems.length}</span> ảnh
+              </div>
+              {onClearCheckedImages && (
+                <button
+                  onClick={onClearCheckedImages}
+                  style={{
+                    padding: '2px 7px',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#f87171',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕ Bỏ chọn
+                </button>
+              )}
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(Math.ceil(Math.sqrt(checkedImageItems.length)), 4)}, minmax(0, 1fr))`,
+                gap: 8,
+                overflowY: 'auto',
+                minHeight: 0,
+                padding: 4,
+              }}
+            >
+              {checkedImageItems.map((item) => (
+                <SlicerGridCardWithBBox
+                  key={item.id}
+                  item={item}
+                  isActive={item.id === activeImageId}
+                  isEyedropperActive={isEyedropperActive}
+                  isDirectBBoxCropActive={isDirectBBoxCropActive}
+                  directBBoxPadding={directBBoxPadding}
+                  chromaOptions={chromaOptions}
+                  checkerTheme={checkerTheme}
+                  previewDisplayMode={previewDisplayMode}
+                  onClick={handleGridImageClick}
+                  onMouseMove={handleGridImageMouseMove}
+                  onToggleCheckedItem={onToggleCheckedItem}
+                />
+              ))}
             </div>
           </div>
+        ) : (
+          <>
+            {!hasImage && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                  fontSize: 12,
+                  gap: 6,
+                  padding: 24,
+                  textAlign: 'center',
+                  userSelect: 'none',
+                }}
+              >
+                <div style={{ fontSize: 32, opacity: 0.5 }}>🖼️</div>
+                <div style={{ fontWeight: 600, color: '#94a3b8' }}>Khung ảnh đang trống</div>
+                <div style={{ fontSize: 11, color: '#475569', maxWidth: 280 }}>
+                  Vui lòng tải ảnh sprite sheet lên hoặc chọn ảnh mẫu bên trái để hiển thị
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                position: 'relative',
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+                transformOrigin: 'center center',
+                display: hasImage ? 'flex' : 'none',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(56, 189, 248, 0.25)',
+                borderRadius: 4,
+                transition: isPanning ? 'none' : 'transform 0.05s ease-out',
+                flexShrink: 0,
+              }}
+            >
+              <canvas
+                ref={imageCanvasRef}
+                onMouseDown={onMouseDown}
+                onDoubleClick={onDoubleClick}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onMouseLeave || onMouseUp}
+                style={{
+                  display: 'block',
+                  borderRadius: 4,
+                  cursor: isEyedropperActive ? 'crosshair' : isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : 'default',
+                }}
+              />
+            </div>
+          </>
         )}
 
-        {/* Scaled and Translated Canvas Container (Tự động căn giữa và co giãn đúng tỷ lệ) */}
-        <div
-          style={{
-            position: 'relative',
-            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
-            transformOrigin: 'center center',
-            display: hasImage ? 'flex' : 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(56, 189, 248, 0.25)',
-            borderRadius: 4,
-            transition: isPanning ? 'none' : 'transform 0.05s ease-out',
-            flexShrink: 0,
-          }}
-        >
-          <canvas
-            ref={imageCanvasRef}
-            onMouseDown={onMouseDown}
-            onDoubleClick={onDoubleClick}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseLeave || onMouseUp}
-            style={{
-              display: 'block',
-              borderRadius: 4,
-              cursor: isEyedropperActive ? 'crosshair' : isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : 'default',
-            }}
-          />
-        </div>
-
-        {/* Floating History Toast Notification (Undo/Redo Feedback) */}
         {historyToast && (
           <div
             style={{
@@ -806,138 +461,29 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               borderRadius: 6,
               padding: '6px 14px',
               fontSize: 11,
-              fontWeight: 600,
-              color: historyToast.type === 'undo' ? '#38bdf8' : '#4ade80',
-              backdropFilter: 'blur(10px)',
-              pointerEvents: 'none',
-              animation: 'fadeInOut 2.5s ease',
+              fontWeight: 700,
+              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
+              animation: 'fadeIn 0.2s ease-out',
             }}
           >
-            {historyToast.message}
+            <span>{historyToast.type === 'undo' ? '↩️' : '↪️'}</span>
+            <span>{historyToast.message}</span>
           </div>
         )}
 
-        {/* Floating Bottom-Left Card: Direct Bounding Box Crop Controls */}
-        {isDirectBBoxCropActive && hasImage && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              left: 12,
-              zIndex: 35,
-              background: 'rgba(15, 23, 42, 0.95)',
-              backdropFilter: 'blur(12px)',
-              border: '1.5px solid #c084fc',
-              borderRadius: 8,
-              padding: '10px 12px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 16px rgba(192, 132, 252, 0.3)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              minWidth: 260,
-              maxWidth: 320,
-              fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 5 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#e9d5ff', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Scissors size={13} color="#c084fc" /> ✂️ Cắt Bounding Box Tự Động
-              </div>
-              {onToggleDirectBBoxCrop && (
-                <button
-                  onClick={onToggleDirectBBoxCrop}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                  title="Đóng / Tắt chế độ cắt"
-                >
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-
-            {/* Slider & Presets */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#cbd5e1' }}>
-                <span style={{ color: '#c084fc', fontWeight: 600 }}>Khoảng cách lề (Padding):</span>
-                <span style={{ color: '#4ade80', fontWeight: 800, fontFamily: 'monospace' }}>
-                  +{directBBoxPadding}px
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="range"
-                  min="0"
-                  max="50"
-                  step="1"
-                  value={directBBoxPadding}
-                  onChange={(e) => setDirectBBoxPadding && setDirectBBoxPadding(parseInt(e.target.value, 10))}
-                  style={{ flex: 1, accentColor: '#a855f7', cursor: 'pointer' }}
-                />
-              </div>
-
-              {/* Quick presets */}
-              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                {[0, 5, 10, 15, 20, 30].map((val) => (
-                  <button
-                    key={val}
-                    onClick={() => setDirectBBoxPadding && setDirectBBoxPadding(val)}
-                    style={{
-                      flex: 1,
-                      height: 20,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      borderRadius: 3,
-                      background: directBBoxPadding === val ? '#9333ea' : 'rgba(255,255,255,0.06)',
-                      color: directBBoxPadding === val ? '#ffffff' : '#cbd5e1',
-                      border: directBBoxPadding === val ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {val === 0 ? '0px' : `+${val}px`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Apply Button */}
-            {onApplyDirectBBoxCrop && (
-              <button
-                onClick={onApplyDirectBBoxCrop}
-                style={{
-                  height: 30,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  borderRadius: 6,
-                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-                  color: '#ffffff',
-                  border: '1px solid #c084fc',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 5,
-                  boxShadow: '0 2px 10px rgba(147, 51, 234, 0.4)',
-                  transition: 'all 0.15s ease',
-                }}
-                title="Cắt gọt ảnh theo Bounding Box và thay thế làm ảnh nguồn hiện tại"
-              >
-                <Check size={13} /> ✓ Áp dụng cắt ảnh
-              </button>
-            )}
-          </div>
-        )}
+        {/* Floating BBox Control Card */}
+        <SlicerBBoxControlCard
+          isDirectBBoxCropActive={isDirectBBoxCropActive}
+          hasImage={hasImage}
+          checkedCount={checkedImageItems.length}
+          directBBoxPadding={directBBoxPadding}
+          setDirectBBoxPadding={setDirectBBoxPadding}
+          onToggleDirectBBoxCrop={onToggleDirectBBoxCrop}
+          onApplyDirectBBoxCrop={onApplyDirectBBoxCrop}
+        />
       </div>
     </div>
   );

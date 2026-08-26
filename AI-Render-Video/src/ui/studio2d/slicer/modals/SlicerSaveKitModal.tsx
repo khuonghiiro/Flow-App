@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CharacterResourceCategory } from '../../../../types/scene2d';
 import { saveCustomResourceKit } from '../../../../core/assets/CharacterKitStorage';
 import { OBJECT_GENRE_OPTIONS } from '../sidebar/SlicerSourceImageCard';
+import { SlicerUploadedImageItem } from '../hooks/useSlicerMultiImageGallery';
 
 export interface SlicerSaveKitModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ export interface SlicerSaveKitModalProps {
   slicedResults: Map<string, string>;
   categoryLabel: string;
   initialTargetCategory?: string;
+  checkedImageItems?: SlicerUploadedImageItem[];
 }
 
 export const SlicerSaveKitModal: React.FC<SlicerSaveKitModalProps> = ({
@@ -17,6 +19,7 @@ export const SlicerSaveKitModal: React.FC<SlicerSaveKitModalProps> = ({
   slicedResults,
   categoryLabel,
   initialTargetCategory = 'character',
+  checkedImageItems = [],
 }) => {
   const [saveKitName, setSaveKitName] = useState<string>('');
   const [saveKitGenre, setSaveKitGenre] = useState<string>(initialTargetCategory);
@@ -27,27 +30,61 @@ export const SlicerSaveKitModal: React.FC<SlicerSaveKitModalProps> = ({
 
   const handleSave = () => {
     const partsMap: Record<string, string> = {};
-    slicedResults.forEach((val, key) => {
-      partsMap[key] = val;
-    });
+    
+    // If there are checked images, save each as a part
+    if (checkedImageItems.length > 0) {
+      checkedImageItems.forEach((item, idx) => {
+        const partKey = item.metadata?.part_id || `checked_${idx}`;
+        const imageUrl = item.transparentUrl || item.url;
+        partsMap[partKey] = imageUrl;
+      });
+    } else {
+      // Fallback to slicedResults
+      slicedResults.forEach((val, key) => {
+        partsMap[key] = val;
+      });
+    }
+    
+    const previewUrl = checkedImageItems.length > 0 
+      ? (checkedImageItems[0].transparentUrl || checkedImageItems[0].url)
+      : (slicedResults.get('0_0') || '');
+
     saveCustomResourceKit({
       id: `kit_${Date.now()}`,
       name: saveKitName || 'Bộ Linh Kiện Mới',
       category: saveKitCategory,
       categoryLabel: `${OBJECT_GENRE_OPTIONS.find((g) => g.id === saveKitGenre)?.label || 'Đối Tượng'} - ${categoryLabel}`,
-      previewImage: slicedResults.get('0_0') || '',
+      previewImage: previewUrl,
       description: saveKitDescription,
       parts: partsMap as any,
       createdAt: new Date().toISOString(),
     });
     onClose();
-    alert('✓ Đã lưu bộ linh kiện vào kho thành công!');
+    alert(`✓ Đã lưu ${Object.keys(partsMap).length} item vào kho thành công!`);
   };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: '#0b1329', padding: 18, borderRadius: 10, border: '1px solid #38bdf8', width: 400, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#38bdf8' }}>💾 Lưu Bộ Linh Kiện Mới Vào Kho:</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#38bdf8' }}>
+          💾 Lưu Bộ Linh Kiện Mới Vào Kho:
+          {checkedImageItems.length > 0 && (
+            <span style={{ fontSize: 10.5, color: '#c084fc', marginLeft: 8, fontWeight: 600 }}>
+              ({checkedImageItems.length} ảnh đã chọn)
+            </span>
+          )}
+        </div>
+        
+        {/* Show checked images preview thumbnails */}
+        {checkedImageItems.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxHeight: 80, overflowY: 'auto', padding: 4, background: 'rgba(0,0,0,0.3)', borderRadius: 6, border: '1px solid rgba(124,58,237,0.3)' }}>
+            {checkedImageItems.map((item) => (
+              <div key={item.id} style={{ width: 36, height: 36, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(56,189,248,0.3)' }}>
+                <img src={item.transparentUrl || item.url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+            ))}
+          </div>
+        )}
         
         <div>
           <label style={{ fontSize: 10.5, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Tên bộ:</label>

@@ -3,6 +3,7 @@ import { Character2DAssembly, Character2DPartType } from '../../types/scene2d';
 import { GridCellDefinition } from '../../core/assets/GridSliceRegistry';
 import { parsePartFilename, ParsedPartFilenameInfo } from '../../core/assets/Asset2DRegistry';
 import { PaddedCropRect } from '../../core/utils/PixelBoundingBoxAlgorithms';
+import { ChromaProcessOptions } from '../../core/utils/ChromaDespeckleProcessor';
 import {
   CheckerboardTheme,
   loadCachedCheckerTheme,
@@ -52,6 +53,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
   const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
   const [checkerTheme, setCheckerTheme] = useState<CheckerboardTheme>(loadCachedCheckerTheme);
+  const [checkedImageIds, setCheckedImageIds] = useState<Set<string>>(new Set());
 
   // Refs
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -426,6 +428,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     pushUndoState,
     showToast,
     chromaOptions,
+    checkedImageIds,
+    imageList,
   });
 
   // 12. Modals State Hook
@@ -534,6 +538,86 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     });
   }, []);
 
+  // Ctrl+A: Select all images
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === 'a' &&
+        !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)
+      ) {
+        e.preventDefault();
+        if (imageList.length > 0) {
+          setCheckedImageIds(new Set(imageList.map((it) => it.id)));
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imageList]);
+
+  // Ctrl+Click handler for gallery items (toggle multi-select)
+  const handleGalleryItemClick = useCallback((imageId: string, e?: React.MouseEvent) => {
+    if (e && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+Click: toggle this item in checked set
+      setCheckedImageIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(imageId)) next.delete(imageId);
+        else next.add(imageId);
+        return next;
+      });
+    } else {
+      // Normal click: just select this single image
+      handleSelectImage(imageId);
+    }
+  }, [handleSelectImage]);
+
+  // Eyedropper Color Pick Handler (works for single canvas & multi grid mode)
+  const handlePickColor = useCallback(
+    (hex: string) => {
+      setIsEyedropperActive(false);
+      setEyedropperHoverColor(null);
+      let overrides: Partial<ChromaProcessOptions> = {};
+      if (eyedropperTarget === 'smooth') {
+        setSmoothColorType('custom');
+        setSmoothColorHex(hex);
+        overrides = { smoothColorType: 'custom', smoothColorHex: hex };
+      } else if (eyedropperTarget === 'fringe') {
+        setFringeColorType('custom');
+        setFringeColorHex(hex);
+        overrides = { fringeColorType: 'custom', fringeColorHex: hex };
+      } else {
+        setKeyColorType('custom');
+        setKeyColorHex(hex);
+        overrides = { keyColorType: 'custom', keyColorHex: hex };
+      }
+
+      if (hasExplicitlySliced) {
+        handleAutoSliceAndAssemble(overrides);
+      }
+      if (checkedImageIds.size > 1) {
+        handleBatchSeparateImages(Array.from(checkedImageIds), overrides);
+      }
+      showToast(`✓ Đã hút màu: ${hex}`, 'redo');
+    },
+    [
+      eyedropperTarget,
+      hasExplicitlySliced,
+      handleAutoSliceAndAssemble,
+      checkedImageIds,
+      handleBatchSeparateImages,
+      showToast,
+      setSmoothColorType,
+      setSmoothColorHex,
+      setFringeColorType,
+      setFringeColorHex,
+      setKeyColorType,
+      setKeyColorHex,
+      setIsEyedropperActive,
+      setEyedropperHoverColor,
+    ]
+  );
+
   useEffect(() => {
     redrawCanvas();
   }, [redrawCanvas]);
@@ -625,11 +709,24 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             } else {
               handleAutoSliceAndAssemble(overrides);
             }
+
+            // If multiple images are checked, also re-process them with the updated parameters!
+            if (checkedImageIds.size > 1) {
+              handleBatchSeparateImages(Array.from(checkedImageIds), overrides);
+            }
           }}
           slicedCount={slicedResults.size}
           totalCellCount={currentCategory.id === 'single_full_image' ? 1 : currentCategory.cells.length}
           onOpenSaveKitModal={() => setIsSaveKitModalOpen(true)}
           onOpenCatalogModal={() => setIsCatalogOpen(true)}
+          checkedCount={checkedImageIds.size}
+          checkedImageIds={checkedImageIds}
+          onBatchSeparateChecked={async () => {
+            if (checkedImageIds.size > 0) {
+              await handleBatchSeparateImages(Array.from(checkedImageIds));
+            }
+          }}
+          isBatchProcessing={isBatchProcessing}
         />
 
         {/* Column 2: Interactive Canvas */}
@@ -656,6 +753,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             isEyedropperActive={isEyedropperActive}
             eyedropperTarget={eyedropperTarget}
             eyedropperHoverColor={eyedropperHoverColor}
+            onPickColor={handlePickColor}
+            onHoverColor={setEyedropperHoverColor}
             currentCategory={currentCategory}
             onAutoFitGrid={() => {
               const img = loadedImage || loadedImageRef.current;
@@ -680,6 +779,19 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             directBBoxPadding={directBBoxPadding}
             setDirectBBoxPadding={setDirectBBoxPadding}
             onApplyDirectBBoxCrop={handleApplyDirectBBoxCrop}
+            chromaOptions={chromaOptions}
+            checkedImageItems={imageList.filter((it) => checkedImageIds.has(it.id))}
+            activeImageId={activeImageId ?? undefined}
+            onSelectCheckedImage={handleSelectImage}
+            onToggleCheckedItem={(id) => {
+              setCheckedImageIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            }}
+            onClearCheckedImages={() => setCheckedImageIds(new Set())}
           />
 
           {selectedCell && (
@@ -726,6 +838,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             chromaOpts={chromaOptions}
             onBatchSeparateImages={handleBatchSeparateImages}
             isBatchProcessing={isBatchProcessing}
+            onCheckedIdsChange={(ids) => setCheckedImageIds(ids)}
+            checkedImageIds={checkedImageIds}
           />
         )}
       </div>
@@ -772,6 +886,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         slicedResults={slicedResults}
         categoryLabel={currentCategory.label}
         targetCategory={targetCategory}
+        checkedImageItems={imageList.filter((it) => checkedImageIds.has(it.id))}
         isTablePickerOpen={isTablePickerOpen}
         onCloseTablePicker={() => setIsTablePickerOpen(false)}
         currentCategory={currentCategory}

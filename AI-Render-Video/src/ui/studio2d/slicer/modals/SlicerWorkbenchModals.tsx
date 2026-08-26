@@ -8,6 +8,7 @@ import { GridTablePickerModal } from '../GridTablePickerModal';
 import { JsonPromptImportModal, ParsedJsonMetadataItem } from '../JsonPromptImportModal';
 import { SlicerSaveKitModal } from './SlicerSaveKitModal';
 import { ThreeMultiAngleBillboardEngine, AngleDetectionResult } from '../../../../core/engine2d/ThreeMultiAngleBillboardEngine';
+import { SlicerUploadedImageItem } from '../hooks/useSlicerMultiImageGallery';
 
 export interface SlicerWorkbenchModalsProps {
   // Eraser
@@ -36,6 +37,7 @@ export interface SlicerWorkbenchModalsProps {
   slicedResults: Map<string, string>;
   categoryLabel: string;
   targetCategory: string;
+  checkedImageItems?: SlicerUploadedImageItem[];
 
   // Table Picker
   isTablePickerOpen: boolean;
@@ -75,6 +77,7 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
   slicedResults,
   categoryLabel,
   targetCategory,
+  checkedImageItems = [],
   isTablePickerOpen,
   onCloseTablePicker,
   currentCategory,
@@ -137,6 +140,7 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
           slicedResults={slicedResults}
           categoryLabel={categoryLabel}
           initialTargetCategory={targetCategory}
+          checkedImageItems={checkedImageItems}
         />
       )}
 

@@ -327,4 +327,3 @@ CONSISTENCY & RESTRICTIONS:
     fullCopyText,
   };
 }
-

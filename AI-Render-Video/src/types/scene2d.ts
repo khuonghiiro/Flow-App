@@ -243,24 +243,24 @@ export interface StandardCropPreset {
 
 export interface AIPartPromptConfig {
   sheet_type?:
-    | 'cinematic_single_part_2x3'
-    | 'cinematic_single_part_2x2'
-    | 'modular_bangs_3x1'
-    | 'modular_bangs_2x2'
-    | 'modular_backhair_3x1'
-    | 'modular_backhair_2x2'
-    | 'modular_torso_armor_3x1'
-    | 'modular_weapon_2x2'
-    | 'hair_multi_angle_grid'
-    | 'eyes_grid'
-    | 'mouth_grid'
-    | 'nose_chin_grid'
-    | 'costume_grid'
-    | 'weapons_grid'
-    | 'limbs_hands_grid'
-    | 'body_turnaround_grid'
-    | 'single_part'
-    | string;
+  | 'cinematic_single_part_2x3'
+  | 'cinematic_single_part_2x2'
+  | 'modular_bangs_3x1'
+  | 'modular_bangs_2x2'
+  | 'modular_backhair_3x1'
+  | 'modular_backhair_2x2'
+  | 'modular_torso_armor_3x1'
+  | 'modular_weapon_2x2'
+  | 'hair_multi_angle_grid'
+  | 'eyes_grid'
+  | 'mouth_grid'
+  | 'nose_chin_grid'
+  | 'costume_grid'
+  | 'weapons_grid'
+  | 'limbs_hands_grid'
+  | 'body_turnaround_grid'
+  | 'single_part'
+  | string;
   part_type: Character2DPartType | 'map_layer' | 'combat_scene';
   character_style: string;
   custom_character_style?: string;

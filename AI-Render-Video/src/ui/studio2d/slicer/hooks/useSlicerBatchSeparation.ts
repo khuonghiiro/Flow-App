@@ -62,62 +62,70 @@ export function useSlicerBatchSeparation({
   const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
 
   const handleBatchSeparateImages = useCallback(
-    async (imageIds: string[]) => {
+    async (imageIds: string[], overrideChromaOpts?: Partial<ChromaProcessOptions>) => {
       if (imageIds.length === 0) return;
       setIsBatchProcessing(true);
       pushUndoState(`Tách nền ${imageIds.length} ảnh`);
 
+      const effectiveOptions: ChromaProcessOptions = {
+        ...chromaOptions,
+        ...(overrideChromaOpts || {}),
+      };
+
       const updatedMap = new Map<string, string>();
 
-      for (const id of imageIds) {
-        const item = imageList.find((it) => it.id === id);
-        if (!item) continue;
+      try {
+        for (const id of imageIds) {
+          const item = imageList.find((it) => it.id === id);
+          if (!item) continue;
 
-        try {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject();
-            img.src = item.originalUrl || item.url;
-          });
+          try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            await new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = () => reject();
+              img.src = item.originalUrl || item.url;
+            });
 
-          const w = img.naturalWidth || img.width;
-          const h = img.naturalHeight || img.height;
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, w, h);
-            // Use item's specific filterConfig if available, otherwise global chromaOptions
-            const opts = item.filterConfig || chromaOptions;
-            processCellChromaAndDespeckle(ctx, w, h, opts);
-            const dataUrl = canvas.toDataURL('image/png');
-            updatedMap.set(id, dataUrl);
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, w, h);
+              // Always use latest effectiveOptions from Column 1 controls
+              processCellChromaAndDespeckle(ctx, w, h, effectiveOptions);
+              const dataUrl = canvas.toDataURL('image/png');
+              updatedMap.set(id, dataUrl);
+            }
+          } catch (err) {
+            console.warn('Failed to separate background for item:', id, err);
           }
-        } catch (err) {
-          console.warn('Failed to separate background for item:', id, err);
         }
-      }
 
-      // Update imageList with the separated transparent dataUrls & saved filterConfig
-      setImageList((prev) =>
-        prev.map((item) => {
-          if (updatedMap.has(item.id)) {
-            const transUrl = updatedMap.get(item.id)!;
-            return {
-              ...item,
-              originalUrl: item.originalUrl || item.url,
-              url: transUrl,
-              transparentUrl: transUrl,
-              isTransparentSeparated: true,
-              filterConfig: item.filterConfig ? { ...item.filterConfig } : { ...chromaOptions },
-            };
-          }
-          return item;
-        })
-      );
+        // Update imageList with the separated transparent dataUrls & saved filterConfig
+        setImageList((prev) =>
+          prev.map((item) => {
+            if (updatedMap.has(item.id)) {
+              const transUrl = updatedMap.get(item.id)!;
+              return {
+                ...item,
+                originalUrl: item.originalUrl || item.url,
+                url: transUrl,
+                transparentUrl: transUrl,
+                isTransparentSeparated: true,
+                filterConfig: { ...effectiveOptions },
+              };
+            }
+            return item;
+          })
+        );
+      } finally {
+        setIsBatchProcessing(false);
+      }
 
       // Determine which image should be displayed on the canvas
       const currentActiveId = activeImageIdRef.current || activeImageId || imageList[0]?.id;

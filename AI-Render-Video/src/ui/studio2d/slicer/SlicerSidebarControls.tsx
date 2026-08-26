@@ -1,5 +1,5 @@
 import React from 'react';
-import { Scissors } from 'lucide-react';
+import { Scissors, Sparkles, RefreshCw } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../core/assets/GridSliceRegistry';
 import { Character2DAngle, Character2DPartType } from '../../../types/scene2d';
 import { ChromaProcessOptions } from '../../../core/utils/ChromaDespeckleProcessor';
@@ -99,6 +99,9 @@ export interface SlicerSidebarControlsProps {
   totalCellCount: number;
   onOpenSaveKitModal?: () => void;
   onOpenCatalogModal?: () => void;
+  checkedCount?: number;
+  onBatchSeparateChecked?: () => Promise<void>;
+  isBatchProcessing?: boolean;
 }
 
 export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
@@ -189,6 +192,9 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   totalCellCount,
   onOpenSaveKitModal,
   onOpenCatalogModal,
+  checkedCount = 0,
+  onBatchSeparateChecked,
+  isBatchProcessing = false,
 }) => {
   return (
     <div
@@ -219,6 +225,26 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         onClearImage={onClearImage}
         fileInputRef={fileInputRef}
       />
+
+      {/* Batch info: compact single-line when checked > 0 */}
+      {checkedCount > 0 && (
+        <div style={{
+          background: 'rgba(124, 58, 237, 0.12)',
+          borderRadius: 6,
+          border: '1px solid rgba(124, 58, 237, 0.3)',
+          padding: '5px 8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#c084fc' }}>
+            🎯 {checkedCount} ảnh đã chọn
+          </span>
+          <span style={{ fontSize: 8, color: '#94a3b8', fontStyle: 'italic' }}>
+            Áp dụng cho tất cả
+          </span>
+        </div>
+      )}
 
       {/* CARD 2: CHẾ ĐỘ TÁCH NỀN & BỘ LỌC */}
       <div
@@ -394,6 +420,9 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         onOpenSaveKitModal={onOpenSaveKitModal}
         onOpenCatalogModal={onOpenCatalogModal}
         onApplyAsNewBaseImage={onApplyAsNewBaseImage}
+        checkedCount={checkedCount}
+        onBatchSeparateChecked={onBatchSeparateChecked}
+        isBatchProcessing={isBatchProcessing}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Layers,
   Plus,
@@ -29,6 +29,8 @@ export interface SlicerGridGalleryColumnProps {
   chromaOpts?: ChromaProcessOptions;
   onBatchSeparateImages?: (imageIds: string[]) => Promise<void>;
   isBatchProcessing?: boolean;
+  onCheckedIdsChange?: (ids: Set<string>) => void;
+  checkedImageIds?: Set<string>;
 }
 
 const PAGE_SIZE = 20; // 20 images per grid page (4 columns x 5 rows)
@@ -45,14 +47,37 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
   totalImagesCount,
   onBatchSeparateImages,
   isBatchProcessing = false,
+  onCheckedIdsChange,
+  checkedImageIds: externalCheckedIds,
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [hoveredItem, setHoveredItem] = useState<SlicerUploadedImageItem | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
+  const selectedIds = externalCheckedIds ?? internalSelectedIds;
 
-  // Current active part group
-  const currentGroup = partGroups.find((g) => g.part_id === activePartId) || partGroups[0];
-  const allImages = currentGroup ? currentGroup.images : [];
+  const setSelectedIds = useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    const doUpdate = (prev: Set<string>) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      onCheckedIdsChange?.(next);
+      return next;
+    };
+    setInternalSelectedIds(doUpdate);
+  }, [onCheckedIdsChange]);
+
+  // Flatten all images from all groups (no categorization)
+  const allImages = useMemo(() => {
+    const seen = new Set<string>();
+    const flat: SlicerUploadedImageItem[] = [];
+    for (const g of partGroups) {
+      for (const img of g.images) {
+        if (!seen.has(img.id)) {
+          seen.add(img.id);
+          flat.push(img);
+        }
+      }
+    }
+    return flat;
+  }, [partGroups]);
   const totalPages = Math.max(1, Math.ceil(allImages.length / PAGE_SIZE));
 
   // Reset or clamp current page if images change
@@ -173,42 +198,7 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
         </div>
       </div>
 
-      {/* 2. Group filter chips (if multiple part groups exist) */}
-      {partGroups.length > 1 && (
-        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {partGroups.map((group) => {
-            const isActive = (activePartId || partGroups[0]?.part_id) === group.part_id;
-            return (
-              <button
-                key={group.part_id}
-                onClick={() => {
-                  onSelectPart(group.part_id);
-                  setCurrentPage(0);
-                  setSelectedIds(new Set());
-                }}
-                style={{
-                  padding: '2px 6px',
-                  borderRadius: 5,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                  background: isActive ? '#0284c7' : 'rgba(255, 255, 255, 0.06)',
-                  color: isActive ? '#ffffff' : '#94a3b8',
-                  border: isActive ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                }}
-              >
-                <span>{group.icon}</span>
-                <span>{group.part_name}</span>
-                <span style={{ fontSize: 8, opacity: 0.8 }}>({group.images.length})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Group filter tabs removed — showing all images flat */}
 
       {/* 3. Slider / Pagination Bar */}
       <div
@@ -316,7 +306,6 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
                   : [];
               if (targetIds.length > 0) {
                 await onBatchSeparateImages(targetIds);
-                setSelectedIds(new Set());
               }
             }}
             disabled={isBatchProcessing || pageImages.length === 0}
@@ -409,7 +398,13 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           return (
             <div
               key={item.id}
-              onClick={() => onSelectImage(item.id)}
+              onClick={(e) => {
+                if (e.ctrlKey || e.metaKey) {
+                  handleToggleSelectItem(item.id, e);
+                } else {
+                  onSelectImage(item.id);
+                }
+              }}
               onMouseEnter={() => setHoveredItem(item)}
               onMouseLeave={() => setHoveredItem(null)}
               style={{

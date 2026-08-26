@@ -88,16 +88,16 @@ export function getComponentDef(partType: string, options: {
         excludeShort: 'front bangs, forehead fringe, front hair overlay, decorative bangs, face skin, eyes, eyebrows, nose, mouth, body',
         includedGeometry: isShortHair
           ? [
-              'clean plain base short rear hair',
-              'pulled-back side hair contour',
-              'open exposed forehead area',
-            ]
+            'clean plain base short rear hair',
+            'pulled-back side hair contour',
+            'open exposed forehead area',
+          ]
           : [
-              'clean plain base rear back hair mass',
-              `flowing back hair mantle cascading down in hair color (${hairColInfo.en})`,
-              'rear hair bun / plain crown base',
-              'open exposed forehead and face area for bangs attachment',
-            ],
+            'clean plain base rear back hair mass',
+            `flowing back hair mantle cascading down in hair color (${hairColInfo.en})`,
+            'rear hair bun / plain crown base',
+            'open exposed forehead and face area for bangs attachment',
+          ],
         excludedGeometry: [
           'front bangs', 'forehead fringe', 'front hair overlay', 'decorative bangs', 'face skin', 'eyes', 'eyebrows', 'nose', 'mouth', 'body',
         ],

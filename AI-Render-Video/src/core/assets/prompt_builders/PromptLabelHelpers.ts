@@ -234,4 +234,3 @@ export const getSkinToneLabels = (tone?: string, custom?: string) => {
       return { vi: tone, en: tone };
   }
 };
-

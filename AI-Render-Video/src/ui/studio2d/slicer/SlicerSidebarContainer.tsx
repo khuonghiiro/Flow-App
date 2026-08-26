@@ -39,6 +39,10 @@ export interface SlicerSidebarContainerProps {
   totalCellCount: number;
   onOpenSaveKitModal: () => void;
   onOpenCatalogModal: () => void;
+  checkedCount?: number;
+  checkedImageIds?: Set<string>;
+  onBatchSeparateChecked?: () => Promise<void>;
+  isBatchProcessing?: boolean;
 }
 
 export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
@@ -75,6 +79,10 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
   totalCellCount,
   onOpenSaveKitModal,
   onOpenCatalogModal,
+  checkedCount = 0,
+  checkedImageIds,
+  onBatchSeparateChecked,
+  isBatchProcessing = false,
 }) => {
   const {
     isEyedropperActive, setIsEyedropperActive,
@@ -190,6 +198,9 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
       totalCellCount={totalCellCount}
       onOpenSaveKitModal={onOpenSaveKitModal}
       onOpenCatalogModal={onOpenCatalogModal}
+      checkedCount={checkedCount}
+      onBatchSeparateChecked={onBatchSeparateChecked}
+      isBatchProcessing={isBatchProcessing}
     />
   );
 };
