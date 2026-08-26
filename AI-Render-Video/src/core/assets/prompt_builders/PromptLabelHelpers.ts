@@ -177,12 +177,14 @@ export const getHairAccessoryLabels = (acc?: string, custom?: string) => {
 
 export const getBodyProportionLabels = (prop?: string, custom?: string) => {
   if (custom?.trim()) return { vi: custom.trim(), en: custom.trim() };
-  if (!prop) return { vi: 'Chibi đáng yêu 2.5 đầu, đầu to thân nhỏ gọn gàng', en: 'Cute chibi proportions, large head, short compact body, 2.5 heads tall, small hands and feet' };
+  if (!prop) return { vi: 'Chibi đáng yêu 2.5 đầu, mịn màng không khớp nối', en: 'Cute smooth chibi proportions, 2.5 heads tall, large head, seamless soft body, no mechanical joints, smooth organic limbs' };
   switch (prop) {
-    case 'chibi_2_5': return { vi: 'Chibi đáng yêu 2.5 đầu, đầu to thân nhỏ gọn gàng', en: 'Cute chibi proportions, large head, short compact body, 2.5 heads tall, small hands and feet' };
-    case 'chibi_2_heads': return { vi: 'Super Chibi 2 đầu kawaii', en: 'Super kawaii chibi 2 heads tall, tiny body, giant head' };
-    case 'anime_standard': return { vi: 'Anime tiêu chuẩn 6-7 đầu, thon thả thanh thoát', en: 'Standard 2D anime proportions, 6 to 7 heads tall, slender elegant body, long limbs' };
-    case 'heroic_martial': return { vi: 'Hiệp khách oai phong 7.5 đầu', en: 'Heroic martial cultivator proportions, 7.5 heads tall, athletic powerful build' };
+    case 'chibi_2_5': return { vi: 'Chibi đáng yêu 2.5 đầu, mịn màng không khớp nối', en: 'Cute smooth chibi proportions, 2.5 heads tall, large head, seamless soft body, no mechanical ball joints, smooth organic anime limbs' };
+    case 'chibi_2_heads': return { vi: 'Super Chibi 2 đầu kawaii, mềm mại', en: 'Super kawaii chibi 2 heads tall, tiny seamless soft body, giant head, organic smooth limbs' };
+    case 'anime_standard': return { vi: 'Anime tiêu chuẩn 6-7 đầu, thon thả thanh thoát', en: 'Standard 2D anime proportions, 6 to 7 heads tall, slender elegant body, smooth organic anatomy' };
+    case 'female_curvy_bust': return { vi: 'Nữ Anime vóc dáng gợi cảm, ngực nở eo thon (Curvy Feminine)', en: 'Feminine anime proportions, well-defined bust cleavage curve, slender waist, graceful hourglass hips, smooth organic curves' };
+    case 'male_athletic_muscular': return { vi: 'Nam Anime cơ bắp thể thao, ngực săn chắc vai rộng (Athletic Muscular)', en: 'Athletic muscular male anime physique, broad shoulders, defined pectoral chest and abdominal abs, toned arms with subtle muscle veins' };
+    case 'heroic_martial': return { vi: 'Hiệp khách oai phong 7.5 đầu, thể hình săn chắc', en: 'Heroic martial cultivator proportions, 7.5 heads tall, athletic powerful build, toned physique' };
     default: return { vi: prop, en: prop };
   }
 };

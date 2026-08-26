@@ -112,29 +112,31 @@ export function getComponentDef(partType: string, options: {
 
     case 'khuon_mat_no_face':
     case 'khuon_mat':
+    case 'dau':
+    case 'dau_khong_co':
       return {
-        id: 'khuon_mat_no_face',
-        nameVi: 'Khuôn Mặt Trần & Cổ (Blank Head & Neck Base)',
-        titleEn: 'BLANK PORCELAIN HEAD AND NECK BASE SPRITE',
-        assetTag: 'BLANK_PORCELAIN_HEAD_AND_NECK_BASE_ONLY',
-        summaryEn: 'Completely featureless blank porcelain anime head, face, and full neck base down to collarbone line, zero facial features and bald scalp.',
-        positiveContent: 'A completely featureless blank porcelain anime head and full neck extending down to collarbone line, with smooth bare chin and jawline, zero facial features and bald scalp, like a smooth blank mannequin head-neck base ready for modular layers and costume rigging.',
-        excludeShort: 'hair, front bangs, back hair, eyes, eyebrows, nose, mouth, body below collarbone, clothes',
+        id: 'dau_khong_co',
+        nameVi: 'Đầu Anime Trần (Không Cổ - Head Only)',
+        titleEn: 'BLANK ANIME HEAD ONLY (NO NECK - CHIN BASE)',
+        assetTag: 'BLANK_ANIME_HEAD_NO_NECK_CHIN_BASE_ONLY',
+        summaryEn: 'Completely featureless blank anime head with clean rounded jawline and chin base, strictly NO neck attached.',
+        positiveContent: 'An isolated 2D cutout rigging asset: Blank anime head only from crown to chin/jawline. Smooth fair peach anime skin tone, clean rounded chin with smooth convex bottom contour, cute anime ears on sides, completely bald scalp, zero facial features. Strictly NO neck attached (neck belongs to the torso component). Front view 0° orthographic, centered on flat chroma green #00FF00 background.',
+        excludeShort: 'neck, collarbones, body, torso, hair, eyes, eyebrows, nose, mouth, clothes',
         includedGeometry: [
-          'completely blank porcelain facial skin silhouette',
-          'smooth jawline and chin',
-          'empty bald forehead and scalp surface',
-          'full neck extending down to collarbone base',
+          'blank anime head silhouette',
+          'smooth jawline and chin contour',
+          'cute ears on left and right',
+          'clean convex bottom arc at chin',
         ],
         excludedGeometry: [
-          'hair of any kind', 'bangs', 'back hair', 'eyebrows', 'eyes', 'nose', 'mouth', 'body below collarbone', 'clothes',
+          'neck', 'collarbones', 'body', 'torso', 'hair', 'eyebrows', 'eyes', 'nose', 'mouth', 'clothes',
         ],
         rearVisibility: 'visible',
         groupId: '01_head_face',
         groupNameVi: 'Khuôn Mặt & Ngũ Quan',
         zIndex: 30,
-        filePrefix: '03_khuon_mat',
-        idealAspectRatio: '3:4',
+        filePrefix: '01_dau',
+        idealAspectRatio: '1:1',
       };
 
     case 'trong_den_iris':
@@ -509,19 +511,21 @@ export function getComponentDef(partType: string, options: {
       };
 
     case 'than_mannequin':
+    case 'than_co':
+    case 'than':
       return {
-        id: 'than_mannequin',
-        nameVi: 'Thân Mannequin (Chỏm lồi cổ, vai, háng)',
-        titleEn: 'CHIBI MANNEQUIN TORSO WITH CONVEX DOME CAPS',
-        assetTag: 'CHIBI_TORSO_CONVEX_DOME_CAPS',
-        summaryEn: 'Fair porcelain anime torso with soft rosy-pink undertone and convex rounded dome caps at neck, shoulders, and hips.',
-        positiveContent: 'Isolated 2D cutout rigging asset: The TORSO segment of a cute 2.5-heads chibi character. Fair porcelain anime skin tone with soft rosy-pink undertone, pale peachy-white complexion with subtle pink blush shading, smooth cel-shaded soft gradient shading (no realistic pores/texture). Core body from neck base to pelvis crotch after removing head, arms, and legs. CONVEX JOINT CAPS: At each disconnection point (neck base, left shoulder, right shoulder, left hip, right hip), the joint end bulges outward with a smooth convex rounded arc (dome-shaped overlap cap) extending slightly outward past the cut line, so no concave gap appears when parts are separated for 2D puppet rigging. Front view 0° orthographic, centered on solid bright green chroma-key background (#00FF00).',
-        excludeShort: 'head, arms, hands, thighs, legs, feet, clothes',
+        id: 'than_co',
+        nameVi: 'Thân Kèm Cổ (Torso with Attached Neck)',
+        titleEn: 'SMOOTH ANIME TORSO WITH ATTACHED NECK',
+        assetTag: 'SMOOTH_ANIME_TORSO_WITH_ATTACHED_NECK',
+        summaryEn: 'Smooth fair peach anime torso body with full neck attached, ready for head attachment.',
+        positiveContent: 'Isolated 2D cutout rigging asset: The TORSO segment of a 2D anime character WITH FULL NECK ATTACHED. Smooth fair peach anime skin tone with soft rosy undertone, clean collarbones, slender waist, smooth hips. The neck extends upward naturally from the shoulders with a clean rounded top contour where the head connects. Left and right shoulders and hips have clean rounded insertion sockets. Front view 0° orthographic, centered on flat chroma green #00FF00 background.',
+        excludeShort: 'head, upper arms, forearms, hands, thighs, shins, feet, clothes',
         includedGeometry: [
-          'fair porcelain torso with rosy-pink undertone',
-          'convex dome cap at neck base',
-          'convex dome caps at left and right shoulders',
-          'convex dome caps at left and right hips',
+          'smooth anime torso body',
+          'full neck attached extending upward',
+          'clean rounded shoulder sockets',
+          'clean rounded hip sockets',
         ],
         excludedGeometry: [
           'head', 'upper arms', 'forearms', 'hands', 'thighs', 'shins', 'feet', 'clothes',
@@ -530,7 +534,7 @@ export function getComponentDef(partType: string, options: {
         groupId: '02_mannequin_limbs',
         groupNameVi: 'Khung Xương Cơ Thể Mannequin',
         zIndex: 11,
-        filePrefix: '02_than_mannequin',
+        filePrefix: '02_than_co',
         idealAspectRatio: '3:4',
       };
 
