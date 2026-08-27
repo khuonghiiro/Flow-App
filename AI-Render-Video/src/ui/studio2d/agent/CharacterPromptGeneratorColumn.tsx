@@ -141,7 +141,7 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
           <Upload size={12} /> Tải ảnh lên
           <input
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,.webp,.gif,.bmp"
             onChange={handleFileUpload}
             style={{ display: 'none' }}
           />

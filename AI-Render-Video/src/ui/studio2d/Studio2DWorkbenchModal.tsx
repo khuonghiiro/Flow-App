@@ -8,6 +8,7 @@ import {
   X,
   Grid,
   Bot,
+  Bone,
 } from 'lucide-react';
 import { ImageSegmenterCropper } from './ImageSegmenterCropper';
 import { AIPromptGenerator2D } from './AIPromptGenerator2D';
@@ -15,6 +16,7 @@ import { Character2DAssembler } from './Character2DAssembler';
 import { AutoGridSlicer3DAssembler } from './AutoGridSlicer3DAssembler';
 import { Map2DAssembler } from './Map2DAssembler';
 import { ActionSequence2DDirector } from './ActionSequence2DDirector';
+import { MultiAngleRigAssembler } from './MultiAngleRigAssembler';
 import { AIAntigravityDecomposerPanel } from './agent/AIAntigravityDecomposerPanel';
 import {
   Character2DAssembly,
@@ -36,7 +38,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'grid_slicer' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'rig_assembler' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -178,6 +180,26 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('rig_assembler')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: activeTab === 'rig_assembler' ? 700 : 600,
+                border: 'none',
+                background: activeTab === 'rig_assembler' ? '#d97706' : 'transparent',
+                color: activeTab === 'rig_assembler' ? '#ffffff' : '#f59e0b',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Bone size={13} /> 1.5 🦴 Xương 2D→3D
+            </button>
+
+            <button
               onClick={() => setActiveTab('character')}
               style={{
                 display: 'flex',
@@ -310,6 +332,10 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               externalImageUrl={transferredSpriteSheetUrl}
               externalCategoryId={transferredCategoryId}
             />
+          )}
+
+          {activeTab === 'rig_assembler' && (
+            <MultiAngleRigAssembler />
           )}
 
           {activeTab === 'character' && (

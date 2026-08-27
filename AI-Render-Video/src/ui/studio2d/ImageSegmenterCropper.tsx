@@ -378,7 +378,7 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 340px', gap: 16, height: '100%', overflow: 'hidden' }}>
       {/* Hidden File Input */}
-      <input type="file" ref={fileInputRef} accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
+      <input type="file" ref={fileInputRef} accept=".jpg,.jpeg,.png,.webp,.gif,.bmp" style={{ display: 'none' }} onChange={handleFileUpload} />
 
       {/* ─── LEFT COLUMN: Presets & Controls ─────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', paddingRight: 4 }}>

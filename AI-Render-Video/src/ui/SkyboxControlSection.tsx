@@ -62,7 +62,7 @@ export const SkyboxControlSection: React.FC<SkyboxControlSectionProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,.hdr,.exr"
+        accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.hdr,.exr"
         style={{ display: 'none' }}
         onChange={handleFileUpload}
       />

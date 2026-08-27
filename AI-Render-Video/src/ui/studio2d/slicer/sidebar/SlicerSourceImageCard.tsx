@@ -210,7 +210,7 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept=".jpg,.jpeg,.png,.webp,.gif,.bmp"
         multiple
         onChange={onFileUpload}
         style={{ display: 'none' }}

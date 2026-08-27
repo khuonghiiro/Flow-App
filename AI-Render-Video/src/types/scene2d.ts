@@ -322,4 +322,72 @@ export interface AIPartPromptConfig {
   include_schema_guide?: boolean;
 }
 
+// ─── Bone Rig 2D→3D Types ─────────────────────────────────────────
+
+/** A single bone node in a 2D skeleton hierarchy */
+export interface BoneNode {
+  id: string;
+  name: string;
+  /** Parent bone id (null for root) */
+  parentId: string | null;
+  /** Position relative to parent bone (or canvas origin for root), in normalized coords [0..1] */
+  position: [number, number];
+  /** Rotation in degrees */
+  rotation: number;
+  /** Bone length in normalized units */
+  length: number;
+  /** Visual color for the bone line */
+  color?: string;
+}
+
+/** A complete bone rig definition for a single body part */
+export interface BoneRigDefinition {
+  id: string;
+  name: string;
+  nameVi: string;
+  /** Which body part this rig is for */
+  targetPart: Character2DPartType;
+  /** All bones in this rig */
+  bones: BoneNode[];
+  /** Preset category */
+  category: 'hand' | 'arm' | 'leg' | 'head' | 'torso' | 'full_body' | 'custom';
+}
+
+/** Angle slot entry — maps a camera angle to its uploaded texture */
+export interface AngleSlotEntry {
+  angle: Character2DAngle;
+  /** Data URL or asset path */
+  textureUrl: string | null;
+  /** Whether this slot was auto-mirrored from another angle */
+  isMirrored: boolean;
+  /** Source angle if mirrored */
+  mirrorSourceAngle?: Character2DAngle;
+}
+
+/** Assembly of a body part with multi-angle textures and bone rig */
+export interface MultiAngleRigAssembly {
+  id: string;
+  name: string;
+  /** Which part type this assembly is for */
+  partType: Character2DPartType;
+  /** Bone rig applied to this part */
+  boneRig: BoneRigDefinition | null;
+  /** Multi-angle texture slots */
+  angleSlots: AngleSlotEntry[];
+  /** Which angle has the master bone rig (others inherit transforms) */
+  masterAngle: Character2DAngle;
+  /** Created timestamp */
+  createdAt: string;
+  /** Updated timestamp */
+  updatedAt: string;
+}
+
+/** Preset template identifiers for quick bone rig setup */
+export type BoneRigPresetId =
+  | 'hand_5_fingers'
+  | 'arm_3_segments'
+  | 'leg_3_segments'
+  | 'head_jaw_eyes'
+  | 'torso_spine'
+  | 'full_body_simple';
 

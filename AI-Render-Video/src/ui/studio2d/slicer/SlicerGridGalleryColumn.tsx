@@ -11,6 +11,8 @@ import {
   CheckSquare,
   Square,
   RefreshCw,
+  Download,
+  FolderDown,
 } from 'lucide-react';
 import { SlicerPartGroupItem, SlicerUploadedImageItem } from './hooks/useSlicerMultiImageGallery';
 import { ChromaProcessOptions, processCellChromaAndDespeckle } from '../../../core/utils/ChromaDespeckleProcessor';
@@ -54,6 +56,8 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
   const [hoveredItem, setHoveredItem] = useState<SlicerUploadedImageItem | null>(null);
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
   const selectedIds = externalCheckedIds ?? internalSelectedIds;
+  const [isSavingBatch, setIsSavingBatch] = useState<boolean>(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   const setSelectedIds = useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     const doUpdate = (prev: Set<string>) => {
@@ -122,6 +126,61 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
       return next;
     });
   };
+
+  /** Batch save checked images to a folder via File System Access API or fallback download */
+  const handleBatchSaveImages = useCallback(async () => {
+    const targetIds = selectedIds.size > 0 ? Array.from(selectedIds) : allImages.map((i) => i.id);
+    if (targetIds.length === 0) return;
+
+    const imagesToSave = allImages.filter((img) => targetIds.includes(img.id));
+    if (imagesToSave.length === 0) return;
+
+    setIsSavingBatch(true);
+    setSaveMsg(null);
+
+    try {
+      // Try File System Access API (Chrome/Edge)
+      if ('showDirectoryPicker' in window) {
+        const dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+        let saved = 0;
+        for (const img of imagesToSave) {
+          const dataUrl = img.transparentUrl || img.url;
+          if (!dataUrl) continue;
+          const blob = await (await fetch(dataUrl)).blob();
+          const ext = dataUrl.startsWith('data:image/png') ? '.png' : '.png';
+          const safeName = (img.name || `image_${img.id}`).replace(/\.[^.]+$/, '') + ext;
+          const fileHandle = await dirHandle.getFileHandle(safeName, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          saved++;
+        }
+        setSaveMsg(`✓ Đã lưu ${saved} ảnh vào thư mục!`);
+        setTimeout(() => setSaveMsg(null), 3500);
+      } else {
+        // Fallback: download each file individually
+        for (const img of imagesToSave) {
+          const dataUrl = img.transparentUrl || img.url;
+          if (!dataUrl) continue;
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = (img.name || `image_${img.id}`).replace(/\.[^.]+$/, '') + '.png';
+          link.click();
+          await new Promise((r) => setTimeout(r, 200)); // throttle downloads
+        }
+        setSaveMsg(`✓ Đã tải ${imagesToSave.length} ảnh!`);
+        setTimeout(() => setSaveMsg(null), 3500);
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('[BatchSave] Error:', err);
+        setSaveMsg('❌ Lưu thất bại!');
+        setTimeout(() => setSaveMsg(null), 3000);
+      }
+    } finally {
+      setIsSavingBatch(false);
+    }
+  }, [selectedIds, allImages]);
 
   if (totalImagesCount === 0) return null;
 
@@ -197,6 +256,24 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
           </button>
         </div>
       </div>
+
+      {/* Save Toast */}
+      {saveMsg && (
+        <div style={{
+          padding: '4px 10px',
+          borderRadius: 5,
+          background: saveMsg.startsWith('✓')
+            ? 'linear-gradient(90deg, rgba(5, 150, 105, 0.3), rgba(16, 185, 129, 0.2))'
+            : 'rgba(239, 68, 68, 0.2)',
+          border: `1px solid ${saveMsg.startsWith('✓') ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+          color: saveMsg.startsWith('✓') ? '#34d399' : '#f87171',
+          fontSize: 9.5,
+          fontWeight: 700,
+          textAlign: 'center' as const,
+        }}>
+          {saveMsg}
+        </div>
+      )}
 
       {/* Group filter tabs removed — showing all images flat */}
 
@@ -346,6 +423,47 @@ export const SlicerGridGalleryColumn: React.FC<SlicerGridGalleryColumnProps> = (
             )}
           </button>
         )}
+
+        {/* Batch Save Button */}
+        <button
+          onClick={handleBatchSaveImages}
+          disabled={isSavingBatch || allImages.length === 0}
+          style={{
+            padding: '3px 7px',
+            fontSize: 9.5,
+            fontWeight: 700,
+            borderRadius: 5,
+            background: isSavingBatch
+              ? 'rgba(255,255,255,0.1)'
+              : 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+            color: '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            cursor: isSavingBatch ? 'not-allowed' : 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            boxShadow: '0 2px 8px rgba(5, 150, 105, 0.35)',
+          }}
+          title={
+            selectedIds.size > 0
+              ? `Lưu ${selectedIds.size} ảnh đã chọn vào thư mục`
+              : `Lưu tất cả ${allImages.length} ảnh vào thư mục`
+          }
+        >
+          {isSavingBatch ? (
+            <>
+              <RefreshCw size={10} className="animate-spin" /> Đang lưu...
+            </>
+          ) : selectedIds.size > 0 ? (
+            <>
+              <FolderDown size={10} /> Lưu ({selectedIds.size})
+            </>
+          ) : (
+            <>
+              <FolderDown size={10} /> Lưu tất cả
+            </>
+          )}
+        </button>
       </div>
 
       {/* 5. Fixed 20-Slot Grid Container (4 columns x 5 rows, 66px x 62px per cell) */}
