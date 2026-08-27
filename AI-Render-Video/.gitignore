@@ -54,6 +54,7 @@ Thumbs.db
 # Assets Directory:
 # Ignore everything in assets/ except directories, .md files, and asset_manifest.json
 assets/**/*
+demo/*
 !assets/**/
 !assets/**/*.md
 !assets/**/*.png
