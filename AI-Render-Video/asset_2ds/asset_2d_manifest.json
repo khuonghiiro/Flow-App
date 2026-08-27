@@ -1,0 +1,399 @@
+{
+  "version": "1.0.0",
+  "last_scanned": "2026-08-27T07:20:37.559Z",
+  "total_assets": 1,
+  "total_size_mb": 0.03,
+  "stats": {
+    "images": 0,
+    "audio": 0,
+    "data_json": 1
+  },
+  "structure": {
+    "version": "1.0.0",
+    "description": "Cấu hình danh mục tài nguyên 2D động cho FlowMy 2D Studio. Chỉnh sửa file này để thêm/đổi tên/icon cho menu item trong xưởng 2D.",
+    "settings": {
+      "auto_discover_new_folders": true,
+      "supported_image_formats": [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".gif",
+        ".svg"
+      ],
+      "supported_audio_formats": [
+        ".mp3",
+        ".wav",
+        ".ogg"
+      ]
+    },
+    "categories": [
+      {
+        "id": "nhan_vat",
+        "folder": "nhan_vat",
+        "label": "Nhân Vật 2D",
+        "icon": "🧍",
+        "subcategories": [
+          {
+            "id": "than_co_ban",
+            "folder": "than_co_ban",
+            "label": "Thân Cơ Bản",
+            "icon": "🧍"
+          },
+          {
+            "id": "dau",
+            "folder": "dau",
+            "label": "Đầu",
+            "icon": "🗣️"
+          },
+          {
+            "id": "khuon_mat",
+            "folder": "khuon_mat",
+            "label": "Khuôn Mặt",
+            "icon": "🎭"
+          },
+          {
+            "id": "mat",
+            "folder": "mat",
+            "label": "Mắt",
+            "icon": "👁️"
+          },
+          {
+            "id": "mui",
+            "folder": "mui",
+            "label": "Mũi",
+            "icon": "👃"
+          },
+          {
+            "id": "mieng",
+            "folder": "mieng",
+            "label": "Miệng",
+            "icon": "👄"
+          },
+          {
+            "id": "toc_truoc",
+            "folder": "toc_truoc",
+            "label": "Tóc Trước",
+            "icon": "💇"
+          },
+          {
+            "id": "toc_sau",
+            "folder": "toc_sau",
+            "label": "Tóc Sau",
+            "icon": "💇‍♂️"
+          },
+          {
+            "id": "canh_tay",
+            "folder": "canh_tay",
+            "label": "Cánh Tay",
+            "icon": "💪"
+          },
+          {
+            "id": "cang_tay",
+            "folder": "cang_tay",
+            "label": "Cẳng Tay",
+            "icon": "🦾"
+          },
+          {
+            "id": "ban_tay",
+            "folder": "ban_tay",
+            "label": "Bàn Tay",
+            "icon": "🤚"
+          },
+          {
+            "id": "dui",
+            "folder": "dui",
+            "label": "Đùi",
+            "icon": "🦵"
+          },
+          {
+            "id": "cang_chan",
+            "folder": "cang_chan",
+            "label": "Cẳng Chân",
+            "icon": "🦿"
+          },
+          {
+            "id": "trang_phuc",
+            "folder": "trang_phuc",
+            "label": "Trang Phục",
+            "icon": "👘"
+          },
+          {
+            "id": "vu_khi",
+            "folder": "vu_khi",
+            "label": "Vũ Khí",
+            "icon": "⚔️"
+          },
+          {
+            "id": "_lap_rap",
+            "folder": "_lap_rap",
+            "label": "Đã Lắp Ráp",
+            "icon": "✨"
+          }
+        ]
+      },
+      {
+        "id": "ban_do",
+        "folder": "ban_do",
+        "label": "Bản Đồ Parallax",
+        "icon": "🗺️",
+        "subcategories": [
+          {
+            "id": "bau_troi",
+            "folder": "bau_troi",
+            "label": "Bầu Trời",
+            "icon": "🌌"
+          },
+          {
+            "id": "hau_canh",
+            "folder": "hau_canh",
+            "label": "Hậu Cảnh",
+            "icon": "🏔️"
+          },
+          {
+            "id": "trung_canh",
+            "folder": "trung_canh",
+            "label": "Trung Cảnh",
+            "icon": "🌲"
+          },
+          {
+            "id": "tien_canh",
+            "folder": "tien_canh",
+            "label": "Tiền Cảnh",
+            "icon": "🌿"
+          },
+          {
+            "id": "vat_can",
+            "folder": "vat_can",
+            "label": "Vật Cận",
+            "icon": "🪨"
+          },
+          {
+            "id": "_custom_ban_do",
+            "folder": "_custom_ban_do",
+            "label": "Bản Đồ Tự Thiết Kế",
+            "icon": "🏰"
+          }
+        ]
+      },
+      {
+        "id": "dao_cu",
+        "folder": "dao_cu",
+        "label": "Đạo Cụ & Vật Phẩm",
+        "icon": "🎒",
+        "subcategories": [
+          {
+            "id": "do_dac",
+            "folder": "do_dac",
+            "label": "Đồ Đạc",
+            "icon": "🪑"
+          },
+          {
+            "id": "huyen_huyen",
+            "folder": "huyen_huyen",
+            "label": "Huyền Huyền",
+            "icon": "🔮"
+          },
+          {
+            "id": "thuc_an",
+            "folder": "thuc_an",
+            "label": "Thức Ăn",
+            "icon": "🍵"
+          },
+          {
+            "id": "vu_khi",
+            "folder": "vu_khi",
+            "label": "Vũ Khí",
+            "icon": "⚔️"
+          }
+        ]
+      },
+      {
+        "id": "hieu_ung",
+        "folder": "hieu_ung",
+        "label": "Hiệu Ứng VFX",
+        "icon": "✨",
+        "subcategories": [
+          {
+            "id": "chem_kiem",
+            "folder": "chem_kiem",
+            "label": "Chém Kiếm",
+            "icon": "⚔️"
+          },
+          {
+            "id": "chuong_khi",
+            "folder": "chuong_khi",
+            "label": "Chưởng Khí",
+            "icon": "💨"
+          },
+          {
+            "id": "set_lua",
+            "folder": "set_lua",
+            "label": "Sét & Lửa",
+            "icon": "🔥"
+          },
+          {
+            "id": "thoi_tiet",
+            "folder": "thoi_tiet",
+            "label": "Thời Tiết",
+            "icon": "⛈️"
+          }
+        ]
+      },
+      {
+        "id": "am_thanh",
+        "folder": "am_thanh",
+        "label": "Âm Thanh SFX",
+        "icon": "🔊",
+        "subcategories": [
+          {
+            "id": "sfx_combat",
+            "folder": "sfx_combat",
+            "label": "Chiến Đấu",
+            "icon": "⚔️"
+          },
+          {
+            "id": "sfx_hanh_dong",
+            "folder": "sfx_hanh_dong",
+            "label": "Hành Động",
+            "icon": "🏃"
+          },
+          {
+            "id": "sfx_moi_truong",
+            "folder": "sfx_moi_truong",
+            "label": "Môi Trường",
+            "icon": "🌿"
+          }
+        ]
+      }
+    ],
+    "dictionary": {
+      "cay_coi": {
+        "label": "Cây Cối & Hoa Lá",
+        "icon": "🌳"
+      },
+      "dong_vat": {
+        "label": "Động Vật",
+        "icon": "🦁"
+      },
+      "noi_that": {
+        "label": "Nội Thất",
+        "icon": "🪑"
+      },
+      "cong_trinh": {
+        "label": "Công Trình & Nhà Cửa",
+        "icon": "🏠"
+      },
+      "phuong_tien": {
+        "label": "Phương Tiện",
+        "icon": "🐴"
+      },
+      "da_dia_hinh": {
+        "label": "Đá & Địa Hình",
+        "icon": "🪨"
+      },
+      "hoa_co": {
+        "label": "Hoa Cỏ & Thảo Mộc",
+        "icon": "🌸"
+      },
+      "than_thoai": {
+        "label": "Thần Thoại & Linh Thú",
+        "icon": "🐉"
+      },
+      "quai_vat": {
+        "label": "Quái Vật & Dị Thú",
+        "icon": "👹"
+      },
+      "khoang_san": {
+        "label": "Khoáng Sản & Ngọc Quý",
+        "icon": "💎"
+      }
+    }
+  },
+  "categories": {
+    "nhan_vat": {
+      "than_co_ban": [],
+      "dau": [],
+      "khuon_mat": [],
+      "mat": [],
+      "mui": [],
+      "mieng": [],
+      "toc_truoc": [],
+      "toc_sau": [],
+      "canh_tay": [],
+      "cang_tay": [],
+      "ban_tay": [],
+      "dui": [],
+      "cang_chan": [],
+      "trang_phuc": [],
+      "vu_khi": [],
+      "_lap_rap": [
+        {
+          "id": "nhan_vat__lap_rap_kiếm_khách_tiêu_dao",
+          "name": "Kiếm Khách Tiêu Dao",
+          "filename": "kiếm_khách_tiêu_dao.json",
+          "relPath": "nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.json",
+          "path": "asset_2ds/nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.json",
+          "format": "JSON",
+          "sizeMB": "0.03",
+          "categoryId": "nhan_vat",
+          "subCategoryId": "_lap_rap",
+          "type": "data",
+          "previewUrl": "asset_2ds/nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.png",
+          "metadata": {
+            "gender": "nam",
+            "characterName": "Kiếm Khách Tiêu Dao"
+          }
+        }
+      ],
+      "_all": [
+        {
+          "id": "nhan_vat__lap_rap_kiếm_khách_tiêu_dao",
+          "name": "Kiếm Khách Tiêu Dao",
+          "filename": "kiếm_khách_tiêu_dao.json",
+          "relPath": "nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.json",
+          "path": "asset_2ds/nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.json",
+          "format": "JSON",
+          "sizeMB": "0.03",
+          "categoryId": "nhan_vat",
+          "subCategoryId": "_lap_rap",
+          "type": "data",
+          "previewUrl": "asset_2ds/nhan_vat/_lap_rap/kiếm_khách_tiêu_dao.png",
+          "metadata": {
+            "gender": "nam",
+            "characterName": "Kiếm Khách Tiêu Dao"
+          }
+        }
+      ]
+    },
+    "ban_do": {
+      "bau_troi": [],
+      "hau_canh": [],
+      "trung_canh": [],
+      "tien_canh": [],
+      "vat_can": [],
+      "_custom_ban_do": [],
+      "_all": []
+    },
+    "dao_cu": {
+      "do_dac": [],
+      "huyen_huyen": [],
+      "thuc_an": [],
+      "vu_khi": [],
+      "_all": []
+    },
+    "hieu_ung": {
+      "chem_kiem": [],
+      "chuong_khi": [],
+      "set_lua": [],
+      "thoi_tiet": [],
+      "_all": []
+    },
+    "am_thanh": {
+      "sfx_combat": [],
+      "sfx_hanh_dong": [],
+      "sfx_moi_truong": [],
+      "_all": []
+    }
+  }
+}

@@ -10,6 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { Character2DAssembly, Character2DPartType } from '../../../types/scene2d';
+import { slotHasComposite } from '../../../core/assets/PartAssemblyHierarchyRegistry';
 
 export interface EquipSlotItem {
   slot: Character2DPartType;
@@ -178,6 +179,26 @@ export const AssemblerEquipWing: React.FC<AssemblerEquipWingProps> = ({
             >
               Z:{partConfig?.z_index ?? item.zDefault}
             </span>
+
+            {/* Composite indicator — slot has sub-parts */}
+            {slotHasComposite(item.slot) && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: 2,
+                  fontSize: 12,
+                  lineHeight: 1,
+                  background: 'rgba(56, 189, 248, 0.25)',
+                  borderRadius: 4,
+                  padding: '2px 3px',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                }}
+                title="Có chi tiết con — click để mở"
+              >
+                ⚙️
+              </span>
+            )}
           </div>
         );
       })}

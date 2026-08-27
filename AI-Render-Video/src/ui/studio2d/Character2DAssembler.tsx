@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Character2DAssembly,
   Character2DPartType,
@@ -10,7 +10,13 @@ import { AssemblerMainViewport } from './assembler/AssemblerMainViewport';
 import { AssemblerEquipWing } from './assembler/AssemblerEquipHUD';
 import { AssemblerMaterialDrawer } from './assembler/AssemblerMaterialDrawer';
 import { AssemblerInspectorPanel } from './assembler/AssemblerInspectorPanel';
+import { AssemblerSubPartPanel } from './assembler/AssemblerSubPartPanel';
 import { CharacterAssetCatalogModal } from './CharacterAssetCatalogModal';
+import {
+  preloadPartHierarchy,
+  getCompositeForSlotSync,
+  type CompositePartDef,
+} from '../../core/assets/PartAssemblyHierarchyRegistry';
 
 interface Character2DAssemblerProps {
   assembly: Character2DAssembly;
@@ -31,6 +37,23 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
+  const [drillDownComposite, setDrillDownComposite] = useState<CompositePartDef | null>(null);
+
+  // Pre-load part hierarchy on mount for instant sync lookups
+  useEffect(() => {
+    preloadPartHierarchy();
+  }, []);
+
+  // When slot changes, check if it has a composite and auto-drill-down
+  const handleSlotSelect = (slot: Character2DPartType) => {
+    setSelectedSlot(slot);
+    const composite = getCompositeForSlotSync(slot);
+    if (composite) {
+      setDrillDownComposite(composite);
+    } else {
+      setDrillDownComposite(null);
+    }
+  };
 
   // Auto-align all parts to natural anatomical offsets
   const handleAutoAlignAnatomy = () => {
@@ -145,7 +168,7 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
           side="left"
           assembly={assembly}
           selectedSlot={selectedSlot}
-          onSelectSlot={setSelectedSlot}
+          onSelectSlot={handleSlotSelect}
         />
 
         {/* Viewport Ở Giữa (Canvas 2D / Không gian 3D) */}
@@ -167,7 +190,7 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
           side="right"
           assembly={assembly}
           selectedSlot={selectedSlot}
-          onSelectSlot={setSelectedSlot}
+          onSelectSlot={handleSlotSelect}
         />
       </div>
 
@@ -190,12 +213,21 @@ export const Character2DAssembler: React.FC<Character2DAssemblerProps> = ({
           </div>
         )}
 
-        {/* Danh Mục Vật Liệu (Chiếm toàn bộ width & height còn lại) */}
-        <AssemblerMaterialDrawer
-          selectedSlot={selectedSlot}
-          onApplyKitToSlot={handleApplyKitToSlot}
-          onOpenFullCatalog={() => setIsCatalogOpen(true)}
-        />
+        {/* Danh Mục Vật Liệu hoặc Panel Chi Tiết Con */}
+        {drillDownComposite ? (
+          <AssemblerSubPartPanel
+            composite={drillDownComposite}
+            assembly={assembly}
+            onChangeAssembly={onChangeAssembly}
+            onBack={() => setDrillDownComposite(null)}
+          />
+        ) : (
+          <AssemblerMaterialDrawer
+            selectedSlot={selectedSlot}
+            onApplyKitToSlot={handleApplyKitToSlot}
+            onOpenFullCatalog={() => setIsCatalogOpen(true)}
+          />
+        )}
 
         {/* Diễn Hoạt & Tinh Chỉnh Cấu Trúc (Co dãn gọn gàng) */}
         <AssemblerInspectorPanel

@@ -191,6 +191,112 @@ export default defineConfig({
           });
         });
 
+        // API: List top-level folders in asset_2ds/ for auto-discovery
+        server.middlewares.use('/api/list-2d-folders', (_req, res) => {
+          try {
+            const asset2dDir = path.join(__dirname, 'asset_2ds');
+            const entries = fs.readdirSync(asset2dDir, { withFileTypes: true });
+            const folders = entries
+              .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+              .map((e) => e.name);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(folders));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err?.message }));
+          }
+        });
+
+        // API: Live scan assets in a specific folder under asset_2ds/
+        // Usage: /api/scan-2d-assets?folder=nhan_vat/mat  or  ?folder=ban_do/hau_canh
+        // Returns items in real-time from filesystem — no need to run _scan_asset_2ds.bat
+        server.middlewares.use('/api/scan-2d-assets', (req, res) => {
+          try {
+            const url = new URL(req.url || '', `http://${req.headers.host}`);
+            const folderParam = url.searchParams.get('folder') || '';
+            const asset2dDir = path.join(__dirname, 'asset_2ds');
+            const targetDir = path.join(asset2dDir, folderParam);
+
+            // Security: ensure resolved path is within asset_2ds
+            const resolved = path.resolve(targetDir);
+            if (!resolved.startsWith(path.resolve(asset2dDir))) {
+              res.statusCode = 403;
+              res.end(JSON.stringify({ error: 'Access denied' }));
+              return;
+            }
+
+            if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify([]));
+              return;
+            }
+
+            const imageExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'];
+            const audioExts = ['.mp3', '.wav', '.ogg', '.m4a'];
+            const items: any[] = [];
+
+            const scanRecursive = (dir: string) => {
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                if (entry.name.startsWith('.')) continue;
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                  scanRecursive(fullPath);
+                  continue;
+                }
+                const ext = path.extname(entry.name).toLowerCase();
+                const isImage = imageExts.includes(ext);
+                const isAudio = audioExts.includes(ext);
+                const isJson = ext === '.json' && !entry.name.includes('manifest') && !entry.name.includes('structure');
+                if (!isImage && !isAudio && !isJson) continue;
+                if (entry.name.toLowerCase().startsWith('preview.') || entry.name.toLowerCase().startsWith('thumbnail.')) continue;
+
+                const relPath = path.relative(asset2dDir, fullPath).replace(/\\/g, '/');
+                const stats = fs.statSync(fullPath);
+                const baseName = path.parse(entry.name).name;
+
+                const item: any = {
+                  id: relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase(),
+                  name: baseName.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                  filename: entry.name,
+                  relPath,
+                  path: `asset_2ds/${relPath}`,
+                  format: ext.replace('.', '').toUpperCase(),
+                  sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+                  type: isImage ? 'image' : isAudio ? 'audio' : 'data',
+                };
+
+                if (isImage) item.previewUrl = `asset_2ds/${relPath}`;
+
+                if (isJson) {
+                  try {
+                    const jsonData = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+                    item.name = jsonData.name || item.name;
+                    const pngPath = path.join(dir, `${baseName}.png`);
+                    if (fs.existsSync(pngPath)) {
+                      item.previewUrl = `asset_2ds/${path.relative(asset2dDir, pngPath).replace(/\\/g, '/')}`;
+                    } else if (jsonData.preview_image) {
+                      item.previewUrl = jsonData.preview_image;
+                    }
+                  } catch { /* ignore */ }
+                }
+
+                items.push(item);
+              }
+            };
+
+            scanRecursive(targetDir);
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end(JSON.stringify(items));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err?.message }));
+          }
+        });
+
         // Static Asset_2Ds Serving Middleware
         server.middlewares.use('/asset_2ds', (req, res, next) => {
           const rawUrl = (req.url || '').split('?')[0];

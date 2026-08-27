@@ -8,7 +8,6 @@ import {
   X,
   Grid,
   Bot,
-  Bone,
 } from 'lucide-react';
 import { ImageSegmenterCropper } from './ImageSegmenterCropper';
 import { AIPromptGenerator2D } from './AIPromptGenerator2D';
@@ -16,9 +15,10 @@ import { Character2DAssembler } from './Character2DAssembler';
 import { AutoGridSlicer3DAssembler } from './AutoGridSlicer3DAssembler';
 import { Map2DAssembler } from './Map2DAssembler';
 import { ActionSequence2DDirector } from './ActionSequence2DDirector';
-import { MultiAngleRigAssembler } from './MultiAngleRigAssembler';
+// MultiAngleRigAssembler (Tab 1.5) — hidden, kept for future use
 import { ImageToSvgVectorizerTab } from './vectorizer/ImageToSvgVectorizerTab';
 import { AIAntigravityDecomposerPanel } from './agent/AIAntigravityDecomposerPanel';
+import { DetailPartAssemblerTab } from './detail/DetailPartAssemblerTab';
 import {
   Character2DAssembly,
   Character2DPartType,
@@ -39,7 +39,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'grid_slicer' | 'rig_assembler' | 'vectorizer' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -180,25 +180,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               <Grid size={13} /> 1. ⚡ Cắt Lưới & Lắp Ráp 3D
             </button>
 
-            <button
-              onClick={() => setActiveTab('rig_assembler')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 6,
-                fontSize: 11,
-                fontWeight: activeTab === 'rig_assembler' ? 700 : 600,
-                border: 'none',
-                background: activeTab === 'rig_assembler' ? '#d97706' : 'transparent',
-                color: activeTab === 'rig_assembler' ? '#ffffff' : '#f59e0b',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Bone size={13} /> 1.5 🦴 Xương 2D→3D
-            </button>
+            {/* Tab 1.5 (🦴 Xương 2D→3D) — hidden, kept for future use */}
 
             <button
               onClick={() => setActiveTab('vectorizer')}
@@ -221,6 +203,26 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('detail_part')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: activeTab === 'detail_part' ? 700 : 600,
+                border: 'none',
+                background: activeTab === 'detail_part' ? '#7c3aed' : 'transparent',
+                color: activeTab === 'detail_part' ? '#ffffff' : '#a78bfa',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Sparkles size={13} /> 2.1 ⚙️ Lắp Chi Tiết
+            </button>
+
+            <button
               onClick={() => setActiveTab('character')}
               style={{
                 display: 'flex',
@@ -237,7 +239,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
                 transition: 'all 0.2s',
               }}
             >
-              <Layers size={13} /> 2. Bàn Lắp Ráp Nhân Vật
+              <Layers size={13} /> 2.2 Lắp Ráp Nhân Vật
             </button>
 
             <button
@@ -355,18 +357,19 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
             />
           )}
 
-          {activeTab === 'rig_assembler' && (
-            <MultiAngleRigAssembler />
-          )}
+          {/* Tab 1.5 rig_assembler panel — hidden */}
 
           {activeTab === 'vectorizer' && (
             <ImageToSvgVectorizerTab
-              onTransferToRigAssembler={() => setActiveTab('rig_assembler')}
               onTransferToGridSlicer={(svgUrl) => {
                 setTransferredSpriteSheetUrl(svgUrl);
                 setActiveTab('grid_slicer');
               }}
             />
+          )}
+
+          {activeTab === 'detail_part' && (
+            <DetailPartAssemblerTab />
           )}
 
           {activeTab === 'character' && (
