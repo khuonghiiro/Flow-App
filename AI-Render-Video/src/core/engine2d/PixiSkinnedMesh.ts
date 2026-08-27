@@ -274,7 +274,9 @@ export function drawDiamondBones(
   bones: BoneNode[],
   transforms: BoneWorldTransform[],
   hoveredBone: string | null,
-  draggingBone: string | null
+  draggingBone: string | null,
+  selectedBoneId?: string | null,
+  hoveredHandle?: { boneId: string; type: 'joint' | 'tip' | 'body' } | null
 ): void {
   const boneMap = new Map<string, BoneNode>();
   bones.forEach((b) => boneMap.set(b.id, b));
@@ -283,7 +285,8 @@ export function drawDiamondBones(
     const bone = boneMap.get(t.boneId);
     if (!bone) continue;
 
-    const isHovered = hoveredBone === t.boneId;
+    const isSelected = selectedBoneId === t.boneId;
+    const isHovered = hoveredBone === t.boneId || hoveredHandle?.boneId === t.boneId;
     const isDragging = draggingBone === t.boneId;
 
     // Diamond shape: origin → left → tip → right → origin
@@ -295,14 +298,31 @@ export function drawDiamondBones(
     // Perpendicular direction for diamond width
     const perpX = -dy / len;
     const perpY = dx / len;
-    const diamondWidth = Math.min(len * 0.2, 8); // 20% of length, max 8px
+    const diamondWidth = Math.min(len * 0.22, 10);
 
     // Diamond midpoint (30% from origin)
     const midFrac = 0.3;
     const midX = t.worldX + dx * midFrac;
     const midY = t.worldY + dy * midFrac;
 
-    // Draw diamond
+    // Selected Glow Halo
+    if (isSelected || isDragging) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(t.worldX, t.worldY);
+      ctx.lineTo(midX + perpX * (diamondWidth + 4), midY + perpY * (diamondWidth + 4));
+      ctx.lineTo(t.tipX, t.tipY);
+      ctx.lineTo(midX - perpX * (diamondWidth + 4), midY - perpY * (diamondWidth + 4));
+      ctx.closePath();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw diamond body
     ctx.beginPath();
     ctx.moveTo(t.worldX, t.worldY);
     ctx.lineTo(midX + perpX * diamondWidth, midY + perpY * diamondWidth);
@@ -311,42 +331,50 @@ export function drawDiamondBones(
     ctx.closePath();
 
     // Fill
-    const alpha = isDragging ? 0.6 : isHovered ? 0.45 : 0.3;
-    ctx.fillStyle = bone.color || '#f59e0b';
+    const alpha = isDragging ? 0.75 : isSelected ? 0.6 : isHovered ? 0.5 : 0.35;
+    ctx.fillStyle = isSelected ? '#38bdf8' : (bone.color || '#f59e0b');
     ctx.globalAlpha = alpha;
     ctx.fill();
 
     // Outline
-    ctx.strokeStyle = isDragging ? '#fbbf24' : isHovered ? '#fcd34d' : (bone.color || '#f59e0b');
-    ctx.lineWidth = isDragging ? 2.5 : isHovered ? 2 : 1.5;
-    ctx.globalAlpha = isDragging ? 1 : isHovered ? 0.9 : 0.7;
+    ctx.strokeStyle = isDragging ? '#fbbf24' : isSelected ? '#7dd3fc' : isHovered ? '#fcd34d' : (bone.color || '#f59e0b');
+    ctx.lineWidth = isDragging || isSelected ? 2.5 : isHovered ? 2 : 1.5;
+    ctx.globalAlpha = isDragging || isSelected ? 1 : isHovered ? 0.95 : 0.75;
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // Joint circle at origin
-    const jointRadius = isDragging ? 5 : isHovered ? 4 : 3;
+    // ─── Joint Circle Handle (Origin / Base) ───
+    const isJointHovered = hoveredHandle?.boneId === t.boneId && hoveredHandle.type === 'joint';
+    const jointRadius = isDragging || isJointHovered ? 6.5 : isSelected ? 5.5 : isHovered ? 5 : 4;
     ctx.beginPath();
     ctx.arc(t.worldX, t.worldY, jointRadius, 0, Math.PI * 2);
-    ctx.fillStyle = isDragging ? '#fbbf24' : isHovered ? '#f59e0b' : '#fff';
+    ctx.fillStyle = isJointHovered ? '#fbbf24' : isSelected ? '#38bdf8' : '#ffffff';
     ctx.fill();
-    ctx.strokeStyle = bone.color || '#f59e0b';
+    ctx.strokeStyle = isSelected ? '#0284c7' : (bone.color || '#f59e0b');
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+
+    // ─── Tip Circle Handle (Target / Rotation & Length) ───
+    const isTipHovered = hoveredHandle?.boneId === t.boneId && hoveredHandle.type === 'tip';
+    const tipRadius = isTipHovered ? 6 : isSelected ? 4.5 : 3.5;
+    ctx.beginPath();
+    ctx.arc(t.tipX, t.tipY, tipRadius, 0, Math.PI * 2);
+    ctx.fillStyle = isTipHovered ? '#ef4444' : isSelected ? '#fbbf24' : (bone.color || '#f59e0b');
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Tip circle (smaller)
-    ctx.beginPath();
-    ctx.arc(t.tipX, t.tipY, 2, 0, Math.PI * 2);
-    ctx.fillStyle = bone.color || '#f59e0b';
-    ctx.globalAlpha = 0.5;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Label on hover
-    if (isHovered || isDragging) {
-      ctx.font = '10px Inter, sans-serif';
-      ctx.fillStyle = '#fbbf24';
+    // Label on hover or selected
+    if (isHovered || isDragging || isSelected) {
+      ctx.save();
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.fillStyle = isSelected ? '#38bdf8' : '#fbbf24';
       ctx.textAlign = 'left';
-      ctx.fillText(bone.name, t.worldX + jointRadius + 4, t.worldY + 3);
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(bone.name, t.worldX + jointRadius + 5, t.worldY + 3);
+      ctx.restore();
     }
   }
 }

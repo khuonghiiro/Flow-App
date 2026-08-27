@@ -510,6 +510,60 @@ export function getComponentDef(partType: string, options: {
         idealAspectRatio: '1:1',
       };
 
+    case 'than_tren':
+    case 'than_tren_co':
+      return {
+        id: 'than_tren',
+        nameVi: '02. Thân Trên (Upper Torso - Vai + Ngực + Lưng + Cổ)',
+        titleEn: 'UPPER TORSO (SHOULDERS + CHEST + BACK + NECK)',
+        assetTag: 'UPPER_TORSO_CROP_TOP_WITH_NECK_ONLY',
+        summaryEn: 'Isolated 2D anime upper torso with full neck, shoulders, and chest, cleanly truncated below the ribs like a crop top.',
+        positiveContent: 'Isolated 2D cutout rigging asset: (2) UPPER TORSO (SHOULDERS + CHEST + BACK). Single anime upper torso shaped like a short crop top. Full neck extending upward from collarbones, two natural shoulder caps, cleanly truncated straight across mid-chest/lower ribs with flat bottom edge. Smooth light peach anime skin, clean crisp black outlines, flat cel shading. Solid uniform flat chroma green background #00FF00.',
+        excludeShort: 'pelvis, hips, thighs, legs, lower arms, hands, clothes',
+        includedGeometry: [
+          'full neck extending upward',
+          'shoulders and upper chest / back',
+          'flat bottom waist cut',
+        ],
+        excludedGeometry: [
+          'pelvis', 'hips', 'thighs', 'legs', 'hands', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 11,
+        filePrefix: '02_than_tren',
+        idealAspectRatio: '1:1',
+      };
+
+    case 'phan_hong':
+    case 'phan_hong_ben':
+    case 'pelvis':
+    case 'hip':
+      return {
+        id: 'phan_hong_ben',
+        nameVi: '06. Phần Hông / Bẹn (Pelvis / Hip)',
+        titleEn: 'PELVIS / HIP BLOCK (BẸN)',
+        assetTag: 'PELVIS_HIP_BLOCK_ONLY',
+        summaryEn: 'Isolated 2D anime pelvis/hip block from waist to crotch leg openings, shaped like brief shorts.',
+        positiveContent: 'Isolated 2D cutout rigging asset: (6) PELVIS / HIP (BẸN). Single 2D anime pelvis hip block piece shaped like a simple shorts pelvic region. Flat top edge at waist/navel line, smooth hip sides, and clean bottom crotch curve with left and right leg connection openings. Smooth light peach anime skin, clean crisp black outlines, flat cel shading. Solid uniform flat chroma green background #00FF00.',
+        excludeShort: 'upper torso, chest, neck, head, thighs, legs, clothes',
+        includedGeometry: [
+          'flat top waist line',
+          'smooth hip side contours',
+          'crotch curve with leg openings',
+        ],
+        excludedGeometry: [
+          'upper torso', 'chest', 'neck', 'head', 'thighs', 'legs', 'clothes',
+        ],
+        rearVisibility: 'visible',
+        groupId: '02_mannequin_limbs',
+        groupNameVi: 'Khung Xương Cơ Thể Mannequin',
+        zIndex: 11,
+        filePrefix: '06_phan_hong_ben',
+        idealAspectRatio: '1:1',
+      };
+
     case 'than_mannequin':
     case 'than_co':
     case 'than':

@@ -6,6 +6,7 @@ import {
   VectorizerMetaStats,
   VECTORIZER_PRESETS,
 } from './types';
+import { traceImageToSvgClientSide } from './clientVectorizer';
 
 // Helper to convert any image URL/path to base64 DataURL
 export const convertImageToBase64 = async (src: string): Promise<string> => {
@@ -54,11 +55,11 @@ export const useImageVectorizer = (initialImageUrl: string = '/demo_rig/hand_000
   const [preset, setPreset] = useState<VectorizerPreset>('ultra_match');
   const [params, setParams] = useState<VectorizerParams>({
     colorPrecision: 8,
-    filterSpeckle: 1,
-    cornerThreshold: 22,
-    lengthThreshold: 1.4,
-    layerDifference: 2,
-    edgeSmoothing: 1.0,
+    filterSpeckle: 2,
+    cornerThreshold: 28,
+    lengthThreshold: 1.6,
+    layerDifference: 6,
+    edgeSmoothing: 0.0,
     colorMode: 'color',
     hierarchical: 'stacked',
   });
@@ -84,21 +85,31 @@ export const useImageVectorizer = (initialImageUrl: string = '/demo_rig/hand_000
     setParams((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // Vectorize via VTracer endpoint
+  // Vectorize via VTracer endpoint with automatic Client-side Fallback
   const handleVectorize = useCallback(async () => {
     if (!sourceImageUrl) return;
     setIsConverting(true);
     setErrorMsg(null);
     const startTime = performance.now();
 
+    let base64Data = sourceImageUrl;
     try {
-      const base64Data = await convertImageToBase64(sourceImageUrl);
+      base64Data = await convertImageToBase64(sourceImageUrl);
+    } catch (b64Err) {
+      console.warn('Base64 conversion warning:', b64Err);
+    }
+
+    // 1. Primary: High-Precision Rust VTracer on local Python sidecar (:5050)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
       const res = await fetch('http://127.0.0.1:5050/api/vectorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image: base64Data,
+          preset: preset,
           colorPrecision: params.colorPrecision,
           filterSpeckle: params.filterSpeckle,
           cornerThreshold: params.cornerThreshold,
@@ -108,7 +119,9 @@ export const useImageVectorizer = (initialImageUrl: string = '/demo_rig/hand_000
           colorMode: params.colorMode,
           hierarchical: params.hierarchical,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
@@ -125,18 +138,37 @@ export const useImageVectorizer = (initialImageUrl: string = '/demo_rig/hand_000
             pathCount,
             sizeKb: Math.round(((data.sizeBytes || data.svg.length) / 1024) * 10) / 10,
             timeMs: elapsed,
+            engine: data.engine || 'Hierarchical VectorAI Engine',
           });
           setIsConverting(false);
           return;
-        } else {
-          throw new Error(data.error || 'Server VTracer trả về lỗi');
         }
       }
+    } catch (sidecarErr) {
+      console.warn('Sidecar server offline/timeout, seamlessly falling back to client-side vectorizer:', sidecarErr);
+    }
 
-      throw new Error(`Server VTracer phản hồi mã lỗi ${res.status}`);
-    } catch (err: any) {
-      console.warn('VTracer conversion error:', err);
-      setErrorMsg(err.message || 'Lỗi khi chuyển đổi SVG');
+    // 2. Fallback: Client-Side ImageTracerJS Engine
+    try {
+      const clientSvg = await traceImageToSvgClientSide(base64Data, params);
+      const elapsed = Math.round(performance.now() - startTime);
+      setSvgOutput(clientSvg);
+      const blob = new Blob([clientSvg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      setSvgDataUrl(url);
+
+      const pathMatches = clientSvg.match(/<path/g);
+      const pathCount = pathMatches ? pathMatches.length : 0;
+      setMetaStats({
+        pathCount,
+        sizeKb: Math.round((clientSvg.length / 1024) * 10) / 10,
+        timeMs: elapsed,
+        engine: 'ImageTracerJS (Client Engine)',
+      });
+      setIsConverting(false);
+    } catch (clientErr: any) {
+      console.error('Vectorization error (both server and client failed):', clientErr);
+      setErrorMsg(clientErr.message || 'Lỗi khi chuyển đổi ảnh sang SVG');
       setIsConverting(false);
     }
   }, [sourceImageUrl, params]);
@@ -146,10 +178,34 @@ export const useImageVectorizer = (initialImageUrl: string = '/demo_rig/hand_000
     handleVectorize();
   }, []);
 
-  // Upload handler
+  // Upload handler (Supports PNG, JPG, WebP and Direct SVG Import)
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const svgText = event.target?.result as string;
+        if (svgText) {
+          setSvgOutput(svgText);
+          const blob = new Blob([svgText], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          setSvgDataUrl(url);
+          setSourceImageUrl(url);
+          const pathMatches = svgText.match(/<path/g);
+          setMetaStats({
+            pathCount: pathMatches ? pathMatches.length : 0,
+            sizeKb: Math.round((svgText.length / 1024) * 10) / 10,
+            timeMs: 0,
+            engine: 'Imported AI SVG (Direct Vector)',
+          });
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {

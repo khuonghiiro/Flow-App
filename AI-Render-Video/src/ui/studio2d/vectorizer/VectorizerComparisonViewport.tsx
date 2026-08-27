@@ -73,7 +73,21 @@ export const VectorizerComparisonViewport: React.FC<VectorizerComparisonViewport
         {/* Metrics & Zoom */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {metaStats && (
-            <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#34d399', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 10, color: '#34d399', fontWeight: 600 }}>
+              {metaStats.engine && (
+                <span
+                  style={{
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    background: metaStats.engine.includes('Rust') ? 'rgba(56, 189, 248, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                    border: `1px solid ${metaStats.engine.includes('Rust') ? 'rgba(56, 189, 248, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
+                    color: metaStats.engine.includes('Rust') ? '#38bdf8' : '#fbbf24',
+                    fontSize: 9,
+                  }}
+                >
+                  🚀 {metaStats.engine}
+                </span>
+              )}
               <span>📦 {metaStats.sizeKb} KB</span>
               <span>〰️ {metaStats.pathCount} Paths</span>
               <span>⚡ {metaStats.timeMs} ms</span>

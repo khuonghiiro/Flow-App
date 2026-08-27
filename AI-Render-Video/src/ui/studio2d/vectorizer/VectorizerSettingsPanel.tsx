@@ -57,14 +57,14 @@ export const VectorizerSettingsPanel: React.FC<VectorizerSettingsPanelProps> = (
       >
         <Upload size={24} color="#38bdf8" />
         <div style={{ fontSize: 11, fontWeight: 700, color: '#f8fafc' }}>
-          Tải Ảnh Lên (PNG, JPG, WebP)
+          Tải Ảnh hoặc File SVG (PNG, JPG, SVG)
         </div>
-        <div style={{ fontSize: 9, color: '#64748b' }}>Nhấp để chọn ảnh từ máy tính</div>
+        <div style={{ fontSize: 9, color: '#64748b' }}>Nhấp để chọn ảnh hoặc kéo thả SVG</div>
         <input
           type="file"
           ref={fileInputRef as any}
           onChange={onFileUpload}
-          accept="image/*"
+          accept="image/*,.svg"
           style={{ display: 'none' }}
         />
       </div>

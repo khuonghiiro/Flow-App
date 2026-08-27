@@ -1,4 +1,4 @@
-export type VectorizerPreset = 'ultra_match' | 'anime' | 'detailed' | 'flat' | 'lineart';
+export type VectorizerPreset = 'ultra_match' | 'svg_ai' | 'anime' | 'flat' | 'lineart';
 
 export type VectorizerViewMode = 'side_by_side' | 'split' | 'svg_only' | 'raster_only';
 
@@ -17,6 +17,7 @@ export interface VectorizerMetaStats {
   pathCount: number;
   sizeKb: number;
   timeMs: number;
+  engine?: string;
 }
 
 export interface SampleImageItem {
@@ -32,63 +33,63 @@ export interface ImageToSvgVectorizerTabProps {
 export const VECTORIZER_PRESETS: { id: VectorizerPreset; label: string; params: VectorizerParams }[] = [
   {
     id: 'ultra_match',
-    label: '🔥 Khớp Màu 100% (Ultra Match)',
+    label: '🔥 Khớp Chi Tiết 100% (High-Fidelity)',
     params: {
       colorPrecision: 8,
-      filterSpeckle: 1,
-      cornerThreshold: 22,
-      lengthThreshold: 1.4,
-      layerDifference: 2,
-      edgeSmoothing: 1.0,
+      filterSpeckle: 2,
+      cornerThreshold: 28,
+      lengthThreshold: 1.6,
+      layerDifference: 6,
+      edgeSmoothing: 0.0,
+      colorMode: 'color',
+      hierarchical: 'stacked',
+    },
+  },
+  {
+    id: 'svg_ai',
+    label: '✨ AI Vector Art Mịn & Gọn (SVG AI ~80KB)',
+    params: {
+      colorPrecision: 6,
+      filterSpeckle: 4,
+      cornerThreshold: 45,
+      lengthThreshold: 2.5,
+      layerDifference: 14,
+      edgeSmoothing: 0.8,
       colorMode: 'color',
       hierarchical: 'stacked',
     },
   },
   {
     id: 'anime',
-    label: '🌸 Anime / Manga',
+    label: '🌸 Anime / Nhân Vật 2D',
     params: {
-      colorPrecision: 8,
-      filterSpeckle: 2,
-      cornerThreshold: 28,
+      colorPrecision: 7,
+      filterSpeckle: 3,
+      cornerThreshold: 35,
       lengthThreshold: 2.0,
-      layerDifference: 5,
-      edgeSmoothing: 1.5,
-      colorMode: 'color',
-      hierarchical: 'stacked',
-    },
-  },
-  {
-    id: 'detailed',
-    label: '🎨 Tranh Chi Tiết',
-    params: {
-      colorPrecision: 8,
-      filterSpeckle: 1,
-      cornerThreshold: 24,
-      lengthThreshold: 1.5,
-      layerDifference: 3,
-      edgeSmoothing: 1.0,
+      layerDifference: 8,
+      edgeSmoothing: 0.5,
       colorMode: 'color',
       hierarchical: 'stacked',
     },
   },
   {
     id: 'flat',
-    label: '🖌️ Mảng Phẳng / Logo',
+    label: '💎 Siêu Nhỏ Gọn (Logo / Icon ~20KB)',
     params: {
-      colorPrecision: 6,
-      filterSpeckle: 6,
-      cornerThreshold: 60,
-      lengthThreshold: 4.0,
-      layerDifference: 12,
-      edgeSmoothing: 2.0,
+      colorPrecision: 5,
+      filterSpeckle: 10,
+      cornerThreshold: 65,
+      lengthThreshold: 4.5,
+      layerDifference: 24,
+      edgeSmoothing: 1.5,
       colorMode: 'color',
-      hierarchical: 'cutout',
+      hierarchical: 'stacked',
     },
   },
   {
     id: 'lineart',
-    label: '🖋️ Nét Vẽ Line-Art',
+    label: '🖋️ Nét Vẽ Line-Art Đơn Sắc',
     params: {
       colorPrecision: 2,
       filterSpeckle: 4,

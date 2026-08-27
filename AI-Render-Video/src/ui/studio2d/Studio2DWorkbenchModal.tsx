@@ -15,7 +15,7 @@ import { Character2DAssembler } from './Character2DAssembler';
 import { AutoGridSlicer3DAssembler } from './AutoGridSlicer3DAssembler';
 import { Map2DAssembler } from './Map2DAssembler';
 import { ActionSequence2DDirector } from './ActionSequence2DDirector';
-// MultiAngleRigAssembler (Tab 1.5) — hidden, kept for future use
+import { MultiAngleRigAssembler } from './MultiAngleRigAssembler';
 import { ImageToSvgVectorizerTab } from './vectorizer/ImageToSvgVectorizerTab';
 import { AIAntigravityDecomposerPanel } from './agent/AIAntigravityDecomposerPanel';
 import { DetailPartAssemblerTab } from './detail/DetailPartAssemblerTab';
@@ -39,7 +39,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'grid_slicer' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -178,28 +178,6 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               }}
             >
               <Grid size={13} /> 1. ⚡ Cắt Lưới & Lắp Ráp 3D
-            </button>
-
-            {/* Tab 1.5 (🦴 Xương 2D→3D) — hidden, kept for future use */}
-
-            <button
-              onClick={() => setActiveTab('vectorizer')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 6,
-                fontSize: 11,
-                fontWeight: activeTab === 'vectorizer' ? 700 : 600,
-                border: 'none',
-                background: activeTab === 'vectorizer' ? '#059669' : 'transparent',
-                color: activeTab === 'vectorizer' ? '#ffffff' : '#34d399',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Sparkles size={13} /> 1.8 🌸 Chuyển Ảnh → SVG (VTracer)
             </button>
 
             <button
@@ -357,10 +335,15 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
             />
           )}
 
-          {/* Tab 1.5 rig_assembler panel — hidden */}
+          {activeTab === 'rig_assembler' && (
+            <MultiAngleRigAssembler />
+          )}
 
           {activeTab === 'vectorizer' && (
             <ImageToSvgVectorizerTab
+              onTransferToRigAssembler={() => {
+                setActiveTab('rig_assembler');
+              }}
               onTransferToGridSlicer={(svgUrl) => {
                 setTransferredSpriteSheetUrl(svgUrl);
                 setActiveTab('grid_slicer');
