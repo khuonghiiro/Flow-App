@@ -5,7 +5,7 @@ import time
 import base64
 import urllib.request
 import urllib.parse
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 PORT = 5050
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "generated_characters")
@@ -48,6 +48,14 @@ def translate_vietnamese_prompt(text: str) -> str:
     return res
 
 class AntigravitySidecarHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        # Keep clean logging without breaking on socket disconnects
+        try:
+            sys.stdout.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), format%args))
+            sys.stdout.flush()
+        except:
+            pass
+
     def _set_cors_headers(self, status_code=200, content_type="application/json"):
         self.send_response(status_code)
         self.send_header("Content-Type", content_type)
@@ -194,6 +202,156 @@ class AntigravitySidecarHandler(BaseHTTPRequestHandler):
             except Exception as ex:
                 self._set_cors_headers(500)
                 self.wfile.write(json.dumps({"success": False, "error": str(ex)}).encode("utf-8"))
+
+        elif self.path == "/api/vectorize":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            tmp_in_path = None
+            tmp_out_path = None
+            try:
+                data = json.loads(body.decode("utf-8"))
+                image_data = data.get("image", "") # base64 or path
+                if not image_data or not isinstance(image_data, str) or len(image_data.strip()) == 0:
+                    raise ValueError("Không có dữ liệu ảnh đầu vào (image data is empty)")
+
+                color_precision = min(8, max(2, int(data.get("colorPrecision", 8))))
+                filter_speckle = int(data.get("filterSpeckle", 2))
+                corner_threshold = int(data.get("cornerThreshold", 28))
+                length_threshold = float(data.get("lengthThreshold", 2.0))
+                color_mode = data.get("colorMode", "color")
+                hierarchical = data.get("hierarchical", "stacked")
+
+                import tempfile
+                import vtracer
+
+                PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                PUBLIC_DIR = os.path.join(PROJECT_ROOT, "public")
+
+                # Resolve image binary data
+                img_bytes = None
+                if image_data.startswith("data:image"):
+                    header, b64_str = image_data.split(",", 1)
+                    img_bytes = base64.b64decode(b64_str)
+                elif os.path.isabs(image_data) and os.path.exists(image_data):
+                    with open(image_data, "rb") as f_src:
+                        img_bytes = f_src.read()
+                else:
+                    clean_path = image_data.lstrip("/\\")
+                    candidate1 = os.path.join(PUBLIC_DIR, clean_path)
+                    candidate2 = os.path.join(PROJECT_ROOT, clean_path)
+                    if os.path.exists(candidate1):
+                        with open(candidate1, "rb") as f_src:
+                            img_bytes = f_src.read()
+                    elif os.path.exists(candidate2):
+                        with open(candidate2, "rb") as f_src:
+                            img_bytes = f_src.read()
+                    else:
+                        try:
+                            img_bytes = base64.b64decode(image_data)
+                        except Exception as decode_err:
+                            raise ValueError(f"Không thể đọc ảnh từ đường dẫn hoặc base64: {image_data[:40]} ({decode_err})")
+
+                if not img_bytes or len(img_bytes) < 16:
+                    raise ValueError("Dữ liệu ảnh rỗng hoặc không hợp lệ")
+
+                # Write to temp file with PIL 2x super-sampling and anti-aliased edge smoothing
+                from PIL import Image, ImageFilter
+                import io
+
+                fd_in, tmp_in_path = tempfile.mkstemp(suffix=".png")
+                os.close(fd_in)
+
+                edge_smooth_radius = float(data.get("edgeSmoothing", 1.5))
+
+                try:
+                    raw_img = Image.open(io.BytesIO(img_bytes))
+                    
+                    # Handle transparency or RGB
+                    if raw_img.mode in ("RGBA", "LA") or (raw_img.mode == "P" and "transparency" in raw_img.info):
+                        raw_img = raw_img.convert("RGBA")
+                        # Smooth alpha channel boundary if transparent
+                        r, g, b, a = raw_img.split()
+                        if edge_smooth_radius > 0:
+                            a_smooth = a.filter(ImageFilter.GaussianBlur(radius=edge_smooth_radius * 0.8))
+                            raw_img = Image.merge("RGBA", (r, g, b, a_smooth))
+                    else:
+                        raw_img = raw_img.convert("RGB")
+                    
+                    w, h = raw_img.size
+                    
+                    # 2x Super-Sampling with Lanczos to eliminate pixel staircase steps on outlines
+                    upscaled = raw_img.resize((w * 2, h * 2), Image.Resampling.LANCZOS)
+                    
+                    # Gentle edge-preserving smoothing to eliminate JPEG compression artifacts & blotches
+                    if edge_smooth_radius > 0:
+                        smoothed = upscaled.filter(ImageFilter.SMOOTH_MORE)
+                    else:
+                        smoothed = upscaled
+
+                    smoothed.save(tmp_in_path, format="PNG")
+                except Exception as prep_err:
+                    # Fallback to direct bytes if PIL fails
+                    with open(tmp_in_path, "wb") as f_fallback:
+                        f_fallback.write(img_bytes)
+
+                if not os.path.exists(tmp_in_path) or os.path.getsize(tmp_in_path) == 0:
+                    raise ValueError("Không thể tạo file ảnh tạm thời cho VTracer")
+
+                fd_out, tmp_out_path = tempfile.mkstemp(suffix=".svg")
+                os.close(fd_out)
+
+                # Calibrated Silk-Smooth VTracer settings
+                layer_diff = int(data.get("layerDifference", 6)) # 6 for smooth gradients (down from 16)
+                c_thresh = int(data.get("cornerThreshold", 24))   # 24 for ultra-smooth flowing curves
+                l_thresh = float(data.get("lengthThreshold", 1.8)) # 1.8 for fine spline density
+                
+                # Run VTracer with high-precision spline curve fitting
+                vtracer.convert_image_to_svg_py(
+                    tmp_in_path,
+                    tmp_out_path,
+                    colormode=color_mode,
+                    hierarchical=hierarchical,
+                    mode='spline',
+                    filter_speckle=filter_speckle,
+                    color_precision=color_precision,
+                    layer_difference=layer_diff,
+                    corner_threshold=c_thresh,
+                    length_threshold=l_thresh,
+                    max_iterations=25,
+                    splice_threshold=20,
+                    path_precision=4
+                )
+
+                with open(tmp_out_path, "r", encoding="utf-8") as f_svg:
+                    svg_content = f_svg.read()
+
+                # Inject geometricPrecision rendering style and smooth line joins into SVG
+                style_inject = """<style>
+  path { shape-rendering: geometricPrecision; stroke-linejoin: round; stroke-linecap: round; }
+</style>"""
+                import re
+                svg_content = re.sub(r'(<svg[^>]*>)', r'\1\n' + style_inject, svg_content, count=1)
+
+                response_data = {
+                    "success": True,
+                    "svg": svg_content,
+                    "sizeBytes": len(svg_content.encode("utf-8")),
+                    "engine": "VTracer 0.6.15 (Super-Sampled Anti-Aliased Rust Engine)"
+                }
+                self._set_cors_headers(200)
+                self.wfile.write(json.dumps(response_data).encode("utf-8"))
+
+            except BaseException as ex:
+                print(f"[Antigravity Sidecar Vectorize Error] {ex}")
+                self._set_cors_headers(500)
+                self.wfile.write(json.dumps({"success": False, "error": str(ex)}).encode("utf-8"))
+            finally:
+                if tmp_in_path and os.path.exists(tmp_in_path):
+                    try: os.remove(tmp_in_path)
+                    except: pass
+                if tmp_out_path and os.path.exists(tmp_out_path):
+                    try: os.remove(tmp_out_path)
+                    except: pass
         else:
             self._set_cors_headers(404)
             self.wfile.write(json.dumps({"error": "Endpoint not found"}).encode("utf-8"))
@@ -205,17 +363,25 @@ def run_server():
         sys.stderr.reconfigure(encoding="utf-8")
 
     server_address = ("127.0.0.1", PORT)
-    httpd = HTTPServer(server_address, AntigravitySidecarHandler)
+    httpd = ThreadingHTTPServer(server_address, AntigravitySidecarHandler)
+    httpd.daemon_threads = True
     print("=====================================================")
-    print(f"[Antigravity Sidecar] Server running at http://127.0.0.1:{PORT}")
+    print(f"[Antigravity Sidecar] Multi-Threaded Server running at http://127.0.0.1:{PORT}")
     print(f"[Antigravity Sidecar] Health Check: http://127.0.0.1:{PORT}/health")
     print("=====================================================")
     sys.stdout.flush()
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\nStopping Antigravity Sidecar Server...")
-        httpd.server_close()
+
+    while True:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nStopping Antigravity Sidecar Server...")
+            httpd.server_close()
+            break
+        except BaseException as ex:
+            print(f"\n[Antigravity Sidecar Loop Recovered from]: {ex}")
+            sys.stdout.flush()
+            time.sleep(0.2)
 
 if __name__ == "__main__":
     run_server()
