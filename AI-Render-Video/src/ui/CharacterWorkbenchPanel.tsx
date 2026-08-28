@@ -647,8 +647,13 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
           previewControlsRef.current.update();
         }
 
-        applySlidersToModelGroup(group, faceSliders, showWireframe);
-        MaterialOverrideEngine.applyMaterialOverrides(group, assembly?.material_overrides);
+        // Apply semantic texture matching to all parts
+        AssetLoaderRegistry.applyTexturesToGroup(group);
+
+        if (activeTab === 'modular') {
+          applySlidersToModelGroup(group, faceSliders, showWireframe);
+          MaterialOverrideEngine.applyMaterialOverrides(group, assembly?.material_overrides);
+        }
 
         // Detect Native Skeleton Bones (Columbina 743 joints)
         let bCount = 0;
@@ -659,7 +664,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         setTotalBonesCount(bCount);
 
         if (bCount > 0) {
-          nativeRigResultRef.current = AutoRigEngine.rigModel(group);
+          nativeRigResultRef.current = AutoRigEngine.buildBonesMapFromExistingModel(group);
           const secBones = SecondaryPhysicsEngine.getSecondaryBonesCount(group);
           setSecondaryBonesInfo(secBones);
           if (skeletonHelperRef.current && previewScene) {
@@ -951,11 +956,10 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                 currentPreviewGroupRef={currentPreviewGroupRef}
                 modelToRig={modelToRig}
                 onSelectModelToRig={(modelPath) => {
-                  setAssembly((prev) => ({
-                    ...prev,
+                  setAssembly({
                     than_co_ban: modelPath,
                     base_body: modelPath,
-                  }));
+                  });
                   setModelToRig(modelPath);
                 }}
                 isRigged={isRigged}

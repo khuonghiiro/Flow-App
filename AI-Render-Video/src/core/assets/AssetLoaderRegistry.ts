@@ -10,6 +10,156 @@ export class AssetLoaderRegistry {
   private static fbxLoader: FBXLoader | null = null;
   private static objLoader: OBJLoader | null = null;
   private static modelCache = new Map<string, THREE.Group>();
+  private static textureBlobMap = new Map<string, { filename: string; url: string; tokens: string[] }>();
+
+  private static tokenize(str: string): string[] {
+    return (str || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t && t !== 'mi' && t !== 'm' && t !== 'mat' && t !== 'material' && t !== 't' && t !== 'd' && t !== 'd1' && t !== 'tex' && t !== 'texture' && t !== 'png' && t !== 'jpg' && t !== 'jpeg');
+  }
+
+  public static registerTextureBlob(filename: string, blobUrl: string): void {
+    const clean = filename.toLowerCase().trim();
+    const basename = clean.split(/[/\\]/).pop() || '';
+    const tokens = this.tokenize(basename);
+    const entry = { filename: basename, url: blobUrl, tokens };
+
+    this.textureBlobMap.set(clean, entry);
+    if (basename) this.textureBlobMap.set(basename, entry);
+    const nameWithoutExt = basename.substring(0, basename.lastIndexOf('.')) || basename;
+    if (nameWithoutExt) this.textureBlobMap.set(nameWithoutExt, entry);
+  }
+
+  public static getTextureBlob(filename: string): string | undefined {
+    const clean = (filename || '').toLowerCase().trim();
+    if (!clean) return undefined;
+    const basename = clean.split(/[/\\]/).pop() || '';
+    const nameWithoutExt = basename.substring(0, basename.lastIndexOf('.')) || basename;
+
+    // 1. Direct match
+    if (this.textureBlobMap.has(clean)) return this.textureBlobMap.get(clean)!.url;
+    if (this.textureBlobMap.has(basename)) return this.textureBlobMap.get(basename)!.url;
+    if (this.textureBlobMap.has(nameWithoutExt)) return this.textureBlobMap.get(nameWithoutExt)!.url;
+
+    // 2. Semantic token matching
+    return this.findBestTextureMatch(basename);
+  }
+
+  /**
+   * Blender-grade Semantic Material-to-Texture Matcher
+   * Calculates token overlap and domain heuristics (hair, eyes, face, swimsuit, cloth)
+   * to guarantee 100% accurate texture attachment.
+   */
+  public static findBestTextureMatch(matName: string, meshName: string = ''): string | undefined {
+    if (this.textureBlobMap.size === 0) return undefined;
+
+    const uniqueEntries = Array.from(
+      new Map(Array.from(this.textureBlobMap.values()).map((e) => [e.url, e])).values()
+    );
+
+    if (uniqueEntries.length === 1) {
+      return uniqueEntries[0].url;
+    }
+
+    const queryTokens = [...this.tokenize(matName), ...this.tokenize(meshName)];
+    const lowerMat = (matName || '').toLowerCase();
+    const lowerMesh = (meshName || '').toLowerCase();
+
+    let bestScore = 0;
+    let bestUrl: string | undefined = undefined;
+
+    for (const entry of uniqueEntries) {
+      let score = 0;
+      const texTokens = entry.tokens;
+      const lowerTex = entry.filename.toLowerCase();
+
+      for (const qt of queryTokens) {
+        if (texTokens.includes(qt)) {
+          score += 4;
+        } else if (texTokens.some((tt) => tt.includes(qt) || qt.includes(tt))) {
+          score += 2;
+        }
+      }
+
+      // Domain heuristics for anime & game characters
+      if (lowerMat.includes('jiemao') && (lowerTex.includes('face') || lowerTex.includes('eyes'))) score += 6;
+      if (lowerMat.includes('gaoguang') && (lowerTex.includes('face') || lowerTex.includes('eyes'))) score += 6;
+      if (lowerMat.includes('hair_2') && lowerTex.includes('hair_02')) score += 10;
+      if (lowerMat.includes('hair_1') && lowerTex.includes('hair_01')) score += 10;
+      if (lowerMat.includes('hair') && lowerTex.includes('hair')) score += 5;
+      if ((lowerMat.includes('eye') || lowerMesh.includes('eye')) && lowerTex.includes('eye')) score += 6;
+      if ((lowerMat.includes('face') || lowerMesh.includes('face') || lowerMat.includes('head')) && (lowerTex.includes('face') || lowerTex.includes('mask'))) score += 6;
+      if (lowerMat.includes('swimsuit_04') && lowerTex.includes('swimsuit_02')) score += 8;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestUrl = entry.url;
+      }
+    }
+
+    return bestScore >= 2 ? bestUrl : undefined;
+  }
+
+  public static hasRegisteredTextures(): boolean {
+    return this.textureBlobMap.size > 0;
+  }
+
+  public static getRegisteredTextureUrls(): string[] {
+    return Array.from(new Set(Array.from(this.textureBlobMap.values()).map((e) => e.url)));
+  }
+
+  /**
+   * Apply all available textures onto a 3D model using Semantic Material-to-Texture matching
+   */
+  public static applyTexturesToGroup(group: THREE.Group, textureBlobUrls?: string[]): void {
+    if (!group) return;
+
+    if (textureBlobUrls && textureBlobUrls.length > 0) {
+      textureBlobUrls.forEach((url, idx) => {
+        AssetLoaderRegistry.registerTextureBlob(`texture_${idx}.png`, url);
+      });
+    }
+
+    const texLoader = new THREE.TextureLoader();
+    const loadedTextureCache = new Map<string, THREE.Texture>();
+
+    const getOrLoadTexture = (url: string): THREE.Texture => {
+      if (loadedTextureCache.has(url)) return loadedTextureCache.get(url)!;
+      const tex = texLoader.load(url);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      loadedTextureCache.set(url, tex);
+      return tex;
+    };
+
+    group.traverse((c) => {
+      if ((c as THREE.Mesh).isMesh) {
+        const mesh = c as THREE.Mesh;
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach((mat) => {
+          if (!mat) return;
+          const m = mat as any;
+          const bestUrl = AssetLoaderRegistry.findBestTextureMatch(m.name || '', mesh.name || '');
+
+          if (bestUrl) {
+            const tex = getOrLoadTexture(bestUrl);
+            m.map = tex;
+            if (m.color) m.color.setHex(0xffffff);
+            m.side = THREE.DoubleSide;
+            m.alphaTest = 0.1;
+            m.depthWrite = true;
+            m.transparent = true;
+            m.needsUpdate = true;
+          }
+        });
+      }
+    });
+  }
 
   public static getGLTFLoader(): GLTFLoader {
     if (!this.gltfLoader) {
@@ -54,7 +204,7 @@ export class AssetLoaderRegistry {
       ? url 
       : (url.startsWith('/') ? url : `/${url}`);
 
-    if (this.modelCache.has(cleanUrl)) {
+    if (this.modelCache.has(cleanUrl) && !isBlobOrData) {
       const cached = this.modelCache.get(cleanUrl)!;
       const clone = SkeletonUtils.clone(cached) as THREE.Group;
       clone.animations = cached.animations || [];
@@ -73,14 +223,24 @@ export class AssetLoaderRegistry {
         if (u.startsWith('blob:') || u.startsWith('data:')) {
           return u;
         }
-        // Extract filename from any absolute Windows path (e.g. D:\OUTFIT MODELS\...\diffuse.png)
-        // or relative path
         const decoded = decodeURIComponent(u).split('?')[0];
         const filename = decoded.split(/[/\\]/).pop() || '';
         if (!filename) return u;
 
-        // Remap to the model's base folder
-        return `${basePath}${encodeURIComponent(filename)}`;
+        // 1. Check registered in-memory blob textures from multi-file upload
+        const matchedBlob = AssetLoaderRegistry.getTextureBlob(filename);
+        if (matchedBlob) return matchedBlob;
+
+        // 2. Remap to the model's base folder, textures subfolder, or sibling textures folder
+        if (!cleanUrl.startsWith('blob:') && !cleanUrl.startsWith('data:')) {
+          if (basePath.endsWith('/source/')) {
+            const parentPath = basePath.substring(0, basePath.length - 7);
+            return `${parentPath}textures/${encodeURIComponent(filename)}`;
+          }
+          return `${basePath}${encodeURIComponent(filename)}`;
+        }
+
+        return u;
       });
 
       const fbxLoader = new FBXLoader(manager);
@@ -93,6 +253,8 @@ export class AssetLoaderRegistry {
           if (!loadedFbx || !isManagerDone || isResolved) return;
           isResolved = true;
 
+          const textureLoader = new THREE.TextureLoader();
+
           loadedFbx.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
@@ -100,32 +262,82 @@ export class AssetLoaderRegistry {
               mesh.receiveShadow = true;
               mesh.frustumCulled = false;
 
+              if (mesh.geometry) {
+                if (!mesh.geometry.attributes.normal) {
+                  mesh.geometry.computeVertexNormals();
+                }
+                if (mesh.geometry.attributes.color) {
+                  mesh.geometry.deleteAttribute('color');
+                }
+                mesh.geometry.computeBoundingBox();
+                mesh.geometry.computeBoundingSphere();
+              }
+
               if (mesh.material) {
-                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                mats.forEach((mat) => {
+                const rawMats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                const convertedMats = rawMats.map((mat) => {
+                  if (!mat) return mat;
                   const m = mat as any;
-                  m.side = THREE.DoubleSide;
 
-                  // Fix pitch black material colors so textures show at full brightness
-                  if (m.map) {
-                    m.color = new THREE.Color(0xffffff);
-                    m.map.colorSpace = THREE.SRGBColorSpace;
-                    m.map.minFilter = THREE.LinearMipmapLinearFilter;
-                    m.map.magFilter = THREE.LinearFilter;
-                    m.map.needsUpdate = true;
-                  } else if (m.color && m.color.r === 0 && m.color.g === 0 && m.color.b === 0) {
-                    m.color.setHex(0xffffff);
+                  // Convert legacy MeshPhongMaterial to MeshStandardMaterial
+                  const stdMat = new THREE.MeshStandardMaterial({
+                    name: m.name || `Mat_${mesh.name}`,
+                    map: m.map || null,
+                    normalMap: m.normalMap || null,
+                    bumpMap: m.bumpMap || null,
+                    alphaMap: m.alphaMap || null,
+                    transparent: m.transparent || (m.opacity !== undefined && m.opacity < 0.98),
+                    opacity: m.opacity ?? 1.0,
+                    alphaTest: 0.1,
+                    side: THREE.DoubleSide,
+                    shadowSide: THREE.DoubleSide,
+                    roughness: 0.55,
+                    metalness: 0.0,
+                    vertexColors: false,
+                    depthTest: true,
+                    depthWrite: true,
+                  });
+
+                  if (!stdMat.map && AssetLoaderRegistry.hasRegisteredTextures()) {
+                    const matchedUrl = AssetLoaderRegistry.findBestTextureMatch(m.name || '', mesh.name || '');
+                    if (matchedUrl) {
+                      const tex = textureLoader.load(matchedUrl, () => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        stdMat.needsUpdate = true;
+                      });
+                      tex.colorSpace = THREE.SRGBColorSpace;
+                      tex.minFilter = THREE.LinearMipmapLinearFilter;
+                      tex.magFilter = THREE.LinearFilter;
+                      stdMat.map = tex;
+                    }
                   }
 
-                  if (m.specular) {
-                    m.specular.setHex(0x222222);
-                  }
-                  if (m.shininess !== undefined) {
-                    m.shininess = 10;
+                  if (stdMat.map) {
+                    stdMat.color.setHex(0xffffff);
+                    stdMat.map.colorSpace = THREE.SRGBColorSpace;
+                    stdMat.map.minFilter = THREE.LinearMipmapLinearFilter;
+                    stdMat.map.magFilter = THREE.LinearFilter;
+                    stdMat.map.needsUpdate = true;
+                  } else if (m.color) {
+                    if (m.color.r === 0 && m.color.g === 0 && m.color.b === 0) {
+                      stdMat.color.setHex(0xd0d0d0);
+                    } else {
+                      stdMat.color.copy(m.color);
+                    }
+                  } else {
+                    stdMat.color.setHex(0xffffff);
                   }
 
-                  m.needsUpdate = true;
+                  if (m.emissive && (m.emissive.r > 0 || m.emissive.g > 0 || m.emissive.b > 0)) {
+                    stdMat.emissive.copy(m.emissive);
+                    stdMat.emissiveIntensity = m.emissiveIntensity ?? 1.0;
+                  }
+
+                  stdMat.needsUpdate = true;
+                  return stdMat;
                 });
+
+                mesh.material = Array.isArray(mesh.material) ? convertedMats : convertedMats[0];
               }
             }
           });

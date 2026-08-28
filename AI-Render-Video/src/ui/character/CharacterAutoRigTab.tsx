@@ -25,6 +25,7 @@ import {
 import { CharacterCategory } from '../CharacterAssetRegistry';
 import { CharacterAssembly } from '../../types/scene';
 import { ProceduralMotionEngine } from '../../core/actors/ProceduralMotionEngine';
+import { AssetLoaderRegistry } from '../../core/assets/AssetLoaderRegistry';
 
 export interface CharacterAutoRigTabProps {
   availableCategories: CharacterCategory[];
@@ -62,12 +63,14 @@ export const CharacterAutoRigTab: React.FC<CharacterAutoRigTabProps> = ({
   onTogglePosePlay,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textureFileInputRef = useRef<HTMLInputElement>(null);
   const [importedFileName, setImportedFileName] = useState<string>('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccessToast, setExportSuccessToast] = useState<string>('');
 
-  const VALID_3D_EXTS = ['.glb', '.gltf', '.fbx', '.vrm'];
+  const VALID_3D_EXTS = ['.glb', '.gltf', '.fbx', '.vrm', '.obj'];
+  const VALID_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.tga', '.dds', '.bmp'];
 
   // Categories metadata mapping for friendly display
   const CATEGORY_META: Record<string, { label: string; icon: string }> = {
@@ -93,27 +96,108 @@ export const CharacterAutoRigTab: React.FC<CharacterAutoRigTabProps> = ({
     ([key, value]) => typeof value === 'string' && value.trim() !== '' && key !== 'base_body'
   );
 
-  const importFile = (file: File) => {
-    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-    if (!VALID_3D_EXTS.includes(ext)) return;
-    const objectUrl = `${URL.createObjectURL(file)}#${encodeURIComponent(file.name)}`;
-    setImportedFileName(file.name);
-    onSelectModelToRig(objectUrl);
+  /**
+   * Recursively extracts all files from dropped folder entries
+   */
+  const getAllFilesFromDataTransfer = async (dataTransfer: DataTransfer): Promise<File[]> => {
+    const files: File[] = [];
+    const items = dataTransfer.items;
+    if (!items || items.length === 0) {
+      return Array.from(dataTransfer.files || []);
+    }
+
+    const traverseEntry = async (entry: any): Promise<void> => {
+      if (!entry) return;
+      if (entry.isFile) {
+        await new Promise<void>((resolve) => {
+          entry.file(
+            (file: File) => {
+              files.push(file);
+              resolve();
+            },
+            () => resolve()
+          );
+        });
+      } else if (entry.isDirectory) {
+        const dirReader = entry.createReader();
+        const readEntries = async (): Promise<void> => {
+          const entries = await new Promise<any[]>((resolve) => {
+            dirReader.readEntries(resolve, () => resolve([]));
+          });
+          if (entries.length > 0) {
+            for (const childEntry of entries) {
+              await traverseEntry(childEntry);
+            }
+            await readEntries();
+          }
+        };
+        await readEntries();
+      }
+    };
+
+    const promises: Promise<void>[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const entry = (item as any).webkitGetAsEntry ? (item as any).webkitGetAsEntry() : null;
+      if (entry) {
+        promises.push(traverseEntry(entry));
+      } else {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    await Promise.all(promises);
+    return files.length > 0 ? files : Array.from(dataTransfer.files || []);
+  };
+
+  const processFileList = (files: File[]) => {
+    if (files.length === 0) return;
+
+    let modelFile: File | null = null;
+    const textureFiles: File[] = [];
+
+    files.forEach((f) => {
+      const name = f.name.toLowerCase();
+      const ext = name.substring(name.lastIndexOf('.'));
+      if (VALID_3D_EXTS.includes(ext) && !modelFile) {
+        modelFile = f;
+      } else if (VALID_IMAGE_EXTS.includes(ext)) {
+        textureFiles.push(f);
+      }
+    });
+
+    // 1. Register all uploaded textures into AssetLoaderRegistry
+    textureFiles.forEach((f) => {
+      const blobUrl = URL.createObjectURL(f);
+      AssetLoaderRegistry.registerTextureBlob(f.name, blobUrl);
+    });
+
+    // 2. If a 3D model is present, load it
+    if (modelFile) {
+      const mf = modelFile as File;
+      const objectUrl = `${URL.createObjectURL(mf)}#${encodeURIComponent(mf.name)}`;
+      setImportedFileName(mf.name);
+      onSelectModelToRig(objectUrl);
+    } else if (textureFiles.length > 0 && currentPreviewGroupRef?.current) {
+      // If only textures uploaded, apply directly to current model using Semantic Matcher
+      AssetLoaderRegistry.applyTexturesToGroup(currentPreviewGroupRef.current);
+      setExportSuccessToast(`Đã tự động gán ${textureFiles.length} file ảnh texture vào đúng các bộ phận!`);
+      setTimeout(() => setExportSuccessToast(''), 4000);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    importFile(file);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) processFileList(files);
     e.target.value = '';
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) importFile(file);
+    const files = await getAllFilesFromDataTransfer(e.dataTransfer);
+    if (files.length > 0) processFileList(files);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -320,6 +404,68 @@ export const CharacterAutoRigTab: React.FC<CharacterAutoRigTabProps> = ({
           )}
         </div>
 
+        {/* 2 Dual Action Buttons: Chọn File GLB & Chọn Thư Mục FBX */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {/* Button 1: Chọn File GLB / VRM */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              padding: '10px 14px',
+              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(59, 130, 246, 0.15))',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              borderRadius: 8,
+              color: '#38bdf8',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.2s ease',
+            }}
+            title="Nạp 1 file 3D độc lập (.glb, .vrm, .gltf)"
+          >
+            <Upload size={15} />
+            📦 Chọn File 3D (.glb, .vrm)
+          </button>
+
+          {/* Button 2: Chọn Thư Mục FBX (Kèm Textures) */}
+          <button
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              (input as any).webkitdirectory = true;
+              (input as any).directory = true;
+              input.multiple = true;
+              input.onchange = (e: any) => {
+                const files = e.target.files ? Array.from(e.target.files as FileList) : [];
+                if (files.length > 0) processFileList(files);
+              };
+              input.click();
+            }}
+            style={{
+              padding: '10px 14px',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2))',
+              border: '1px solid rgba(168, 85, 247, 0.45)',
+              borderRadius: 8,
+              color: '#e879f9',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.2s ease',
+            }}
+            title="Chọn toàn bộ thư mục chứa file FBX và các ảnh texture đi kèm (tự động gắn chuẩn 100% màu sắc)"
+          >
+            <FolderCheck size={16} />
+            📂 Chọn Thư Mục FBX (Kèm Textures)
+          </button>
+        </div>
+
         {/* Drag & Drop Zone */}
         <div
           onDrop={handleDrop}
@@ -329,7 +475,7 @@ export const CharacterAutoRigTab: React.FC<CharacterAutoRigTabProps> = ({
           style={{
             border: isDragOver ? '2px dashed #38bdf8' : '1px dashed rgba(255,255,255,0.15)',
             background: isDragOver ? 'rgba(56, 189, 248, 0.1)' : 'rgba(0,0,0,0.25)',
-            padding: '14px 16px',
+            padding: '12px 16px',
             borderRadius: 8,
             display: 'flex',
             alignItems: 'center',
@@ -339,16 +485,72 @@ export const CharacterAutoRigTab: React.FC<CharacterAutoRigTabProps> = ({
             transition: 'all 0.15s ease',
           }}
         >
-          <Upload size={18} color="#38bdf8" />
+          <Upload size={16} color="#38bdf8" />
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', display: 'block' }}>
-              {isDragOver ? 'Thả file mô hình vào đây!' : 'Kéo thả file 3D vào đây hoặc Click để chọn file từ máy'}
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f8fafc', display: 'block' }}>
+              {isDragOver ? 'Thả file mô hình hoặc thư mục vào đây!' : 'Hoặc kéo thả file 3D / thư mục chứa FBX & Textures vào đây'}
             </span>
             <span style={{ fontSize: 10, color: '#94a3b8' }}>
-              Hỗ trợ đầy đủ định dạng .glb, .gltf, .fbx, .vrm từ Blender, Mixamo, Unreal, Sketchfab
+              Hỗ trợ kéo thả cả thư mục nu_meo_animation chứa FBX + thư mục textures/
             </span>
           </div>
-          <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileChange} />
+          <input ref={fileInputRef} type="file" accept=".glb,.gltf,.fbx,.vrm,.obj" style={{ display: 'none' }} onChange={handleFileChange} />
+        </div>
+
+        {/* Secondary Texture Picker Button */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(255,255,255,0.03)',
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid rgba(255,255,255,0.05)',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>
+              🎨 Nạp Thêm Ảnh Texture Rời (.png, .jpg)
+            </span>
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>
+              Nếu đã nạp file FBX lẻ trước đó: chọn các file ảnh texture để gắn tự động
+            </span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              textureFileInputRef.current?.click();
+            }}
+            style={{
+              padding: '5px 10px',
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              borderRadius: 6,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Sparkles size={12} />
+            Chọn Ảnh Texture
+          </button>
+          <input
+            ref={textureFileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.png,.jpg,.jpeg,.webp,.tga,.dds,.bmp"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              if (files.length > 0) processFileList(files);
+              e.target.value = '';
+            }}
+          />
         </div>
       </div>
 

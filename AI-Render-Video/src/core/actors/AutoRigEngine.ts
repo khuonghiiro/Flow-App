@@ -504,6 +504,60 @@ export class AutoRigEngine {
   }
 
   /**
+   * Tự động phát hiện và trích xuất bonesMap từ một mô hình đã có sẵn xương (Native Skeletal Model)
+   */
+  public static buildBonesMapFromExistingModel(group: THREE.Group): AutoRigResult {
+    const bonesMap = new Map<string, THREE.Bone>();
+    const allBones: THREE.Bone[] = [];
+    const skinnedMeshes: THREE.SkinnedMesh[] = [];
+
+    group.traverse((c) => {
+      if ((c as THREE.Bone).isBone) {
+        const bone = c as THREE.Bone;
+        allBones.push(bone);
+        const lower = bone.name.toLowerCase();
+
+        if (lower.includes('hips') || lower.includes('pelvis') || lower.includes('root')) bonesMap.set('Hips', bone);
+        else if (lower.includes('spine')) bonesMap.set('Spine', bone);
+        else if (lower.includes('chest') || lower.includes('spine1') || lower.includes('spine2')) bonesMap.set('Chest', bone);
+        else if (lower.includes('neck')) bonesMap.set('Neck', bone);
+        else if (lower.includes('head')) bonesMap.set('Head', bone);
+
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('shoulder') || lower.includes('clavicle'))) bonesMap.set('LeftShoulder', bone);
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('arm') && !lower.includes('fore') && !lower.includes('lower') && !lower.includes('hand'))) bonesMap.set('LeftUpperArm', bone);
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('forearm') || lower.includes('lowerarm') || lower.includes('elbow'))) bonesMap.set('LeftLowerArm', bone);
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('hand') || lower.includes('wrist'))) bonesMap.set('LeftHand', bone);
+
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('shoulder') || lower.includes('clavicle'))) bonesMap.set('RightShoulder', bone);
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('arm') && !lower.includes('fore') && !lower.includes('lower') && !lower.includes('hand'))) bonesMap.set('RightUpperArm', bone);
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('forearm') || lower.includes('lowerarm') || lower.includes('elbow'))) bonesMap.set('RightLowerArm', bone);
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('hand') || lower.includes('wrist'))) bonesMap.set('RightHand', bone);
+
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('upleg') || lower.includes('upperleg') || lower.includes('thigh'))) bonesMap.set('LeftUpperLeg', bone);
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('leg') || lower.includes('lowerleg') || lower.includes('calf') || lower.includes('knee'))) bonesMap.set('LeftLowerLeg', bone);
+        else if ((lower.includes('left') || lower.startsWith('l_') || lower.endsWith('_l')) && (lower.includes('foot') || lower.includes('ankle'))) bonesMap.set('LeftFoot', bone);
+
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('upleg') || lower.includes('upperleg') || lower.includes('thigh'))) bonesMap.set('RightUpperLeg', bone);
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('leg') || lower.includes('lowerleg') || lower.includes('calf') || lower.includes('knee'))) bonesMap.set('RightLowerLeg', bone);
+        else if ((lower.includes('right') || lower.startsWith('r_') || lower.endsWith('_r')) && (lower.includes('foot') || lower.includes('ankle'))) bonesMap.set('RightFoot', bone);
+      } else if ((c as THREE.SkinnedMesh).isSkinnedMesh) {
+        skinnedMeshes.push(c as THREE.SkinnedMesh);
+      }
+    });
+
+    const skeleton = allBones.length > 0 ? new THREE.Skeleton(allBones) : new THREE.Skeleton([]);
+    const jointVisualizer = new THREE.Group();
+
+    return {
+      rootGroup: group,
+      skeleton,
+      skinnedMeshes,
+      bonesMap,
+      jointVisualizer,
+    };
+  }
+
+  /**
    * Áp dụng cử động Animation thử nghiệm trực tiếp lên khung xương
    * (Ủy quyền toàn bộ cho ProceduralMotionEngine chuẩn giải phẫu học AAA)
    */
