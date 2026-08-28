@@ -94,6 +94,7 @@ function getSharedRenderer(): {
       powerPreference: 'low-power',
     });
     sharedRenderer.setSize(160, 110);
+    sharedRenderer.outputColorSpace = THREE.SRGBColorSpace;
     sharedRenderer.toneMapping = THREE.ACESFilmicToneMapping;
     sharedRenderer.toneMappingExposure = 1.4;
 

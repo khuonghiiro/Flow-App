@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride, CharacterAssembly, CharacterProfileData } from './types/scene';
 import { defaultScene, sampleScenes } from './core/scenes/SceneRegistry';
 import { ThreeRenderer } from './core/engine/ThreeRenderer';
@@ -29,7 +30,7 @@ import { AssetLoaderRegistry } from './core/assets/AssetLoaderRegistry';
 import { MapPresetManager } from './core/maps/MapPresetManager';
 import { GifOverlayManager } from './core/vfx/GifOverlayManager';
 import { PlacedProp } from './types/map_preset';
-import { SelectedSceneObject } from './ui/TransformInspector';
+import type { SelectedSceneObject } from './ui/TransformInspector';
 import { WeatherParticleSystem } from './core/weather/WeatherParticleSystem';
 import { CloudSystem } from './core/weather/CloudSystem';
 import { LightningSystem } from './core/weather/LightningSystem';
@@ -1463,6 +1464,8 @@ export const App: React.FC = () => {
       const glbFile = fileList.find((f) => f.name.toLowerCase().endsWith('.glb'));
       const gltfFile = fileList.find((f) => f.name.toLowerCase().endsWith('.gltf'));
 
+      const fbxFile = fileList.find((f) => f.name.toLowerCase().endsWith('.fbx'));
+
       if (glbFile && fileList.length === 1) {
         // 1. Single .glb standalone file
         mapTitle = glbFile.name;
@@ -1470,8 +1473,60 @@ export const App: React.FC = () => {
         const loader = new GLTFLoader();
         loadedGltf = await loader.parseAsync(arrayBuffer, '');
         customModel = loadedGltf.scene;
+      } else if (fbxFile && fileList.length === 1) {
+        // 2a. Single FBX file without textures → redirect to folder picker
+        setIsLoadingMap(false);
+        alert(
+          `File FBX "${fbxFile.name}" cần các file texture (ảnh .png/.jpg) đi kèm để hiển thị đúng màu sắc.\n\n` +
+          `👉 Vui lòng bấm nút "📂 Folder" để chọn cả thư mục chứa file FBX và các texture của nó.`
+        );
+        return;
+      } else if (fbxFile) {
+        // 2. FBX file — loaded via FBXLoader with texture resolution
+        mapTitle = fbxFile.name;
+
+        // Build Object URL map for all accompanying files (textures, materials)
+        const manager = new THREE.LoadingManager();
+        const fileMap = new Map<string, string>();
+
+        for (const file of fileList) {
+          const url = URL.createObjectURL(file);
+          const name = file.name.toLowerCase();
+          fileMap.set(name, url);
+
+          // Also map by relative path (for folder uploads)
+          if (file.webkitRelativePath) {
+            const parts = file.webkitRelativePath.split('/');
+            parts.shift(); // remove root folder name
+            const subPath = parts.join('/').toLowerCase();
+            fileMap.set(subPath, url);
+            fileMap.set(`./${subPath}`, url);
+          }
+        }
+
+        manager.setURLModifier((url) => {
+          const decoded = decodeURIComponent(url).split('?')[0];
+          // Try exact match, then just filename
+          const fileName = decoded.split(/[/\\]/).pop()?.toLowerCase() || '';
+          const resolved =
+            fileMap.get(decoded.toLowerCase()) ||
+            fileMap.get(fileName) ||
+            fileMap.get(`./${fileName}`) ||
+            url;
+          return resolved;
+        });
+
+        const fbxLoader = new FBXLoader(manager);
+        const fbxUrl = fileMap.get(fbxFile.name.toLowerCase()) || URL.createObjectURL(fbxFile);
+        const fbxGroup = await fbxLoader.loadAsync(fbxUrl);
+        customModel = fbxGroup;
+
+        // FBXLoader returns animations directly on the group
+        if (fbxGroup.animations && fbxGroup.animations.length > 0) {
+          loadedGltf = { animations: fbxGroup.animations };
+        }
       } else if (gltfFile || glbFile) {
-        // 2. Folder containing .gltf + .bin + textures or .glb with textures
+        // 3. Folder containing .gltf + .bin + textures or .glb with textures
         const mainFile = gltfFile || glbFile!;
         mapTitle = mainFile.name;
 
@@ -1521,7 +1576,7 @@ export const App: React.FC = () => {
         loadedGltf = await loader.loadAsync(mainUrl);
         customModel = loadedGltf.scene;
       } else {
-        throw new Error('Không tìm thấy file 3D hợp lệ (.gltf hoặc .glb) trong thư mục đã chọn!');
+        throw new Error('Không tìm thấy file 3D hợp lệ (.glb, .gltf hoặc .fbx) trong thư mục đã chọn!');
       }
 
       if (!customModel) throw new Error('Không thể khởi tạo model 3D từ dữ liệu đã chọn.');

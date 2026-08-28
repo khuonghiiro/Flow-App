@@ -15,7 +15,10 @@
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.tsbuildinfo"
   },
-  "include": ["src"]
+  "include": ["src", "vite-plugins"],
+  "exclude": ["node_modules", "dist"]
 }

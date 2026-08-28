@@ -1,28 +1,64 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench, Scissors } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride, CharacterAssembly } from '../types/scene';
-import { ThreeRenderer } from '../core/engine/ThreeRenderer';
-import { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
-import { VRMAvatar } from '../core/actors/VRMAvatar';
-import { NavMeshManager } from '../core/navigation/NavMeshManager';
+import type { ThreeRenderer } from '../core/engine/ThreeRenderer';
+import type { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
+import type { VRMAvatar } from '../core/actors/VRMAvatar';
+import type { NavMeshManager } from '../core/navigation/NavMeshManager';
 import { ViewportCanvas } from './ViewportCanvas';
 import { TimelineScrubber } from './TimelineScrubber';
-import { SubtitleInspector } from './SubtitleInspector';
-import { CombatDebugger } from './CombatDebugger';
-import { MapRadarView } from './MapRadarView';
-import { AIChatDirector } from './AIChatDirector';
-import { DialogueEditorModal } from './DialogueEditorModal';
-import { WeatherControlPanel } from './WeatherControlPanel';
-import { AssetBrowserPanel } from './AssetBrowserPanel';
-import { LightingStudioPanel } from './LightingStudioPanel';
-import { CharacterWorkbenchPanel } from './CharacterWorkbenchPanel';
-import { Studio2DWorkbenchModal } from './studio2d/Studio2DWorkbenchModal';
-import { TransformInspector, SelectedSceneObject } from './TransformInspector';
+import type { SelectedSceneObject } from './TransformInspector';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
-import { InspectCameraAngle } from '../core/camera/CameraFraming';
+import type { InspectCameraAngle } from '../core/camera/CameraFraming';
 import { MapPresetManager } from '../core/maps/MapPresetManager';
-import { PlacedProp } from '../types/map_preset';
+import type { PlacedProp } from '../types/map_preset';
 import { getSavedViewportSettings, saveViewportSetting } from '../core/storage/ViewportSettingsStorage';
+
+// ─── Lazy-loaded heavy panels (code-split into separate chunks) ───
+const SubtitleInspector = React.lazy(() =>
+  import('./SubtitleInspector').then(m => ({ default: m.SubtitleInspector }))
+);
+const CombatDebugger = React.lazy(() =>
+  import('./CombatDebugger').then(m => ({ default: m.CombatDebugger }))
+);
+const MapRadarView = React.lazy(() =>
+  import('./MapRadarView').then(m => ({ default: m.MapRadarView }))
+);
+const AIChatDirector = React.lazy(() =>
+  import('./AIChatDirector').then(m => ({ default: m.AIChatDirector }))
+);
+const DialogueEditorModal = React.lazy(() =>
+  import('./DialogueEditorModal').then(m => ({ default: m.DialogueEditorModal }))
+);
+const WeatherControlPanel = React.lazy(() =>
+  import('./WeatherControlPanel').then(m => ({ default: m.WeatherControlPanel }))
+);
+const AssetBrowserPanel = React.lazy(() =>
+  import('./AssetBrowserPanel').then(m => ({ default: m.AssetBrowserPanel }))
+);
+const LightingStudioPanel = React.lazy(() =>
+  import('./LightingStudioPanel').then(m => ({ default: m.LightingStudioPanel }))
+);
+const CharacterWorkbenchPanel = React.lazy(() =>
+  import('./CharacterWorkbenchPanel').then(m => ({ default: m.CharacterWorkbenchPanel }))
+);
+const TransformInspector = React.lazy(() =>
+  import('./TransformInspector').then(m => ({ default: m.TransformInspector }))
+);
+const Studio2DWorkbenchModal = React.lazy(() =>
+  import('./studio2d/Studio2DWorkbenchModal').then(m => ({ default: m.Studio2DWorkbenchModal }))
+);
+
+/** Minimal loading placeholder for lazy panels */
+const PanelLoader: React.FC = () => (
+  <div style={{
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    height: '100%', color: '#64748b', fontSize: 12, gap: 8,
+  }}>
+    <Loader size={14} className="spin" /> Đang tải...
+  </div>
+);
+
 
 interface StudioLayoutProps {
   scene: MasterSceneConfig;
@@ -172,7 +208,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
       <input
         type="file"
         ref={mapInputRef}
-        accept=".glb,.gltf,.bin,.png,.jpg,.jpeg,.webp"
+        accept=".glb,.gltf,.fbx,.bin,.png,.jpg,.jpeg,.webp"
         multiple
         style={{ display: 'none' }}
         onChange={handleMapFileChange}
@@ -280,7 +316,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               onClick={() => folderInputRef.current?.click()}
-              title="Import Folder (.gltf + .bin + textures)"
+              title="Import Folder chứa 3D Model + Textures (.gltf/.fbx + ảnh)"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -300,7 +336,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             </button>
             <button
               onClick={() => mapInputRef.current?.click()}
-              title="Import File .glb"
+              title="Import 3D Model (.glb / .fbx)"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -316,7 +352,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 transition: 'all 0.2s',
               }}
             >
-              <Layers size={12} /> GLB
+              <Layers size={12} /> 3D
             </button>
             <button
               onClick={() => setShowStudio2DModal(true)}
@@ -494,6 +530,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           </div>
 
           <div className="sidebar-content">
+            <Suspense fallback={<PanelLoader />}>
             {leftTab === 'dialogue' && (
               <SubtitleInspector
                 scene={scene}
@@ -519,6 +556,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 onChange={onUpdateEnvOverride}
               />
             )}
+            </Suspense>
           </div>
         </aside>
 
@@ -595,6 +633,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             </div>
 
             <div className="bottom-dock-content">
+              <Suspense fallback={<PanelLoader />}>
               {bottomTab === 'timeline' ? (
                 <TimelineScrubber
                   scene={scene}
@@ -633,6 +672,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                   onSelectMap={onSelectMap}
                 />
               )}
+              </Suspense>
             </div>
           </div>
         </main>
@@ -661,6 +701,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           </div>
 
           <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
+            <Suspense fallback={<PanelLoader />}>
             {rightTab === 'inspector' ? (
               <TransformInspector
                 scene={scene}
@@ -676,20 +717,24 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             ) : (
               <MapRadarView actors={actors} navMesh={navMesh} />
             )}
+            </Suspense>
           </div>
         </aside>
       </div>
 
       {/* Dialogue & TTS Manager Modal */}
+      <Suspense fallback={null}>
       <DialogueEditorModal
         scene={scene}
         isOpen={showDialogueModal}
         onClose={() => setShowDialogueModal(false)}
         onUpdateScene={onUpdateScene}
       />
+      </Suspense>
 
       {/* 3D Character Workbench & Auto-Rig Studio Full Modal Window */}
       {showWorkbenchModal && (
+        <Suspense fallback={<PanelLoader />}>
         <div
           style={{
             position: 'fixed',
@@ -728,13 +773,16 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
             />
           </div>
         </div>
+        </Suspense>
       )}
 
       {/* 2D Cutout & Motion Comic Studio Modal */}
+      <Suspense fallback={null}>
       <Studio2DWorkbenchModal
         isOpen={showStudio2DModal}
         onClose={() => setShowStudio2DModal(false)}
       />
+      </Suspense>
     </div>
   );
 };

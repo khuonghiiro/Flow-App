@@ -50,9 +50,25 @@ export class AssetLoaderRegistry {
 
     const lower = cleanUrl.toLowerCase();
 
-    // 1. FBX Model Loader
+    // 1. FBX Model Loader — with texture path remap & auto-scale (cm → m)
     if (lower.endsWith('.fbx')) {
-      const fbxLoader = this.getFBXLoader();
+      // FBX files often embed absolute texture paths from the exporter's machine
+      // (e.g. "C:\Users\Artist\project\textures\diffuse.png").
+      // We remap those to the same folder as the FBX file on the server.
+      const basePath = cleanUrl.substring(0, cleanUrl.lastIndexOf('/') + 1);
+      const manager = new THREE.LoadingManager();
+      manager.setURLModifier((url) => {
+        // If it's already a relative server URL, keep it
+        if (url.startsWith('/') || url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return url;
+        }
+        // Extract just the filename from any absolute or relative path
+        const filename = url.split(/[/\\]/).pop() || url;
+        const remapped = basePath + filename;
+        return remapped;
+      });
+
+      const fbxLoader = new FBXLoader(manager);
       return new Promise((resolve, reject) => {
         fbxLoader.load(
           cleanUrl,
@@ -65,6 +81,18 @@ export class AssetLoaderRegistry {
                 mesh.frustumCulled = false;
               }
             });
+
+            // Auto-scale: FBX files often use cm units (100x larger than GLB's meters)
+            const bbox = new THREE.Box3().setFromObject(fbx);
+            const size = new THREE.Vector3();
+            bbox.getSize(size);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim > 10) {
+              const targetSize = 1.8; // ~human height in meters
+              const scaleFactor = targetSize / maxDim;
+              fbx.scale.multiplyScalar(scaleFactor);
+            }
+
             this.modelCache.set(cleanUrl, fbx);
             const initialClone = fbx.clone(true);
             initialClone.animations = fbx.animations || [];

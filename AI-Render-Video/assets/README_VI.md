@@ -87,3 +87,106 @@ Nhân vật có thể được lắp ráp từ các bộ phận riêng lẻ — 
 - Đổi **tóc** → thay `hairstyle` field
 - Đổi **trang phục** → thay `costume` field
 - Thêm **phụ kiện** → thêm vào `accessories` array
+
+---
+
+## 🖼️ 4. Quy Tắc Load Model & Hiển Thị Preview
+
+### Thứ tự chọn ảnh preview
+1. **Ảnh cùng tên (ưu tiên cao nhất):** Nếu có file `.png`/`.jpg`/`.gif` trùng tên với model trong cùng thư mục → dùng làm preview.
+   - VD: `trang_phuc_nu.glb` + `trang_phuc_nu.png` → preview = `trang_phuc_nu.png`
+2. **`previewUrl` từ manifest:** Nếu `asset_manifest.json` chỉ định URL preview → dùng URL đó.
+3. **Snapshot 3D tự động:** Nếu không có ảnh nào → engine render ảnh 3D headless và cache:
+   - Cache RAM (trong phiên), IndexedDB (lưu qua reload), WebGL render (chỉ 1 lần)
+
+### Cấu trúc thư mục model 3D
+
+#### File trực tiếp (root children):
+```
+nhan_vat/trang_phuc/nu/
+├── costume_female_warrior.glb        ← File model
+├── costume_female_warrior.png        ← Ảnh preview (cùng tên = tự link)
+├── another_dress.glb                 ← Model không có preview
+└── random_preview.gif                ← Ảnh/GIF hiển thị trực tiếp
+```
+
+#### Thư mục con (FBX + textures):
+```
+nhan_vat/trang_phuc/nu/
+└── precision-strike-manekina/        ← Thư mục con (root child)
+    ├── source/                       ← Chứa model + textures
+    │   ├── Manekina Precision Strike.fbx
+    │   ├── Beyd_Avatar_Girl_Top_Tex_Diffuse.png
+    │   └── ...
+    └── textures/                     ← Vị trí texture thay thế
+        └── ...
+```
+
+**Quy tắc cho thư mục con:**
+- Engine quét **đệ quy** bên trong thư mục con
+- Model 3D (`.fbx`, `.glb`, `.gltf`) trong thư mục con sẽ được đăng ký
+- Textures **phải nằm cùng thư mục** với file model
+- **Tên thư mục con** dùng làm tên hiển thị
+
+### Nhận diện giới tính
+Giới tính tự detect từ **đường dẫn thư mục**:
+- Chứa `/nu/` hoặc `/female/` → **nữ**
+- Chứa `/nam/` hoặc `/male/` → **nam**
+- Còn lại → **unisex**
+
+> ⚠️ Model đặt trong `nhan_vat/trang_phuc/nu/` sẽ phân loại là **nữ**.
+> Không đặt model nam vào folder nữ và ngược lại.
+
+### Quy tắc riêng cho FBX
+- **Đơn vị:** FBX thường dùng **cm** (lớn gấp 100x so với GLB dùng m). Engine tự phát hiện và thu nhỏ về ~1.8m.
+- **Textures:** FBX embed đường dẫn tuyệt đối từ máy export. Engine tự remap về filename → tìm cùng thư mục FBX.
+- **Import qua UI:** Dùng nút **📂 Folder** để chọn cả thư mục chứa `.fbx` + textures.
+
+---
+
+## 📋 5. Giải Thích Các Trường Trạng Thái — `asset_structure.json` & `asset_manifest.json`
+
+### `asset_structure.json` — Cấu Trúc Hệ Thống
+
+File này định nghĩa **cấu trúc thư mục** và **cách hiển thị UI** cho hệ thống tài nguyên.
+
+#### Trường trong Category (`character_structure.categories[]`)
+
+| Trường | Kiểu | Giải thích |
+|---|---|---|
+| `id` | string | ID duy nhất, trùng với tên folder (VD: `trang_phuc`, `khuon_mat`) |
+| `folder` | string | Tên folder vật lý trong `nhan_vat/` |
+| `folder_aliases` | string[] | Tên folder thay thế cũng map vào category này (VD: `["costumes"]`) |
+| `label` | string | Tên hiển thị trên UI (VD: `"Trang Phục"`) |
+| `icon` | string | Emoji icon cho tab dọc |
+| **`supports_gender`** | **boolean** | **`true`:** Category có chia folder `nam/`/`nu/` — engine quét riêng theo giới tính, UI hiện nút lọc ♂/♀. **`false`:** Không chia giới tính — tất cả item là `unisex`, ẩn nút lọc. |
+| `default_gender` | string | Giới tính mặc định khi không detect được (`"male"`, `"female"`, hoặc `"unisex"`) |
+
+#### Quy tắc giới tính (`gender_rules`)
+
+| Trường | Kiểu | Giải thích |
+|---|---|---|
+| **`filter_enabled`** | **boolean** | **`true`:** Hiện nút lọc giới tính (♂/♀) trong Xưởng Nhân Vật. User có thể lọc theo giới tính. **`false`:** Ẩn nút lọc, hiện tất cả tài nguyên. |
+| `options[]` | array | Danh sách lựa chọn giới tính với `id`, `key`, `label`, `icon`, `folder_aliases` |
+
+### `asset_manifest.json` — Danh Mục Tài Nguyên
+
+File này được **tạo tự động** bởi `scan_assets.js`, chứa toàn bộ danh sách tài nguyên đã quét.
+
+#### Trường của mỗi item
+
+| Trường | Kiểu | Giải thích |
+|---|---|---|
+| `id` | string | ID duy nhất tạo từ đường dẫn file |
+| `name` | string | Tên hiển thị trên UI, tự format từ tên file |
+| `filename` | string | Tên file gốc (VD: `"Manekina Precision Strike.fbx"`) |
+| `relPath` | string | Đường dẫn tương đối từ `assets/` (VD: `"nhan_vat/trang_phuc/nu/model.glb"`) |
+| `path` | string | Đường dẫn đầy đủ với prefix `assets/` để load URL |
+| `format` | string | Định dạng file viết hoa (VD: `"GLB"`, `"FBX"`, `"VRM"`, `"PNG"`) |
+| `sizeMB` | string | Dung lượng file tính bằng MB |
+| `gender` | string | Giới tính detect được: `"male"`, `"female"`, hoặc `"unisex"` |
+| `previewUrl` | string | URL ảnh preview (nếu có file `.png`/`.jpg` cùng tên) |
+| `description` | string | Mô tả tài nguyên cho người đọc |
+| **`isStandaloneImage`** | **boolean** | **`true`:** Đây là file ảnh độc lập (`.png`/`.jpg`/`.gif`) — KHÔNG phải texture của model 3D. Engine hiển thị trực tiếp ảnh này trong browser mà không load 3D. **`false`/vắng:** Đây là file model 3D có thể load vào scene. |
+| **`isFolderBundle`** | **boolean** | **`true`:** Model 3D này nằm trong thư mục con cùng với các file texture. Engine dùng `LoadingManager` để resolve đường dẫn texture tương đối. Trường `bundleDir` chỉ ra thư mục cha. **`false`/vắng:** Model đơn lẻ (VD: `.glb` với texture nhúng sẵn). |
+| `bundleDir` | string | Chỉ có khi `isFolderBundle: true`. Đường dẫn thư mục cha chứa bundle (VD: `"nhan_vat/trang_phuc/nu"`) |

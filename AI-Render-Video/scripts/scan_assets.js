@@ -95,10 +95,19 @@ function formatDisplayName(filename) {
  */
 function detectGender(relPath) {
   const p = relPath.toLowerCase();
-  if (p.includes('/nam/') || p.includes('/male/') || p.includes('/man/') || p.includes('_nam') || p.includes('-man')) {
+  // Check folder-level indicators first (most reliable)
+  if (p.includes('/nam/') || p.includes('/male/') || p.includes('/man/')) {
     return 'male';
   }
-  if (p.includes('/nu/') || p.includes('/female/') || p.includes('/woman/') || p.includes('_nu') || p.includes('-manekina') || p.includes('-female')) {
+  if (p.includes('/nu/') || p.includes('/female/') || p.includes('/woman/')) {
+    return 'female';
+  }
+  // Filename-level checks with word boundaries to avoid false positives
+  // e.g. '-man' should not match '-manekina'
+  if (/_nam\b/.test(p) || /\bman\b/.test(p) || /_male\b/.test(p)) {
+    return 'male';
+  }
+  if (/_nu\b/.test(p) || /\bfemale\b/.test(p) || /\bwoman\b/.test(p)) {
     return 'female';
   }
   return 'unisex';
@@ -315,8 +324,8 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
       const uniqueId = relModelPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
       results.push({
         id: uniqueId,
-        name: formatDisplayName(dir.name),
-        filename: dir.name,
+        name: formatDisplayName(path.parse(mainModel.name).name),
+        filename: mainModel.name,
         relPath: relModelPath,
         path: `assets/${relModelPath}`,
         bundleDir: path.relative(rootDir, subDirPath).replace(/\\/g, '/'),
@@ -325,7 +334,7 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
         sizeMB: (totalBundleSize / (1024 * 1024)).toFixed(2),
         gender: detectGender(relModelPath),
         previewUrl: bundlePreviewUrl ? (bundlePreviewUrl.startsWith('assets/') ? bundlePreviewUrl : `assets/${bundlePreviewUrl}`) : undefined,
-        description: `${formatDisplayName(dir.name)} (Model Bundle: ${path.extname(mainModel.name).toUpperCase()})`
+        description: `${formatDisplayName(path.parse(mainModel.name).name)} (Model Bundle: ${path.extname(mainModel.name).replace('.', '').toUpperCase()})`
       });
       // All other texture images inside the bundle folder are ignored
     } else {

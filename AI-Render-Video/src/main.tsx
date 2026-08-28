@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { App } from './App';
 import './styles/studio.css';
+
+// Lazy-load the heavy App component so the splash screen shows immediately
+// while Vite transforms ~200 source modules in dev mode
+const App = React.lazy(() =>
+  import('./App').then(m => ({ default: m.App }))
+);
 
 window.addEventListener('error', (e) => {
   console.error('[Global Window Error]:', e.error || e.message, e);
@@ -19,6 +24,16 @@ window.addEventListener('unhandledrejection', (e) => {
   </div>`;
 });
 
+/** Remove the HTML splash screen once React has mounted */
+function dismissSplash() {
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.style.transition = 'opacity 0.3s';
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 300);
+  }
+}
+
 console.log('Initializing FlowMy AI Studio...');
 
 const rootElement = document.getElementById('root');
@@ -27,8 +42,23 @@ if (!rootElement) {
 } else {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <App />
+      <Suspense fallback={null}>
+        <App />
+        <SplashDismisser />
+      </Suspense>
     </React.StrictMode>
   );
 }
 
+/** Tiny component that dismisses splash on mount and triggers adaptive prefetch */
+function SplashDismisser() {
+  React.useEffect(() => {
+    dismissSplash();
+    // On powerful devices, prefetch all lazy chunks during idle time
+    // so tab switching feels instant. Weak devices skip this.
+    import('./core/performance/AdaptivePrefetcher').then(({ prefetchLazyChunks }) => {
+      prefetchLazyChunks(2500);
+    });
+  }, []);
+  return null;
+}

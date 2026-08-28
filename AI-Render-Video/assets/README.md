@@ -92,3 +92,112 @@ If no individual `.glb` parts exist yet, use the legacy `model` field (backward 
 ### ID Matching Rule
 Each file ID is derived from the filename without extension.
 Example: `characters/base_bodies/male_warrior.vrm` → ID = `male_warrior`
+
+---
+
+## 4. Asset Loading & Preview Rules (Engine Conventions)
+
+### Preview Image Resolution Order
+When displaying an asset in the browser (Asset Browser, Character Workbench, etc.):
+
+1. **Same-name image (highest priority):** If a `.png`/`.jpg`/`.gif`/`.webp` file exists with the **same name** as the model file in the same folder, use it as the preview image.
+   - Example: `costume_xianxia.glb` + `costume_xianxia.png` → preview = `costume_xianxia.png`
+2. **Explicit `previewUrl` from manifest:** If `asset_manifest.json` specifies a `previewUrl`, use that.
+3. **3D Snapshot fallback:** If no matching image exists, the engine renders a **headless WebGL snapshot** of the model using `Live3DThumbnail`. This snapshot is cached in:
+   - **Tier 1:** In-memory RAM cache (instant, within session)
+   - **Tier 2:** IndexedDB persistent cache (survives page reloads)
+   - **Tier 3:** Generated once via offscreen WebGL render (only when no cache exists)
+
+### Folder Structure for 3D Models
+
+#### Direct files (root children):
+```
+nhan_vat/trang_phuc/nu/
+├── costume_female_warrior.glb        ← Model file
+├── costume_female_warrior.png        ← Preview image (same name = auto-linked)
+├── another_dress.glb                 ← Model without preview
+└── random_preview.gif                ← Standalone image (displayed as-is)
+```
+
+#### Subfolder bundles (for FBX + textures):
+```
+nhan_vat/trang_phuc/nu/
+└── precision-strike-manekina/        ← Root child folder
+    ├── source/                       ← Subfolder containing model + textures
+    │   ├── Manekina Precision Strike.fbx
+    │   ├── Beyd_Avatar_Girl_Top_Tex_Diffuse.png
+    │   ├── Beyd_Avatar_Girl_Bottom_Tex_Diffuse.png
+    │   └── ...
+    └── textures/                     ← Alternative texture location
+        └── ...
+```
+
+**Rules for subfolder bundles:**
+- Engine scans **recursively** inside the root child folder
+- If a 3D model (`.fbx`, `.glb`, `.gltf`) is found inside a subfolder, it is registered
+- Textures **must be in the same folder** as the model file or a sibling `textures/` folder
+- The **root child folder name** is used as the display name (e.g. `precision-strike-manekina`)
+
+### Gender Detection
+Gender is auto-detected from the **folder path**:
+- Path contains `/nu/` or `/female/` or `/woman/` → **female**
+- Path contains `/nam/` or `/male/` or `/man/` → **male**
+- Otherwise → **unisex**
+
+> ⚠️ Models placed in `nhan_vat/trang_phuc/nu/` will be categorized as female.
+> Do NOT place male models in female folders or vice versa.
+
+### FBX-Specific Conventions
+- **Units:** FBX files often use **centimeters** (100x larger than GLB's meters). The engine auto-detects this: if bounding box > 10 units, it scales down to ~1.8m (human height).
+- **Textures:** FBX files embed **absolute paths** from the exporter's machine (e.g. `C:\Users\Artist\textures\diffuse.png`). The engine's `LoadingManager` remaps these to relative paths — extracting just the filename and looking in the same folder as the FBX file.
+- **Valid formats:** `.fbx` for models and motions. Always place texture `.png`/`.jpg` files in the **same directory** as the `.fbx` file.
+- **Import via UI:** Use the **📂 Folder** button to import an entire folder containing `.fbx` + textures. Single `.fbx` file import will prompt you to use folder mode instead.
+
+---
+
+## 5. Field Reference — `asset_structure.json` & `asset_manifest.json`
+
+### `asset_structure.json` — Structure Definition Fields
+
+This file defines the **folder taxonomy** and **UI configuration** for the asset system.
+
+#### Category Fields (`character_structure.categories[]`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique category identifier, matches folder name (e.g. `trang_phuc`, `khuon_mat`) |
+| `folder` | string | Physical folder name inside `nhan_vat/` |
+| `folder_aliases` | string[] | Alternative folder names that map to this category (e.g. `["costumes", "outfits"]`) |
+| `label` | string | Display name in UI (e.g. `"Trang Phục"`) |
+| `icon` | string | Emoji icon for the vertical tab |
+| **`supports_gender`** | **boolean** | **`true`:** Category has `nam/`/`nu/` subfolders — engine scans gender-specific subfolders and shows gender filter toggle in UI. **`false`:** Category has no gender split — all items are `unisex`, no gender filter shown. |
+| `default_gender` | string | Default gender when no folder/path indicator is found (`"male"`, `"female"`, or `"unisex"`) |
+
+#### Gender Rules (`gender_rules`)
+
+| Field | Type | Description |
+|---|---|---|
+| **`filter_enabled`** | **boolean** | **`true`:** Gender filter toggle (♂/♀) is visible in Character Workbench UI. User can filter assets by gender. **`false`:** Gender filter is hidden, all assets shown regardless of gender. |
+| `options[]` | array | List of gender options with `id`, `key`, `label`, `icon`, and `folder_aliases` |
+
+### `asset_manifest.json` — Asset Item Fields
+
+This file is **auto-generated** by `scan_assets.js` and contains the full inventory of all scanned assets.
+
+#### Item Fields (per asset entry)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier derived from file path (e.g. `nhan_vat_trang_phuc_nu_costume_warrior`) |
+| `name` | string | Display name in UI, auto-formatted from filename |
+| `filename` | string | Original filename (e.g. `"Manekina Precision Strike.fbx"`) |
+| `relPath` | string | Relative path from `assets/` root (e.g. `"nhan_vat/trang_phuc/nu/model.glb"`) |
+| `path` | string | Full path with `assets/` prefix for URL loading |
+| `format` | string | File format in uppercase (e.g. `"GLB"`, `"FBX"`, `"VRM"`, `"PNG"`) |
+| `sizeMB` | string | File size in megabytes |
+| `gender` | string | Detected gender: `"male"`, `"female"`, or `"unisex"` |
+| `previewUrl` | string | URL to preview image (if a same-name `.png`/`.jpg` exists) |
+| `description` | string | Human-readable description of the asset |
+| **`isStandaloneImage`** | **boolean** | **`true`:** This entry is a standalone image file (`.png`/`.jpg`/`.gif`) — NOT a 3D model texture. It is displayed directly as-is in the asset browser (e.g. a preview image, reference art). The engine does NOT try to load it as a 3D model. **`false`/absent:** This is a 3D model file that can be loaded into the scene. |
+| **`isFolderBundle`** | **boolean** | **`true`:** This 3D model lives inside a subfolder along with its texture files. The engine uses a `LoadingManager` to resolve texture paths relative to the model's folder. The `bundleDir` field indicates the parent folder. **`false`/absent:** This is a standalone model file (e.g. single `.glb` with embedded textures). |
+| `bundleDir` | string | Only present when `isFolderBundle: true`. The parent directory path containing the model bundle (e.g. `"nhan_vat/trang_phuc/nu"`) |

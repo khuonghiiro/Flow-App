@@ -1,5 +1,9 @@
 /* AI 3D Animation Studio - Premium Design System */
 
+/* Lazy-load spinner animation */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
 :root {
   --bg-main: #0b0d14;
   --bg-panel: #111422;

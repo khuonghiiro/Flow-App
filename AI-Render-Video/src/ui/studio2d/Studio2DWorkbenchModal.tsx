@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Scissors,
   Sparkles,
@@ -8,18 +8,9 @@ import {
   X,
   Grid,
   Bot,
+  Loader,
 } from 'lucide-react';
-import { ImageSegmenterCropper } from './ImageSegmenterCropper';
-import { AIPromptGenerator2D } from './AIPromptGenerator2D';
-import { Character2DAssembler } from './Character2DAssembler';
-import { AutoGridSlicer3DAssembler } from './AutoGridSlicer3DAssembler';
-import { Map2DAssembler } from './Map2DAssembler';
-import { ActionSequence2DDirector } from './ActionSequence2DDirector';
-import { MultiAngleRigAssembler } from './MultiAngleRigAssembler';
-import { ImageToSvgVectorizerTab } from './vectorizer/ImageToSvgVectorizerTab';
-import { AIAntigravityDecomposerPanel } from './agent/AIAntigravityDecomposerPanel';
-import { DetailPartAssemblerTab } from './detail/DetailPartAssemblerTab';
-import {
+import type {
   Character2DAssembly,
   Character2DPartType,
   Map2DPreset,
@@ -28,6 +19,44 @@ import {
   DEFAULT_SAMPLE_CHARACTERS_2D,
   DEFAULT_SAMPLE_MAPS_2D,
 } from '../../core/assets/Asset2DRegistry';
+
+// ─── Lazy-loaded sub-tabs (code-split from 654KB monolith) ───
+const ImageSegmenterCropper = React.lazy(() =>
+  import('./ImageSegmenterCropper').then(m => ({ default: m.ImageSegmenterCropper }))
+);
+const AIPromptGenerator2D = React.lazy(() =>
+  import('./AIPromptGenerator2D').then(m => ({ default: m.AIPromptGenerator2D }))
+);
+const Character2DAssembler = React.lazy(() =>
+  import('./Character2DAssembler').then(m => ({ default: m.Character2DAssembler }))
+);
+const AutoGridSlicer3DAssembler = React.lazy(() =>
+  import('./AutoGridSlicer3DAssembler').then(m => ({ default: m.AutoGridSlicer3DAssembler }))
+);
+const Map2DAssembler = React.lazy(() =>
+  import('./Map2DAssembler').then(m => ({ default: m.Map2DAssembler }))
+);
+const ActionSequence2DDirector = React.lazy(() =>
+  import('./ActionSequence2DDirector').then(m => ({ default: m.ActionSequence2DDirector }))
+);
+const MultiAngleRigAssembler = React.lazy(() =>
+  import('./MultiAngleRigAssembler').then(m => ({ default: m.MultiAngleRigAssembler }))
+);
+const ImageToSvgVectorizerTab = React.lazy(() =>
+  import('./vectorizer/ImageToSvgVectorizerTab').then(m => ({ default: m.ImageToSvgVectorizerTab }))
+);
+const AIAntigravityDecomposerPanel = React.lazy(() =>
+  import('./agent/AIAntigravityDecomposerPanel').then(m => ({ default: m.AIAntigravityDecomposerPanel }))
+);
+const DetailPartAssemblerTab = React.lazy(() =>
+  import('./detail/DetailPartAssemblerTab').then(m => ({ default: m.DetailPartAssemblerTab }))
+);
+
+const TabLoader: React.FC = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: 12, gap: 8 }}>
+    <Loader size={14} className="spin" /> Đang tải module...
+  </div>
+);
 
 interface Studio2DWorkbenchModalProps {
   isOpen: boolean;
@@ -325,6 +354,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
 
         {/* ─── MODAL BODY (Active Tab Component) ───────────────────── */}
         <div style={{ flex: 1, padding: 14, overflow: 'hidden', minHeight: 0 }}>
+          <Suspense fallback={<TabLoader />}>
           {activeTab === 'grid_slicer' && (
             <AutoGridSlicer3DAssembler
               currentAssembly={characterAssembly}
@@ -373,6 +403,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
           )}
 
           {activeTab === 'director' && <ActionSequence2DDirector />}
+          </Suspense>
         </div>
       </div>
     </div>
