@@ -264,7 +264,7 @@ export const CharacterPromptGeneratorColumn: React.FC<CharacterPromptGeneratorCo
             </>
           ) : (
             <>
-              <Sparkles size={14} /> ⚡ Tạo Nhân Vật Mới Bằng AI
+              <Sparkles size={14} /> Tạo Nhân Vật Mới Bằng AI
             </>
           )}
         </button>

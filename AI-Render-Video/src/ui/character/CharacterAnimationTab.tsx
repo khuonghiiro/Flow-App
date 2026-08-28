@@ -60,33 +60,52 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importedFileName, setImportedFileName] = useState<string>('');
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const hasEmbeddedClips = availableAnimations.length > 0;
   const isCurrentlyPlaying = hasEmbeddedClips ? isPlayingAnim : isPosePlaying;
 
   const bodies = availableCategories.find((c) => c.id === 'than_co_ban')?.items || [];
 
-  const handleFastImport = async () => {
-    const files = await NativeFileDialogHelper.pickFiles({
-      description: '3D Character Models',
-      extensions: ['.glb', '.gltf', '.fbx', '.vrm'],
-      multiple: false,
-    });
-    if (files.length > 0) {
-      const file = files[0];
-      const objectUrl = `${URL.createObjectURL(file)}#${encodeURIComponent(file.name)}`;
-      setImportedFileName(file.name);
-      onSelectModel(objectUrl);
-    }
+  const VALID_3D_EXTS = ['.glb', '.gltf', '.fbx', '.vrm'];
+
+  const importFile = (file: File) => {
+    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!VALID_3D_EXTS.includes(ext)) return;
+    const objectUrl = `${URL.createObjectURL(file)}#${encodeURIComponent(file.name)}`;
+    setImportedFileName(file.name);
+    onSelectModel(objectUrl);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    importFile(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) importFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
+  const handleDragLeave = () => setIsDragOver(false);
+
   const PROCEDURAL_POSES = [
-    { id: 'walk', label: 'Dáng Đi Tự Nhiên', icon: '🚶', desc: 'Chu kỳ bước đi Humanoid chuẩn nhịp tay đối xứng' },
-    { id: 'slash', label: 'Xuất Chiêu Kiếm Pháp', icon: '⚔️', desc: 'Hoạt cảnh vung kiếm chém ngang uy lực & xoay thân' },
-    { id: 'defend', label: 'Thế Thủ Võ Thuật', icon: '🛡️', desc: 'Hạ trọng tâm, giơ tay thủ thế phòng ngự' },
-    { id: 'wave', label: 'Vẫy Tay Chào', icon: '👋', desc: 'Giơ tay cao vẫy chào thân thiện' },
-    { id: 'sit', label: 'Tư Thế Ngồi Ghế', icon: '🪑', desc: 'Gập gối 90° ngồi thư giãn' },
-    { id: 't_pose', label: 'T-Pose (Khung Chuẩn)', icon: '🤸', desc: 'Tư thế đứng chữ T chuẩn để gắn xương' },
+    { id: 'idle', label: 'Dáng Đứng Thở Sống Động', icon: '🧘', desc: 'Thở tự nhiên, chuyển trọng tâm chân mềm mại' },
+    { id: 'walk', label: 'Dáng Đi Chuẩn Điện Ảnh', icon: '🚶', desc: 'Chu kỳ bước đi AAA với nhún hông & cuộn bàn chân' },
+    { id: 'run', label: 'Chạy Nhanh Hành Động', icon: '🏃', desc: 'Sải bước chạy tốc độ cao, gập gối mạnh & nghiêng thân' },
+    { id: 'slash', label: 'Xuất Chiêu Kiếm Pháp', icon: '⚔️', desc: 'Tích lực chém kiếm 4 giai đoạn uy lực & xoay thân' },
+    { id: 'cast_spell', label: 'Niệm Chú Pháp Thuật', icon: '✨', desc: 'Tập trung ma lực, nâng tay vòng cung & ngửa thân' },
+    { id: 'defend', label: 'Thế Thủ Võ Thuật', icon: '🛡️', desc: 'Hạ trọng tâm, hai tay thủ thế hộ thân vững chãi' },
+    { id: 'dance', label: 'Vũ Đạo Nhịp Điệu', icon: '💃', desc: 'Lắc hông, đánh nhịp vai & sóng tay sôi động' },
+    { id: 'wave', label: 'Vẫy Tay Thân Thiện', icon: '👋', desc: 'Giơ tay cao vẫy chào tự nhiên & nghiêng đầu' },
+    { id: 'sit', label: 'Tư Thế Ngồi Thư Giãn', icon: '🪑', desc: 'Gập gối 90° chuẩn ngồi ghế nghỉ ngơi' },
+    { id: 't_pose', label: 'T-Pose (Khung Chuẩn)', icon: '🤸', desc: 'Tư thế đứng chữ T chuẩn để căn chỉnh' },
   ];
 
   return (
@@ -183,30 +202,44 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
             )}
           </select>
 
-          {/* Fast Import File Button */}
-          <button
-            onClick={handleFastImport}
-            title="Tải tệp mô hình 3D (.glb, .gltf, .fbx, .vrm) từ máy tính của bạn để kiểm thử chuyển động"
+          {/* Drag & Drop Zone + Click-to-Browse (bypasses slow Windows Explorer dialog) */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => fileInputRef.current?.click()}
+            title="Kéo thả file .glb / .gltf / .fbx / .vrm vào đây, hoặc click để chọn"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               padding: '8px 14px',
-              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              background: isDragOver
+                ? 'linear-gradient(135deg, #059669, #047857)'
+                : 'linear-gradient(135deg, #0284c7, #0369a1)',
               color: '#ffffff',
-              border: 'none',
+              border: isDragOver ? '2px dashed #34d399' : '2px solid transparent',
               borderRadius: 8,
               fontSize: 11,
               fontWeight: 700,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)',
+              boxShadow: isDragOver
+                ? '0 2px 12px rgba(5, 150, 105, 0.5)'
+                : '0 2px 8px rgba(2, 132, 199, 0.3)',
               transition: 'all 0.15s ease',
+              userSelect: 'none',
             }}
           >
             <Upload size={14} />
-            <span>Nhập File 3D</span>
-          </button>
+            <span>{isDragOver ? 'Thả file vào đây!' : 'Nhập File 3D'}</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+          </div>
         </div>
 
         {/* Model Status Subtext */}
@@ -222,16 +255,34 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
         </div>
       </div>
 
-      {/* 2. Embedded Animation Clips Section (If present in model) */}
-      {hasEmbeddedClips && (
-        <div style={{ background: 'rgba(245, 158, 11, 0.05)', padding: 14, borderRadius: 10, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <Film size={14} color="#f59e0b" />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>
-              Danh Sách Animation Tích Hợp Sẵn Trong File ({availableAnimations.length} Động Tác)
+      {/* 2. Embedded Animation Clips Section */}
+      <div
+        style={{
+          background: hasEmbeddedClips ? 'rgba(245, 158, 11, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+          padding: 14,
+          borderRadius: 10,
+          border: hasEmbeddedClips ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(255, 255, 255, 0.06)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Film size={14} color={hasEmbeddedClips ? '#f59e0b' : '#94a3b8'} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: hasEmbeddedClips ? '#fbbf24' : '#e2e8f0' }}>
+              1. Animation Tích Hợp Sẵn Trong File Model ({availableAnimations.length} Clips)
             </span>
           </div>
+          {hasEmbeddedClips ? (
+            <span style={{ fontSize: 10, background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+              Đang khả dụng
+            </span>
+          ) : (
+            <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
+              0 clip nhúng
+            </span>
+          )}
+        </div>
 
+        {hasEmbeddedClips ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
             {availableAnimations.map((clipName) => {
               const isSelected = selectedAnimClip === clipName;
@@ -263,15 +314,19 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
               );
             })}
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)' }}>
+            ℹ️ Model hiện tại (ví dụ: Columbina / Base Body) là <strong>file 3D tĩnh / T-Pose</strong> không chứa animation nhúng sẵn bên trong file. Hệ thống đang tự động kích hoạt <strong>Thư Viện Chuyển Động Xương</strong> ở mục 2 bên dưới. Bạn có thể kéo thả thêm file <code>.glb</code> / <code>.fbx</code> có animation từ Mixamo vào để hiện danh sách clip tại đây.
+          </div>
+        )}
+      </div>
 
       {/* 3. Skeletal Motion Library (For all models with bones / Auto-Rig) */}
       <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <Zap size={14} color="#a855f7" />
           <span style={{ fontSize: 12, fontWeight: 700, color: '#c084fc' }}>
-            Thư Viện Động Tác Chuyển Động Xương (Motion Library)
+            2. Thư Viện Động Tác Chuyển Động Xương (Motion Library)
           </span>
         </div>
 
@@ -321,7 +376,7 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
             <FastForward size={13} color="#94a3b8" />
             <span style={{ fontSize: 11, color: '#94a3b8' }}>Tốc độ:</span>
             <select
-              value={animSpeed}
+              value={String(animSpeed)}
               onChange={(e) => onChangeAnimSpeed(parseFloat(e.target.value))}
               style={{
                 background: '#1e293b',
@@ -337,10 +392,10 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
             >
               <option value="0.25">0.25x</option>
               <option value="0.5">0.5x (Chậm)</option>
-              <option value="1.0">1.0x (Chuẩn)</option>
+              <option value="1">1.0x (Chuẩn)</option>
               <option value="1.25">1.25x</option>
               <option value="1.5">1.5x (Nhanh)</option>
-              <option value="2.0">2.0x</option>
+              <option value="2">2.0x</option>
             </select>
           </div>
         </div>
@@ -373,7 +428,9 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
             style={{
               padding: '8px 24px',
               fontSize: 12,
-              fontWeight: 800,
+              fontWeight: 700,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              letterSpacing: '0.3px',
               borderRadius: 8,
               background: isCurrentlyPlaying ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #10b981, #059669)',
               color: '#ffffff',
@@ -388,11 +445,11 @@ export const CharacterAnimationTab: React.FC<CharacterAnimationTabProps> = ({
           >
             {isCurrentlyPlaying ? (
               <>
-                <Pause size={15} /> TẠM DỪNG
+                <Pause size={15} /> Tạm Dừng
               </>
             ) : (
               <>
-                <Play size={15} /> CHẠY ĐỘNG TÁC
+                <Play size={15} /> Chạy Động Tác
               </>
             )}
           </button>

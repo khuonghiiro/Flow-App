@@ -387,7 +387,7 @@ export const AIPartDecomposerColumn: React.FC<AIPartDecomposerColumnProps> = ({
             </>
           ) : (
             <>
-              <Sparkles size={14} /> ⚡ Kích Hoạt Antigravity AI Tách Chi Tiết
+              <Sparkles size={14} /> Kích Hoạt Antigravity AI Tách Chi Tiết
             </>
           )}
         </button>

@@ -30,28 +30,36 @@ export interface CharacterCategory {
 // Default empty categories fallback
 export const CHARACTER_CATEGORIES: CharacterCategory[] = [];
 
+// In-memory cache to prevent re-fetching and re-parsing 1.2MB JSON on every modal open
+let cachedCategories: CharacterCategory[] | null = null;
+let cachedPromise: Promise<CharacterCategory[]> | null = null;
+
 /**
  * Fetch and dynamically build character categories from live manifest & structure JSON
  */
-export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[]> {
-  try {
-    let manifest: any = {};
-    try {
-      const res = await fetch(`/assets/asset_manifest.json?t=${Date.now()}`);
-      if (res.ok) manifest = await res.json();
-    } catch {}
+export async function fetchLiveCharacterCategories(forceRefresh = false): Promise<CharacterCategory[]> {
+  if (cachedCategories && !forceRefresh) return cachedCategories;
+  if (cachedPromise && !forceRefresh) return cachedPromise;
 
-    const chars = manifest.characters || {};
-    let structure = manifest.structure?.character_structure;
-    if (!structure) {
+  cachedPromise = (async () => {
+    try {
+      let manifest: any = {};
       try {
-        const sRes = await fetch(`/assets/asset_structure.json?t=${Date.now()}`);
-        if (sRes.ok) {
-          const sJson = await sRes.json();
-          structure = sJson.character_structure;
-        }
+        const res = await fetch(`/assets/asset_manifest.json`);
+        if (res.ok) manifest = await res.json();
       } catch {}
-    }
+
+      const chars = manifest.characters || {};
+      let structure = manifest.structure?.character_structure;
+      if (!structure) {
+        try {
+          const sRes = await fetch(`/assets/asset_structure.json`);
+          if (sRes.ok) {
+            const sJson = await sRes.json();
+            structure = sJson.character_structure;
+          }
+        } catch {}
+      }
 
     const parseCharList = (list: any[], fallbackGender: AssetGender = 'unisex'): CharacterPartItem[] => {
       if (!Array.isArray(list)) return [];
@@ -140,14 +148,19 @@ export async function fetchLiveCharacterCategories(): Promise<CharacterCategory[
         }
       }
 
-      return definedCategories;
-    }
+        cachedCategories = definedCategories;
+        return definedCategories;
+      }
 
-    return [];
-  } catch (err) {
-    console.warn('Using default character category fallback:', err);
-    return [];
-  }
+      cachedCategories = [];
+      return [];
+    } catch (err) {
+      console.warn('Using default character category fallback:', err);
+      cachedCategories = [];
+      return [];
+    }
+  })();
+  return cachedPromise;
 }
 
 function formatDisplayName(filename: string): string {

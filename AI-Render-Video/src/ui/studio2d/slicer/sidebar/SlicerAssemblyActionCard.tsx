@@ -148,7 +148,7 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
           </>
         ) : checkedCount > 1 ? (
           <>
-            <Sparkles size={15} /> ⚡ Tách Nền {checkedCount} Ảnh Đang Chọn
+            <Sparkles size={15} /> Tách Nền {checkedCount} Ảnh Đang Chọn
           </>
         ) : assemblySuccess ? (
           <>
@@ -156,7 +156,7 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
           </>
         ) : (
           <>
-            <Sparkles size={15} /> ⚡ Tách Nền & Lưu Chi Tiết Vào Kho
+            <Sparkles size={15} /> Tách Nền & Lưu Chi Tiết Vào Kho
           </>
         )}
       </button>

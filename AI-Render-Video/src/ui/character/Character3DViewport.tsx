@@ -352,9 +352,13 @@ export const Character3DViewport: React.FC<Character3DViewportProps> = ({
                     cursor: 'pointer',
                   }}
                 >
-                  <option value="walk">🚶 Dáng Đi Tự Nhiên (Walk Cycle)</option>
+                  <option value="idle">🧘 Dáng Đứng Thở Sống Động (Idle)</option>
+                  <option value="walk">🚶 Dáng Đi Chuẩn Điện Ảnh (Walk)</option>
+                  <option value="run">🏃 Chạy Nhanh Hành Động (Sprint)</option>
                   <option value="slash">⚔️ Xuất Chiêu Kiếm Pháp (Slash)</option>
+                  <option value="cast_spell">✨ Niệm Chú Pháp Thuật (Cast Spell)</option>
                   <option value="defend">🛡️ Thế Thủ Võ Thuật (Guard)</option>
+                  <option value="dance">💃 Vũ Đạo Nhịp Điệu (Dance)</option>
                   <option value="wave">👋 Vẫy Tay Chào (Wave)</option>
                   <option value="sit">🪑 Tư Thế Ngồi (Sit)</option>
                   <option value="t_pose">🤸 T-Pose (Chuẩn)</option>
@@ -396,7 +400,7 @@ export const Character3DViewport: React.FC<Character3DViewportProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <FastForward size={12} color="#94a3b8" />
             <select
-              value={animSpeed}
+              value={String(animSpeed)}
               onChange={(e) => onChangeAnimSpeed(parseFloat(e.target.value))}
               style={{
                 background: '#1e293b',
@@ -409,10 +413,12 @@ export const Character3DViewport: React.FC<Character3DViewportProps> = ({
                 cursor: 'pointer',
               }}
             >
+              <option value="0.25">0.25x</option>
               <option value="0.5">0.5x</option>
-              <option value="1.0">1.0x (Chuẩn)</option>
+              <option value="1">1.0x (Chuẩn)</option>
+              <option value="1.25">1.25x</option>
               <option value="1.5">1.5x</option>
-              <option value="2.0">2.0x</option>
+              <option value="2">2.0x</option>
             </select>
           </div>
         </div>

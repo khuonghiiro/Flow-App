@@ -274,7 +274,7 @@ export const SlicerCanvasTopBar: React.FC<SlicerCanvasTopBarProps> = ({
               }}
               title="Tự động quét và căn chỉnh các đường lưới ôm khớp khít từng linh kiện theo ảnh AI"
             >
-              <Target size={11} /> 🎯 Tự Căn Khung (Auto-Fit)
+              <Target size={11} /> Tự Căn Khung (Auto-Fit)
             </button>
 
             <button

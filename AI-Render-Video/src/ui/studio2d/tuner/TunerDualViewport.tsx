@@ -65,7 +65,7 @@ export const TunerDualViewport: React.FC<TunerDualViewportProps> = ({
               }}
               title="Ghép đầy đủ các lớp: Tóc sau + Đỉnh đầu + Tóc mai + Mái trước"
             >
-              <Layers size={11} /> 🎭 Ghép Toàn Bộ Tóc
+              <Layers size={11} /> Ghép Toàn Bộ Tóc
             </button>
             <button
               onClick={() => setCanvas2DMode('isolated')}

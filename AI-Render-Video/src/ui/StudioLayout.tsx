@@ -40,9 +40,7 @@ const AssetBrowserPanel = React.lazy(() =>
 const LightingStudioPanel = React.lazy(() =>
   import('./LightingStudioPanel').then(m => ({ default: m.LightingStudioPanel }))
 );
-const CharacterWorkbenchPanel = React.lazy(() =>
-  import('./CharacterWorkbenchPanel').then(m => ({ default: m.CharacterWorkbenchPanel }))
-);
+import { CharacterWorkbenchPanel } from './CharacterWorkbenchPanel';
 const TransformInspector = React.lazy(() =>
   import('./TransformInspector').then(m => ({ default: m.TransformInspector }))
 );
@@ -182,22 +180,12 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
     if (cat) setSelectedCategory(cat);
   }, [scene.scene_id]);
 
-  const handleOpenFolderMap = async () => {
-    const files = await NativeFileDialogHelper.pickFolder();
+  const handleMapFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
     if (files && files.length > 0 && onImportCustomMap) {
       onImportCustomMap(files as any);
     }
-  };
-
-  const handleOpenMapFiles = async () => {
-    const files = await NativeFileDialogHelper.pickFiles({
-      description: '3D Models & Maps',
-      extensions: ['.glb', '.gltf', '.fbx', '.zip', '.bin', '.png', '.jpg', '.jpeg', '.webp'],
-      multiple: true,
-    });
-    if (files && files.length > 0 && onImportCustomMap) {
-      onImportCustomMap(files as any);
-    }
+    e.target.value = '';
   };
 
   return (
@@ -303,8 +291,8 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         {/* Right: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={handleOpenFolderMap}
+            <label
+              htmlFor="studio-folder-upload-input"
               title="Import Folder chứa 3D Model + Textures (.gltf/.fbx + ảnh)"
               style={{
                 display: 'flex',
@@ -319,12 +307,21 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 color: '#38bdf8',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
+                userSelect: 'none',
               }}
             >
               <FolderUp size={12} /> Folder
-            </button>
-            <button
-              onClick={handleOpenMapFiles}
+              <input
+                id="studio-folder-upload-input"
+                type="file"
+                {...({ webkitdirectory: '', directory: '' } as any)}
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleMapFiles}
+              />
+            </label>
+            <label
+              htmlFor="studio-map-upload-input"
               title="Import 3D Model (.glb / .fbx)"
               style={{
                 display: 'flex',
@@ -339,10 +336,18 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 color: '#c084fc',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
+                userSelect: 'none',
               }}
             >
               <Layers size={12} /> 3D
-            </button>
+              <input
+                id="studio-map-upload-input"
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleMapFiles}
+              />
+            </label>
             <button
               onClick={() => setShowStudio2DModal(true)}
               title="Mở Xưởng Lắp Ghép Nhân Vật, Tách Nền & Map 2D (Cutout & Parallax Motion Comic)"
@@ -721,49 +726,46 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
       />
       </Suspense>
 
-      {/* 3D Character Workbench & Auto-Rig Studio Full Modal Window */}
-      {showWorkbenchModal && (
-        <Suspense fallback={<PanelLoader />}>
+      {/* 3D Character Workbench & Auto-Rig Studio Full Modal Window (Persistent Keep-Alive for 0ms Instant Open) */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(2, 6, 23, 0.85)',
+          backdropFilter: 'blur(12px)',
+          display: showWorkbenchModal ? 'flex' : 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 10,
+          pointerEvents: showWorkbenchModal ? 'auto' : 'none',
+        }}
+      >
         <div
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(2, 6, 23, 0.85)',
-            backdropFilter: 'blur(12px)',
+            width: '96vw',
+            maxWidth: '1800px',
+            height: '92vh',
+            maxHeight: '960px',
+            background: '#090d16',
+            borderRadius: 14,
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 30px rgba(56, 189, 248, 0.15)',
+            overflow: 'hidden',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 10,
+            flexDirection: 'column',
           }}
         >
-          <div
-            style={{
-              width: '96vw',
-              maxWidth: '1800px',
-              height: '92vh',
-              maxHeight: '960px',
-              background: '#090d16',
-              borderRadius: 14,
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 30px rgba(56, 189, 248, 0.15)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <CharacterWorkbenchPanel
-              scene={scene}
-              onUpdateScene={onUpdateScene}
-              onSelectAvatar={onSelectAvatar}
-              onSelectMap={onSelectMap}
-              onClose={() => setShowWorkbenchModal(false)}
-              isModal={true}
-            />
-          </div>
+          <CharacterWorkbenchPanel
+            scene={scene}
+            onUpdateScene={onUpdateScene}
+            onSelectAvatar={onSelectAvatar}
+            onSelectMap={onSelectMap}
+            onClose={() => setShowWorkbenchModal(false)}
+            isModal={true}
+          />
         </div>
-        </Suspense>
-      )}
+      </div>
 
       {/* 2D Cutout & Motion Comic Studio Modal */}
       <Suspense fallback={null}>

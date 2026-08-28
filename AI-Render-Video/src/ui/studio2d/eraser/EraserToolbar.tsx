@@ -92,7 +92,7 @@ export const EraserToolbar: React.FC<EraserToolbarProps> = ({
           }}
           title="Cọ Tẩy Photoshop (Bấm giữ và quét để xóa mờ mịn)"
         >
-          <Eraser size={13} /> 🖌️ Cọ Tẩy (E)
+          <Eraser size={13} /> Cọ Tẩy (E)
         </button>
 
         <button

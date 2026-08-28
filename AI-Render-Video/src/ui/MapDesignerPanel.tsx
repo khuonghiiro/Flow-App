@@ -1942,7 +1942,7 @@ export const MapDesignerPanel: React.FC<MapDesignerPanelProps> = ({
               boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)',
             }}
           >
-            <MapIcon size={14} /> 🗺️ Áp Dụng Toàn Bộ Map & Các Lớp Vào Cảnh
+            <MapIcon size={14} /> Áp Dụng Toàn Bộ Map & Các Lớp Vào Cảnh
           </button>
         </div>
       </div>

@@ -275,6 +275,16 @@ export class AutoRigEngine {
 
     const skeleton = new THREE.Skeleton(bonesList);
 
+    // Cache initial rest orientation (T-pose) and position for each bone
+    for (const b of bonesList) {
+      if (!b.userData.initialRotation) {
+        b.userData.initialRotation = b.rotation.clone();
+      }
+      if (!b.userData.initialPosition) {
+        b.userData.initialPosition = b.position.clone();
+      }
+    }
+
     // 4. Tạo mô hình hiển thị trực quan các khớp xương (Joint Visualizer chuẩn Studio)
     const jointVisualizer = this.createJointVisualizer(jointPositions, this.HUMANOID_JOINTS);
 
@@ -455,15 +465,18 @@ export class AutoRigEngine {
   }
 
   /**
-   * Áp dụng cử động Animation thử nghiệm trực tiếp lên khung xương (Natural Biomechanics Pose Testing)
+   * Áp dụng cử động Animation thử nghiệm trực tiếp lên khung xương (AAA Cinematic Biomechanics Engine)
    */
   public static applyTestPose(bonesMap: Map<string, THREE.Bone>, poseName: string, progress: number = 0): void {
-    // Reset all bones to their initial rest pose
+    // Reset all bones to their initial rest pose & position
     for (const bone of bonesMap.values()) {
       if (bone.userData.initialRotation) {
         bone.rotation.copy(bone.userData.initialRotation);
       } else {
         bone.rotation.set(0, 0, 0);
+      }
+      if (bone.userData.initialPosition) {
+        bone.position.copy(bone.userData.initialPosition);
       }
     }
 
@@ -477,162 +490,41 @@ export class AutoRigEngine {
       bone.rotation.set(init.x + dx, init.y + dy, init.z + dz);
     };
 
+    const translateBone = (jointName: string, dx: number, dy: number, dz: number) => {
+      const bone = bonesMap.get(jointName);
+      if (!bone) return;
+      const init = bone.userData.initialPosition || new THREE.Vector3();
+      bone.position.set(init.x + dx, init.y + dy, init.z + dz);
+    };
+
     switch (poseName) {
-      case 'walk': {
-        // --- CHU KỲ BƯỚC ĐI TỰ NHIÊN (AAA Smooth Humanoid Walk Cycle) ---
-        const legSwingLeft = Math.sin(t) * 0.40;
-        const legSwingRight = -legSwingLeft;
-
-        // Đầu gối gập mượt mà khi chân lùi về sau và thẳng khi bước tới
-        const kneeLeft = Math.max(0, -Math.sin(t - 0.25)) * 0.82;
-        const kneeRight = Math.max(0, Math.sin(t - 0.25)) * 0.82;
-
-        // Bàn chân tiếp đất tự nhiên
-        const footLeft = Math.sin(t - 0.45) * 0.22;
-        const footRight = -Math.sin(t - 0.45) * 0.22;
-
-        rotateBone('LeftUpperLeg', legSwingLeft, 0, 0);
-        rotateBone('LeftLowerLeg', -kneeLeft, 0, 0);
-        rotateBone('LeftFoot', footLeft, 0, 0);
-
-        rotateBone('RightUpperLeg', legSwingRight, 0, 0);
-        rotateBone('RightLowerLeg', -kneeRight, 0, 0);
-        rotateBone('RightFoot', footRight, 0, 0);
-
-        // Hông / Cột sống nhún nhịp đôi và vặn nhẹ theo bước
-        rotateBone('Hips', Math.cos(t * 2) * 0.02, -Math.sin(t) * 0.06, Math.sin(t) * 0.03);
-        rotateBone('Spine', 0.02, Math.sin(t) * 0.06, -Math.sin(t) * 0.02);
-        rotateBone('Chest', 0.03, Math.sin(t) * 0.04, 0);
-
-        // Tay đánh nhịp đối xứng với khuỷu tay gập mềm mại
-        const armSwingLeft = -legSwingLeft * 0.75;
-        const armSwingRight = -legSwingRight * 0.75;
-        const elbowBendLeft = 0.20 + Math.abs(legSwingLeft) * 0.25;
-        const elbowBendRight = 0.20 + Math.abs(legSwingRight) * 0.25;
-
-        rotateBone('LeftUpperArm', armSwingLeft, 0.05, -0.15);
-        rotateBone('LeftLowerArm', -elbowBendLeft, 0, 0);
-        rotateBone('LeftHand', Math.sin(t - 0.3) * 0.12, 0, 0);
-
-        rotateBone('RightUpperArm', armSwingRight, -0.05, 0.15);
-        rotateBone('RightLowerArm', -elbowBendRight, 0, 0);
-        rotateBone('RightHand', -Math.sin(t - 0.3) * 0.12, 0, 0);
-
-        // Đầu giữ cân bằng tự nhiên
-        rotateBone('Neck', 0, -Math.sin(t) * 0.03, 0);
-        rotateBone('Head', 0.02, -Math.sin(t) * 0.025, 0);
+      case 'idle':
+        this.applyIdleKinematics(rotateBone, translateBone, t);
         break;
-      }
-
-      case 'slash': {
-        // --- XUẤT CHIÊU KIẾM PHÁP (Dynamic Multi-phase Sword Slash) ---
-        const phase = (progress * 2) % 1.0;
-        const windup = Math.sin(phase * Math.PI);
-        const slashPower = Math.cos(phase * Math.PI);
-
-        rotateBone('Hips', 0.05, windup * 0.3, 0);
-        rotateBone('Spine', 0.08, slashPower * 0.45, 0);
-        rotateBone('Chest', 0.06, slashPower * 0.35, 0);
-
-        // Cánh tay phải vung đường kiếm cung tròn uy lực
-        rotateBone('RightShoulder', 0.1, slashPower * 0.2, 0.1);
-        rotateBone('RightUpperArm', -0.5 + slashPower * 0.9, 0.25, 0.45 + windup * 0.3);
-        rotateBone('RightLowerArm', -0.6 + slashPower * 0.4, 0, 0);
-        rotateBone('RightHand', slashPower * 0.3, 0, 0);
-
-        // Tay trái giữ thăng bằng
-        rotateBone('LeftUpperArm', 0.25, 0, -0.35);
-        rotateBone('LeftLowerArm', -0.5, 0, 0);
-
-        // Thế chân tấn vững chãi
-        rotateBone('LeftUpperLeg', -0.30, 0, -0.12);
-        rotateBone('LeftLowerLeg', 0.35, 0, 0);
-        rotateBone('RightUpperLeg', 0.22, 0, 0.12);
-        rotateBone('RightLowerLeg', -0.15, 0, 0);
-
-        rotateBone('Head', 0.04, slashPower * 0.15, 0);
+      case 'walk':
+        this.applyWalkKinematics(rotateBone, translateBone, t);
         break;
-      }
-
-      case 'defend': {
-        // --- THẾ THỦ PHÒNG VỆ (Martial Arts Guard & Breathing Dynamics) ---
-        const breathe = Math.sin(t) * 0.035;
-        const stanceShift = Math.sin(t * 0.5) * 0.02;
-
-        rotateBone('Hips', -0.12 + stanceShift, 0.1, 0);
-        rotateBone('Spine', 0.10 + breathe, 0.12, 0);
-        rotateBone('Chest', 0.08 + breathe * 0.8, 0.08, 0);
-
-        // Hai tay thủ thế trước ngực
-        rotateBone('LeftUpperArm', -0.65, 0.35, -0.25);
-        rotateBone('LeftLowerArm', -1.15, 0.2, 0);
-        rotateBone('LeftHand', 0.2, 0, 0);
-
-        rotateBone('RightUpperArm', -0.55, -0.32, 0.25);
-        rotateBone('RightLowerArm', -1.10, -0.2, 0);
-        rotateBone('RightHand', 0.2, 0, 0);
-
-        // Chân hạ thấp trọng tâm
-        rotateBone('LeftUpperLeg', -0.32, 0, -0.15);
-        rotateBone('LeftLowerLeg', 0.38, 0, 0);
-        rotateBone('RightUpperLeg', 0.20, 0, 0.15);
-        rotateBone('RightLowerLeg', 0.25, 0, 0);
-
-        rotateBone('Head', 0.05, 0.05, 0);
+      case 'run':
+        this.applyRunKinematics(rotateBone, translateBone, t);
         break;
-      }
-
-      case 'wave': {
-        // --- VẪY TAY CHÀO THÂN THIỆN (Organic Friendly Wave) ---
-        const wave = Math.sin(t * 3.5) * 0.38;
-        const breathe = Math.sin(t) * 0.025;
-
-        rotateBone('Spine', breathe, -0.05, 0);
-        rotateBone('Chest', breathe, -0.04, 0);
-
-        // Tay phải giơ cao vẫy tự nhiên
-        rotateBone('RightShoulder', 0.1, 0, 0.15);
-        rotateBone('RightUpperArm', -1.45, 0.25, 0.65);
-        rotateBone('RightLowerArm', -0.45, wave * 0.8, 0);
-        rotateBone('RightHand', 0, wave, 0.1);
-
-        // Tay trái thả lỏng tự nhiên
-        rotateBone('LeftUpperArm', 0.05, 0, -0.12);
-        rotateBone('LeftLowerArm', -0.15, 0, 0);
-
-        // Đầu nghiêng chào tươi tắn
-        rotateBone('Head', 0.06, -0.12, 0.08);
+      case 'slash':
+        this.applySlashKinematics(rotateBone, translateBone, progress);
         break;
-      }
-
-      case 'sit': {
-        // --- TƯ THẾ NGỒI THƯ THÁI (Relaxed Seated Pose with Breathing) ---
-        const breathe = Math.sin(t) * 0.025;
-
-        rotateBone('Hips', -0.05, 0, 0);
-        rotateBone('Spine', 0.05 + breathe, 0, 0);
-        rotateBone('Chest', 0.04 + breathe, 0, 0);
-
-        // Chân gập 90 độ chuẩn ngồi ghế
-        rotateBone('LeftUpperLeg', -1.52, 0, -0.08);
-        rotateBone('LeftLowerLeg', 1.52, 0, 0);
-        rotateBone('LeftFoot', 0.05, 0, 0);
-
-        rotateBone('RightUpperLeg', -1.52, 0, 0.08);
-        rotateBone('RightLowerLeg', 1.52, 0, 0);
-        rotateBone('RightFoot', 0.05, 0, 0);
-
-        // Tay đặt nhẹ trên đùi
-        rotateBone('LeftUpperArm', -0.22, 0, -0.15);
-        rotateBone('LeftLowerArm', -0.45, 0, 0);
-        rotateBone('RightUpperArm', -0.22, 0, 0.15);
-        rotateBone('RightLowerArm', -0.45, 0, 0);
-
-        rotateBone('Head', 0.04, 0, 0);
+      case 'cast_spell':
+        this.applySpellKinematics(rotateBone, translateBone, t);
         break;
-      }
-
-      case 't_pose':
+      case 'defend':
+        this.applyDefendKinematics(rotateBone, translateBone, t);
+        break;
+      case 'dance':
+        this.applyDanceKinematics(rotateBone, translateBone, t);
+        break;
+      case 'wave':
+        this.applyWaveKinematics(rotateBone, translateBone, t);
+        break;
+      case 'sit':
+        this.applySitKinematics(rotateBone, translateBone, t);
+        break;
       default:
         break;
     }
@@ -642,5 +534,301 @@ export class AutoRigEngine {
       bone.updateMatrix();
       bone.updateMatrixWorld(true);
     }
+  }
+
+  private static applyIdleKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const breathe = Math.sin(t * 1.5) * 0.04;
+    const weightShift = Math.sin(t * 0.5) * 0.025;
+
+    trans('Hips', weightShift * 0.04, Math.sin(t * 1.5) * 0.008, 0);
+    rot('Hips', 0.02, weightShift * 0.08, weightShift * 0.03);
+    rot('Spine', 0.03 + breathe, -weightShift * 0.06, -weightShift * 0.02);
+    rot('Chest', 0.04 + breathe * 1.2, -weightShift * 0.04, 0);
+    rot('Neck', -0.02 - breathe * 0.3, 0, 0);
+    rot('Head', 0.03 - breathe * 0.4, -weightShift * 0.05, weightShift * 0.02);
+
+    rot('LeftShoulder', 0, 0, breathe * 0.03);
+    rot('RightShoulder', 0, 0, -breathe * 0.03);
+    rot('LeftUpperArm', 0.05 + breathe * 0.2, 0.02, -0.08 - breathe * 0.04);
+    rot('LeftLowerArm', -0.22 - breathe * 0.1, 0, 0);
+    rot('RightUpperArm', 0.05 + breathe * 0.2, -0.02, 0.08 + breathe * 0.04);
+    rot('RightLowerArm', -0.22 - breathe * 0.1, 0, 0);
+
+    rot('LeftUpperLeg', -0.02, 0, -weightShift * 0.04);
+    rot('LeftLowerLeg', 0.04, 0, 0);
+    rot('RightUpperLeg', -0.02, 0, weightShift * 0.04);
+    rot('RightLowerLeg', 0.04, 0, 0);
+  }
+
+  private static applyWalkKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const hipsY = -Math.abs(Math.sin(t)) * 0.035;
+    const hipsX = Math.sin(t) * 0.028;
+    const hipsYaw = -Math.sin(t) * 0.12;
+    const hipsRoll = Math.sin(t) * 0.045;
+
+    trans('Hips', hipsX, hipsY, 0);
+    rot('Hips', 0.04, hipsYaw, hipsRoll);
+    rot('Spine', 0.03, -hipsYaw * 0.6, -hipsRoll * 0.6);
+    rot('Chest', 0.04, -hipsYaw * 0.7, -hipsRoll * 0.4);
+    rot('Neck', 0, hipsYaw * 0.3, 0);
+    rot('Head', -0.03, hipsYaw * 0.2, -hipsRoll * 0.3);
+
+    const legL = Math.sin(t) * 0.48;
+    const kneeL = Math.max(0, -Math.sin(t - 0.25)) * 0.95 + 0.05;
+    const footL = Math.sin(t - 0.5) * 0.35;
+    rot('LeftUpperLeg', legL, 0, -hipsRoll * 0.5);
+    rot('LeftLowerLeg', -kneeL, 0, 0);
+    rot('LeftFoot', footL, 0, 0);
+
+    const legR = -legL;
+    const kneeR = Math.max(0, Math.sin(t - 0.25)) * 0.95 + 0.05;
+    const footR = -footL;
+    rot('RightUpperLeg', legR, 0, hipsRoll * 0.5);
+    rot('RightLowerLeg', -kneeR, 0, 0);
+    rot('RightFoot', footR, 0, 0);
+
+    const armL = legR * 0.8;
+    rot('LeftShoulder', 0, armL * 0.15, -0.02);
+    rot('LeftUpperArm', armL, 0.05, -0.12);
+    rot('LeftLowerArm', -0.25 - Math.max(0, armL) * 0.45, 0, 0);
+    rot('LeftHand', Math.sin(t + 0.4) * 0.15, 0, 0);
+
+    const armR = legL * 0.8;
+    rot('RightShoulder', 0, armR * 0.15, 0.02);
+    rot('RightUpperArm', armR, -0.05, 0.12);
+    rot('RightLowerArm', -0.25 - Math.max(0, armR) * 0.45, 0, 0);
+    rot('RightHand', -Math.sin(t + 0.4) * 0.15, 0, 0);
+  }
+
+  private static applyRunKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const hipsY = -Math.abs(Math.sin(t)) * 0.06;
+    trans('Hips', Math.sin(t) * 0.035, hipsY, 0);
+    rot('Hips', 0.22, -Math.sin(t) * 0.18, Math.sin(t) * 0.06);
+    rot('Spine', 0.12, Math.sin(t) * 0.12, -Math.sin(t) * 0.04);
+    rot('Chest', 0.10, Math.sin(t) * 0.15, 0);
+    rot('Head', -0.18, -Math.sin(t) * 0.05, 0);
+
+    const legL = Math.sin(t) * 0.85;
+    const kneeL = Math.max(0, -Math.sin(t - 0.2)) * 1.55 + 0.15;
+    const footL = Math.sin(t - 0.4) * 0.45;
+    rot('LeftUpperLeg', legL, 0, -0.05);
+    rot('LeftLowerLeg', -kneeL, 0, 0);
+    rot('LeftFoot', footL, 0, 0);
+
+    const legR = -legL;
+    const kneeR = Math.max(0, Math.sin(t - 0.2)) * 1.55 + 0.15;
+    const footR = -footL;
+    rot('RightUpperLeg', legR, 0, 0.05);
+    rot('RightLowerLeg', -kneeR, 0, 0);
+    rot('RightFoot', footR, 0, 0);
+
+    const armL = -legL * 0.95;
+    rot('LeftUpperArm', armL, 0.1, -0.15);
+    rot('LeftLowerArm', -1.35, 0, 0);
+
+    const armR = -legR * 0.95;
+    rot('RightUpperArm', armR, -0.1, 0.15);
+    rot('RightLowerArm', -1.35, 0, 0);
+  }
+
+  private static applySlashKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    progress: number
+  ): void {
+    const p = progress;
+    if (p < 0.32) {
+      const k = p / 0.32;
+      trans('Hips', 0.04 * k, -0.06 * k, -0.05 * k);
+      rot('Hips', 0.05 * k, -0.45 * k, 0);
+      rot('Spine', 0.08 * k, -0.55 * k, 0);
+      rot('Chest', 0.06 * k, -0.45 * k, 0);
+      rot('Head', 0.04, 0.35 * k, 0);
+
+      rot('RightShoulder', 0.15 * k, 0, 0.15 * k);
+      rot('RightUpperArm', -1.2 * k, 0.4 * k, 0.6 * k);
+      rot('RightLowerArm', -1.4 * k, 0, 0);
+      rot('LeftUpperArm', 0.3 * k, 0, -0.4 * k);
+      rot('LeftLowerArm', -0.6 * k, 0, 0);
+
+      rot('LeftUpperLeg', -0.2 * k, 0, -0.15 * k);
+      rot('LeftLowerLeg', 0.3 * k, 0, 0);
+      rot('RightUpperLeg', 0.25 * k, 0, 0.15 * k);
+      rot('RightLowerLeg', 0.2 * k, 0, 0);
+    } else if (p < 0.52) {
+      const k = (p - 0.32) / 0.20;
+      trans('Hips', 0.04 - 0.08 * k, -0.06 - 0.02 * k, -0.05 + 0.13 * k);
+      rot('Hips', 0.05, -0.45 + 0.95 * k, 0);
+      rot('Spine', 0.08 + 0.08 * k, -0.55 + 1.2 * k, 0);
+      rot('Chest', 0.06 + 0.06 * k, -0.45 + 1.0 * k, 0);
+      rot('Head', 0.04, 0.35 - 0.5 * k, 0);
+
+      rot('RightUpperArm', -1.2 + 1.8 * k, 0.4 - 0.8 * k, 0.6 - 1.1 * k);
+      rot('RightLowerArm', -1.4 + 0.9 * k, 0, 0);
+      rot('RightHand', 0.6 * k, 0, 0);
+      rot('LeftUpperArm', 0.3 - 0.5 * k, 0, -0.4 + 0.2 * k);
+
+      rot('LeftUpperLeg', -0.2 - 0.25 * k, 0, -0.15);
+      rot('LeftLowerLeg', 0.3 + 0.25 * k, 0, 0);
+      rot('RightUpperLeg', 0.25 - 0.1 * k, 0, 0.15);
+      rot('RightLowerLeg', 0.2 - 0.3 * k, 0, 0);
+    } else {
+      const k = (p - 0.52) / 0.48;
+      const settle = (1 - k);
+      trans('Hips', -0.04 * settle, -0.08 * settle, 0.08 * settle);
+      rot('Hips', 0.05 * settle, 0.50 * settle, 0);
+      rot('Spine', 0.16 * settle, 0.65 * settle, 0);
+      rot('Chest', 0.12 * settle, 0.55 * settle, 0);
+
+      rot('RightUpperArm', 0.6 * settle, -0.4 * settle, -0.5 * settle);
+      rot('RightLowerArm', -0.5 * settle, 0, 0);
+      rot('RightHand', 0.6 * settle, 0, 0);
+
+      rot('LeftUpperLeg', -0.45 * settle, 0, -0.15 * settle);
+      rot('LeftLowerLeg', 0.55 * settle, 0, 0);
+      rot('RightUpperLeg', 0.15 * settle, 0, 0.15 * settle);
+      rot('RightLowerLeg', -0.1 * settle, 0, 0);
+    }
+  }
+
+  private static applySpellKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    trans('Hips', 0, 0.04 + Math.sin(t) * 0.03, 0);
+    rot('Hips', -0.08, Math.sin(t * 0.5) * 0.05, 0);
+    rot('Spine', -0.15 + Math.sin(t) * 0.03, 0, 0);
+    rot('Chest', -0.18 + Math.sin(t) * 0.04, 0, 0);
+    rot('Head', -0.28, 0, 0);
+
+    rot('LeftUpperLeg', 0.25, 0, -0.12);
+    rot('LeftLowerLeg', -0.45, 0, 0);
+    rot('LeftFoot', -0.55, 0, 0);
+    rot('RightUpperLeg', 0.15, 0, 0.12);
+    rot('RightLowerLeg', -0.35, 0, 0);
+    rot('RightFoot', -0.55, 0, 0);
+
+    rot('LeftUpperArm', -0.85 + Math.sin(t) * 0.15, 0.35, -0.65 + Math.cos(t) * 0.1);
+    rot('LeftLowerArm', -0.85 + Math.cos(t) * 0.2, 0.3, 0);
+    rot('LeftHand', Math.sin(t * 2) * 0.25, Math.cos(t * 2) * 0.25, 0.15);
+    rot('RightUpperArm', -0.85 + Math.sin(t) * 0.15, -0.35, 0.65 - Math.cos(t) * 0.1);
+    rot('RightLowerArm', -0.85 + Math.cos(t) * 0.2, -0.3, 0);
+    rot('RightHand', Math.sin(t * 2) * 0.25, -Math.cos(t * 2) * 0.25, -0.15);
+  }
+
+  private static applyDefendKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const breathe = Math.sin(t * 2) * 0.03;
+    const bob = Math.abs(Math.sin(t * 2)) * 0.02;
+
+    trans('Hips', 0, -0.08 - bob, 0);
+    rot('Hips', 0.12, 0.25, 0);
+    rot('Spine', 0.15 + breathe, -0.12, 0);
+    rot('Chest', 0.10 + breathe, -0.10, 0);
+    rot('Head', -0.12, -0.15, 0);
+
+    rot('LeftUpperLeg', -0.45, 0.15, -0.22);
+    rot('LeftLowerLeg', 0.65, 0, 0);
+    rot('LeftFoot', -0.15, 0, 0);
+    rot('RightUpperLeg', 0.25, -0.15, 0.22);
+    rot('RightLowerLeg', 0.55, 0, 0);
+    rot('RightFoot', 0.15, 0, 0);
+
+    rot('LeftShoulder', 0.12, 0, 0.1);
+    rot('LeftUpperArm', -0.75 + breathe, 0.45, -0.28);
+    rot('LeftLowerArm', -1.55, 0.35, 0);
+    rot('LeftHand', 0.35, 0.15, 0);
+    rot('RightShoulder', 0.12, 0, -0.1);
+    rot('RightUpperArm', -0.65 + breathe, -0.40, 0.32);
+    rot('RightLowerArm', -1.65, -0.35, 0);
+    rot('RightHand', 0.35, -0.15, 0);
+  }
+
+  private static applyDanceKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const hipsX = Math.sin(t * 2) * 0.05;
+    const hipsY = -Math.abs(Math.sin(t * 2)) * 0.04;
+    trans('Hips', hipsX, hipsY, 0);
+    rot('Hips', 0.05, Math.sin(t) * 0.25, -Math.sin(t * 2) * 0.15);
+    rot('Spine', 0.04, -Math.sin(t) * 0.20, Math.sin(t * 2) * 0.12);
+    rot('Chest', 0.08, -Math.sin(t) * 0.15, Math.sin(t * 2) * 0.08);
+    rot('Head', -0.05, Math.sin(t) * 0.15, -Math.sin(t * 2) * 0.10);
+
+    rot('LeftUpperLeg', Math.sin(t) * 0.25, 0, -0.15 - Math.sin(t * 2) * 0.1);
+    rot('LeftLowerLeg', Math.abs(Math.sin(t)) * 0.45, 0, 0);
+    rot('RightUpperLeg', -Math.sin(t) * 0.25, 0, 0.15 + Math.sin(t * 2) * 0.1);
+    rot('RightLowerLeg', Math.abs(Math.cos(t)) * 0.45, 0, 0);
+
+    rot('LeftUpperArm', -0.65 + Math.sin(t) * 0.45, 0.2, -0.45 + Math.cos(t) * 0.35);
+    rot('LeftLowerArm', -0.85 + Math.sin(t * 2) * 0.4, 0, 0);
+    rot('RightUpperArm', -0.65 - Math.sin(t) * 0.45, -0.2, 0.45 - Math.cos(t) * 0.35);
+    rot('RightLowerArm', -0.85 - Math.sin(t * 2) * 0.4, 0, 0);
+  }
+
+  private static applyWaveKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const wave = Math.sin(t * 3.5) * 0.42;
+    const breathe = Math.sin(t) * 0.03;
+
+    trans('Hips', -0.03, -0.01, 0);
+    rot('Hips', 0.02, 0.08, -0.04);
+    rot('Spine', 0.04 + breathe, -0.06, 0.03);
+    rot('Chest', 0.05 + breathe, -0.05, 0.02);
+    rot('Head', 0.04, -0.12, 0.12);
+
+    rot('RightShoulder', 0.15, 0, -0.1);
+    rot('RightUpperArm', -1.55, 0.32, 0.72);
+    rot('RightLowerArm', -0.65, wave * 0.85, 0.2);
+    rot('RightHand', 0.1, wave * 0.9, 0.15);
+
+    rot('LeftUpperArm', 0.08, 0, -0.12);
+    rot('LeftLowerArm', -0.18, 0, 0);
+  }
+
+  private static applySitKinematics(
+    rot: (j: string, x: number, y: number, z: number) => void,
+    trans: (j: string, x: number, y: number, z: number) => void,
+    t: number
+  ): void {
+    const breathe = Math.sin(t) * 0.03;
+    trans('Hips', 0, -0.45, 0);
+    rot('Hips', -0.08, 0, 0);
+    rot('Spine', 0.06 + breathe, 0, 0);
+    rot('Chest', 0.04 + breathe * 0.8, 0, 0);
+    rot('Head', 0.02, 0, 0);
+
+    rot('LeftUpperLeg', -1.57, 0, -0.08);
+    rot('LeftLowerLeg', 1.57, 0, 0);
+    rot('LeftFoot', 0.05, 0, 0);
+    rot('RightUpperLeg', -1.57, 0, 0.08);
+    rot('RightLowerLeg', 1.57, 0, 0);
+    rot('RightFoot', 0.05, 0, 0);
+
+    rot('LeftUpperArm', -0.25, 0, -0.15);
+    rot('LeftLowerArm', -0.55, 0, 0);
+    rot('RightUpperArm', -0.25, 0, 0.15);
+    rot('RightLowerArm', -0.55, 0, 0);
   }
 }

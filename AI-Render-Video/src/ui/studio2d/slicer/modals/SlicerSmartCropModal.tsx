@@ -674,7 +674,7 @@ export const SlicerSmartCropModal: React.FC<SlicerSmartCropModalProps> = ({
                   boxShadow: '0 4px 12px rgba(147, 51, 234, 0.35)',
                 }}
               >
-                <Save size={14} /> 💾 Cắt & Lưu Vào Kho Linh Kiện
+                <Save size={14} /> Cắt & Lưu Vào Kho Linh Kiện
               </button>
 
               {/* Secondary: Apply to Slicer */}
@@ -720,7 +720,7 @@ export const SlicerSmartCropModal: React.FC<SlicerSmartCropModalProps> = ({
                   gap: 6,
                 }}
               >
-                <Download size={13} /> 📥 Tải File PNG Đã Cắt Gọt
+                <Download size={13} /> Tải File PNG Đã Cắt Gọt
               </button>
             </div>
           </div>

@@ -175,6 +175,8 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   // Switch animation clip helper
   const handleSelectAnimationClip = (clipName: string) => {
     setSelectedAnimClip(clipName);
+    // Stop procedural pose when switching to embedded animation
+    setIsPosePlaying(false);
     if (!currentPreviewGroupRef.current || !animationMixerRef.current) return;
     const group = currentPreviewGroupRef.current;
     const allClips: THREE.AnimationClip[] = [];
@@ -184,10 +186,14 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     });
     const clip = allClips.find((c) => (c.name || '') === clipName) || allClips[0];
     if (clip && animationMixerRef.current) {
-      if (currentActionRef.current) currentActionRef.current.stop();
-      const action = animationMixerRef.current.clipAction(clip);
-      action.reset().play();
-      currentActionRef.current = action;
+      const prevAction = currentActionRef.current;
+      const nextAction = animationMixerRef.current.clipAction(clip);
+      nextAction.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+      // Apply smooth crossfade transition if there was a previous animation playing
+      if (prevAction && prevAction !== nextAction) {
+        nextAction.crossFadeFrom(prevAction, 0.4, true);
+      }
+      currentActionRef.current = nextAction;
       setIsPlayingAnim(true);
     }
   };
@@ -198,7 +204,10 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         if (currentActionRef.current) currentActionRef.current.paused = true;
         setIsPlayingAnim(false);
       } else {
-        if (currentActionRef.current) currentActionRef.current.paused = false;
+        if (currentActionRef.current) {
+          currentActionRef.current.paused = false;
+          currentActionRef.current.play();
+        }
         setIsPlayingAnim(true);
       }
     } else {
@@ -357,14 +366,16 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     previewScene.add(grid);
 
     // Animation Loop
-    let lastTime = performance.now();
+    const clock = new THREE.Clock();
     let currentProgress = 0;
 
     const animate = () => {
       animFrameRef.current = requestAnimationFrame(animate);
       const now = performance.now();
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
+      let delta = clock.getDelta();
+      // Cap delta at 0.1s to prevent huge jumps if thread is blocked or tab is inactive
+      if (delta > 0.1) delta = 0.1;
+
       controls.update();
 
       const speed = animSpeedRef.current;
@@ -376,9 +387,6 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
       if (animationMixerRef.current && isPlayingClip) {
         animationMixerRef.current.update(delta * speed);
-      }
-      if (skeletonHelperRef.current && showSkeletonHelperRef.current) {
-        skeletonHelperRef.current.update();
       }
 
       const activeRig = curTab === 'rigging' && rigged ? rigResultRef.current : nativeRigResultRef.current;
@@ -650,13 +658,28 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
           }
         }
 
-        // Detect Embedded Animation Clips
+        // Detect Embedded Animation Clips & Force Smooth Interpolation
         const allClips: THREE.AnimationClip[] = [];
-        if (group.animations && group.animations.length > 0) allClips.push(...group.animations);
+        
+        // Fix for "stiff" animations: Force linear interpolation instead of discrete/step
+        const ensureSmoothInterpolation = (clip: THREE.AnimationClip) => {
+          clip.tracks.forEach((track) => {
+            // Override discrete step interpolation which causes robotic/rigid movements
+            track.setInterpolation(THREE.InterpolateLinear);
+          });
+          return clip;
+        };
+
+        if (group.animations && group.animations.length > 0) {
+          allClips.push(...group.animations.map(ensureSmoothInterpolation));
+        }
+        
         group.traverse((c) => {
           if (c.animations && c.animations.length > 0) {
             c.animations.forEach((a) => {
-              if (!allClips.some((existing) => existing.name === a.name)) allClips.push(a);
+              if (!allClips.some((existing) => existing.name === a.name)) {
+                allClips.push(ensureSmoothInterpolation(a));
+              }
             });
           }
         });
@@ -674,7 +697,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
           setAvailableAnimations(clipNames);
           setSelectedAnimClip(clipNames[0]);
           const action = mixer.clipAction(allClips[0]);
-          action.play();
+          action.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
           currentActionRef.current = action;
           setIsPlayingAnim(true);
         } else {
@@ -740,6 +763,11 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
   const handleSelectPose = (pose: string) => {
     setActivePose(pose);
+    // Stop embedded animation when switching to procedural pose
+    if (animationMixerRef.current && currentActionRef.current) {
+      currentActionRef.current.stop();
+      setIsPlayingAnim(false);
+    }
     setIsPosePlaying(pose !== 't_pose');
     const activeRig = activeTab === 'rigging' && isRigged ? rigResultRef.current : nativeRigResultRef.current;
     if (activeRig) AutoRigEngine.applyTestPose(activeRig.bonesMap, pose, poseProgress);
@@ -789,7 +817,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   background: activeTab === 'modular' ? '#0284c7' : 'transparent', color: activeTab === 'modular' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
                 }}
               >
-                <Shirt size={14} /> 👔 Lắp Ráp Modular
+                <Shirt size={14} /> Lắp Ráp Modular
               </button>
 
               <button
@@ -799,7 +827,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   background: activeTab === 'rigging' ? '#7c3aed' : 'transparent', color: activeTab === 'rigging' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
                 }}
               >
-                <Wrench size={14} /> 🦴 Auto-Rig (Gắn Xương)
+                <Wrench size={14} /> Auto-Rig (Gắn Xương)
               </button>
 
               <button
@@ -809,7 +837,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   background: activeTab === 'animation' ? '#d97706' : 'transparent', color: activeTab === 'animation' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
                 }}
               >
-                <Film size={14} /> 🎬 Animation & Cử Động
+                <Film size={14} /> Animation & Cử Động
               </button>
 
               <button
@@ -819,7 +847,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   background: activeTab === 'map' ? '#059669' : 'transparent', color: activeTab === 'map' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
                 }}
               >
-                <MapIcon size={14} /> 🗺️ Bản Đồ & Thời Gian
+                <MapIcon size={14} /> Bản Đồ & Thời Gian
               </button>
             </div>
           </div>

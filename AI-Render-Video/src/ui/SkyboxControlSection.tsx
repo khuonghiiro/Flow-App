@@ -118,7 +118,7 @@ export const SkyboxControlSection: React.FC<SkyboxControlSectionProps> = ({
           onClick={() => onChange({ ...override, skybox_type: 'auto', weather_preset: 'custom' })}
           title="Tự động chọn ảnh từ thư mục assets/SkyBoxs theo thời gian & độ phủ mây"
         >
-          <RefreshCw size={10} /> ⚡ Tự Động
+          <RefreshCw size={10} /> Tự Động
         </button>
 
         {/* None / Manual Color */}
