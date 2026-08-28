@@ -1519,6 +1519,45 @@ export const App: React.FC = () => {
         const fbxLoader = new FBXLoader(manager);
         const fbxUrl = fileMap.get(fbxFile.name.toLowerCase()) || URL.createObjectURL(fbxFile);
         const fbxGroup = await fbxLoader.loadAsync(fbxUrl);
+
+        fbxGroup.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.frustumCulled = false;
+
+            if (mesh.material) {
+              const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              mats.forEach((mat) => {
+                const m = mat as any;
+                m.side = THREE.DoubleSide;
+
+                if (m.color && m.color.r === 0 && m.color.g === 0 && m.color.b === 0) {
+                  m.color.setHex(0xffffff);
+                }
+
+                if (m.map) {
+                  m.map.colorSpace = THREE.SRGBColorSpace;
+                  m.map.needsUpdate = true;
+                }
+                m.needsUpdate = true;
+              });
+            }
+          }
+        });
+
+        // Auto-scale FBX if using cm units (100x larger than meters)
+        const bbox = new THREE.Box3().setFromObject(fbxGroup);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 10) {
+          const targetSize = 1.8;
+          const scaleFactor = targetSize / maxDim;
+          fbxGroup.scale.multiplyScalar(scaleFactor);
+        }
+
         customModel = fbxGroup;
 
         // FBXLoader returns animations directly on the group

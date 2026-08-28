@@ -174,6 +174,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
     const previewScene = new THREE.Scene();
     previewScene.background = new THREE.Color(0x0a0f1d);
+    previewScene.fog = null; // Ensure NO fog inside Character Workbench viewport
     previewSceneRef.current = previewScene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
@@ -189,9 +190,11 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.15;
 
     canvasContainerRef.current.innerHTML = '';
     canvasContainerRef.current.appendChild(renderer.domElement);
@@ -206,22 +209,34 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     controls.maxPolarAngle = Math.PI / 2 + 0.05;
     previewControlsRef.current = controls;
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.6);
+    // ── Balanced & Soft Studio Lighting (Zero Fog, Gentle Ambient Fill) ──
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     previewScene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2.4);
-    dirLight.position.set(3, 5, 4);
-    dirLight.castShadow = true;
-    previewScene.add(dirLight);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.1);
+    hemiLight.position.set(0, 10, 0);
+    previewScene.add(hemiLight);
 
-    const fillLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
-    fillLight.position.set(-3, 3, 2);
+    // Front-Right Key Light
+    const keyLight = new THREE.DirectionalLight(0xfffbeb, 1.9);
+    keyLight.position.set(3, 5, 4);
+    keyLight.castShadow = true;
+    previewScene.add(keyLight);
+
+    // Front-Left Soft Cool Fill Light
+    const fillLight = new THREE.DirectionalLight(0xbae6fd, 1.2);
+    fillLight.position.set(-3, 3, 3);
     previewScene.add(fillLight);
 
-    const backLight = new THREE.DirectionalLight(0xa855f7, 0.9);
-    backLight.position.set(0, 4, -4);
-    previewScene.add(backLight);
+    // Back Rim Light
+    const rimLight = new THREE.DirectionalLight(0xf1f5f9, 0.9);
+    rimLight.position.set(0, 4, -4);
+    previewScene.add(rimLight);
+
+    // Ground subtle bounce fill
+    const groundBounceLight = new THREE.DirectionalLight(0x475569, 0.5);
+    groundBounceLight.position.set(0, -3, 2);
+    previewScene.add(groundBounceLight);
 
     // Floor Grid
     const grid = new THREE.GridHelper(6, 12, 0x38bdf8, 0x1e293b);
@@ -455,13 +470,21 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   const m = mat as any;
                   m.depthTest = true;
                   m.depthWrite = true;
-                  m.side = THREE.FrontSide; // CRITICAL: FrontSide prevents seeing inside the mouth cavity/tongue
+                  m.side = THREE.DoubleSide;
+
+                  // Ensure pure black materials (exporter bug) are brightened to white so texture maps show clearly
+                  if (m.color && m.color.r === 0 && m.color.g === 0 && m.color.b === 0) {
+                    m.color.setHex(0xffffff);
+                  }
 
                   if (m.map) {
+                    m.map.colorSpace = THREE.SRGBColorSpace;
                     m.map.minFilter = THREE.LinearMipmapLinearFilter;
                     m.map.magFilter = THREE.LinearFilter;
                     m.anisotropy = 16;
+                    m.map.needsUpdate = true;
                   }
+                  m.needsUpdate = true;
                 });
               }
             }

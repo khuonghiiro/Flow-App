@@ -309,6 +309,17 @@ function findAssetFile(rootDir: string, reqPath: string): string | null {
     if (fs.existsSync(cleanCandidate) && fs.statSync(cleanCandidate).isFile()) return cleanCandidate;
   }
 
+  // Check sibling textures/ or source/ directories (common in 3D model bundles)
+  const siblingCandidates = [
+    path.join(assetsDir, dir, '..', 'textures', base),
+    path.join(assetsDir, dir, '..', 'source', base),
+    path.join(assetsDir, dir, 'textures', base),
+    path.join(assetsDir, dir, 'source', base),
+  ];
+  for (const cand of siblingCandidates) {
+    if (fs.existsSync(cand) && fs.statSync(cand).isFile()) return cand;
+  }
+
   const rootCandidate = path.join(assetsDir, base);
   if (fs.existsSync(rootCandidate) && fs.statSync(rootCandidate).isFile()) return rootCandidate;
   const rootCleanCandidate = path.join(assetsDir, cleanBase);

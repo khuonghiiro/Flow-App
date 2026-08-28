@@ -174,7 +174,82 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
 
   const isPrimaryImageCategory = options.isImageCategory || false;
 
-  // ─── 1. Scan Direct Model Files in this directory ──────────────────────────────
+  // ─── 1. Scan Subdirectories & Model Bundles First ────────────
+  for (const dir of dirs) {
+    if (dir.name.startsWith('.') || dir.name === 'node_modules' || dir.name === 'presets') continue;
+    if (dir.name === '_lap_rap' || dir.name === '_custom_ban_do') continue;
+
+    const subDirPath = path.join(currentDir, dir.name);
+    const allSubFiles = getAllFilesInDir(subDirPath);
+    const subModelFiles = allSubFiles.filter(f => allowedModelExts.includes(path.extname(f.name).toLowerCase()));
+
+    // Check if this subfolder is a single GLTF/GLB/FBX bundle (e.g. scene.gltf + textures/ or fbx + textures)
+    const hasSceneEntry = subModelFiles.some(f => {
+      const lower = f.name.toLowerCase();
+      return lower === 'scene.gltf' || lower === 'scene.glb' || lower === 'main.gltf' || lower === 'main.glb' || lower === 'index.gltf';
+    });
+
+    const isTrueBundle = hasSceneEntry || (subModelFiles.length === 1 && allSubFiles.length > 1);
+
+    if (isTrueBundle && subModelFiles.length > 0) {
+      let mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'scene.gltf' || f.name.toLowerCase() === 'scene.glb');
+      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'main.gltf' || f.name.toLowerCase() === 'main.glb');
+      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === `${dir.name.toLowerCase()}.gltf` || f.name.toLowerCase() === `${dir.name.toLowerCase()}.glb`);
+      if (!mainModel) mainModel = subModelFiles[0];
+
+      const totalBundleSize = allSubFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+
+      let bundlePreviewUrl = '';
+      const subImages = allSubFiles.filter(f => imageExts.includes(path.extname(f.name).toLowerCase()));
+      const previewImg = subImages.find(f => {
+        const lower = f.name.toLowerCase();
+        return lower.startsWith('preview') || lower.startsWith('thumbnail') || lower.startsWith('cover') || lower.startsWith(dir.name.toLowerCase());
+      });
+
+      if (previewImg) {
+        bundlePreviewUrl = path.relative(rootDir, previewImg.fullPath).replace(/\\/g, '/');
+      } else {
+        const normDirName = dir.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normModelName = path.parse(mainModel.name).name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // Search companion image in currentDir with normalized matching (e.g. precision_strike_-_manekina.png)
+        const companionImg = files.find(f => {
+          if (!imageExts.includes(path.extname(f.name).toLowerCase())) return false;
+          const normFile = path.parse(f.name).name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return normFile === normDirName || normFile === normModelName || normFile.startsWith(normDirName) || normDirName.startsWith(normFile);
+        });
+
+        if (companionImg) {
+          const candidateFull = path.join(currentDir, companionImg.name);
+          bundlePreviewUrl = path.relative(rootDir, candidateFull).replace(/\\/g, '/');
+          consumedCompanionImages.add(companionImg.name);
+        }
+      }
+
+      const relModelPath = path.relative(rootDir, mainModel.fullPath).replace(/\\/g, '/');
+      const uniqueId = relModelPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
+      results.push({
+        id: uniqueId,
+        name: formatDisplayName(path.parse(mainModel.name).name),
+        filename: mainModel.name,
+        relPath: relModelPath,
+        path: `assets/${relModelPath}`,
+        bundleDir: path.relative(rootDir, subDirPath).replace(/\\/g, '/'),
+        isFolderBundle: true,
+        format: path.extname(mainModel.name).replace('.', '').toUpperCase(),
+        sizeMB: (totalBundleSize / (1024 * 1024)).toFixed(2),
+        gender: detectGender(relModelPath),
+        previewUrl: bundlePreviewUrl ? (bundlePreviewUrl.startsWith('assets/') ? bundlePreviewUrl : `assets/${bundlePreviewUrl}`) : undefined,
+        description: `${formatDisplayName(path.parse(mainModel.name).name)} (Model Bundle: ${path.extname(mainModel.name).replace('.', '').toUpperCase()})`
+      });
+      // All other texture images inside the bundle folder are ignored
+    } else {
+      // Recurse into subfolder with relativeDepth + 1
+      results.push(...scanFolderHierarchy(subDirPath, relativeDepth + 1, rootCategoryDir, allowedModelExts, options));
+    }
+  }
+
+  // ─── 2. Scan Direct Model Files in this directory ─────────────
   for (const file of files) {
     const ext = path.extname(file.name).toLowerCase();
     if (allowedModelExts.includes(ext)) {
@@ -204,6 +279,18 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
           break;
         }
       }
+      if (!previewUrl) {
+        const normBase = baseName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const companionImg = files.find(f => {
+          if (!imageExts.includes(path.extname(f.name).toLowerCase())) return false;
+          const normFile = path.parse(f.name).name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return normFile === normBase || normFile.startsWith(normBase) || normBase.startsWith(normFile);
+        });
+        if (companionImg) {
+          previewUrl = path.relative(rootDir, path.join(currentDir, companionImg.name)).replace(/\\/g, '/');
+          consumedCompanionImages.add(companionImg.name);
+        }
+      }
 
       const uniqueId = relPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
       results.push({
@@ -221,7 +308,7 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
     }
   }
 
-  // ─── 2. Handle Standalone Images & Audio ──────────────────────────────
+  // ─── 3. Handle Standalone Images & Audio ──────────────────────
   for (const file of files) {
     const ext = path.extname(file.name).toLowerCase();
 
@@ -251,7 +338,6 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
           description: `Tài nguyên Hình Ảnh/Texture: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
         });
       }
-      // If relativeDepth > 0 and NOT isPrimaryImageCategory: SKIP image (textures/subfolder images are NOT loaded as standalone assets)
     }
 
     // Audio Files
@@ -271,75 +357,6 @@ function scanFolderHierarchy(currentDir, relativeDepth = 0, rootCategoryDir = cu
         sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
         description: `Âm Thanh: ${formatDisplayName(file.name)} (${ext.replace('.', '').toUpperCase()})`
       });
-    }
-  }
-
-  // ─── 3. Scan Subdirectories ──────────────────────────────────
-  for (const dir of dirs) {
-    if (dir.name.startsWith('.') || dir.name === 'node_modules' || dir.name === 'presets') continue;
-    if (dir.name === '_lap_rap' || dir.name === '_custom_ban_do') continue;
-
-    const subDirPath = path.join(currentDir, dir.name);
-    const allSubFiles = getAllFilesInDir(subDirPath);
-    const subModelFiles = allSubFiles.filter(f => allowedModelExts.includes(path.extname(f.name).toLowerCase()));
-
-    // Check if this subfolder is a single GLTF/GLB bundle (e.g. scene.gltf + textures/)
-    const hasSceneEntry = subModelFiles.some(f => {
-      const lower = f.name.toLowerCase();
-      return lower === 'scene.gltf' || lower === 'scene.glb' || lower === 'main.gltf' || lower === 'main.glb' || lower === 'index.gltf';
-    });
-
-    const isTrueBundle = hasSceneEntry || (subModelFiles.length === 1 && allSubFiles.length > 1);
-
-    if (isTrueBundle && subModelFiles.length > 0) {
-      let mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'scene.gltf' || f.name.toLowerCase() === 'scene.glb');
-      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === 'main.gltf' || f.name.toLowerCase() === 'main.glb');
-      if (!mainModel) mainModel = subModelFiles.find(f => f.name.toLowerCase() === `${dir.name.toLowerCase()}.gltf` || f.name.toLowerCase() === `${dir.name.toLowerCase()}.glb`);
-      if (!mainModel) mainModel = subModelFiles[0];
-
-      const totalBundleSize = allSubFiles.reduce((acc, f) => acc + (f.size || 0), 0);
-
-      let bundlePreviewUrl = '';
-      const subImages = allSubFiles.filter(f => imageExts.includes(path.extname(f.name).toLowerCase()));
-      const previewImg = subImages.find(f => {
-        const lower = f.name.toLowerCase();
-        return lower.startsWith('preview') || lower.startsWith('thumbnail') || lower.startsWith('cover') || lower.startsWith(dir.name.toLowerCase());
-      });
-
-      if (previewImg) {
-        bundlePreviewUrl = path.relative(rootDir, previewImg.fullPath).replace(/\\/g, '/');
-      } else {
-        for (const imgExt of imageExts) {
-          const candidate = `${dir.name}${imgExt}`;
-          const candidateFull = path.join(currentDir, candidate);
-          if (fs.existsSync(candidateFull)) {
-            bundlePreviewUrl = path.relative(rootDir, candidateFull).replace(/\\/g, '/');
-            consumedCompanionImages.add(candidate);
-            break;
-          }
-        }
-      }
-
-      const relModelPath = path.relative(rootDir, mainModel.fullPath).replace(/\\/g, '/');
-      const uniqueId = relModelPath.replace(/\.[^/.]+$/, '').replace(/[/\\ \-_]/g, '_').toLowerCase();
-      results.push({
-        id: uniqueId,
-        name: formatDisplayName(path.parse(mainModel.name).name),
-        filename: mainModel.name,
-        relPath: relModelPath,
-        path: `assets/${relModelPath}`,
-        bundleDir: path.relative(rootDir, subDirPath).replace(/\\/g, '/'),
-        isFolderBundle: true,
-        format: path.extname(mainModel.name).replace('.', '').toUpperCase(),
-        sizeMB: (totalBundleSize / (1024 * 1024)).toFixed(2),
-        gender: detectGender(relModelPath),
-        previewUrl: bundlePreviewUrl ? (bundlePreviewUrl.startsWith('assets/') ? bundlePreviewUrl : `assets/${bundlePreviewUrl}`) : undefined,
-        description: `${formatDisplayName(path.parse(mainModel.name).name)} (Model Bundle: ${path.extname(mainModel.name).replace('.', '').toUpperCase()})`
-      });
-      // All other texture images inside the bundle folder are ignored
-    } else {
-      // Recurse into subfolder with relativeDepth + 1
-      results.push(...scanFolderHierarchy(subDirPath, relativeDepth + 1, rootCategoryDir, allowedModelExts, options));
     }
   }
 
@@ -471,13 +488,16 @@ for (const cat of charCategories) {
     continue;
   }
   const folder = cat.folder || cat.id;
-  const aliases = [
-    `nhan_vat/${folder}/nam`, `nhan_vat/${folder}/nu`, `nhan_vat/${folder}/chung`, `nhan_vat/${folder}`,
-    `characters/${folder}/nam`, `characters/${folder}/nu`, `characters/${folder}/chung`, `characters/${folder}`,
-    `${folder}/nam`, `${folder}/nu`, `${folder}/chung`, folder
-  ];
-  if (cat.id !== folder) {
-    aliases.push(`nhan_vat/${cat.id}/nam`, `nhan_vat/${cat.id}/nu`, `nhan_vat/${cat.id}/chung`, `nhan_vat/${cat.id}`);
+  const aliases = [];
+  if (cat.supports_gender) {
+    aliases.push(
+      `nhan_vat/${folder}/nam`, `nhan_vat/${folder}/nu`, `nhan_vat/${folder}/chung`,
+      `characters/${folder}/nam`, `characters/${folder}/nu`, `characters/${folder}/chung`
+    );
+  } else {
+    aliases.push(
+      `nhan_vat/${folder}`, `characters/${folder}`, folder
+    );
   }
   charactersManifest[cat.id] = scanFolderAliases(aliases, modelExts);
 }

@@ -9,7 +9,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCw } from 'lucide-react';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
 
 // Global memory cache for generated 3D snapshots (Tier 1)
@@ -71,6 +71,39 @@ async function savePersistentSnapshot(key: string, dataUrl: string): Promise<voi
   }
 }
 
+async function deletePersistentSnapshot(key: string): Promise<void> {
+  try {
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(key);
+  } catch (err) {
+    console.warn('Could not delete snapshot from IndexedDB:', err);
+  }
+}
+
+/**
+ * Clear cached snapshot for a specific asset or all assets
+ */
+export async function clearLive3DThumbnailCache(assetPath?: string): Promise<void> {
+  if (assetPath) {
+    const cleanKey = assetPath.trim();
+    snapshotCache.delete(cleanKey);
+    loadingPromises.delete(cleanKey);
+    AssetLoaderRegistry.clearModelCache(cleanKey);
+    await deletePersistentSnapshot(cleanKey);
+  } else {
+    snapshotCache.clear();
+    loadingPromises.clear();
+    AssetLoaderRegistry.clearModelCache();
+    try {
+      const db = await getDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).clear();
+    } catch {}
+  }
+}
+
 // Shared headless renderer for thumbnail generation (Tier 3)
 let sharedRenderer: THREE.WebGLRenderer | null = null;
 let sharedScene: THREE.Scene | null = null;
@@ -91,31 +124,46 @@ function getSharedRenderer(): {
       antialias: true,
       alpha: true,
       preserveDrawingBuffer: true,
-      powerPreference: 'low-power',
+      powerPreference: 'high-performance',
     });
     sharedRenderer.setSize(160, 110);
     sharedRenderer.outputColorSpace = THREE.SRGBColorSpace;
     sharedRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    sharedRenderer.toneMappingExposure = 1.4;
+    sharedRenderer.toneMappingExposure = 1.25;
 
     sharedScene = new THREE.Scene();
+    sharedScene.background = new THREE.Color(0x131d31);
+    sharedScene.fog = null;
 
-    // Studio lighting setup for crisp, vivid 3D thumbnail preview
-    const amb = new THREE.AmbientLight(0xffffff, 1.5);
+    // ── 360° Vivid Studio Lighting for Crisp Thumbnail Snapshots ──
+    const amb = new THREE.AmbientLight(0xffffff, 2.2);
     sharedScene.add(amb);
 
-    const hemi = new THREE.HemisphereLight(0xbae6fd, 0x1e293b, 1.2);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x475569, 1.8);
+    hemi.position.set(0, 10, 0);
     sharedScene.add(hemi);
 
-    const dir1 = new THREE.DirectionalLight(0xfffbeb, 2.5);
-    dir1.position.set(12, 18, 15);
+    // Front-Right Key Light
+    const dir1 = new THREE.DirectionalLight(0xfffbeb, 2.8);
+    dir1.position.set(3, 4, 5);
     sharedScene.add(dir1);
 
-    const dir2 = new THREE.DirectionalLight(0x38bdf8, 1.2);
-    dir2.position.set(-12, -6, -10);
+    // Front-Left Cool Fill Light
+    const dir2 = new THREE.DirectionalLight(0xbae6fd, 2.0);
+    dir2.position.set(-3, 2, 4);
     sharedScene.add(dir2);
 
-    sharedCamera = new THREE.PerspectiveCamera(45, 160 / 110, 0.01, 1000);
+    // Back Rim Light
+    const dir3 = new THREE.DirectionalLight(0xf1f5f9, 1.6);
+    dir3.position.set(0, 4, -4);
+    sharedScene.add(dir3);
+
+    // Ground Bounce Fill
+    const dir4 = new THREE.DirectionalLight(0x64748b, 1.0);
+    dir4.position.set(0, -3, 2);
+    sharedScene.add(dir4);
+
+    sharedCamera = new THREE.PerspectiveCamera(40, 160 / 110, 0.01, 1000);
   }
 
   return {
@@ -128,27 +176,36 @@ function getSharedRenderer(): {
 /**
  * Capture or retrieve 3D model snapshot with persistent IndexedDB & RAM caching
  */
-async function capture3DModelSnapshot(assetPath: string): Promise<string> {
+async function capture3DModelSnapshot(assetPath: string, force = false): Promise<string> {
   const cleanKey = assetPath.trim();
 
-  // Tier 1: Check In-Memory RAM Cache
-  if (snapshotCache.has(cleanKey)) {
+  // Tier 1: Check In-Memory RAM Cache (if not forced)
+  if (!force && snapshotCache.has(cleanKey)) {
     return snapshotCache.get(cleanKey)!;
   }
 
   // Check In-Flight Promises to avoid duplicate rendering
-  if (loadingPromises.has(cleanKey)) {
+  if (!force && loadingPromises.has(cleanKey)) {
     return loadingPromises.get(cleanKey)!;
+  }
+
+  if (force) {
+    snapshotCache.delete(cleanKey);
+    loadingPromises.delete(cleanKey);
+    AssetLoaderRegistry.clearModelCache(cleanKey);
+    await deletePersistentSnapshot(cleanKey);
   }
 
   const promise = (async () => {
     try {
-      // Tier 2: Check Persistent IndexedDB Disk Cache
-      const persistentUrl = await getPersistentSnapshot(cleanKey);
-      if (persistentUrl) {
-        snapshotCache.set(cleanKey, persistentUrl);
-        loadingPromises.delete(cleanKey);
-        return persistentUrl;
+      if (!force) {
+        // Tier 2: Check Persistent IndexedDB Disk Cache
+        const persistentUrl = await getPersistentSnapshot(cleanKey);
+        if (persistentUrl) {
+          snapshotCache.set(cleanKey, persistentUrl);
+          loadingPromises.delete(cleanKey);
+          return persistentUrl;
+        }
       }
 
       // Tier 3: Render 3D Model Offscreen Once
@@ -157,17 +214,39 @@ async function capture3DModelSnapshot(assetPath: string): Promise<string> {
       // Load model clone via registry
       const model = await AssetLoaderRegistry.loadCharacterPart(cleanKey);
 
-      // Force DoubleSide and proper visibility on all child meshes
+      // Convert all materials to MeshStandardMaterial with pure white base color, emissive ambient fill, and sRGB textures
       model.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
           mesh.frustumCulled = false;
           if (mesh.material) {
             const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            mats.forEach((m) => {
-              m.side = THREE.DoubleSide;
-              m.needsUpdate = true;
+            const newMats = mats.map((oldMat: any) => {
+              const stdMat = new THREE.MeshStandardMaterial({
+                map: oldMat.map || null,
+                normalMap: oldMat.normalMap || null,
+                color: new THREE.Color(0xffffff),
+                roughness: 0.55,
+                metalness: 0.05,
+                emissive: new THREE.Color(0x333d4b),
+                side: THREE.DoubleSide,
+                transparent: Boolean(oldMat.transparent || oldMat.alphaMap),
+                opacity: oldMat.opacity ?? 1.0,
+                depthTest: true,
+                depthWrite: true,
+              });
+
+              if (stdMat.map) {
+                stdMat.map.colorSpace = THREE.SRGBColorSpace;
+                stdMat.map.minFilter = THREE.LinearMipmapLinearFilter;
+                stdMat.map.magFilter = THREE.LinearFilter;
+                stdMat.map.needsUpdate = true;
+              }
+
+              return stdMat;
             });
+
+            mesh.material = Array.isArray(mesh.material) ? newMats : newMats[0];
           }
         }
       });
@@ -184,28 +263,30 @@ async function capture3DModelSnapshot(assetPath: string): Promise<string> {
       const center = new THREE.Vector3();
       bbox.getCenter(center);
 
-      // Center model at origin
+      // Center model perfectly at origin
       model.position.x = -center.x;
       model.position.y = -center.y;
       model.position.z = -center.z;
 
-      // Slight natural 3D isometric angle
-      container.rotation.y = Math.PI / 5.5;
-      container.rotation.x = Math.PI / 16;
+      // Straight front-facing camera angle (0° yaw/pitch) just like in 3D character viewport
+      container.rotation.set(0, 0, 0);
 
-      // Fit camera distance to bounding sphere
-      const maxDim = Math.max(size.x, size.y, size.z, 0.5);
+      // Fit camera distance to bounding box for crisp, prominent front framing
+      const maxDim = Math.max(size.x, size.y, size.z, 0.4);
       const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2)) * 1.45;
-      if (!isFinite(cameraZ) || cameraZ < 0.2) cameraZ = 1.5;
+      let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2)) * 1.18;
+      if (!isFinite(cameraZ) || cameraZ < 0.2) cameraZ = 1.4;
 
       camera.position.set(0, 0, cameraZ);
       camera.lookAt(0, 0, 0);
       camera.updateProjectionMatrix();
 
-      // Render 1 frame
+      // Brief frame delay to ensure GPU texture binding is 100% complete
+      await new Promise((r) => setTimeout(r, 60));
+
+      // Render 1 high-clarity frame
       renderer.render(scene, camera);
-      const dataUrl = renderer.domElement.toDataURL('image/webp', 0.85);
+      const dataUrl = renderer.domElement.toDataURL('image/webp', 0.90);
 
       // Cleanup
       scene.remove(container);
@@ -235,6 +316,8 @@ export interface Live3DThumbnailProps {
   fallbackIcon?: string;
   format?: string;
   height?: number | string;
+  showReloadBadge?: boolean;
+  onReload?: (newSnapshotUrl: string) => void;
 }
 
 export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
@@ -244,10 +327,13 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
   fallbackIcon = '📦',
   format = 'GLB',
   height = 85,
+  showReloadBadge = true,
+  onReload,
 }) => {
   const [imgSrc, setImgSrc] = useState<string | undefined>(previewUrl || undefined);
   const [isGenerating3D, setIsGenerating3D] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);
+  const [isHoveringBadge, setIsHoveringBadge] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -364,6 +450,39 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
     };
   }, [assetPath, previewUrl, hasFailed]);
 
+  // Handle explicit force-reload of 3D snapshot
+  const handleReloadSnapshot = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isGenerating3D) return;
+
+    const cleanKey = (assetPath || '').trim();
+    if (!cleanKey) return;
+
+    setIsGenerating3D(true);
+    setHasFailed(false);
+
+    try {
+      const newUrl = await capture3DModelSnapshot(cleanKey, true);
+      setImgSrc(newUrl);
+      if (onReload) onReload(newUrl);
+    } catch (err) {
+      console.warn(`Lỗi khi tạo lại preview cho ${cleanKey}:`, err);
+      setHasFailed(true);
+    } finally {
+      setIsGenerating3D(false);
+    }
+  };
+
+  const p = (assetPath || '').toLowerCase();
+  const is3DModel =
+    p.endsWith('.glb') ||
+    p.endsWith('.gltf') ||
+    p.endsWith('.vrm') ||
+    p.endsWith('.fbx') ||
+    p.endsWith('.obj') ||
+    p.endsWith('.dae');
+
   return (
     <div
       ref={containerRef}
@@ -379,6 +498,46 @@ export const Live3DThumbnail: React.FC<Live3DThumbnailProps> = ({
         position: 'relative',
       }}
     >
+      {/* Reload Snapshot Badge Button (Top-Left) */}
+      {showReloadBadge && is3DModel && (
+        <button
+          type="button"
+          onClick={handleReloadSnapshot}
+          title="Tạo lại ảnh preview 3D (Làm mới cache)"
+          style={{
+            position: 'absolute',
+            top: 4,
+            left: 4,
+            zIndex: 12,
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            background: isHoveringBadge
+              ? 'rgba(56, 189, 248, 0.95)'
+              : 'rgba(15, 23, 42, 0.75)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            color: isHoveringBadge ? '#0f172a' : '#38bdf8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: isGenerating3D ? 'wait' : 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            transition: 'all 0.15s ease',
+            padding: 0,
+          }}
+          onMouseEnter={() => setIsHoveringBadge(true)}
+          onMouseLeave={() => setIsHoveringBadge(false)}
+        >
+          <RotateCw
+            size={10}
+            style={{
+              animation: isGenerating3D ? 'spin 0.8s linear infinite' : 'none',
+            }}
+          />
+        </button>
+      )}
+
       {imgSrc ? (
         <img
           src={imgSrc}

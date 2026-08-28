@@ -19,11 +19,11 @@ export class SceneLighting {
     this.scene = scene;
 
     // Ambient Light
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
     this.scene.add(this.ambientLight);
 
     // Hemisphere Light
-    this.hemiLight = new THREE.HemisphereLight(0x93c5fd, 0x334155, 0.6);
+    this.hemiLight = new THREE.HemisphereLight(0xbae6fd, 0x475569, 1.0);
     this.hemiLight.position.set(0, 50, 0);
     this.scene.add(this.hemiLight);
 
@@ -246,7 +246,7 @@ export class SceneLighting {
 
     // Cloud coverage and shadow darkness dynamically tint atmospheric fog
     if (cloudCov > 0.03 && explicitMode !== 'overcast') {
-      targetAmbIntensity = Math.min(0.55, targetAmbIntensity * (1.0 + cloudCov * 0.10));
+      targetAmbIntensity = Math.max(0.95, targetAmbIntensity * (1.0 - cloudCov * 0.12));
       
       // When clouds are thick and dark, tint fog towards cloud shadow color
       const overcastFogTint = new THREE.Color(0x334155).lerp(new THREE.Color(0x0f172a), cloudShadowDarkness * 0.8);
@@ -261,13 +261,13 @@ export class SceneLighting {
 
       // Zero ambient flooding so dark interiors beneath ceilings stay 100% dark!
       targetAmbIntensity += flashIntensity * 0.02;
-      this.hemiLight.intensity = 0.45;
+      this.hemiLight.intensity = 0.85;
       targetFogColor.lerp(new THREE.Color(0xb0e0ff), flashIntensity * 0.35);
     } else {
       // Balanced hemisphere sky-to-ground fill keeps all 3D characters, houses, and roofs clearly readable
-      this.hemiLight.intensity = 0.45;
-      this.hemiLight.color.set(0x8bc0f8);
-      this.hemiLight.groundColor.set(0x38424e);
+      this.hemiLight.intensity = 1.05;
+      this.hemiLight.color.set(0xbae6fd);
+      this.hemiLight.groundColor.set(0x475569);
     }
 
     // Apply lights & sprite

@@ -1,8 +1,8 @@
 {
   "version": "2.0.0",
-  "last_scanned": "2026-08-28T03:35:19.715Z",
-  "total_assets": 32,
-  "total_size_mb": 22.47,
+  "last_scanned": "2026-08-28T04:08:54.848Z",
+  "total_assets": 31,
+  "total_size_mb": 22.3,
   "structure": {
     "character_structure": {
       "root_folders": [
@@ -613,6 +613,20 @@
         "description": "Tài nguyên Hình Ảnh/Texture: Sleuths Verdict Manekin (PNG)"
       },
       {
+        "id": "nhan_vat_trang_phuc_nu_precision_strike_manekina_source_manekina_precision_strike",
+        "name": "Manekina Precision Strike",
+        "filename": "Manekina Precision Strike.fbx",
+        "relPath": "nhan_vat/trang_phuc/nu/precision-strike-manekina/source/Manekina Precision Strike.fbx",
+        "path": "assets/nhan_vat/trang_phuc/nu/precision-strike-manekina/source/Manekina Precision Strike.fbx",
+        "bundleDir": "nhan_vat/trang_phuc/nu/precision-strike-manekina",
+        "isFolderBundle": true,
+        "format": "FBX",
+        "sizeMB": "2.07",
+        "gender": "female",
+        "previewUrl": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
+        "description": "Manekina Precision Strike (Model Bundle: FBX)"
+      },
+      {
         "id": "nhan_vat_trang_phuc_nu_amber_nectar___manekina",
         "name": "Amber Nectar Manekina",
         "filename": "amber_nectar_-_manekina.png",
@@ -626,19 +640,6 @@
         "description": "Tài nguyên Hình Ảnh/Texture: Amber Nectar Manekina (PNG)"
       },
       {
-        "id": "nhan_vat_trang_phuc_nu_precision_strike___manekina",
-        "name": "Precision Strike Manekina",
-        "filename": "precision_strike_-_manekina.png",
-        "relPath": "nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
-        "path": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
-        "format": "PNG",
-        "sizeMB": "0.04",
-        "gender": "female",
-        "previewUrl": "assets/nhan_vat/trang_phuc/nu/precision_strike_-_manekina.png",
-        "isStandaloneImage": true,
-        "description": "Tài nguyên Hình Ảnh/Texture: Precision Strike Manekina (PNG)"
-      },
-      {
         "id": "nhan_vat_trang_phuc_nu_scary_cat___manekina",
         "name": "Scary Cat Manekina",
         "filename": "scary_cat_-_manekina.png",
@@ -650,19 +651,6 @@
         "previewUrl": "assets/nhan_vat/trang_phuc/nu/scary_cat_-_manekina.png",
         "isStandaloneImage": true,
         "description": "Tài nguyên Hình Ảnh/Texture: Scary Cat Manekina (PNG)"
-      },
-      {
-        "id": "nhan_vat_trang_phuc_nu_precision_strike_manekina_source_manekina_precision_strike",
-        "name": "Manekina Precision Strike",
-        "filename": "Manekina Precision Strike.fbx",
-        "relPath": "nhan_vat/trang_phuc/nu/precision-strike-manekina/source/Manekina Precision Strike.fbx",
-        "path": "assets/nhan_vat/trang_phuc/nu/precision-strike-manekina/source/Manekina Precision Strike.fbx",
-        "bundleDir": "nhan_vat/trang_phuc/nu",
-        "isFolderBundle": true,
-        "format": "FBX",
-        "sizeMB": "2.20",
-        "gender": "female",
-        "description": "Manekina Precision Strike (Model Bundle: FBX)"
       }
     ],
     "khuon_mat": [

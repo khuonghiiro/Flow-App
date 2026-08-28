@@ -31,6 +31,17 @@ export class AssetLoaderRegistry {
     return this.objLoader;
   }
 
+  public static clearModelCache(url?: string): void {
+    if (url) {
+      const cleanUrl = url.startsWith('http://') || url.startsWith('https://') 
+        ? url 
+        : (url.startsWith('/') ? url : `/${url}`);
+      this.modelCache.delete(cleanUrl);
+    } else {
+      this.modelCache.clear();
+    }
+  }
+
   /**
    * Universal 3D Model Loader:
    * Supports .glb, .vrm, .gltf (including multi-file folder bundles like medieval_fantasy_book/scene.gltf),
@@ -50,53 +61,105 @@ export class AssetLoaderRegistry {
 
     const lower = cleanUrl.toLowerCase();
 
-    // 1. FBX Model Loader — with texture path remap & auto-scale (cm → m)
+    // 1. FBX Model Loader — with robust texture path remap, texture load synchronization & auto-scale (cm → m)
     if (lower.endsWith('.fbx')) {
-      // FBX files often embed absolute texture paths from the exporter's machine
-      // (e.g. "C:\Users\Artist\project\textures\diffuse.png").
-      // We remap those to the same folder as the FBX file on the server.
       const basePath = cleanUrl.substring(0, cleanUrl.lastIndexOf('/') + 1);
       const manager = new THREE.LoadingManager();
+
       manager.setURLModifier((url) => {
-        // If it's already a relative server URL, keep it
-        if (url.startsWith('/') || url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+        if (url.startsWith('blob:') || url.startsWith('data:')) {
           return url;
         }
-        // Extract just the filename from any absolute or relative path
-        const filename = url.split(/[/\\]/).pop() || url;
-        const remapped = basePath + filename;
-        return remapped;
+        // Extract filename from any absolute Windows path (e.g. D:\OUTFIT MODELS\...\diffuse.png)
+        // or relative path
+        const decoded = decodeURIComponent(url).split('?')[0];
+        const filename = decoded.split(/[/\\]/).pop() || '';
+        if (!filename) return url;
+
+        // Remap to the model's base folder
+        return `${basePath}${encodeURIComponent(filename)}`;
       });
 
       const fbxLoader = new FBXLoader(manager);
       return new Promise((resolve, reject) => {
+        let loadedFbx: THREE.Group | null = null;
+        let isManagerDone = false;
+        let isResolved = false;
+
+        const finalizeAndResolve = () => {
+          if (!loadedFbx || !isManagerDone || isResolved) return;
+          isResolved = true;
+
+          loadedFbx.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              mesh.frustumCulled = false;
+
+              if (mesh.material) {
+                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                mats.forEach((mat) => {
+                  const m = mat as any;
+                  m.side = THREE.DoubleSide;
+
+                  // Fix pitch black material colors so textures show at full brightness
+                  if (m.map) {
+                    m.color = new THREE.Color(0xffffff);
+                    m.map.colorSpace = THREE.SRGBColorSpace;
+                    m.map.minFilter = THREE.LinearMipmapLinearFilter;
+                    m.map.magFilter = THREE.LinearFilter;
+                    m.map.needsUpdate = true;
+                  } else if (m.color && m.color.r === 0 && m.color.g === 0 && m.color.b === 0) {
+                    m.color.setHex(0xffffff);
+                  }
+
+                  if (m.specular) {
+                    m.specular.setHex(0x222222);
+                  }
+                  if (m.shininess !== undefined) {
+                    m.shininess = 10;
+                  }
+
+                  m.needsUpdate = true;
+                });
+              }
+            }
+          });
+
+          // Auto-scale: FBX files often use cm units (100x larger than GLB's meters)
+          const bbox = new THREE.Box3().setFromObject(loadedFbx);
+          const size = new THREE.Vector3();
+          bbox.getSize(size);
+          const maxDim = Math.max(size.x, size.y, size.z);
+          if (maxDim > 10) {
+            const targetSize = 1.8; // ~human height in meters
+            const scaleFactor = targetSize / maxDim;
+            loadedFbx.scale.multiplyScalar(scaleFactor);
+          }
+
+          this.modelCache.set(cleanUrl, loadedFbx);
+          const initialClone = loadedFbx.clone(true);
+          initialClone.animations = loadedFbx.animations || [];
+          resolve(initialClone);
+        };
+
+        manager.onLoad = () => {
+          isManagerDone = true;
+          finalizeAndResolve();
+        };
+
+        // Safety fallback timer if there are no external textures or manager fires immediately
+        setTimeout(() => {
+          isManagerDone = true;
+          finalizeAndResolve();
+        }, 1200);
+
         fbxLoader.load(
           cleanUrl,
           (fbx) => {
-            fbx.traverse((child) => {
-              if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                mesh.frustumCulled = false;
-              }
-            });
-
-            // Auto-scale: FBX files often use cm units (100x larger than GLB's meters)
-            const bbox = new THREE.Box3().setFromObject(fbx);
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
-            const maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 10) {
-              const targetSize = 1.8; // ~human height in meters
-              const scaleFactor = targetSize / maxDim;
-              fbx.scale.multiplyScalar(scaleFactor);
-            }
-
-            this.modelCache.set(cleanUrl, fbx);
-            const initialClone = fbx.clone(true);
-            initialClone.animations = fbx.animations || [];
-            resolve(initialClone);
+            loadedFbx = fbx;
+            finalizeAndResolve();
           },
           undefined,
           (err) => {
