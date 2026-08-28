@@ -47,6 +47,9 @@ const TransformInspector = React.lazy(() =>
 const Studio2DWorkbenchModal = React.lazy(() =>
   import('./studio2d/Studio2DWorkbenchModal').then(m => ({ default: m.Studio2DWorkbenchModal }))
 );
+const MultiAngle2DStudioView = React.lazy(() =>
+  import('./studio2d/director_view/MultiAngle2DStudioView').then(m => ({ default: m.MultiAngle2DStudioView }))
+);
 
 /** Minimal loading placeholder for lazy panels */
 const PanelLoader: React.FC = () => (
@@ -152,6 +155,14 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
   const [showDialogueModal, setShowDialogueModal] = useState(false);
   const [showWorkbenchModal, setShowWorkbenchModal] = useState(false);
   const [showStudio2DModal, setShowStudio2DModal] = useState(false);
+  const [studioMode, setStudioMode] = useState<'3d' | '2d'>(() => {
+    return (localStorage.getItem('flowmy_active_studio_mode') as '3d' | '2d') || '3d';
+  });
+
+  const handleSwitchStudioMode = (mode: '3d' | '2d') => {
+    setStudioMode(mode);
+    localStorage.setItem('flowmy_active_studio_mode', mode);
+  };
   const [exportFps, setExportFps] = useState<number>(120);
   const [gizmoMode, setGizmoMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   const [gizmoSpace, setGizmoSpace] = useState<'world' | 'local'>('world');
@@ -206,252 +217,341 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
           flexShrink: 0,
         }}
       >
-        {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Brand & 3D / 2D Mode Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                background: studioMode === '3d' ? 'linear-gradient(135deg, #38bdf8, #a855f7)' : 'linear-gradient(135deg, #ec4899, #a855f7)',
+                borderRadius: 6,
+                color: 'white',
+                boxShadow: studioMode === '3d' ? '0 0 10px rgba(56, 189, 248, 0.4)' : '0 0 10px rgba(236, 72, 153, 0.4)',
+              }}
+            >
+              <Film size={16} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', lineHeight: 1.1 }}>FlowMy AI Studio</div>
+              <div style={{ fontSize: 10, color: '#64748b' }}>WebCodecs GPU Render</div>
+            </div>
+          </div>
+
+          {/* 3D vs 2D Mode Switcher Toggle */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              width: 28,
-              height: 28,
-              background: 'linear-gradient(135deg, #38bdf8, #a855f7)',
-              borderRadius: 6,
-              color: 'white',
-              boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)',
+              background: 'rgba(0, 0, 0, 0.5)',
+              padding: 2,
+              borderRadius: 8,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
             }}
           >
-            <Film size={16} />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', lineHeight: 1.1 }}>FlowMy AI Studio</div>
-            <div style={{ fontSize: 10, color: '#64748b' }}>WebCodecs GPU Render</div>
+            <button
+              onClick={() => handleSwitchStudioMode('3d')}
+              title="Bật Chế độ 3D Studio (Mô hình 3D, Bản đồ 3D, Ánh sáng, Auto-Rig)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 700,
+                background: studioMode === '3d' ? 'linear-gradient(135deg, #38bdf8, #2563eb)' : 'transparent',
+                color: studioMode === '3d' ? '#ffffff' : '#94a3b8',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: studioMode === '3d' ? '0 0 10px rgba(56, 189, 248, 0.4)' : 'none',
+              }}
+            >
+              <Layers size={12} /> 3D Mode
+            </button>
+            <button
+              onClick={() => handleSwitchStudioMode('2d')}
+              title="Bật Chế độ 2D Hoạt Ảnh (Hoạt hình Trung Quốc, Cắt ghép ảnh đa góc 0°-180°, Đối thoại phản bác)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 700,
+                background: studioMode === '2d' ? 'linear-gradient(135deg, #ec4899, #a855f7)' : 'transparent',
+                color: studioMode === '2d' ? '#ffffff' : '#94a3b8',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: studioMode === '2d' ? '0 0 10px rgba(236, 72, 153, 0.4)' : 'none',
+              }}
+            >
+              <Film size={12} /> 2D Hoạt Ảnh
+            </button>
           </div>
         </div>
 
-        {/* Center: Scene Selection */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Mẫu cảnh:</span>
+        {/* Center: Mode Specific Controls */}
+        {studioMode === '3d' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.03)', padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Mẫu cảnh:</span>
 
-          <select
-            style={{
-              padding: '2px 8px',
-              fontSize: 12,
-              borderRadius: 6,
-              background: 'rgba(15, 20, 36, 0.9)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-            value={selectedCategory}
-            onChange={(e) => {
-              const catId = e.target.value;
-              setSelectedCategory(catId);
-              const cat = sceneCategories.find((c) => c.id === catId);
-              if (cat && cat.scenes.length > 0) {
-                onUpdateScene(cat.scenes[0]);
-              }
-            }}
-          >
-            {sceneCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                📁 {c.title}
-              </option>
-            ))}
-          </select>
+            <select
+              style={{
+                padding: '2px 8px',
+                fontSize: 12,
+                borderRadius: 6,
+                background: 'rgba(15, 20, 36, 0.9)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#ffffff',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+              value={selectedCategory}
+              onChange={(e) => {
+                const catId = e.target.value;
+                setSelectedCategory(catId);
+                const cat = sceneCategories.find((c) => c.id === catId);
+                if (cat && cat.scenes.length > 0) {
+                  onUpdateScene(cat.scenes[0]);
+                }
+              }}
+            >
+              {sceneCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  📁 {c.title}
+                </option>
+              ))}
+            </select>
 
-          <select
-            style={{
-              padding: '2px 8px',
-              fontSize: 12,
-              borderRadius: 6,
-              background: 'rgba(15, 20, 36, 0.9)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-            value={scene.scene_id}
-            onChange={(e) => {
-              const selected = sampleScenes.find((s) => s.scene_id === e.target.value);
-              if (selected) {
-                onUpdateScene(selected);
-              }
-            }}
-          >
-            {sceneCategories.find((c) => c.id === selectedCategory)?.scenes.map((s) => (
-              <option key={s.scene_id} value={s.scene_id}>
-                {s.title || s.scene_id}
-              </option>
-            ))}
-          </select>
-        </div>
+            <select
+              style={{
+                padding: '2px 8px',
+                fontSize: 12,
+                borderRadius: 6,
+                background: 'rgba(15, 20, 36, 0.9)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#ffffff',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+              value={scene.scene_id}
+              onChange={(e) => {
+                const selected = sampleScenes.find((s) => s.scene_id === e.target.value);
+                if (selected) {
+                  onUpdateScene(selected);
+                }
+              }}
+            >
+              {sceneCategories.find((c) => c.id === selectedCategory)?.scenes.map((s) => (
+                <option key={s.scene_id} value={s.scene_id}>
+                  {s.title || s.scene_id}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(236, 72, 153, 0.1)', padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(236, 72, 153, 0.25)' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f472b6' }}>
+              🎨 Hoạt Ảnh 2.5D Trung Quốc: Ghép Sprite 0°-180°, Đối Thoại Phản Bác & Pan/Zoom
+            </span>
+          </div>
+        )}
 
         {/* Right: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <label
-              htmlFor="studio-folder-upload-input"
-              title="Import Folder chứa 3D Model + Textures (.gltf/.fbx + ảnh)"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                background: 'rgba(56, 189, 248, 0.1)',
-                color: '#38bdf8',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                userSelect: 'none',
-              }}
-            >
-              <FolderUp size={12} /> Folder
-              <input
-                id="studio-folder-upload-input"
-                type="file"
-                {...({ webkitdirectory: '', directory: '' } as any)}
-                multiple
-                style={{ display: 'none' }}
-                onChange={handleMapFiles}
-              />
-            </label>
-            <label
-              htmlFor="studio-map-upload-input"
-              title="Import 3D Model (.glb / .fbx)"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: '1px solid rgba(168, 85, 247, 0.3)',
-                background: 'rgba(168, 85, 247, 0.1)',
-                color: '#c084fc',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                userSelect: 'none',
-              }}
-            >
-              <Layers size={12} /> 3D
-              <input
-                id="studio-map-upload-input"
-                type="file"
-                multiple
-                style={{ display: 'none' }}
-                onChange={handleMapFiles}
-              />
-            </label>
-            <button
-              onClick={() => setShowStudio2DModal(true)}
-              title="Mở Xưởng Lắp Ghép Nhân Vật, Tách Nền & Map 2D (Cutout & Parallax Motion Comic)"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 12px',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 6,
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(168, 85, 247, 0.2))',
-                color: '#38bdf8',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 8px rgba(56, 189, 248, 0.25)',
-              }}
-            >
-              <Scissors size={12} /> Xưởng 2D & Cắt Ghép
-            </button>
-            <button
-              onClick={() => setShowWorkbenchModal(true)}
-              title="Mở Xưởng Lắp Ghép Nhân Vật, Auto-Rig & Thiết Kế Map 3D"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 12px',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 6,
-                border: '1px solid rgba(245, 158, 11, 0.4)',
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1))',
-                color: '#fbbf24',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
-              }}
-            >
-              <Wrench size={12} /> Xưởng 3D & Auto-Rig
-            </button>
-            <button
-              onClick={() => {
-                const mapId = prompt('Nhập mã định danh Map ID (ví dụ: my_custom_village):', `custom_map_${Date.now().toString().slice(-4)}`);
-                if (!mapId) return;
-                const name = prompt('Nhập tên hiển thị của Map:', 'Bản Đồ Tùy Chỉnh') || mapId;
-                const desc = prompt('Nhập mô tả bối cảnh (để AI đọc hiểu):', 'Bản đồ tùy chỉnh gồm các vật thể và điểm xuất hiện.') || '';
+          {studioMode === '3d' ? (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <label
+                htmlFor="studio-folder-upload-input"
+                title="Import Folder chứa 3D Model + Textures (.gltf/.fbx + ảnh)"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  color: '#38bdf8',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                <FolderUp size={12} /> Folder
+                <input
+                  id="studio-folder-upload-input"
+                  type="file"
+                  {...({ webkitdirectory: '', directory: '' } as any)}
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleMapFiles}
+                />
+              </label>
+              <label
+                htmlFor="studio-map-upload-input"
+                title="Import 3D Model (.glb / .fbx)"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  background: 'rgba(168, 85, 247, 0.1)',
+                  color: '#c084fc',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                <Layers size={12} /> 3D
+                <input
+                  id="studio-map-upload-input"
+                  type="file"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleMapFiles}
+                />
+              </label>
+              <button
+                onClick={() => setShowStudio2DModal(true)}
+                title="Mở Xưởng Lắp Ghép Nhân Vật, Tách Nền & Map 2D (Cutout & Parallax Motion Comic)"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(168, 85, 247, 0.2))',
+                  color: '#38bdf8',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(56, 189, 248, 0.25)',
+                }}
+              >
+                <Scissors size={12} /> Xưởng 2D & Cắt Ghép
+              </button>
+              <button
+                onClick={() => setShowWorkbenchModal(true)}
+                title="Mở Xưởng Lắp Ghép Nhân Vật, Auto-Rig & Thiết Kế Map 3D"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1))',
+                  color: '#fbbf24',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)',
+                }}
+              >
+                <Wrench size={12} /> Xưởng 3D & Auto-Rig
+              </button>
+              <button
+                onClick={() => {
+                  const mapId = prompt('Nhập mã định danh Map ID (ví dụ: my_custom_village):', `custom_map_${Date.now().toString().slice(-4)}`);
+                  if (!mapId) return;
+                  const name = prompt('Nhập tên hiển thị của Map:', 'Bản Đồ Tùy Chỉnh') || mapId;
+                  const desc = prompt('Nhập mô tả bối cảnh (để AI đọc hiểu):', 'Bản đồ tùy chỉnh gồm các vật thể và điểm xuất hiện.') || '';
 
-                const placedProps = scene.environment.placed_props || [
-                  { id: 'tree_main', asset_path: 'props/nature/tree_sakura.glb', position: [4, 0, -3] as [number, number, number], type: 'nature' as const },
-                  { id: 'bench_rest', asset_path: 'props/furniture/chair_wooden.glb', position: [-4, 0, -2] as [number, number, number], type: 'furniture' as const, smart_socket: { socket_type: 'sit' as const } },
-                  { id: 'farm_plot', asset_path: 'props/tools/farm_plot.glb', position: [0, 0, -5] as [number, number, number], type: 'nature' as const, smart_socket: { socket_type: 'harvest' as const } }
-                ];
+                  const placedProps = scene.environment.placed_props || [
+                    { id: 'tree_main', asset_path: 'props/nature/tree_sakura.glb', position: [4, 0, -3] as [number, number, number], type: 'nature' as const },
+                    { id: 'bench_rest', asset_path: 'props/furniture/chair_wooden.glb', position: [-4, 0, -2] as [number, number, number], type: 'furniture' as const, smart_socket: { socket_type: 'sit' as const } },
+                    { id: 'farm_plot', asset_path: 'props/tools/farm_plot.glb', position: [0, 0, -5] as [number, number, number], type: 'nature' as const, smart_socket: { socket_type: 'harvest' as const } }
+                  ];
 
-                const preset = MapPresetManager.createPresetFromScene(scene, placedProps, mapId, name, desc);
-                MapPresetManager.downloadPresetJson(preset);
-                alert(`✅ Đã xuất tệp cấu hình ${mapId}.json!\n\nHãy lưu file này vào thư mục assets/maps/presets/ rồi chạy _scan_assets.bat để AI tự động nhận diện và tái sử dụng bản đồ này.`);
-              }}
-              title="Lưu cấu hình bản đồ hiện tại (Map Preset JSON)"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                background: 'rgba(34, 197, 94, 0.1)',
-                color: '#4ade80',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Map size={12} /> Lưu Map
-            </button>
-          </div>
+                  const preset = MapPresetManager.createPresetFromScene(scene, placedProps, mapId, name, desc);
+                  MapPresetManager.downloadPresetJson(preset);
+                  alert(`✅ Đã xuất tệp cấu hình ${mapId}.json!\n\nHãy lưu file này vào thư mục assets/maps/presets/ rồi chạy _scan_assets.bat để AI tự động nhận diện và tái sử dụng bản đồ này.`);
+                }}
+                title="Lưu cấu hình bản đồ hiện tại (Map Preset JSON)"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  color: '#4ade80',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Map size={12} /> Lưu Map
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setShowStudio2DModal(true)}
+                title="Mở Xưởng Cắt Ghép Sprite, Tách Nền & Vectorizer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  border: '1px solid rgba(236, 72, 153, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(168, 85, 247, 0.15))',
+                  color: '#f472b6',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Scissors size={12} /> Xưởng Tách Sprite & Cắt Ghép
+              </button>
+            </div>
+          )}
 
           <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }}></div>
 
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={() => setShowDialogueModal(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: '1px solid rgba(234, 179, 8, 0.3)',
-                background: 'rgba(234, 179, 8, 0.1)',
-                color: '#eab308',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <MessageSquare size={12} /> TTS
-            </button>
-
-            <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }}></div>
+            {studioMode === '3d' && (
+              <button
+                onClick={() => setShowDialogueModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                  background: 'rgba(234, 179, 8, 0.1)',
+                  color: '#eab308',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <MessageSquare size={12} /> TTS
+              </button>
+            )}
 
             <select
               style={{
@@ -482,7 +582,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 fontSize: 12,
                 fontWeight: 600,
                 borderRadius: 6,
-                background: 'linear-gradient(135deg, #38bdf8, #2563eb)',
+                background: studioMode === '2d' ? 'linear-gradient(135deg, #ec4899, #9333ea)' : 'linear-gradient(135deg, #38bdf8, #2563eb)',
                 color: '#ffffff',
                 border: 'none',
                 cursor: 'pointer',
@@ -498,232 +598,240 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         </div>
       </header>
 
-      {/* Main Body */}
-      <div className="studio-body">
-        {/* Left Sidebar: Subtitles Inspector & Combat Debugger */}
-        <aside className="studio-sidebar">
-          <div className="sidebar-tabs">
-            <button
-              className={`sidebar-tab-btn ${leftTab === 'dialogue' ? 'active' : ''}`}
-              onClick={() => setLeftTab('dialogue')}
-            >
-              <MessageSquare size={14} /> Phụ Đề & Thoại
-            </button>
-            <button
-              className={`sidebar-tab-btn ${leftTab === 'combat' ? 'active' : ''}`}
-              onClick={() => setLeftTab('combat')}
-            >
-              <Swords size={14} /> Combat Sync
-            </button>
-            <button
-              className={`sidebar-tab-btn ${leftTab === 'weather' ? 'active' : ''}`}
-              onClick={() => setLeftTab('weather')}
-            >
-              <Sparkles size={14} /> Thời Tiết
-            </button>
-          </div>
-
-          <div className="sidebar-content">
-            <Suspense fallback={<PanelLoader />}>
-            {leftTab === 'dialogue' && (
-              <SubtitleInspector
-                scene={scene}
-                currentTime={currentTime}
-                inspectAngle={inspectAngle}
-                inspectingActorId={inspectingActorId}
-                onChangeInspectAngle={onChangeInspectAngle}
-                onInspectDialogue={onInspectDialogue}
-                onResetCamera={onResetCamera}
-                onPreviewSpeech={onPreviewSpeech}
-              />
-            )}
-            {leftTab === 'combat' && (
-              <CombatDebugger
-                scene={scene}
-                currentTime={currentTime}
-                onSeekToImpact={(impactTime) => onSeek(impactTime)}
-              />
-            )}
-            {leftTab === 'weather' && (
-              <WeatherControlPanel
-                override={envOverride}
-                onChange={onUpdateEnvOverride}
-              />
-            )}
-            </Suspense>
-          </div>
-        </aside>
-
-        {/* Central Viewport & Multi-Track Timeline / Asset Browser */}
-        <main className="studio-center">
-          <ViewportCanvas
-            renderer={renderer}
-            fps={fps}
-            activeSubtitle={activeSubtitle}
-            subtitlesConfig={scene.subtitles_config}
-            scene={scene}
-            showCC={showCC}
-            isInspecting={!!inspectingActorId}
-            isFreeCam={isFreeCam}
-            isLoadingMap={isLoadingMap}
-            selectedObjectId={selectedObject?.id || null}
-            selectedObjectName={selectedObject?.name || null}
-            gizmoMode={gizmoMode}
-            gizmoSpace={gizmoSpace}
-            onChangeGizmoMode={handleChangeGizmoMode}
-            onToggleGizmoSpace={handleToggleGizmoSpace}
-            onSelectObject={onSelectObject}
-            onDeselectObject={() => onSelectObject?.(null)}
-            onDeleteProp={onDeleteProp}
-            onToggleCC={() => {
-              const next = !showCC;
-              setShowCC(next);
-              saveViewportSetting('showCC', next);
-            }}
-            onToggleFreeCam={onToggleFreeCam}
-            onResetCamera={onResetCamera}
-          />
-
-          {/* Unity-Style Bottom Dock Panel */}
-          <div className={`studio-bottom-dock ${isBottomMaximized ? 'maximized' : ''}`}>
-            <div className="bottom-dock-tabs">
-              <div className="dock-tabs-left">
-                <button
-                  className={`dock-tab-btn ${bottomTab === 'timeline' ? 'active' : ''}`}
-                  onClick={() => setBottomTab('timeline')}
-                >
-                  <Film size={13} /> Timeline & Hoạt Cảnh
-                </button>
-                <button
-                  className={`dock-tab-btn ${bottomTab === 'assets' ? 'active' : ''}`}
-                  onClick={() => setBottomTab('assets')}
-                >
-                  <FolderOpen size={13} /> Project Assets (Thư Mục Tài Nguyên)
-                </button>
-                <button
-                  className={`dock-tab-btn ${bottomTab === 'lighting' ? 'active' : ''}`}
-                  onClick={() => setBottomTab('lighting')}
-                >
-                  <Lightbulb size={13} /> Studio Ánh Sáng & Nguồn Sáng 3D
-                </button>
-                <button
-                  className={`dock-tab-btn ${bottomTab === 'workbench' ? 'active' : ''}`}
-                  onClick={() => setBottomTab('workbench')}
-                >
-                  <Wrench size={13} /> 🛠️ Xưởng Nhân Vật & Auto-Rig
-                </button>
-              </div>
-
-              <div className="dock-tabs-right">
-                <button
-                  className="dock-btn"
-                  title={isBottomMaximized ? 'Thu nhỏ về chuẩn' : 'Mở rộng khung làm việc'}
-                  onClick={() => setIsBottomMaximized(!isBottomMaximized)}
-                >
-                  {isBottomMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                  {isBottomMaximized ? 'Thu Nhỏ' : 'Mở Rộng'}
-                </button>
-              </div>
+      {/* Main Body: Conditional Switch between 2D Multi-Angle Studio and 3D Studio */}
+      {studioMode === '2d' ? (
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Suspense fallback={<PanelLoader />}>
+            <MultiAngle2DStudioView />
+          </Suspense>
+        </div>
+      ) : (
+        <div className="studio-body">
+          {/* Left Sidebar: Subtitles Inspector & Combat Debugger */}
+          <aside className="studio-sidebar">
+            <div className="sidebar-tabs">
+              <button
+                className={`sidebar-tab-btn ${leftTab === 'dialogue' ? 'active' : ''}`}
+                onClick={() => setLeftTab('dialogue')}
+              >
+                <MessageSquare size={14} /> Phụ Đề & Thoại
+              </button>
+              <button
+                className={`sidebar-tab-btn ${leftTab === 'combat' ? 'active' : ''}`}
+                onClick={() => setLeftTab('combat')}
+              >
+                <Swords size={14} /> Combat Sync
+              </button>
+              <button
+                className={`sidebar-tab-btn ${leftTab === 'weather' ? 'active' : ''}`}
+                onClick={() => setLeftTab('weather')}
+              >
+                <Sparkles size={14} /> Thời Tiết
+              </button>
             </div>
 
-            <div className="bottom-dock-content">
+            <div className="sidebar-content">
               <Suspense fallback={<PanelLoader />}>
-              {bottomTab === 'timeline' ? (
-                <TimelineScrubber
-                  scene={scene}
-                  currentTime={currentTime}
-                  isPlaying={isPlaying}
-                  playbackRate={playbackRate}
-                  isLooping={isLooping}
-                  onTogglePlay={onTogglePlay}
-                  onSeek={onSeek}
-                  onToggleLoop={onToggleLoop}
-                  onChangePlaybackRate={onChangePlaybackRate}
-                />
-              ) : bottomTab === 'assets' ? (
-                <AssetBrowserPanel
-                  onPlaceProp={(prop) => onPlaceProp?.(prop)}
-                  onSelectMap={(mapId) => onSelectMap?.(mapId)}
-                  onSelectAvatar={(actorId, vrmUrl, assembly) => onSelectAvatar?.(actorId, vrmUrl, assembly)}
-                  onPlayAnimationPreview={onPlayAnimationPreview}
-                  onImportCustomFiles={onImportCustomMap}
-                  actorsList={scene.actors.map((a) => ({ id: a.id, name: a.name || a.id }))}
-                  isMaximized={isBottomMaximized}
-                  onToggleMaximize={() => setIsBottomMaximized(!isBottomMaximized)}
-                />
-              ) : bottomTab === 'lighting' ? (
-                <LightingStudioPanel
-                  scene={scene}
-                  onUpdateScene={onUpdateScene}
-                  selectedObjectId={selectedObject?.id}
-                  onFocusObject={onFocusObject}
-                />
-              ) : (
-                <CharacterWorkbenchPanel
-                  scene={scene}
-                  onUpdateScene={onUpdateScene}
-                  onSelectAvatar={onSelectAvatar}
-                  onSelectMap={onSelectMap}
-                />
-              )}
+                {leftTab === 'dialogue' && (
+                  <SubtitleInspector
+                    scene={scene}
+                    currentTime={currentTime}
+                    inspectAngle={inspectAngle}
+                    inspectingActorId={inspectingActorId}
+                    onChangeInspectAngle={onChangeInspectAngle}
+                    onInspectDialogue={onInspectDialogue}
+                    onResetCamera={onResetCamera}
+                    onPreviewSpeech={onPreviewSpeech}
+                  />
+                )}
+                {leftTab === 'combat' && (
+                  <CombatDebugger
+                    scene={scene}
+                    currentTime={currentTime}
+                    onSeekToImpact={(impactTime) => onSeek(impactTime)}
+                  />
+                )}
+                {leftTab === 'weather' && (
+                  <WeatherControlPanel
+                    override={envOverride}
+                    onChange={onUpdateEnvOverride}
+                  />
+                )}
               </Suspense>
             </div>
-          </div>
-        </main>
+          </aside>
 
-        {/* Right Sidebar: AI Director & Radar & Transform Inspector */}
-        <aside className="studio-sidebar right">
-          <div className="sidebar-tabs">
-            <button
-              className={`sidebar-tab-btn ${rightTab === 'inspector' ? 'active' : ''}`}
-              onClick={() => setRightTab('inspector')}
-            >
-              <Move size={13} /> Transform (XYZ)
-            </button>
-            <button
-              className={`sidebar-tab-btn ${rightTab === 'director' ? 'active' : ''}`}
-              onClick={() => setRightTab('director')}
-            >
-              <Bot size={13} /> AI Đạo Diễn
-            </button>
-            <button
-              className={`sidebar-tab-btn ${rightTab === 'radar' ? 'active' : ''}`}
-              onClick={() => setRightTab('radar')}
-            >
-              <Map size={13} /> 2D Radar
-            </button>
-          </div>
+          {/* Central Viewport & Multi-Track Timeline / Asset Browser */}
+          <main className="studio-center">
+            <ViewportCanvas
+              renderer={renderer}
+              fps={fps}
+              activeSubtitle={activeSubtitle}
+              subtitlesConfig={scene.subtitles_config}
+              scene={scene}
+              showCC={showCC}
+              isInspecting={!!inspectingActorId}
+              isFreeCam={isFreeCam}
+              isLoadingMap={isLoadingMap}
+              selectedObjectId={selectedObject?.id || null}
+              selectedObjectName={selectedObject?.name || null}
+              gizmoMode={gizmoMode}
+              gizmoSpace={gizmoSpace}
+              onChangeGizmoMode={handleChangeGizmoMode}
+              onToggleGizmoSpace={handleToggleGizmoSpace}
+              onSelectObject={onSelectObject}
+              onDeselectObject={() => onSelectObject?.(null)}
+              onDeleteProp={onDeleteProp}
+              onToggleCC={() => {
+                const next = !showCC;
+                setShowCC(next);
+                saveViewportSetting('showCC', next);
+              }}
+              onToggleFreeCam={onToggleFreeCam}
+              onResetCamera={onResetCamera}
+            />
 
-          <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
-            <Suspense fallback={<PanelLoader />}>
-            {rightTab === 'inspector' ? (
-              <TransformInspector
-                scene={scene}
-                selectedObject={selectedObject || null}
-                onSelectObject={(obj) => onSelectObject?.(obj)}
-                onUpdateTransform={(updated) => onUpdateTransform?.(updated)}
-                onDeleteProp={(propId) => onDeleteProp?.(propId)}
-                onDuplicateProp={(prop) => onDuplicateProp?.(prop)}
-                onFocusObject={(pos) => onFocusObject?.(pos)}
-              />
-            ) : rightTab === 'director' ? (
-              <AIChatDirector scene={scene} onApplyScene={onUpdateScene} />
-            ) : (
-              <MapRadarView actors={actors} navMesh={navMesh} />
-            )}
-            </Suspense>
-          </div>
-        </aside>
-      </div>
+            {/* Unity-Style Bottom Dock Panel */}
+            <div className={`studio-bottom-dock ${isBottomMaximized ? 'maximized' : ''}`}>
+              <div className="bottom-dock-tabs">
+                <div className="dock-tabs-left">
+                  <button
+                    className={`dock-tab-btn ${bottomTab === 'timeline' ? 'active' : ''}`}
+                    onClick={() => setBottomTab('timeline')}
+                  >
+                    <Film size={13} /> Timeline & Hoạt Cảnh
+                  </button>
+                  <button
+                    className={`dock-tab-btn ${bottomTab === 'assets' ? 'active' : ''}`}
+                    onClick={() => setBottomTab('assets')}
+                  >
+                    <FolderOpen size={13} /> Project Assets (Thư Mục Tài Nguyên)
+                  </button>
+                  <button
+                    className={`dock-tab-btn ${bottomTab === 'lighting' ? 'active' : ''}`}
+                    onClick={() => setBottomTab('lighting')}
+                  >
+                    <Lightbulb size={13} /> Studio Ánh Sáng & Nguồn Sáng 3D
+                  </button>
+                  <button
+                    className={`dock-tab-btn ${bottomTab === 'workbench' ? 'active' : ''}`}
+                    onClick={() => setBottomTab('workbench')}
+                  >
+                    <Wrench size={13} /> 🛠️ Xưởng Nhân Vật & Auto-Rig
+                  </button>
+                </div>
+
+                <div className="dock-tabs-right">
+                  <button
+                    className="dock-btn"
+                    title={isBottomMaximized ? 'Thu nhỏ về chuẩn' : 'Mở rộng khung làm việc'}
+                    onClick={() => setIsBottomMaximized(!isBottomMaximized)}
+                  >
+                    {isBottomMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    {isBottomMaximized ? 'Thu Nhỏ' : 'Mở Rộng'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bottom-dock-content">
+                <Suspense fallback={<PanelLoader />}>
+                  {bottomTab === 'timeline' ? (
+                    <TimelineScrubber
+                      scene={scene}
+                      currentTime={currentTime}
+                      isPlaying={isPlaying}
+                      playbackRate={playbackRate}
+                      isLooping={isLooping}
+                      onTogglePlay={onTogglePlay}
+                      onSeek={onSeek}
+                      onToggleLoop={onToggleLoop}
+                      onChangePlaybackRate={onChangePlaybackRate}
+                    />
+                  ) : bottomTab === 'assets' ? (
+                    <AssetBrowserPanel
+                      onPlaceProp={(prop) => onPlaceProp?.(prop)}
+                      onSelectMap={(mapId) => onSelectMap?.(mapId)}
+                      onSelectAvatar={(actorId, vrmUrl, assembly) => onSelectAvatar?.(actorId, vrmUrl, assembly)}
+                      onPlayAnimationPreview={onPlayAnimationPreview}
+                      onImportCustomFiles={onImportCustomMap}
+                      actorsList={scene.actors.map((a) => ({ id: a.id, name: a.name || a.id }))}
+                      isMaximized={isBottomMaximized}
+                      onToggleMaximize={() => setIsBottomMaximized(!isBottomMaximized)}
+                    />
+                  ) : bottomTab === 'lighting' ? (
+                    <LightingStudioPanel
+                      scene={scene}
+                      onUpdateScene={onUpdateScene}
+                      selectedObjectId={selectedObject?.id}
+                      onFocusObject={onFocusObject}
+                    />
+                  ) : (
+                    <CharacterWorkbenchPanel
+                      scene={scene}
+                      onUpdateScene={onUpdateScene}
+                      onSelectAvatar={onSelectAvatar}
+                      onSelectMap={onSelectMap}
+                    />
+                  )}
+                </Suspense>
+              </div>
+            </div>
+          </main>
+
+          {/* Right Sidebar: AI Director & Radar & Transform Inspector */}
+          <aside className="studio-sidebar right">
+            <div className="sidebar-tabs">
+              <button
+                className={`sidebar-tab-btn ${rightTab === 'inspector' ? 'active' : ''}`}
+                onClick={() => setRightTab('inspector')}
+              >
+                <Move size={13} /> Transform (XYZ)
+              </button>
+              <button
+                className={`sidebar-tab-btn ${rightTab === 'director' ? 'active' : ''}`}
+                onClick={() => setRightTab('director')}
+              >
+                <Bot size={13} /> AI Đạo Diễn
+              </button>
+              <button
+                className={`sidebar-tab-btn ${rightTab === 'radar' ? 'active' : ''}`}
+                onClick={() => setRightTab('radar')}
+              >
+                <Map size={13} /> 2D Radar
+              </button>
+            </div>
+
+            <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
+              <Suspense fallback={<PanelLoader />}>
+                {rightTab === 'inspector' ? (
+                  <TransformInspector
+                    scene={scene}
+                    selectedObject={selectedObject || null}
+                    onSelectObject={(obj) => onSelectObject?.(obj)}
+                    onUpdateTransform={(updated) => onUpdateTransform?.(updated)}
+                    onDeleteProp={(propId) => onDeleteProp?.(propId)}
+                    onDuplicateProp={(prop) => onDuplicateProp?.(prop)}
+                    onFocusObject={(pos) => onFocusObject?.(pos)}
+                  />
+                ) : rightTab === 'director' ? (
+                  <AIChatDirector scene={scene} onApplyScene={onUpdateScene} />
+                ) : (
+                  <MapRadarView actors={actors} navMesh={navMesh} />
+                )}
+              </Suspense>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Dialogue & TTS Manager Modal */}
       <Suspense fallback={null}>
-      <DialogueEditorModal
-        scene={scene}
-        isOpen={showDialogueModal}
-        onClose={() => setShowDialogueModal(false)}
-        onUpdateScene={onUpdateScene}
-      />
+        <DialogueEditorModal
+          scene={scene}
+          isOpen={showDialogueModal}
+          onClose={() => setShowDialogueModal(false)}
+          onUpdateScene={onUpdateScene}
+        />
       </Suspense>
 
       {/* 3D Character Workbench & Auto-Rig Studio Full Modal Window (Persistent Keep-Alive for 0ms Instant Open) */}
@@ -769,10 +877,10 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
 
       {/* 2D Cutout & Motion Comic Studio Modal */}
       <Suspense fallback={null}>
-      <Studio2DWorkbenchModal
-        isOpen={showStudio2DModal}
-        onClose={() => setShowStudio2DModal(false)}
-      />
+        <Studio2DWorkbenchModal
+          isOpen={showStudio2DModal}
+          onClose={() => setShowStudio2DModal(false)}
+        />
       </Suspense>
     </div>
   );
