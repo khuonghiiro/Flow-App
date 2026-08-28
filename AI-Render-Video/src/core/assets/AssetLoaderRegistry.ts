@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { VolumetricCloudLighting } from '../weather/VolumetricCloudLighting';
 
 export class AssetLoaderRegistry {
@@ -48,33 +49,35 @@ export class AssetLoaderRegistry {
    * .fbx, and .obj formats with memory caching and clone isolation.
    */
   public static async loadModel(url: string): Promise<THREE.Group> {
-    const cleanUrl = url.startsWith('http://') || url.startsWith('https://') 
+    const isBlobOrData = url.startsWith('blob:') || url.startsWith('data:');
+    const cleanUrl = isBlobOrData || url.startsWith('http://') || url.startsWith('https://') 
       ? url 
       : (url.startsWith('/') ? url : `/${url}`);
 
     if (this.modelCache.has(cleanUrl)) {
       const cached = this.modelCache.get(cleanUrl)!;
-      const clone = cached.clone(true);
-      clone.animations = cached.animations;
+      const clone = SkeletonUtils.clone(cached) as THREE.Group;
+      clone.animations = cached.animations || [];
       return clone;
     }
 
+    const [fetchUrl] = cleanUrl.split('#');
     const lower = cleanUrl.toLowerCase();
 
     // 1. FBX Model Loader — with robust texture path remap, texture load synchronization & auto-scale (cm → m)
-    if (lower.endsWith('.fbx')) {
+    if (lower.endsWith('.fbx') || lower.includes('.fbx')) {
       const basePath = cleanUrl.substring(0, cleanUrl.lastIndexOf('/') + 1);
       const manager = new THREE.LoadingManager();
 
-      manager.setURLModifier((url) => {
-        if (url.startsWith('blob:') || url.startsWith('data:')) {
-          return url;
+      manager.setURLModifier((u) => {
+        if (u.startsWith('blob:') || u.startsWith('data:')) {
+          return u;
         }
         // Extract filename from any absolute Windows path (e.g. D:\OUTFIT MODELS\...\diffuse.png)
         // or relative path
-        const decoded = decodeURIComponent(url).split('?')[0];
+        const decoded = decodeURIComponent(u).split('?')[0];
         const filename = decoded.split(/[/\\]/).pop() || '';
-        if (!filename) return url;
+        if (!filename) return u;
 
         // Remap to the model's base folder
         return `${basePath}${encodeURIComponent(filename)}`;
@@ -139,7 +142,7 @@ export class AssetLoaderRegistry {
           }
 
           this.modelCache.set(cleanUrl, loadedFbx);
-          const initialClone = loadedFbx.clone(true);
+          const initialClone = SkeletonUtils.clone(loadedFbx) as THREE.Group;
           initialClone.animations = loadedFbx.animations || [];
           resolve(initialClone);
         };
@@ -156,14 +159,14 @@ export class AssetLoaderRegistry {
         }, 1200);
 
         fbxLoader.load(
-          cleanUrl,
+          fetchUrl,
           (fbx) => {
             loadedFbx = fbx;
             finalizeAndResolve();
           },
           undefined,
           (err) => {
-            console.warn(`[AssetLoaderRegistry] Lỗi tải model FBX từ ${cleanUrl}:`, err);
+            console.warn(`[AssetLoaderRegistry] Lỗi tải model FBX từ ${fetchUrl}:`, err);
             reject(err);
           }
         );
@@ -171,11 +174,11 @@ export class AssetLoaderRegistry {
     }
 
     // 2. OBJ Model Loader
-    if (lower.endsWith('.obj')) {
+    if (lower.endsWith('.obj') || lower.includes('.obj')) {
       const objLoader = this.getOBJLoader();
       return new Promise((resolve, reject) => {
         objLoader.load(
-          cleanUrl,
+          fetchUrl,
           (obj) => {
             const group = new THREE.Group();
             group.add(obj);
@@ -192,7 +195,7 @@ export class AssetLoaderRegistry {
           },
           undefined,
           (err) => {
-            console.warn(`[AssetLoaderRegistry] Lỗi tải model OBJ từ ${cleanUrl}:`, err);
+            console.warn(`[AssetLoaderRegistry] Lỗi tải model OBJ từ ${fetchUrl}:`, err);
             reject(err);
           }
         );
@@ -203,7 +206,7 @@ export class AssetLoaderRegistry {
     const loader = this.getGLTFLoader();
     return new Promise((resolve, reject) => {
       loader.load(
-        cleanUrl,
+        fetchUrl,
         (gltf) => {
           const model = gltf.scene;
 
@@ -355,8 +358,8 @@ export class AssetLoaderRegistry {
           model.animations = gltf.animations || [];
           VolumetricCloudLighting.applyToScene(model);
           this.modelCache.set(cleanUrl, model);
-          const initialClone = model.clone(true);
-          initialClone.animations = model.animations;
+          const initialClone = SkeletonUtils.clone(model) as THREE.Group;
+          initialClone.animations = model.animations || [];
           resolve(initialClone);
         },
         undefined,

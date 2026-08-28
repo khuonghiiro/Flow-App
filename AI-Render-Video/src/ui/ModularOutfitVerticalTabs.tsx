@@ -801,8 +801,21 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={handleSaveCustomPreset} style={btnStyle('#10b981', '#34d399')}><Save size={12} /> Lưu Mẫu</button>
           <button onClick={handleExportJSON} style={btnStyle('#0ea5e9', '#38bdf8')}><Download size={12} /> Xuất JSON</button>
-          <button onClick={() => jsonImportRef.current?.click()} style={btnStyle('#a855f7', '#c084fc')}><Upload size={12} /> Nhập JSON</button>
-          <input ref={jsonImportRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportJSON} />
+          <button
+            onClick={async () => {
+              const files = await NativeFileDialogHelper.pickFiles({
+                description: 'Character JSON',
+                extensions: ['.json'],
+                multiple: false,
+              });
+              if (files.length > 0) {
+                handleImportJSON({ target: { files } } as any);
+              }
+            }}
+            style={btnStyle('#a855f7', '#c084fc')}
+          >
+            <Upload size={12} /> Nhập JSON
+          </button>
         </div>
       </div>
 

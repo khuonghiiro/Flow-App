@@ -31,6 +31,7 @@ import {
 import { PlacedProp } from '../types/map_preset';
 import { CharacterAssembly } from '../types/scene';
 import { Live3DThumbnail } from './Live3DThumbnail';
+import { NativeFileDialogHelper } from '../utils/NativeFileDialogHelper';
 
 export interface AssetItem {
   id: string;
@@ -714,18 +715,18 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
             </div>
           )}
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            multiple
-            accept=".glb,.gltf,.vrm,.mp3,.json,.png,.jpg"
-            onChange={handleFileUpload}
-          />
-
           {activeCategoryId === '_lap_rap' && (
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={async () => {
+                const files = await NativeFileDialogHelper.pickFiles({
+                  description: 'Character JSON or Models',
+                  extensions: ['.json', '.glb', '.gltf', '.vrm'],
+                  multiple: true,
+                });
+                if (files.length > 0) {
+                  handleFileUpload({ target: { files } } as any);
+                }
+              }}
               title="Nhập file JSON nhân vật từ máy tính"
               style={{
                 background: 'linear-gradient(135deg, #0284c7, #0369a1)',

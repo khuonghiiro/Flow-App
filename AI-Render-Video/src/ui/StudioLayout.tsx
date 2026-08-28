@@ -9,6 +9,7 @@ import { ViewportCanvas } from './ViewportCanvas';
 import { TimelineScrubber } from './TimelineScrubber';
 import type { SelectedSceneObject } from './TransformInspector';
 import { sampleScenes, sceneCategories } from '../core/scenes/SceneRegistry';
+import { NativeFileDialogHelper } from '../utils/NativeFileDialogHelper';
 import type { InspectCameraAngle } from '../core/camera/CameraFraming';
 import { MapPresetManager } from '../core/maps/MapPresetManager';
 import type { PlacedProp } from '../types/map_preset';
@@ -181,38 +182,26 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
     if (cat) setSelectedCategory(cat);
   }, [scene.scene_id]);
 
-  const mapInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-
-  const handleMapFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleOpenFolderMap = async () => {
+    const files = await NativeFileDialogHelper.pickFolder();
     if (files && files.length > 0 && onImportCustomMap) {
-      onImportCustomMap(files);
+      onImportCustomMap(files as any);
     }
-    e.target.value = '';
+  };
+
+  const handleOpenMapFiles = async () => {
+    const files = await NativeFileDialogHelper.pickFiles({
+      description: '3D Models & Maps',
+      extensions: ['.glb', '.gltf', '.fbx', '.zip', '.bin', '.png', '.jpg', '.jpeg', '.webp'],
+      multiple: true,
+    });
+    if (files && files.length > 0 && onImportCustomMap) {
+      onImportCustomMap(files as any);
+    }
   };
 
   return (
     <div className="studio-container">
-      {/* Hidden Folder Map Input */}
-      <input
-        type="file"
-        ref={folderInputRef}
-        {...({ webkitdirectory: '', directory: '' } as any)}
-        multiple
-        style={{ display: 'none' }}
-        onChange={handleMapFileChange}
-      />
-
-      {/* Hidden Single File Map Input */}
-      <input
-        type="file"
-        ref={mapInputRef}
-        accept=".glb,.gltf,.fbx,.bin,.png,.jpg,.jpeg,.webp"
-        multiple
-        style={{ display: 'none' }}
-        onChange={handleMapFileChange}
-      />
 
       {/* Sleek Studio Header */}
       <header
@@ -315,7 +304,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
-              onClick={() => folderInputRef.current?.click()}
+              onClick={handleOpenFolderMap}
               title="Import Folder chứa 3D Model + Textures (.gltf/.fbx + ảnh)"
               style={{
                 display: 'flex',
@@ -335,7 +324,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               <FolderUp size={12} /> Folder
             </button>
             <button
-              onClick={() => mapInputRef.current?.click()}
+              onClick={handleOpenMapFiles}
               title="Import 3D Model (.glb / .fbx)"
               style={{
                 display: 'flex',

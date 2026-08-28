@@ -4,20 +4,9 @@ import {
   Wrench,
   Shirt,
   Map as MapIcon,
-  Play,
-  Pause,
-  RotateCcw,
-  Sparkles,
-  Eye,
-  EyeOff,
-  CheckCircle,
+  Film,
   X,
-  Loader,
-  Grid,
-  Box,
-  MousePointerClick,
-  Move3D,
-  Palette,
+  CheckCircle,
 } from 'lucide-react';
 import { MasterSceneConfig, CharacterAssembly, PartMaterialCustomization } from '../types/scene';
 import { AutoRigEngine, AutoRigResult } from '../core/actors/AutoRigEngine';
@@ -29,6 +18,13 @@ import { FaceSliderConfig, DEFAULT_FACE_SLIDERS, fetchLiveCharacterCategories, C
 import { Interactive3DPartSelector, SelectedPartInfo } from './workbench/Interactive3DPartSelector';
 import { AvailablePartItem } from './character/PartMaterialPanel';
 import { MaterialOverrideEngine } from '../core/materials/MaterialOverrideEngine';
+import { applySlidersToModelGroup } from './character/ModelSliderApplier';
+import { Character3DViewport } from './character/Character3DViewport';
+import { CharacterAnimationTab } from './character/CharacterAnimationTab';
+import { CharacterAutoRigTab } from './character/CharacterAutoRigTab';
+import { FacialBlinkEngine } from '../core/actors/FacialBlinkEngine';
+
+export { applySlidersToModelGroup };
 
 interface CharacterWorkbenchPanelProps {
   scene: MasterSceneConfig;
@@ -39,7 +35,6 @@ interface CharacterWorkbenchPanelProps {
   isModal?: boolean;
 }
 
-
 export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = ({
   scene,
   onUpdateScene,
@@ -48,7 +43,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   onClose,
   isModal = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'rigging' | 'modular' | 'map'>('modular');
+  const [activeTab, setActiveTab] = useState<'modular' | 'rigging' | 'animation' | 'map'>('modular');
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
   const [availableCategories, setAvailableCategories] = useState<CharacterCategory[]>([]);
 
@@ -58,18 +53,95 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     base_body: firstActor?.model || '',
   };
 
-  // --- 1. MODULAR OUTFIT STATE (lifted for 3D preview sync) ---
+  // --- 1. MODULAR OUTFIT STATE ---
   const [assembly, setAssembly] = useState<CharacterAssembly>(() => ({ ...firstAss }));
   const [sceneReadyToken, setSceneReadyToken] = useState<number>(0);
 
-  // --- 2. AUTO-RIG STATE ---
+  // --- 2. AUTO-RIG & SKELETAL ANIMATION STATE ---
   const [modelToRig, setModelToRig] = useState<string>(firstActor?.model || '');
   const [isRigged, setIsRigged] = useState<boolean>(false);
   const [isRiggingLoading, setIsRiggingLoading] = useState<boolean>(false);
   const [showJoints, setShowJoints] = useState<boolean>(true);
-  const [activePose, setActivePose] = useState<string>('t_pose');
+  const [activePose, setActivePose] = useState<string>('walk');
   const [isPosePlaying, setIsPosePlaying] = useState<boolean>(false);
   const [poseProgress, setPoseProgress] = useState<number>(0);
+
+  // Animation Mixer & Native Skeleton State
+  const animationMixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+  const skeletonHelperRef = useRef<THREE.SkeletonHelper | null>(null);
+  const nativeRigResultRef = useRef<AutoRigResult | null>(null);
+
+  const [availableAnimations, setAvailableAnimations] = useState<string[]>([]);
+  const [selectedAnimClip, setSelectedAnimClip] = useState<string>('');
+  const [isPlayingAnim, setIsPlayingAnim] = useState<boolean>(true);
+  const [animSpeed, setAnimSpeed] = useState<number>(1.0);
+  const [showSkeletonHelper, setShowSkeletonHelper] = useState<boolean>(false);
+  const [hasBones, setHasBones] = useState<boolean>(false);
+  const [totalBonesCount, setTotalBonesCount] = useState<number>(0);
+
+  // Live Refs to prevent stale closure in 60 FPS requestAnimationFrame loop
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
+  const isRiggedRef = useRef(isRigged);
+  isRiggedRef.current = isRigged;
+
+  const isPosePlayingRef = useRef(isPosePlaying);
+  isPosePlayingRef.current = isPosePlaying;
+
+  const isPlayingAnimRef = useRef(isPlayingAnim);
+  isPlayingAnimRef.current = isPlayingAnim;
+
+  const activePoseRef = useRef(activePose);
+  activePoseRef.current = activePose;
+
+  const animSpeedRef = useRef(animSpeed);
+  animSpeedRef.current = animSpeed;
+
+  const showSkeletonHelperRef = useRef(showSkeletonHelper);
+  showSkeletonHelperRef.current = showSkeletonHelper;
+
+  // --- 3. MAP BUILDER STATE ---
+  const [selectedMapPath, setSelectedMapPath] = useState<string>((scene.environment?.map || 'assets/ban_do/cathedral.glb').replace(/^assets\/maps\//, 'assets/ban_do/'));
+  const [selectedSkyTime, setSelectedSkyTime] = useState<string>(scene.environment?.sky_time || 'noon');
+  const [isAppliedSuccess, setIsAppliedSuccess] = useState<boolean>(false);
+
+  // Three.js Preview Canvas Refs
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const previewSceneRef = useRef<THREE.Scene | null>(null);
+  const previewRendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const previewCameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const previewControlsRef = useRef<OrbitControls | null>(null);
+  const rigResultRef = useRef<AutoRigResult | null>(null);
+  const currentPreviewGroupRef = useRef<THREE.Group | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const floorGridRef = useRef<THREE.GridHelper | null>(null);
+
+  const [showFloorGrid, setShowFloorGrid] = useState<boolean>(true);
+  const [showWireframe, setShowWireframe] = useState<boolean>(false);
+
+  // 3D Viewport Interaction Mode: 'orbit' vs 'select'
+  const [viewportMode, setViewportMode] = useState<'orbit' | 'select'>('orbit');
+  const [selectedPartInfo, setSelectedPartInfo] = useState<SelectedPartInfo | null>(null);
+  const partSelectorRef = useRef<Interactive3DPartSelector>(new Interactive3DPartSelector());
+  const [availableParts, setAvailableParts] = useState<AvailablePartItem[]>([]);
+
+  // Facial slider state
+  const [faceSliders, setFaceSliders] = useState<FaceSliderConfig>(() => {
+    try {
+      const cached = localStorage.getItem('flow_character_face_sliders');
+      if (cached) return { ...DEFAULT_FACE_SLIDERS, ...JSON.parse(cached) };
+    } catch {}
+    return { ...DEFAULT_FACE_SLIDERS };
+  });
+
+  const handleFaceSlidersChange = (updated: FaceSliderConfig) => {
+    setFaceSliders(updated);
+    try {
+      localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated));
+    } catch {}
+  };
 
   useEffect(() => {
     fetchLiveCharacterCategories().then((cats) => {
@@ -87,73 +159,62 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     });
   }, []);
 
-  // --- 3. MAP BUILDER STATE ---
-  const [selectedMapPath, setSelectedMapPath] = useState<string>((scene.environment?.map || 'assets/ban_do/cathedral.glb').replace(/^assets\/maps\//, 'assets/ban_do/'));
-  const [selectedSkyTime, setSelectedSkyTime] = useState<string>(scene.environment?.sky_time || 'noon');
-  const [isAppliedSuccess, setIsAppliedSuccess] = useState<boolean>(false);
-
-  // Three.js Preview Canvas Refs
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const previewSceneRef = useRef<THREE.Scene | null>(null);
-  const previewRendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const previewCameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const previewControlsRef = useRef<OrbitControls | null>(null);
-  const rigResultRef = useRef<AutoRigResult | null>(null);
-  const currentPreviewGroupRef = useRef<THREE.Group | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-
-  const [showFloorGrid, setShowFloorGrid] = useState<boolean>(true);
-  const [showWireframe, setShowWireframe] = useState<boolean>(false);
-
-  // 3D Viewport Interaction Mode: 'orbit' (camera rotation) vs 'select' (touch part selection)
-  const [viewportMode, setViewportMode] = useState<'orbit' | 'select'>('orbit');
-  const [selectedPartInfo, setSelectedPartInfo] = useState<SelectedPartInfo | null>(null);
-  const partSelectorRef = useRef<Interactive3DPartSelector>(new Interactive3DPartSelector());
-
-  // Facial slider state with LocalStorage persistence
-  const [faceSliders, setFaceSliders] = useState<FaceSliderConfig>(() => {
-    try {
-      const cached = localStorage.getItem('flow_character_face_sliders');
-      if (cached) return { ...DEFAULT_FACE_SLIDERS, ...JSON.parse(cached) };
-    } catch {}
-    return { ...DEFAULT_FACE_SLIDERS };
-  });
-  const { baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity } = faceSliders;
-
-  const handleFaceSlidersChange = (updated: FaceSliderConfig) => {
-    setFaceSliders(updated);
-    try {
-      localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated));
-    } catch {}
-  };
-
-  const floorGridRef = useRef<THREE.GridHelper | null>(null);
-
-  // Sync Floor Grid visibility
+  // Sync Floor Grid & Controls
   useEffect(() => {
-    if (floorGridRef.current) {
-      floorGridRef.current.visible = showFloorGrid;
-    }
+    if (floorGridRef.current) floorGridRef.current.visible = showFloorGrid;
   }, [showFloorGrid]);
 
-  // Sync Controls with Interaction Mode
   useEffect(() => {
-    if (previewControlsRef.current) {
-      previewControlsRef.current.enabled = viewportMode === 'orbit';
-    }
+    if (skeletonHelperRef.current) skeletonHelperRef.current.visible = showSkeletonHelper;
+  }, [showSkeletonHelper]);
+
+  useEffect(() => {
+    if (previewControlsRef.current) previewControlsRef.current.enabled = viewportMode === 'orbit';
   }, [viewportMode]);
 
-  // Canvas Click Handler for Touch-Selecting Mesh Parts
+  // Switch animation clip helper
+  const handleSelectAnimationClip = (clipName: string) => {
+    setSelectedAnimClip(clipName);
+    if (!currentPreviewGroupRef.current || !animationMixerRef.current) return;
+    const group = currentPreviewGroupRef.current;
+    const allClips: THREE.AnimationClip[] = [];
+    if (group.animations) allClips.push(...group.animations);
+    group.traverse((c) => {
+      if (c.animations) allClips.push(...c.animations);
+    });
+    const clip = allClips.find((c) => (c.name || '') === clipName) || allClips[0];
+    if (clip && animationMixerRef.current) {
+      if (currentActionRef.current) currentActionRef.current.stop();
+      const action = animationMixerRef.current.clipAction(clip);
+      action.reset().play();
+      currentActionRef.current = action;
+      setIsPlayingAnim(true);
+    }
+  };
+
+  const handleTogglePlayPause = () => {
+    if (availableAnimations.length > 0) {
+      if (isPlayingAnim) {
+        if (currentActionRef.current) currentActionRef.current.paused = true;
+        setIsPlayingAnim(false);
+      } else {
+        if (currentActionRef.current) currentActionRef.current.paused = false;
+        setIsPlayingAnim(true);
+      }
+    } else {
+      setIsPosePlaying((prev) => !prev);
+    }
+  };
+
+  // Canvas Click Handler
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (viewportMode !== 'select' || !canvasContainerRef.current || !previewCameraRef.current || !previewSceneRef.current) return;
-
     const hit = partSelectorRef.current.hitTest(
       e,
       canvasContainerRef.current,
       previewCameraRef.current,
       previewSceneRef.current
     );
-
     if (hit) {
       setSelectedPartInfo(hit);
       partSelectorRef.current.attachHighlight(hit.mesh, previewSceneRef.current);
@@ -163,16 +224,10 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     }
   };
 
-  // Material Override Application & Sync
+  // Material Override Application
   const handleApplyMaterialOverride = (meshKey: string, override: PartMaterialCustomization) => {
-    const nextOverrides = {
-      ...(assembly.material_overrides || {}),
-      [meshKey]: override,
-    };
-    const nextAss = {
-      ...assembly,
-      material_overrides: nextOverrides,
-    };
+    const nextOverrides = { ...(assembly.material_overrides || {}), [meshKey]: override };
+    const nextAss = { ...assembly, material_overrides: nextOverrides };
     setAssembly(nextAss);
     MaterialOverrideEngine.applyMaterialOverrides(previewSceneRef.current, nextOverrides);
   };
@@ -180,55 +235,38 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   const handleResetMaterialOverride = (meshKey: string) => {
     const nextOverrides = { ...(assembly.material_overrides || {}) };
     delete nextOverrides[meshKey];
-    const nextAss = {
-      ...assembly,
-      material_overrides: nextOverrides,
-    };
+    const nextAss = { ...assembly, material_overrides: nextOverrides };
     setAssembly(nextAss);
     MaterialOverrideEngine.applyMaterialOverrides(previewSceneRef.current, nextOverrides);
   };
 
-  const [availableParts, setAvailableParts] = useState<AvailablePartItem[]>([]);
-
-  // Collect all mesh parts from the 3D scene whenever models finish loading
+  // Collect mesh parts from 3D scene
   useEffect(() => {
     if (!previewSceneRef.current) return;
     const parts: AvailablePartItem[] = [];
     const seen = new Set<string>();
-
     previewSceneRef.current.traverse((c) => {
       if ((c as THREE.Mesh).isMesh) {
         const mesh = c as THREE.Mesh;
         const rawKey = mesh.name || mesh.parent?.name || '';
         if (!rawKey || seen.has(rawKey) || (mesh as any).isGridHelper || (mesh as any).isBoxHelper || (mesh as any).isLine) return;
         seen.add(rawKey);
-
         const friendly = Interactive3DPartSelector.getPartFriendlyInfo(mesh);
-        parts.push({
-          key: rawKey,
-          name: friendly.displayName,
-          categoryLabel: friendly.categoryLabel,
-          categoryIcon: friendly.categoryIcon,
-        });
+        parts.push({ key: rawKey, name: friendly.displayName, categoryLabel: friendly.categoryLabel, categoryIcon: friendly.categoryIcon });
       }
     });
-
     setAvailableParts(parts);
   }, [assembly, isPreviewLoading]);
 
-  // Handler to select a part by key (e.g. from the right panel part list)
   const handleSelectPartKey = (partKey: string) => {
     if (!previewSceneRef.current) return;
     let foundMesh: THREE.Mesh | null = null;
     previewSceneRef.current.traverse((c) => {
       if (!foundMesh && (c as THREE.Mesh).isMesh) {
         const mesh = c as THREE.Mesh;
-        if (mesh.name === partKey || mesh.parent?.name === partKey) {
-          foundMesh = mesh;
-        }
+        if (mesh.name === partKey || mesh.parent?.name === partKey) foundMesh = mesh;
       }
     });
-
     if (foundMesh) {
       const friendly = Interactive3DPartSelector.getPartFriendlyInfo(foundMesh);
       const override = (assembly.material_overrides || {})[partKey] || {};
@@ -250,57 +288,23 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     }
   };
 
-  // Sync Facial Sliders & Wireframe to 3D Preview Models
+  // Sync Sliders & Wireframe
   useEffect(() => {
     if (previewSceneRef.current) {
       applySlidersToModelGroup(previewSceneRef.current, faceSliders, showWireframe);
       MaterialOverrideEngine.applyMaterialOverrides(previewSceneRef.current, assembly.material_overrides);
     }
-  }, [showWireframe, baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity, assembly.material_overrides]);
+  }, [showWireframe, faceSliders, assembly.material_overrides]);
 
-  // Khi chọn face mới: Tự động cho mặt cũ, mắt, mũi, miệng, lông mày gốc về 0% để dùng trọn vẹn Face mới
-  const handleSelectFace = (newFacePath: string) => {
-    const currentFace = assembly.khuon_mat || assembly.face || '';
-    const nextFace = currentFace === newFacePath || newFacePath === '' ? '' : newFacePath;
-    const nextAss = { ...assembly };
-    if (nextFace) {
-      nextAss.khuon_mat = nextFace;
-      nextAss.face = nextFace;
-      const updated = {
-        ...faceSliders,
-        baseFaceOpacity: 0.0,
-        eyebrowOpacity: 0.0,
-        pupilOpacity: 0.0,
-        noseOpacity: 0.0,
-        mouthOpacity: 0.0,
-      };
-      setFaceSliders(updated);
-      try { localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated)); } catch {}
-    } else {
-      delete nextAss.khuon_mat;
-      delete nextAss.face;
-      const updated = {
-        ...faceSliders,
-        baseFaceOpacity: 0.0,
-        noseOpacity: 0.0,
-        mouthOpacity: 0.0,
-      };
-      setFaceSliders(updated);
-      try { localStorage.setItem('flow_character_face_sliders', JSON.stringify(updated)); } catch {}
-    }
-    setAssembly(nextAss);
-  };
-
-  // Initialize Three.js 3D Preview Canvas
+  // Three.js Canvas Init
   useEffect(() => {
     if (!canvasContainerRef.current) return;
-
     const width = Math.max(320, canvasContainerRef.current.clientWidth || 420);
     const height = Math.max(240, canvasContainerRef.current.clientHeight || 360);
 
     const previewScene = new THREE.Scene();
     previewScene.background = new THREE.Color(0x0a0f1d);
-    previewScene.fog = null; // Ensure NO fog inside Character Workbench viewport
+    previewScene.fog = null;
     previewSceneRef.current = previewScene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
@@ -308,12 +312,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     camera.lookAt(0, 0.85, 0);
     previewCameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      preserveDrawingBuffer: true,
-      powerPreference: 'high-performance',
-    });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -335,36 +334,22 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     controls.maxPolarAngle = Math.PI / 2 + 0.05;
     previewControlsRef.current = controls;
 
-    // ── Balanced & Soft Studio Lighting (Zero Fog, Gentle Ambient Fill) ──
+    // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-    previewScene.add(ambientLight);
-
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.1);
     hemiLight.position.set(0, 10, 0);
-    previewScene.add(hemiLight);
-
-    // Front-Right Key Light
     const keyLight = new THREE.DirectionalLight(0xfffbeb, 1.9);
     keyLight.position.set(3, 5, 4);
     keyLight.castShadow = true;
-    previewScene.add(keyLight);
-
-    // Front-Left Soft Cool Fill Light
     const fillLight = new THREE.DirectionalLight(0xbae6fd, 1.2);
     fillLight.position.set(-3, 3, 3);
-    previewScene.add(fillLight);
-
-    // Back Rim Light
     const rimLight = new THREE.DirectionalLight(0xf1f5f9, 0.9);
     rimLight.position.set(0, 4, -4);
-    previewScene.add(rimLight);
-
-    // Ground subtle bounce fill
     const groundBounceLight = new THREE.DirectionalLight(0x475569, 0.5);
     groundBounceLight.position.set(0, -3, 2);
-    previewScene.add(groundBounceLight);
 
-    // Floor Grid
+    previewScene.add(ambientLight, hemiLight, keyLight, fillLight, rimLight, groundBounceLight);
+
     const grid = new THREE.GridHelper(6, 12, 0x38bdf8, 0x1e293b);
     grid.position.y = 0;
     grid.visible = showFloorGrid;
@@ -380,42 +365,54 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       const now = performance.now();
       const delta = (now - lastTime) / 1000;
       lastTime = now;
-
       controls.update();
 
-      if (isPosePlaying && rigResultRef.current) {
-        currentProgress = (currentProgress + delta * 0.8) % 1.0;
-        setPoseProgress(currentProgress);
-        AutoRigEngine.applyTestPose(rigResultRef.current.bonesMap, activePose, currentProgress);
+      const speed = animSpeedRef.current;
+      const isPlayingClip = isPlayingAnimRef.current;
+      const isPlayingMotion = isPosePlayingRef.current;
+      const curTab = activeTabRef.current;
+      const rigged = isRiggedRef.current;
+      const pose = activePoseRef.current;
+
+      if (animationMixerRef.current && isPlayingClip) {
+        animationMixerRef.current.update(delta * speed);
+      }
+      if (skeletonHelperRef.current && showSkeletonHelperRef.current) {
+        skeletonHelperRef.current.update();
+      }
+
+      const activeRig = curTab === 'rigging' && rigged ? rigResultRef.current : nativeRigResultRef.current;
+      if (activeRig && isPlayingMotion && pose !== 't_pose') {
+        currentProgress = (currentProgress + delta * 0.8 * speed) % 1.0;
+        const barEl = document.getElementById('character-anim-progress-bar');
+        const textEl = document.getElementById('character-anim-progress-text');
+        if (barEl) barEl.style.width = `${Math.round(currentProgress * 100)}%`;
+        if (textEl) textEl.textContent = `${Math.round(currentProgress * 100)}%`;
+        AutoRigEngine.applyTestPose(activeRig.bonesMap, pose, currentProgress);
+      }
+
+      // Natural eye blinking & facial dynamics update
+      if (currentPreviewGroupRef.current) {
+        FacialBlinkEngine.update(currentPreviewGroupRef.current, now / 1000);
       }
 
       renderer.render(previewScene, camera);
     };
     animate();
 
-    // Zoom To Cursor under Mouse Pointer
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-
     const onPointerMove = (e: MouseEvent) => {
       if (!canvasContainerRef.current) return;
       const rect = canvasContainerRef.current.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     };
-
     const onWheel = () => {
       if (!camera || !controls || !previewScene) return;
       raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster
-        .intersectObjects(previewScene.children, true)
-        .filter((h) => (h.object as THREE.Mesh).isMesh && h.object.visible && !(h.object as any).isGridHelper && !(h.object as any).isLine);
-
-      if (hits.length > 0) {
-        const hitPoint = hits[0].point;
-        // Smoothly pull OrbitControls target towards the exact point on the mesh where the cursor is hovering
-        controls.target.lerp(hitPoint, 0.28);
-      }
+      const hits = raycaster.intersectObjects(previewScene.children, true).filter((h) => (h.object as THREE.Mesh).isMesh && h.object.visible && !(h.object as any).isGridHelper && !(h.object as any).isLine);
+      if (hits.length > 0) controls.target.lerp(hits[0].point, 0.28);
     };
 
     const domEl = renderer.domElement;
@@ -424,8 +421,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const w = entry.contentRect.width;
-        const h = entry.contentRect.height;
+        const w = entry.contentRect.width, h = entry.contentRect.height;
         if (w > 0 && h > 0 && renderer && camera) {
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
@@ -433,7 +429,6 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         }
       }
     });
-
     resizeObserver.observe(canvasContainerRef.current);
     setSceneReadyToken((t) => t + 1);
 
@@ -448,13 +443,9 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       previewSceneRef.current = null;
       previewCameraRef.current = null;
       previewControlsRef.current = null;
-      floorGridRef.current = null;
-      currentPreviewGroupRef.current = null;
     };
-  }, [activeTab]);
+  }, []);
 
-  // Memoized 3D Model Asset Paths Signature:
-  // Dynamically tracks all asset parts in assembly (excluding non-model sliders/materials), completely preventing unwanted reloads on slider or color edits!
   const assetPartsSignature = useMemo(() => {
     if (!assembly || typeof assembly !== 'object') return '';
     return Object.entries(assembly)
@@ -464,10 +455,9 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       .join('|');
   }, [assembly]);
 
-  // Update 3D Preview when Modular Selection changes (with Face Z-Fighting Fix)
+  // Update 3D Preview when Modular Selection or Animation Model changes
   useEffect(() => {
-    if (!previewSceneRef.current || activeTab !== 'modular') return;
-
+    if (!previewSceneRef.current || (activeTab !== 'modular' && activeTab !== 'animation' && activeTab !== 'rigging')) return;
     let isMounted = true;
     const previewScene = previewSceneRef.current;
     setIsPreviewLoading(true);
@@ -508,15 +498,9 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       }
     }
 
-    // Always ensure Base Body is loaded if not explicitly present in assembly
     if (!partsToLoad.some((p) => p.key === 'than_co_ban' || p.key === 'base_body' || p.key === 'body')) {
-      const bodyPath =
-        firstActor?.model ||
-        availableCategories.find((c) => c.id === 'than_co_ban')?.items[0]?.path ||
-        '';
-      if (bodyPath) {
-        partsToLoad.unshift({ key: 'than_co_ban', path: bodyPath });
-      }
+      const bodyPath = firstActor?.model || availableCategories.find((c) => c.id === 'than_co_ban')?.items[0]?.path || '';
+      if (bodyPath) partsToLoad.unshift({ key: 'than_co_ban', path: bodyPath });
     }
 
     if (partsToLoad.length === 0) {
@@ -524,7 +508,6 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
       return;
     }
 
-    // Tải an toàn tất cả các bộ phận modular (Base Body, Trang Phục, Tóc, Khuôn Mặt, Mắt...)
     Promise.all(
       partsToLoad.map(async ({ key, path }) => {
         try {
@@ -538,64 +521,36 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     )
       .then((results) => {
         if (!isMounted) return;
-        const loadedList = results.filter(
-          (item): item is { key: string; path: string; model: THREE.Group } => item !== null
-        );
+        const loadedList = results.filter((item): item is { key: string; path: string; model: THREE.Group } => item !== null);
+        if (loadedList.length === 0) { setIsPreviewLoading(false); return; }
 
-        if (loadedList.length === 0) {
-          setIsPreviewLoading(false);
-          return;
-        }
-
-        // XỬ LÝ KHUÔN MẶT LẮP RÁP (FACE ATTACHMENT & AUTO-SNAP)
-        const faceItem = loadedList.find(
-          (item) => item.key === 'khuon_mat' || item.key === 'face'
-        );
+        // Face attachment auto-snap
+        const faceItem = loadedList.find((item) => item.key === 'khuon_mat' || item.key === 'face');
         const hasFace = Boolean(faceItem);
-
         if (faceItem) {
-          const bodyItem = loadedList.find(
-            (item) =>
-              item.key === 'than_co_ban' ||
-              item.key === 'base_body' ||
-              item.key === 'body'
-          );
-
+          const bodyItem = loadedList.find((item) => item.key === 'than_co_ban' || item.key === 'base_body' || item.key === 'body');
           let bodyFaceMesh: THREE.Mesh | null = null;
           if (bodyItem) {
             bodyItem.model.traverse((c) => {
               if ((c as THREE.Mesh).isMesh) {
-                const nodeName = c.name.toLowerCase();
-                const parentName = (c.parent?.name || '').toLowerCase();
-                if (
-                  nodeName.includes('face') ||
-                  nodeName.includes('head') ||
-                  parentName.includes('face') ||
-                  parentName.includes('head')
-                ) {
+                const n = c.name.toLowerCase(), pn = (c.parent?.name || '').toLowerCase();
+                if (n.includes('face') || n.includes('head') || pn.includes('face') || pn.includes('head')) {
                   if (!bodyFaceMesh) bodyFaceMesh = c as THREE.Mesh;
                 }
               }
             });
           }
-
           let addonFaceMesh: THREE.Mesh | null = null;
           faceItem.model.traverse((c) => {
-            if ((c as THREE.Mesh).isMesh && !addonFaceMesh) {
-              addonFaceMesh = c as THREE.Mesh;
-            }
+            if ((c as THREE.Mesh).isMesh && !addonFaceMesh) addonFaceMesh = c as THREE.Mesh;
           });
-
           if (bodyFaceMesh && addonFaceMesh) {
             const bodyFaceBox = new THREE.Box3().setFromObject(bodyFaceMesh);
             const bodyFaceCenter = new THREE.Vector3();
             bodyFaceBox.getCenter(bodyFaceCenter);
-
             const faceBox = new THREE.Box3().setFromObject(addonFaceMesh);
             const faceCenter = new THREE.Vector3();
             faceBox.getCenter(faceCenter);
-
-            // Bù độ lệch chuẩn xác 100% (Delta X, Y, Z) để Face mới khớp khít vào đầu Body
             const delta = bodyFaceCenter.clone().sub(faceCenter);
             faceItem.model.position.add(delta);
             faceItem.model.updateMatrixWorld(true);
@@ -608,30 +563,11 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
               const mesh = c as THREE.Mesh;
               mesh.castShadow = true;
               mesh.receiveShadow = true;
+              const n = mesh.name.toLowerCase(), pn = (mesh.parent?.name || '').toLowerCase();
+              const matName = Array.isArray(mesh.material) ? mesh.material.map((m) => m.name.toLowerCase()).join(' ') : (mesh.material?.name || '').toLowerCase();
+              const isFaceDetail = n.includes('face') || pn.includes('face') || matName.includes('face') || n.includes('pupil') || pn.includes('pupil') || matName.includes('pupil') || n.includes('eyebrow') || pn.includes('eyebrow') || matName.includes('eyebrow');
+              if (hasFace && (key === 'than_co_ban' || key === 'base_body' || key === 'body') && isFaceDetail) mesh.visible = false;
 
-              const nodeName = mesh.name.toLowerCase();
-              const parentName = (mesh.parent?.name || '').toLowerCase();
-              const matName = Array.isArray(mesh.material)
-                ? mesh.material.map((m) => m.name.toLowerCase()).join(' ')
-                : (mesh.material?.name || '').toLowerCase();
-
-              const isFaceDetail =
-                nodeName.includes('face') ||
-                parentName.includes('face') ||
-                matName.includes('face') ||
-                nodeName.includes('pupil') ||
-                parentName.includes('pupil') ||
-                matName.includes('pupil') ||
-                nodeName.includes('eyebrow') ||
-                parentName.includes('eyebrow') ||
-                matName.includes('eyebrow');
-
-              // Lớp trước đè lớp sau: Khi chọn Face mới, ẩn triệt để mặt và mắt/mày của thân gốc
-              if (hasFace && (key === 'than_co_ban' || key === 'base_body' || key === 'body') && isFaceDetail) {
-                mesh.visible = false;
-              }
-
-              // Smooth texture filtering and crisp clean rendering with FrontSide
               if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 mats.forEach((mat) => {
@@ -639,12 +575,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   m.depthTest = true;
                   m.depthWrite = true;
                   m.side = THREE.DoubleSide;
-
-                  // Ensure pure black materials (exporter bug) are brightened to white so texture maps show clearly
-                  if (m.color && m.color.r === 0 && m.color.g === 0 && m.color.b === 0) {
-                    m.color.setHex(0xffffff);
-                  }
-
+                  if (m.color && m.color.r === 0 && m.color.g === 0 && m.color.b === 0) m.color.setHex(0xffffff);
                   if (m.map) {
                     m.map.colorSpace = THREE.SRGBColorSpace;
                     m.map.minFilter = THREE.LinearMipmapLinearFilter;
@@ -660,17 +591,96 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
           group.add(model);
         });
 
-        // Center group and align feet directly on the ground (Y = 0)
+        // 1. Calculate bounding box and normalize scale to 1.7m standard human height
+        group.updateMatrixWorld(true);
         const bbox = new THREE.Box3().setFromObject(group);
         if (!bbox.isEmpty()) {
-          const center = new THREE.Vector3();
-          bbox.getCenter(center);
-          group.position.set(-center.x, -bbox.min.y, -center.z);
+          const size = new THREE.Vector3();
+          bbox.getSize(size);
+          const modelHeight = size.y;
+          if (modelHeight > 0.01) {
+            const targetHeight = 1.7; // Standard 1.7m Humanoid Studio Height
+            const scaleFactor = targetHeight / modelHeight;
+            group.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            group.updateMatrixWorld(true);
+          }
+
+          // 2. Center X, Z and align feet directly on the ground (Y = 0)
+          const scaledBbox = new THREE.Box3().setFromObject(group);
+          const scaledCenter = new THREE.Vector3();
+          scaledBbox.getCenter(scaledCenter);
+          group.position.set(-scaledCenter.x, -scaledBbox.min.y, -scaledCenter.z);
+          group.updateMatrixWorld(true);
         }
 
-        // Instantly apply face sliders and custom material overrides to newly loaded model!
+        // 3. Reset OrbitControls camera target to chest height
+        if (previewControlsRef.current) {
+          previewControlsRef.current.target.set(0, 0.85, 0);
+          previewControlsRef.current.update();
+        }
+
         applySlidersToModelGroup(group, faceSliders, showWireframe);
         MaterialOverrideEngine.applyMaterialOverrides(group, assembly?.material_overrides);
+
+        // Detect Native Skeleton Bones (Columbina 743 joints)
+        let bCount = 0;
+        group.traverse((c) => {
+          if ((c as THREE.Bone).isBone) bCount++;
+        });
+        setHasBones(bCount > 0);
+        setTotalBonesCount(bCount);
+
+        if (bCount > 0) {
+          nativeRigResultRef.current = AutoRigEngine.rigModel(group);
+          if (skeletonHelperRef.current && previewScene) {
+            previewScene.remove(skeletonHelperRef.current);
+            skeletonHelperRef.current = null;
+          }
+          const helper = new THREE.SkeletonHelper(group);
+          const mat = (helper as any).material;
+          if (mat) { mat.depthTest = false; mat.transparent = true; mat.opacity = 0.85; mat.linewidth = 2; }
+          helper.visible = showSkeletonHelper;
+          skeletonHelperRef.current = helper;
+          previewScene.add(helper);
+        } else {
+          nativeRigResultRef.current = null;
+          if (skeletonHelperRef.current && previewScene) {
+            previewScene.remove(skeletonHelperRef.current);
+            skeletonHelperRef.current = null;
+          }
+        }
+
+        // Detect Embedded Animation Clips
+        const allClips: THREE.AnimationClip[] = [];
+        if (group.animations && group.animations.length > 0) allClips.push(...group.animations);
+        group.traverse((c) => {
+          if (c.animations && c.animations.length > 0) {
+            c.animations.forEach((a) => {
+              if (!allClips.some((existing) => existing.name === a.name)) allClips.push(a);
+            });
+          }
+        });
+
+        if (animationMixerRef.current) {
+          animationMixerRef.current.stopAllAction();
+          animationMixerRef.current = null;
+          currentActionRef.current = null;
+        }
+
+        if (allClips.length > 0) {
+          const mixer = new THREE.AnimationMixer(group);
+          animationMixerRef.current = mixer;
+          const clipNames = allClips.map((c, i) => c.name || `Animation_${i + 1}`);
+          setAvailableAnimations(clipNames);
+          setSelectedAnimClip(clipNames[0]);
+          const action = mixer.clipAction(allClips[0]);
+          action.play();
+          currentActionRef.current = action;
+          setIsPlayingAnim(true);
+        } else {
+          setAvailableAnimations([]);
+          setSelectedAnimClip('');
+        }
 
         setIsPreviewLoading(false);
       })
@@ -679,34 +689,45 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         if (isMounted) setIsPreviewLoading(false);
       });
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [assetPartsSignature, activeTab, sceneReadyToken]);
 
   // Execute Auto-Rigging on Selected Model
   const handleRunAutoRig = async () => {
     if (!previewSceneRef.current) return;
     setIsRiggingLoading(true);
-
     try {
       const previewScene = previewSceneRef.current;
       if (currentPreviewGroupRef.current) {
         previewScene.remove(currentPreviewGroupRef.current);
         currentPreviewGroupRef.current = null;
       }
-
       const rawModel = await AssetLoaderRegistry.loadCharacterPart(modelToRig);
       const rigResult = AutoRigEngine.rigModel(rawModel);
       rigResultRef.current = rigResult;
-
       currentPreviewGroupRef.current = rigResult.rootGroup;
-      previewScene.add(rigResult.rootGroup);
 
-      if (showJoints) {
-        previewScene.add(rigResult.jointVisualizer);
+      // Scale and center rigged model to 1.7m standard human height
+      rigResult.rootGroup.updateMatrixWorld(true);
+      const bbox = new THREE.Box3().setFromObject(rigResult.rootGroup);
+      if (!bbox.isEmpty()) {
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const modelHeight = size.y;
+        if (modelHeight > 0.01) {
+          const scaleFactor = 1.7 / modelHeight;
+          rigResult.rootGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+          rigResult.rootGroup.updateMatrixWorld(true);
+        }
+        const scaledBbox = new THREE.Box3().setFromObject(rigResult.rootGroup);
+        const scaledCenter = new THREE.Vector3();
+        scaledBbox.getCenter(scaledCenter);
+        rigResult.rootGroup.position.set(-scaledCenter.x, -scaledBbox.min.y, -scaledCenter.z);
+        rigResult.rootGroup.updateMatrixWorld(true);
       }
 
+      previewScene.add(rigResult.rootGroup);
+      if (showJoints) previewScene.add(rigResult.jointVisualizer);
       setIsRigged(true);
       setActivePose('t_pose');
     } catch (err) {
@@ -717,670 +738,219 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     }
   };
 
-  // Change Pose in Auto-Rig Studio
   const handleSelectPose = (pose: string) => {
     setActivePose(pose);
     setIsPosePlaying(pose !== 't_pose');
-    if (rigResultRef.current) {
-      AutoRigEngine.applyTestPose(rigResultRef.current.bonesMap, pose, poseProgress);
-    }
+    const activeRig = activeTab === 'rigging' && isRigged ? rigResultRef.current : nativeRigResultRef.current;
+    if (activeRig) AutoRigEngine.applyTestPose(activeRig.bonesMap, pose, poseProgress);
   };
 
-
-  // Apply Map Preset
   const handleApplyMapPreset = () => {
-    if (onSelectMap) {
-      onSelectMap(selectedMapPath);
-    }
-
+    if (onSelectMap) onSelectMap(selectedMapPath);
     const updatedScene: MasterSceneConfig = {
       ...scene,
-      environment: {
-        ...scene.environment,
-        map: selectedMapPath,
-        sky_time: selectedSkyTime as any,
-      },
+      environment: { ...scene.environment, map: selectedMapPath, sky_time: selectedSkyTime as any },
     };
     onUpdateScene(updatedScene);
     setIsAppliedSuccess(true);
     setTimeout(() => setIsAppliedSuccess(false), 3000);
   };
 
-  // Capture high-definition snapshot directly from 3D Character Viewport
   const handleCaptureSnapshot = (): string => {
-    if (previewRendererRef.current && previewSceneRef.current && previewCameraRef.current) {
-      previewRendererRef.current.render(previewSceneRef.current, previewCameraRef.current);
+    if (!previewRendererRef.current) return '';
+    try {
       return previewRendererRef.current.domElement.toDataURL('image/png');
+    } catch {
+      return '';
     }
-    return '';
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: '#090d16',
-        color: '#f1f5f9',
-        fontSize: 12,
-        fontFamily: 'Inter, system-ui, sans-serif',
-        overflow: 'hidden',
-      }}
-    >
-      {/* ─── TOP WORKBENCH HEADER & TAB NAVIGATION ────────────────────────── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(15, 23, 42, 0.95)',
-          zIndex: 10,
-          flexShrink: 0,
-        }}
-      >
-        {/* Main Tab Switcher */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            onClick={() => setActiveTab('modular')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 700,
-              borderRadius: 6,
-              border: activeTab === 'modular' ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(255,255,255,0.08)',
-              background: activeTab === 'modular' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)',
-              color: activeTab === 'modular' ? '#38bdf8' : '#94a3b8',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            <Shirt size={14} /> 👘 Lắp Ráp Nhân Vật Modular
-          </button>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5, 7, 15, 0.85)', backdropFilter: 'blur(8px)' }}>
+      <div style={{ width: '96vw', height: '94vh', background: '#0b0f19', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+        {/* TOP BAR */}
+        <div style={{ padding: '10px 18px', background: 'rgba(15, 23, 42, 0.8)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #0284c7, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Wrench size={18} color="#fff" />
+              </div>
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc', letterSpacing: '0.3px' }}>
+                XƯỞNG TẠO HÌNH NHÂN VẬT & MÔI TRƯỜNG 3D
+              </span>
+            </div>
 
-          <button
-            onClick={() => setActiveTab('rigging')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 700,
-              borderRadius: 6,
-              border: activeTab === 'rigging' ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid rgba(255,255,255,0.08)',
-              background: activeTab === 'rigging' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.03)',
-              color: activeTab === 'rigging' ? '#c084fc' : '#94a3b8',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            <Wrench size={14} /> 🦴 Auto-Rig Studio
-          </button>
+            {/* 4 Studio Tabs */}
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: 3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <button
+                onClick={() => setActiveTab('modular')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 6,
+                  background: activeTab === 'modular' ? '#0284c7' : 'transparent', color: activeTab === 'modular' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
+                }}
+              >
+                <Shirt size={14} /> 👔 Lắp Ráp Modular
+              </button>
 
-          <button
-            onClick={() => setActiveTab('map')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 700,
-              borderRadius: 6,
-              border: activeTab === 'map' ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(255,255,255,0.08)',
-              background: activeTab === 'map' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(255,255,255,0.03)',
-              color: activeTab === 'map' ? '#4ade80' : '#94a3b8',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            <MapIcon size={14} /> 🗺️ Thiết Kế Map & Bối Cảnh
+              <button
+                onClick={() => setActiveTab('rigging')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 6,
+                  background: activeTab === 'rigging' ? '#7c3aed' : 'transparent', color: activeTab === 'rigging' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
+                }}
+              >
+                <Wrench size={14} /> 🦴 Auto-Rig (Gắn Xương)
+              </button>
+
+              <button
+                onClick={() => setActiveTab('animation')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 6,
+                  background: activeTab === 'animation' ? '#d97706' : 'transparent', color: activeTab === 'animation' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
+                }}
+              >
+                <Film size={14} /> 🎬 Animation & Cử Động
+              </button>
+
+              <button
+                onClick={() => setActiveTab('map')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 6,
+                  background: activeTab === 'map' ? '#059669' : 'transparent', color: activeTab === 'map' ? '#fff' : '#94a3b8', border: 'none', cursor: 'pointer',
+                }}
+              >
+                <MapIcon size={14} /> 🗺️ Bản Đồ & Thời Gian
+              </button>
+            </div>
+          </div>
+
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#94a3b8', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <X size={16} />
           </button>
         </div>
 
-        {/* Close Button */}
-        {onClose && (
-          <button
-            onClick={onClose}
-            title="Đóng Xưởng 3D"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '5px 12px',
-              fontSize: 11,
-              fontWeight: 600,
-              borderRadius: 6,
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#f87171',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            <X size={14} /> Đóng Xưởng
-          </button>
-        )}
-      </div>
-
-      {/* ─── MAIN CONTENT BODY ───────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-        {/* CASE A: TAB THIẾT KẾ MAP & BỐI CẢNH ───────────────────────────── */}
-        {activeTab === 'map' ? (
-          <MapDesignerPanel
-            scene={scene}
-            onUpdateScene={onUpdateScene}
-            onSelectMap={onSelectMap}
+        {/* WORKBENCH BODY: 2 Columns */}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {/* Column 1: 3D Viewport with Studio Lighting & Animation Loop */}
+          <Character3DViewport
+            canvasContainerRef={canvasContainerRef}
+            previewSceneRef={previewSceneRef}
+            previewCameraRef={previewCameraRef}
+            previewRendererRef={previewRendererRef}
+            previewControlsRef={previewControlsRef}
+            floorGridRef={floorGridRef}
+            showFloorGrid={showFloorGrid}
+            onToggleFloorGrid={() => setShowFloorGrid((prev) => !prev)}
+            showWireframe={showWireframe}
+            onToggleWireframe={() => setShowWireframe((prev) => !prev)}
+            viewportMode={viewportMode}
+            onToggleViewportMode={() => setViewportMode((prev) => (prev === 'orbit' ? 'select' : 'orbit'))}
+            onCanvasClick={handleCanvasClick}
+            isPreviewLoading={isPreviewLoading}
+            hasBones={hasBones}
+            totalBonesCount={totalBonesCount}
+            showSkeletonHelper={showSkeletonHelper}
+            onToggleSkeletonHelper={() => setShowSkeletonHelper((prev) => !prev)}
+            availableAnimations={availableAnimations}
+            selectedAnimClip={selectedAnimClip}
+            onSelectAnimationClip={handleSelectAnimationClip}
+            activePose={activePose}
+            onSelectPose={handleSelectPose}
+            isPlayingAnim={isPlayingAnim}
+            isPosePlaying={isPosePlaying}
+            onTogglePlayPause={handleTogglePlayPause}
+            animSpeed={animSpeed}
+            onChangeAnimSpeed={setAnimSpeed}
+            isRigged={isRigged}
           />
-        ) : (
-          /* CASE B: TAB MODULAR HOẶC AUTO-RIG ───────────────────────────── */
-          <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
-            {/* 1. LEFT: 3D CHARACTER PREVIEW CANVAS */}
-            <div
-              style={{
-                flex: '0 0 520px',
-                borderRight: '1px solid rgba(255,255,255,0.08)',
-                display: 'flex',
-                flexDirection: 'column',
-                background: '#060911',
-                position: 'relative',
-              }}
-            >
-              <div
-                style={{
-                  padding: '8px 12px',
-                  borderBottom: '1px solid rgba(255,255,255,0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: 'rgba(255,255,255,0.02)',
+
+          {/* Column 2: Studio Tab Switching (60% width) */}
+          <div style={{ flex: '0 0 60%', width: '60%', maxWidth: '60%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {activeTab === 'modular' && (
+              <ModularOutfitVerticalTabs
+                scene={scene}
+                onUpdateScene={onUpdateScene}
+                assembly={assembly}
+                onAssemblyChange={(updatedAssembly) => setAssembly(updatedAssembly)}
+                sliders={faceSliders}
+                onSlidersChange={handleFaceSlidersChange}
+                onCaptureSnapshot={handleCaptureSnapshot}
+                selectedPartInfo={selectedPartInfo}
+                onSelectPartKey={handleSelectPartKey}
+                isTouchSelectActive={viewportMode === 'select'}
+                availableParts={availableParts}
+                onApplyMaterialOverride={handleApplyMaterialOverride}
+                onResetMaterialOverride={handleResetMaterialOverride}
+              />
+            )}
+
+            {activeTab === 'rigging' && (
+              <CharacterAutoRigTab
+                availableCategories={availableCategories}
+                modelToRig={modelToRig}
+                onSelectModelToRig={setModelToRig}
+                isRigged={isRigged}
+                isRiggingLoading={isRiggingLoading}
+                onRunAutoRig={handleRunAutoRig}
+                showJoints={showJoints}
+                onToggleJoints={() => {
+                  setShowJoints(!showJoints);
+                  if (rigResultRef.current && previewSceneRef.current) {
+                    if (!showJoints) previewSceneRef.current.add(rigResultRef.current.jointVisualizer);
+                    else previewSceneRef.current.remove(rigResultRef.current.jointVisualizer);
+                  }
                 }}
-              >
-                <span style={{ fontWeight: 600, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Sparkles size={14} /> 3D Character Viewport
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {/* Mode Toggle: Orbit Camera vs Touch-Select Parts */}
-                  <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)' }}>
-                    <button
-                      onClick={() => {
-                        setViewportMode('orbit');
-                        setSelectedPartInfo(null);
-                        if (previewSceneRef.current) partSelectorRef.current.removeHighlight(previewSceneRef.current);
-                      }}
-                      title="Chế độ Xoay Camera 360°"
-                      style={{
-                        padding: '2px 8px',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        background: viewportMode === 'orbit' ? 'rgba(56, 189, 248, 0.25)' : 'transparent',
-                        color: viewportMode === 'orbit' ? '#38bdf8' : '#94a3b8',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 3,
-                      }}
-                    >
-                      <Move3D size={11} /> Xoay 3D
-                    </button>
-                    <button
-                      onClick={() => setViewportMode('select')}
-                      title="Chế độ Click chạm vào bộ phận để đổi màu & chỉnh chất liệu"
-                      style={{
-                        padding: '2px 8px',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        background: viewportMode === 'select' ? 'rgba(168, 85, 247, 0.25)' : 'transparent',
-                        color: viewportMode === 'select' ? '#c084fc' : '#94a3b8',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 3,
-                      }}
-                    >
-                      <MousePointerClick size={11} /> Chạm Chọn Sửa
-                    </button>
-                  </div>
+                activePose={activePose}
+                onSelectPose={handleSelectPose}
+                isPosePlaying={isPosePlaying}
+                onTogglePosePlay={() => setIsPosePlaying(!isPosePlaying)}
+              />
+            )}
 
-                  <button
-                    onClick={() => setShowFloorGrid((prev) => !prev)}
-                    title={showFloorGrid ? "Ẩn lưới sàn" : "Hiện lưới sàn"}
-                    style={{
-                      padding: '2px 8px',
-                      fontSize: 10,
-                      borderRadius: 4,
-                      border: showFloorGrid ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                      background: showFloorGrid ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255,255,255,0.05)',
-                      color: showFloorGrid ? '#38bdf8' : '#cbd5e1',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    <Grid size={11} /> {showFloorGrid ? 'Ẩn Lưới Sàn' : 'Hiện Lưới Sàn'}
-                  </button>
-
-                  <button
-                    onClick={() => setShowWireframe((prev) => !prev)}
-                    title="Bật/Tắt khung lưới tam giác (Wireframe)"
-                    style={{
-                      padding: '2px 8px',
-                      fontSize: 10,
-                      borderRadius: 4,
-                      border: showWireframe ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                      background: showWireframe ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255,255,255,0.05)',
-                      color: showWireframe ? '#c084fc' : '#cbd5e1',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    <Box size={11} /> Wireframe
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (previewCameraRef.current && previewControlsRef.current) {
-                        previewCameraRef.current.position.set(0, 1.15, 2.6);
-                        previewControlsRef.current.target.set(0, 0.85, 0);
-                        previewControlsRef.current.update();
-                      }
-                    }}
-                    title="Đặt lại Camera"
-                    style={{
-                      padding: '2px 8px',
-                      fontSize: 10,
-                      borderRadius: 4,
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      background: 'rgba(255,255,255,0.05)',
-                      color: '#cbd5e1',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 3,
-                    }}
-                  >
-                    <RotateCcw size={10} /> Reset
-                  </button>
-                </div>
-              </div>
-
-              {/* 3D Canvas Container */}
-              <div
-                onClick={handleCanvasClick}
-                style={{
-                  flex: 1,
-                  position: 'relative',
-                  width: '100%',
-                  minHeight: 0,
-                  overflow: 'hidden',
-                  cursor: viewportMode === 'select' ? 'pointer' : 'default',
+            {activeTab === 'animation' && (
+              <CharacterAnimationTab
+                availableCategories={availableCategories}
+                availableAnimations={availableAnimations}
+                selectedAnimClip={selectedAnimClip}
+                onSelectAnimationClip={handleSelectAnimationClip}
+                isPlayingAnim={isPlayingAnim}
+                onTogglePlayPause={handleTogglePlayPause}
+                animSpeed={animSpeed}
+                onChangeAnimSpeed={setAnimSpeed}
+                activePose={activePose}
+                onSelectPose={handleSelectPose}
+                isPosePlaying={isPosePlaying}
+                poseProgress={poseProgress}
+                showSkeletonHelper={showSkeletonHelper}
+                onToggleSkeletonHelper={() => setShowSkeletonHelper((prev) => !prev)}
+                hasBones={hasBones}
+                totalBonesCount={totalBonesCount}
+                currentModelPath={assembly?.than_co_ban || assembly?.base_body || modelToRig}
+                onSelectModel={(modelPath) => {
+                  setAssembly((prev) => ({
+                    ...prev,
+                    than_co_ban: modelPath,
+                    base_body: modelPath,
+                  }));
+                  setModelToRig(modelPath);
                 }}
-              >
-                <div ref={canvasContainerRef} style={{ width: '100%', height: '100%' }} />
+              />
+            )}
 
-                {isPreviewLoading && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'rgba(10, 15, 29, 0.7)',
-                      backdropFilter: 'blur(4px)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      color: '#38bdf8',
-                      fontWeight: 600,
-                      fontSize: 12,
-                      zIndex: 30,
-                    }}
-                  >
-                    <Loader size={24} className="animate-spin" />
-                    <span>Đang tải mô hình 3D...</span>
-                  </div>
-                )}
-
-                {/* Interaction Mode Hint */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    left: 8,
-                    fontSize: 10,
-                    color: viewportMode === 'select' ? '#c084fc' : 'rgba(255,255,255,0.6)',
-                    pointerEvents: 'none',
-                    background: viewportMode === 'select' ? 'rgba(88, 28, 135, 0.6)' : 'rgba(0,0,0,0.5)',
-                    border: viewportMode === 'select' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                    backdropFilter: 'blur(4px)',
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    zIndex: 20,
-                  }}
-                >
-                  {viewportMode === 'select' ? (
-                    <>
-                      <MousePointerClick size={12} />
-                      <span>Chế độ Chạm Chọn: Click trực tiếp vào Áo, Quần, Giày, Tóc... để đổi màu & chất liệu ở cột bên phải</span>
-                    </>
-                  ) : (
-                    <>
-                      <Move3D size={12} />
-                      <span>Chế độ Xoay 3D: Chuột trái xoay 360° | Cuộn chuột để Zoom</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Floating Viewport Overlays for Auto-Rig */}
-              {activeTab === 'rigging' && isRigged && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 12,
-                    left: 12,
-                    right: 12,
-                    background: 'rgba(15, 23, 42, 0.85)',
-                    backdropFilter: 'blur(8px)',
-                    padding: '6px 10px',
-                    borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 6,
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      setShowJoints(!showJoints);
-                      if (rigResultRef.current && previewSceneRef.current) {
-                        if (!showJoints) previewSceneRef.current.add(rigResultRef.current.jointVisualizer);
-                        else previewSceneRef.current.remove(rigResultRef.current.jointVisualizer);
-                      }
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '3px 8px',
-                      fontSize: 11,
-                      borderRadius: 4,
-                      background: showJoints ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                      color: showJoints ? '#38bdf8' : '#94a3b8',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {showJoints ? <Eye size={12} /> : <EyeOff size={12} />} Khớp Xương
-                  </button>
-
-                  <button
-                    onClick={() => setIsPosePlaying(!isPosePlaying)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '3px 8px',
-                      fontSize: 11,
-                      borderRadius: 4,
-                      background: isPosePlaying ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                      color: isPosePlaying ? '#f87171' : '#4ade80',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {isPosePlaying ? <Pause size={12} /> : <Play size={12} />}
-                    {isPosePlaying ? 'Tạm Dừng' : 'Chạy Thử'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 2. RIGHT: CONFIGURATION / MODULAR VERTICAL TABS */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {activeTab === 'modular' && (
-                <ModularOutfitVerticalTabs
-                  scene={scene}
-                  onUpdateScene={onUpdateScene}
-                  assembly={assembly}
-                  onAssemblyChange={(updatedAssembly) => {
-                    setAssembly(updatedAssembly);
-                  }}
-                  sliders={faceSliders}
-                  onSlidersChange={handleFaceSlidersChange}
-                  onCaptureSnapshot={handleCaptureSnapshot}
-                  selectedPartInfo={selectedPartInfo}
-                  onSelectPartKey={handleSelectPartKey}
-                  isTouchSelectActive={viewportMode === 'select'}
-                  availableParts={availableParts}
-                  onApplyMaterialOverride={handleApplyMaterialOverride}
-                  onResetMaterialOverride={handleResetMaterialOverride}
-                />
-              )}
-
-              {activeTab === 'rigging' && (
-                <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#c084fc' }}>
-                        Auto-Rigging Studio (Gắn Xương Chuẩn Giải Phẫu 3D)
-                      </span>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>17 Khớp Xương Tiêu Chuẩn Three.js</span>
-                    </div>
-
-                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#e2e8f0' }}>
-                        Chọn Mô Hình 3D Cần Gắn Xương (.glb)
-                      </label>
-                      <select
-                        value={modelToRig}
-                        onChange={(e) => {
-                          setModelToRig(e.target.value);
-                          setIsRigged(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          borderRadius: 6,
-                          background: '#0f172a',
-                          border: '1px solid rgba(255,255,255,0.15)',
-                          color: '#fff',
-                          outline: 'none',
-                          fontSize: 12,
-                        }}
-                      >
-                        {(availableCategories.find((c) => c.id === 'than_co_ban')?.items || []).map((item) => (
-                          <option key={item.id} value={item.path}>
-                            [Thân] {item.name} ({item.path})
-                          </option>
-                        ))}
-                        {(availableCategories.find((c) => c.id === 'trang_phuc')?.items || []).map((item) => (
-                          <option key={item.id} value={item.path}>
-                            [Trang Phục] {item.name} ({item.path})
-                          </option>
-                        ))}
-                        {availableCategories
-                          .filter((c) => c.id !== 'than_co_ban' && c.id !== 'trang_phuc' && c.id !== '_lap_rap')
-                          .flatMap((c) => c.items)
-                          .map((item) => (
-                            <option key={item.id} value={item.path}>
-                              {item.name} ({item.path})
-                            </option>
-                          ))}
-                      </select>
-
-                      <button
-                        onClick={handleRunAutoRig}
-                        disabled={isRiggingLoading}
-                        style={{
-                          marginTop: 12,
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          padding: '11px',
-                          borderRadius: 6,
-                          background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
-                          color: '#fff',
-                          fontWeight: 700,
-                          fontSize: 13,
-                          border: 'none',
-                          cursor: isRiggingLoading ? 'not-allowed' : 'pointer',
-                          boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)',
-                        }}
-                      >
-                        <Sparkles size={16} />
-                        {isRiggingLoading ? 'Đang phân tích cấu trúc xương...' : '⚡ Kích Hoạt Auto-Rig 1-Click'}
-                      </button>
-                    </div>
-
-                    {/* Test Animation Poses */}
-                    {isRigged && (
-                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: 14, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, color: '#e2e8f0' }}>
-                          Chạy Thử Nghiệm Hoạt Cảnh (Pose & Motion Test)
-                        </label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {[
-                            { id: 't_pose', label: 'T-Pose' },
-                            { id: 'walk', label: '🚶 Bước Đi (Walk)' },
-                            { id: 'slash', label: '⚔️ Vung Kiếm (Slash)' },
-                            { id: 'defend', label: '🛡️ Thủ Thế (Defend)' },
-                            { id: 'wave', label: '👋 Vẫy Tay (Wave)' },
-                            { id: 'sit', label: '🪑 Ngồi Nghỉ (Sit)' },
-                          ].map((p) => (
-                            <button
-                              key={p.id}
-                              onClick={() => handleSelectPose(p.id)}
-                              style={{
-                                padding: '7px 14px',
-                                borderRadius: 6,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                border: activePose === p.id ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.1)',
-                                background: activePose === p.id ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255,255,255,0.05)',
-                                color: activePose === p.id ? '#c084fc' : '#cbd5e1',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {p.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            {activeTab === 'map' && (
+              <MapDesignerPanel
+                scene={scene}
+                selectedMapPath={selectedMapPath}
+                selectedSkyTime={selectedSkyTime}
+                onSelectMapPath={setSelectedMapPath}
+                onSelectSkyTime={setSelectedSkyTime}
+                onApplyMapPreset={handleApplyMapPreset}
+                isAppliedSuccess={isAppliedSuccess}
+              />
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 };
-
-/**
- * Apply facial sliders and wireframe settings to any Three.js 3D model hierarchy
- */
-export function applySlidersToModelGroup(
-  group: THREE.Object3D,
-  sliders: FaceSliderConfig,
-  showWireframe: boolean = false
-): void {
-  const { baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity } = sliders;
-
-  group.traverse((child) => {
-    if ((child as THREE.Mesh).isMesh) {
-      const mesh = child as THREE.Mesh;
-      const name = mesh.name.toLowerCase();
-      const parentName = (mesh.parent?.name || '').toLowerCase();
-      const matName = Array.isArray(mesh.material)
-        ? mesh.material.map((m) => m.name.toLowerCase()).join(' ')
-        : (mesh.material?.name || '').toLowerCase();
-
-      const isBaseFace =
-        (name.includes('face') || parentName.includes('face') || matName.includes('face')) &&
-        !name.includes('p0054') && !name.includes('p0052') && !matName.includes('p0054') && !matName.includes('p0052');
-
-      const isEyebrow = name.includes('eyebrow') || parentName.includes('eyebrow') || matName.includes('eyebrow');
-      const isPupil = name.includes('pupil') || parentName.includes('pupil') || matName.includes('pupil');
-      const isNose = name.includes('nose') || parentName.includes('nose');
-      const isMouth = name.includes('mouth') || parentName.includes('mouth') || name.includes('lip') || parentName.includes('lip');
-
-      if (mesh.material) {
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mats.forEach((m: any) => {
-          m.wireframe = showWireframe;
-          m.side = THREE.FrontSide; // Backface culling prevents inner mouth/tongue bleeding through
-
-          // Base Face / Mặt Cũ
-          if (isBaseFace) {
-            mesh.visible = baseFaceOpacity > 0.02;
-            m.transparent = baseFaceOpacity < 0.98;
-            m.opacity = baseFaceOpacity;
-          }
-
-          // Eyebrow Opacity
-          if (isEyebrow) {
-            mesh.visible = eyebrowOpacity > 0.02;
-            m.transparent = eyebrowOpacity < 0.98;
-            m.opacity = eyebrowOpacity;
-          }
-
-          // Pupil Opacity
-          if (isPupil) {
-            mesh.visible = pupilOpacity > 0.02;
-            m.transparent = pupilOpacity < 0.98;
-            m.opacity = pupilOpacity;
-          }
-
-          // Nose Opacity
-          if (isNose) {
-            mesh.visible = noseOpacity > 0.02;
-            m.transparent = noseOpacity < 0.98;
-            m.opacity = noseOpacity;
-          }
-
-          // Mouth & Lip Opacity
-          if (isMouth) {
-            mesh.visible = mouthOpacity > 0.02;
-            m.transparent = mouthOpacity < 0.98;
-            m.opacity = mouthOpacity;
-          }
-
-          // Skin Smoothness (Roughness)
-          if (name.includes('body') || name.includes('face') || parentName.includes('face') || matName.includes('face')) {
-            if (m.roughness !== undefined) {
-              m.roughness = Math.max(0.1, 1.0 - skinSmoothness * 0.45);
-            }
-          }
-
-          // Costume Opacity
-          if (!name.includes('body') && !name.includes('face') && !isPupil && !isEyebrow && !isBaseFace && !isNose && !isMouth) {
-            mesh.visible = costumeOpacity > 0.02;
-            m.transparent = costumeOpacity < 0.98;
-            m.opacity = costumeOpacity;
-          }
-        });
-      }
-    }
-  });
-}

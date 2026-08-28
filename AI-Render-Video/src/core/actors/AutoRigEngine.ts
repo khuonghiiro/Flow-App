@@ -72,9 +72,158 @@ export class AutoRigEngine {
   }
 
   /**
-   * Tự động tạo bộ khung xương và gắn da (Capsule Linear Blend Skinning) cho một Group hoặc Mesh
+   * Tự động tạo bộ khung xương và gắn da (Capsule Linear Blend Skinning) cho một Group hoặc Mesh.
+   * Nếu mô hình đã có sẵn khung xương (Native Bones / SkinnedMesh như Columbina 743 joints),
+   * hệ thống sẽ tái sử dụng và đồng bộ trực tiếp khung xương gốc!
    */
   public static rigModel(modelGroup: THREE.Group | THREE.Object3D): AutoRigResult {
+    // 0. Kiểm tra nếu mô hình đã có sẵn khung xương (Native Rigged Model)
+    const existingBones: THREE.Bone[] = [];
+    const existingSkinnedMeshes: THREE.SkinnedMesh[] = [];
+    modelGroup.traverse((c) => {
+      if ((c as THREE.Bone).isBone) existingBones.push(c as THREE.Bone);
+      if ((c as THREE.SkinnedMesh).isSkinnedMesh) existingSkinnedMeshes.push(c as THREE.SkinnedMesh);
+    });
+
+    if (existingBones.length > 0) {
+      modelGroup.updateMatrixWorld(true);
+
+      // Cache initial rest orientation (T-pose) for each bone
+      existingBones.forEach((b) => {
+        if (!b.userData.initialRotation) {
+          b.userData.initialRotation = b.rotation.clone();
+        }
+        if (!b.userData.initialPosition) {
+          b.userData.initialPosition = b.position.clone();
+        }
+      });
+
+      // Mô hình đã có sẵn xương: Map các khớp giải phẫu chính theo tên hoặc tọa độ
+      const bonesMap = new Map<string, THREE.Bone>();
+      const bonesLower = new Map<string, THREE.Bone>();
+      existingBones.forEach((b) => {
+        bonesLower.set(b.name.toLowerCase(), b);
+        bonesMap.set(b.name, b);
+      });
+
+      // Map chuẩn Humanoid Alias sang Native Bones (Hỗ trợ Mixamo, Blender, Unity, Unreal, MMD & Genshin)
+      const aliasMap: Record<string, string[]> = {
+        Hips: ['hips', 'pelvis', 'root', 'waist', 'center', 'hip', 'bip001_pelvis', '07', '08', '09'],
+        Spine: ['spine1', 'spine01', 'bip001_spine', 'torso', 'back', '010', 'spine'],
+        Chest: ['chest', 'spine2', 'upperbody', 'bip001_spine2', '011'],
+        Neck: ['neck', 'bip001_neck', '0589'],
+        Head: ['head', 'bip001_head', 'face', '0590'],
+        LeftShoulder: ['leftshoulder', 'shoulder_l', 'l_shoulder', 'bip001_l_clavicle', '0459'],
+        LeftUpperArm: ['leftupperarm', 'upperarm_l', 'arm_l', 'l_arm', 'leftarm', 'bip001_l_upperarm', '0460'],
+        LeftLowerArm: ['leftlowerarm', 'lowerarm_l', 'forearm_l', 'l_forearm', 'bip001_l_forearm', '0461'],
+        LeftHand: ['lefthand', 'hand_l', 'l_hand', 'bip001_l_hand', '0462'],
+        RightShoulder: ['rightshoulder', 'shoulder_r', 'r_shoulder', 'bip001_r_clavicle', '0289'],
+        RightUpperArm: ['rightupperarm', 'upperarm_r', 'arm_r', 'r_arm', 'rightarm', 'bip001_r_upperarm', '0290'],
+        RightLowerArm: ['rightlowerarm', 'lowerarm_r', 'forearm_r', 'r_forearm', 'bip001_r_forearm', '0291'],
+        RightHand: ['righthand', 'hand_r', 'r_hand', 'bip001_r_hand', '0292'],
+        LeftUpperLeg: ['leftupperleg', 'thigh_l', 'upperleg_l', 'l_thigh', 'bip001_l_thigh', 'leftleg', '0698', '0699'],
+        LeftLowerLeg: ['leftlowerleg', 'calf_l', 'lowerleg_l', 'l_calf', 'bip001_l_calf', 'l_shin', '0720'],
+        LeftFoot: ['leftfoot', 'foot_l', 'l_foot', 'bip001_l_foot', '0719', '0721'],
+        RightUpperLeg: ['rightupperleg', 'thigh_r', 'upperleg_r', 'r_thigh', 'bip001_r_thigh', 'rightleg', '0728', '0729'],
+        RightLowerLeg: ['rightlowerleg', 'calf_r', 'lowerleg_r', 'r_calf', 'bip001_r_calf', 'r_shin', '0730'],
+        RightFoot: ['rightfoot', 'foot_r', 'r_foot', 'bip001_r_foot', '0731', '0739'],
+      };
+
+      for (const [standardName, aliases] of Object.entries(aliasMap)) {
+        for (const alias of aliases) {
+          const match = Array.from(bonesLower.entries()).find(([k]) => k.includes(alias));
+          if (match) {
+            bonesMap.set(standardName, match[1]);
+            break;
+          }
+        }
+      }
+
+      // Fallback: Với các model có tên xương tiếng Nhật, MMD, hoặc mã số (như Columbina):
+      // Lọc bỏ các xương vật lý phụ (tóc, váy, dây ruy băng) và ánh xạ chính xác vào khung xương thân chính
+      const isDanglePhysics = (name: string) =>
+        /^(q_|pf_|pj_|x_|hair|let|skirt|ribbon|cloth|tail|wing|ear|bone_let|bone_hair)/i.test(name.toLowerCase());
+      const trunkBones = existingBones.filter((b) => !isDanglePhysics(b.name));
+      const candidates = trunkBones.length >= 15 ? trunkBones : existingBones;
+
+      let minY = Infinity, maxY = -Infinity;
+      const boneWorldPositions = candidates.map((b) => {
+        const wp = new THREE.Vector3();
+        b.getWorldPosition(wp);
+        if (wp.y < minY) minY = wp.y;
+        if (wp.y > maxY) maxY = wp.y;
+        return { bone: b, pos: wp };
+      });
+
+      const skeletonHeight = maxY - minY || 1;
+
+      const targets: Record<string, [number, number, number]> = {
+        Hips: [0, 0.50, 0],
+        Spine: [0, 0.58, 0],
+        Chest: [0, 0.68, 0],
+        Neck: [0, 0.82, 0],
+        Head: [0, 0.90, 0],
+        LeftUpperArm: [0.08, 0.80, 0],
+        LeftLowerArm: [0.18, 0.76, 0],
+        LeftHand: [0.26, 0.74, 0],
+        RightUpperArm: [-0.08, 0.80, 0],
+        RightLowerArm: [-0.18, 0.76, 0],
+        RightHand: [-0.26, 0.74, 0],
+        LeftUpperLeg: [-0.05, 0.52, 0],
+        LeftLowerLeg: [-0.04, 0.28, 0],
+        LeftFoot: [-0.03, 0.05, 0],
+        RightUpperLeg: [0.05, 0.52, 0],
+        RightLowerLeg: [0.04, 0.28, 0],
+        RightFoot: [0.03, 0.05, 0],
+      };
+
+      for (const [jointName, rel] of Object.entries(targets)) {
+        if (!bonesMap.has(jointName) || isDanglePhysics(bonesMap.get(jointName)!.name)) {
+          const targetWorld = new THREE.Vector3(
+            rel[0] * skeletonHeight,
+            minY + rel[1] * skeletonHeight,
+            rel[2] * skeletonHeight
+          );
+
+          let closestBone: THREE.Bone | null = null;
+          let minDist = Infinity;
+
+          for (const item of boneWorldPositions) {
+            const d = item.pos.distanceTo(targetWorld);
+            if (d < minDist) {
+              minDist = d;
+              closestBone = item.bone;
+            }
+          }
+
+          if (closestBone) {
+            bonesMap.set(jointName, closestBone);
+          }
+        }
+      }
+
+      // Tạo SkeletonHelper 3D cho toàn bộ Native Bones
+      const helper = new THREE.SkeletonHelper(modelGroup);
+      const helperMat = (helper as any).material;
+      if (helperMat) {
+        helperMat.linewidth = 2;
+        helperMat.depthTest = false;
+        helperMat.transparent = true;
+        helperMat.opacity = 0.9;
+      }
+      const visualizerGroup = new THREE.Group();
+      visualizerGroup.name = 'NativeSkeletonHelperGroup';
+      visualizerGroup.add(helper);
+
+      return {
+        rootGroup: modelGroup as THREE.Group,
+        skeleton: new THREE.Skeleton(existingBones),
+        skinnedMeshes: existingSkinnedMeshes,
+        bonesMap,
+        jointVisualizer: visualizerGroup,
+      };
+    }
+
     // 1. Tính toán Bounding Box tổng thể
     const bbox = new THREE.Box3().setFromObject(modelGroup);
     const size = new THREE.Vector3();
@@ -309,98 +458,189 @@ export class AutoRigEngine {
    * Áp dụng cử động Animation thử nghiệm trực tiếp lên khung xương (Natural Biomechanics Pose Testing)
    */
   public static applyTestPose(bonesMap: Map<string, THREE.Bone>, poseName: string, progress: number = 0): void {
-    // Reset all bones
+    // Reset all bones to their initial rest pose
     for (const bone of bonesMap.values()) {
-      bone.rotation.set(0, 0, 0);
+      if (bone.userData.initialRotation) {
+        bone.rotation.copy(bone.userData.initialRotation);
+      } else {
+        bone.rotation.set(0, 0, 0);
+      }
     }
 
+    if (poseName === 't_pose') return;
+
     const t = progress * Math.PI * 2;
+    const rotateBone = (jointName: string, dx: number, dy: number, dz: number) => {
+      const bone = bonesMap.get(jointName);
+      if (!bone) return;
+      const init = bone.userData.initialRotation || new THREE.Euler();
+      bone.rotation.set(init.x + dx, init.y + dy, init.z + dz);
+    };
 
     switch (poseName) {
       case 'walk': {
-        // Chu kỳ bước đi tự nhiên (Walk Cycle)
-        const leftLegAngle = Math.sin(t) * 0.45;
-        const rightLegAngle = -leftLegAngle;
+        // --- CHU KỲ BƯỚC ĐI TỰ NHIÊN (AAA Smooth Humanoid Walk Cycle) ---
+        const legSwingLeft = Math.sin(t) * 0.40;
+        const legSwingRight = -legSwingLeft;
 
-        bonesMap.get('LeftUpperLeg')?.rotation.set(leftLegAngle, 0, 0);
-        bonesMap.get('LeftLowerLeg')?.rotation.set(leftLegAngle < 0 ? -leftLegAngle * 1.1 : 0, 0, 0);
+        // Đầu gối gập mượt mà khi chân lùi về sau và thẳng khi bước tới
+        const kneeLeft = Math.max(0, -Math.sin(t - 0.25)) * 0.82;
+        const kneeRight = Math.max(0, Math.sin(t - 0.25)) * 0.82;
 
-        bonesMap.get('RightUpperLeg')?.rotation.set(rightLegAngle, 0, 0);
-        bonesMap.get('RightLowerLeg')?.rotation.set(rightLegAngle < 0 ? -rightLegAngle * 1.1 : 0, 0, 0);
+        // Bàn chân tiếp đất tự nhiên
+        const footLeft = Math.sin(t - 0.45) * 0.22;
+        const footRight = -Math.sin(t - 0.45) * 0.22;
 
-        // Tay đánh nhịp đối xứng
-        const armSwing = Math.sin(t) * 0.35;
-        bonesMap.get('LeftUpperArm')?.rotation.set(-armSwing, 0, -0.15);
-        bonesMap.get('LeftLowerArm')?.rotation.set(-0.2, 0, 0);
-        bonesMap.get('RightUpperArm')?.rotation.set(armSwing, 0, 0.15);
-        bonesMap.get('RightLowerArm')?.rotation.set(-0.2, 0, 0);
+        rotateBone('LeftUpperLeg', legSwingLeft, 0, 0);
+        rotateBone('LeftLowerLeg', -kneeLeft, 0, 0);
+        rotateBone('LeftFoot', footLeft, 0, 0);
 
-        bonesMap.get('Spine')?.rotation.set(0, Math.sin(t) * 0.08, 0);
-        bonesMap.get('Head')?.rotation.set(0, -Math.sin(t) * 0.04, 0);
+        rotateBone('RightUpperLeg', legSwingRight, 0, 0);
+        rotateBone('RightLowerLeg', -kneeRight, 0, 0);
+        rotateBone('RightFoot', footRight, 0, 0);
+
+        // Hông / Cột sống nhún nhịp đôi và vặn nhẹ theo bước
+        rotateBone('Hips', Math.cos(t * 2) * 0.02, -Math.sin(t) * 0.06, Math.sin(t) * 0.03);
+        rotateBone('Spine', 0.02, Math.sin(t) * 0.06, -Math.sin(t) * 0.02);
+        rotateBone('Chest', 0.03, Math.sin(t) * 0.04, 0);
+
+        // Tay đánh nhịp đối xứng với khuỷu tay gập mềm mại
+        const armSwingLeft = -legSwingLeft * 0.75;
+        const armSwingRight = -legSwingRight * 0.75;
+        const elbowBendLeft = 0.20 + Math.abs(legSwingLeft) * 0.25;
+        const elbowBendRight = 0.20 + Math.abs(legSwingRight) * 0.25;
+
+        rotateBone('LeftUpperArm', armSwingLeft, 0.05, -0.15);
+        rotateBone('LeftLowerArm', -elbowBendLeft, 0, 0);
+        rotateBone('LeftHand', Math.sin(t - 0.3) * 0.12, 0, 0);
+
+        rotateBone('RightUpperArm', armSwingRight, -0.05, 0.15);
+        rotateBone('RightLowerArm', -elbowBendRight, 0, 0);
+        rotateBone('RightHand', -Math.sin(t - 0.3) * 0.12, 0, 0);
+
+        // Đầu giữ cân bằng tự nhiên
+        rotateBone('Neck', 0, -Math.sin(t) * 0.03, 0);
+        rotateBone('Head', 0.02, -Math.sin(t) * 0.025, 0);
         break;
       }
 
       case 'slash': {
-        // Hoạt cảnh vung kiếm chém ngang uy lực
-        const cycle = Math.sin(t);
-        bonesMap.get('Spine')?.rotation.set(0.08, cycle * 0.4, 0);
-        bonesMap.get('Chest')?.rotation.set(0.04, cycle * 0.25, 0);
+        // --- XUẤT CHIÊU KIẾM PHÁP (Dynamic Multi-phase Sword Slash) ---
+        const phase = (progress * 2) % 1.0;
+        const windup = Math.sin(phase * Math.PI);
+        const slashPower = Math.cos(phase * Math.PI);
 
-        bonesMap.get('RightUpperArm')?.rotation.set(-0.6 + cycle * 0.8, 0.2, 0.4);
-        bonesMap.get('RightLowerArm')?.rotation.set(-0.5, 0, 0);
-        bonesMap.get('LeftUpperArm')?.rotation.set(0.2, 0, -0.3);
+        rotateBone('Hips', 0.05, windup * 0.3, 0);
+        rotateBone('Spine', 0.08, slashPower * 0.45, 0);
+        rotateBone('Chest', 0.06, slashPower * 0.35, 0);
 
-        // Thế chân tấn
-        bonesMap.get('LeftUpperLeg')?.rotation.set(-0.25, 0, -0.1);
-        bonesMap.get('LeftLowerLeg')?.rotation.set(0.3, 0, 0);
-        bonesMap.get('RightUpperLeg')?.rotation.set(0.2, 0, 0.1);
+        // Cánh tay phải vung đường kiếm cung tròn uy lực
+        rotateBone('RightShoulder', 0.1, slashPower * 0.2, 0.1);
+        rotateBone('RightUpperArm', -0.5 + slashPower * 0.9, 0.25, 0.45 + windup * 0.3);
+        rotateBone('RightLowerArm', -0.6 + slashPower * 0.4, 0, 0);
+        rotateBone('RightHand', slashPower * 0.3, 0, 0);
+
+        // Tay trái giữ thăng bằng
+        rotateBone('LeftUpperArm', 0.25, 0, -0.35);
+        rotateBone('LeftLowerArm', -0.5, 0, 0);
+
+        // Thế chân tấn vững chãi
+        rotateBone('LeftUpperLeg', -0.30, 0, -0.12);
+        rotateBone('LeftLowerLeg', 0.35, 0, 0);
+        rotateBone('RightUpperLeg', 0.22, 0, 0.12);
+        rotateBone('RightLowerLeg', -0.15, 0, 0);
+
+        rotateBone('Head', 0.04, slashPower * 0.15, 0);
         break;
       }
 
       case 'defend': {
-        // Thế thủ phòng vệ (Martial Arts Guard Stance)
-        const breathe = Math.sin(t) * 0.03;
-        bonesMap.get('Spine')?.rotation.set(0.08 + breathe, 0.15, 0);
+        // --- THẾ THỦ PHÒNG VỆ (Martial Arts Guard & Breathing Dynamics) ---
+        const breathe = Math.sin(t) * 0.035;
+        const stanceShift = Math.sin(t * 0.5) * 0.02;
 
-        bonesMap.get('LeftUpperArm')?.rotation.set(-0.6, 0.3, -0.2);
-        bonesMap.get('LeftLowerArm')?.rotation.set(-0.9, 0, 0);
-        bonesMap.get('RightUpperArm')?.rotation.set(-0.5, -0.3, 0.2);
-        bonesMap.get('RightLowerArm')?.rotation.set(-0.9, 0, 0);
+        rotateBone('Hips', -0.12 + stanceShift, 0.1, 0);
+        rotateBone('Spine', 0.10 + breathe, 0.12, 0);
+        rotateBone('Chest', 0.08 + breathe * 0.8, 0.08, 0);
 
-        // Hạ trọng tâm
-        bonesMap.get('LeftUpperLeg')?.rotation.set(-0.25, 0, -0.1);
-        bonesMap.get('LeftLowerLeg')?.rotation.set(0.3, 0, 0);
-        bonesMap.get('RightUpperLeg')?.rotation.set(0.15, 0, 0.1);
-        bonesMap.get('RightLowerLeg')?.rotation.set(0.2, 0, 0);
+        // Hai tay thủ thế trước ngực
+        rotateBone('LeftUpperArm', -0.65, 0.35, -0.25);
+        rotateBone('LeftLowerArm', -1.15, 0.2, 0);
+        rotateBone('LeftHand', 0.2, 0, 0);
+
+        rotateBone('RightUpperArm', -0.55, -0.32, 0.25);
+        rotateBone('RightLowerArm', -1.10, -0.2, 0);
+        rotateBone('RightHand', 0.2, 0, 0);
+
+        // Chân hạ thấp trọng tâm
+        rotateBone('LeftUpperLeg', -0.32, 0, -0.15);
+        rotateBone('LeftLowerLeg', 0.38, 0, 0);
+        rotateBone('RightUpperLeg', 0.20, 0, 0.15);
+        rotateBone('RightLowerLeg', 0.25, 0, 0);
+
+        rotateBone('Head', 0.05, 0.05, 0);
         break;
       }
 
       case 'wave': {
-        // Cử động giơ tay vẫy chào thân thiện
-        const wave = Math.sin(t * 3) * 0.3;
-        bonesMap.get('RightUpperArm')?.rotation.set(0, 0, 1.6);
-        bonesMap.get('RightLowerArm')?.rotation.set(0, 0, 0.5 + wave);
-        bonesMap.get('Head')?.rotation.set(0, 0, -0.1);
+        // --- VẪY TAY CHÀO THÂN THIỆN (Organic Friendly Wave) ---
+        const wave = Math.sin(t * 3.5) * 0.38;
+        const breathe = Math.sin(t) * 0.025;
+
+        rotateBone('Spine', breathe, -0.05, 0);
+        rotateBone('Chest', breathe, -0.04, 0);
+
+        // Tay phải giơ cao vẫy tự nhiên
+        rotateBone('RightShoulder', 0.1, 0, 0.15);
+        rotateBone('RightUpperArm', -1.45, 0.25, 0.65);
+        rotateBone('RightLowerArm', -0.45, wave * 0.8, 0);
+        rotateBone('RightHand', 0, wave, 0.1);
+
+        // Tay trái thả lỏng tự nhiên
+        rotateBone('LeftUpperArm', 0.05, 0, -0.12);
+        rotateBone('LeftLowerArm', -0.15, 0, 0);
+
+        // Đầu nghiêng chào tươi tắn
+        rotateBone('Head', 0.06, -0.12, 0.08);
         break;
       }
 
       case 'sit': {
-        // Tư thế ngồi nghỉ ngơi trên ghế
-        bonesMap.get('LeftUpperLeg')?.rotation.set(-1.4, 0, -0.08);
-        bonesMap.get('LeftLowerLeg')?.rotation.set(1.4, 0, 0);
-        bonesMap.get('RightUpperLeg')?.rotation.set(-1.4, 0, 0.08);
-        bonesMap.get('RightLowerLeg')?.rotation.set(1.4, 0, 0);
+        // --- TƯ THẾ NGỒI THƯ THÁI (Relaxed Seated Pose with Breathing) ---
+        const breathe = Math.sin(t) * 0.025;
 
-        bonesMap.get('LeftUpperArm')?.rotation.set(-0.2, 0, -0.12);
-        bonesMap.get('LeftLowerArm')?.rotation.set(-0.4, 0, 0);
-        bonesMap.get('RightUpperArm')?.rotation.set(-0.2, 0, 0.12);
-        bonesMap.get('RightLowerArm')?.rotation.set(-0.4, 0, 0);
+        rotateBone('Hips', -0.05, 0, 0);
+        rotateBone('Spine', 0.05 + breathe, 0, 0);
+        rotateBone('Chest', 0.04 + breathe, 0, 0);
+
+        // Chân gập 90 độ chuẩn ngồi ghế
+        rotateBone('LeftUpperLeg', -1.52, 0, -0.08);
+        rotateBone('LeftLowerLeg', 1.52, 0, 0);
+        rotateBone('LeftFoot', 0.05, 0, 0);
+
+        rotateBone('RightUpperLeg', -1.52, 0, 0.08);
+        rotateBone('RightLowerLeg', 1.52, 0, 0);
+        rotateBone('RightFoot', 0.05, 0, 0);
+
+        // Tay đặt nhẹ trên đùi
+        rotateBone('LeftUpperArm', -0.22, 0, -0.15);
+        rotateBone('LeftLowerArm', -0.45, 0, 0);
+        rotateBone('RightUpperArm', -0.22, 0, 0.15);
+        rotateBone('RightLowerArm', -0.45, 0, 0);
+
+        rotateBone('Head', 0.04, 0, 0);
         break;
       }
 
       case 't_pose':
       default:
         break;
+    }
+
+    // Force GPU matrix transformation update on all animated bones
+    for (const bone of bonesMap.values()) {
+      bone.updateMatrix();
+      bone.updateMatrixWorld(true);
     }
   }
 }
