@@ -12,6 +12,7 @@ import { MasterSceneConfig, CharacterAssembly, PartMaterialCustomization } from 
 import { AutoRigEngine, AutoRigResult } from '../core/actors/AutoRigEngine';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { ModularOutfitVerticalTabs } from './ModularOutfitVerticalTabs';
 import { MapDesignerPanel } from './MapDesignerPanel';
 import { FaceSliderConfig, DEFAULT_FACE_SLIDERS, fetchLiveCharacterCategories, CharacterCategory } from './CharacterAssetRegistry';
@@ -23,6 +24,8 @@ import { Character3DViewport } from './character/Character3DViewport';
 import { CharacterAnimationTab } from './character/CharacterAnimationTab';
 import { CharacterAutoRigTab } from './character/CharacterAutoRigTab';
 import { FacialBlinkEngine } from '../core/actors/FacialBlinkEngine';
+import { SecondaryPhysicsEngine } from '../core/actors/SecondaryPhysicsEngine';
+import { ProceduralMotionEngine } from '../core/actors/ProceduralMotionEngine';
 
 export { applySlidersToModelGroup };
 
@@ -79,6 +82,9 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   const [showSkeletonHelper, setShowSkeletonHelper] = useState<boolean>(false);
   const [hasBones, setHasBones] = useState<boolean>(false);
   const [totalBonesCount, setTotalBonesCount] = useState<number>(0);
+  const [secondaryBonesInfo, setSecondaryBonesInfo] = useState<{ totalSecondary: number; hairCount: number; clothCount: number }>({ totalSecondary: 0, hairCount: 0, clothCount: 0 });
+  const [physicsEnabled, setPhysicsEnabled] = useState<boolean>(true);
+  const [physicsIntensity, setPhysicsIntensity] = useState<number>(1.0);
 
   // Live Refs to prevent stale closure in 60 FPS requestAnimationFrame loop
   const activeTabRef = useRef(activeTab);
@@ -101,6 +107,12 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
   const showSkeletonHelperRef = useRef(showSkeletonHelper);
   showSkeletonHelperRef.current = showSkeletonHelper;
+
+  const physicsEnabledRef = useRef(physicsEnabled);
+  physicsEnabledRef.current = physicsEnabled;
+
+  const physicsIntensityRef = useRef(physicsIntensity);
+  physicsIntensityRef.current = physicsIntensity;
 
   // --- 3. MAP BUILDER STATE ---
   const [selectedMapPath, setSelectedMapPath] = useState<string>((scene.environment?.map || 'assets/ban_do/cathedral.glb').replace(/^assets\/maps\//, 'assets/ban_do/'));
@@ -396,7 +408,15 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
         const textEl = document.getElementById('character-anim-progress-text');
         if (barEl) barEl.style.width = `${Math.round(currentProgress * 100)}%`;
         if (textEl) textEl.textContent = `${Math.round(currentProgress * 100)}%`;
-        AutoRigEngine.applyTestPose(activeRig.bonesMap, pose, currentProgress);
+        ProceduralMotionEngine.applyMotion(activeRig.bonesMap, pose, currentProgress);
+      }
+
+      // Secondary Physics Update for Hair, Skirts, Dresses, Overcoats & Dynamic Accessories
+      if (currentPreviewGroupRef.current) {
+        SecondaryPhysicsEngine.update(currentPreviewGroupRef.current, now / 1000, delta, {
+          enabled: physicsEnabledRef.current,
+          intensity: physicsIntensityRef.current,
+        });
       }
 
       // Natural eye blinking & facial dynamics update
@@ -640,6 +660,8 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
 
         if (bCount > 0) {
           nativeRigResultRef.current = AutoRigEngine.rigModel(group);
+          const secBones = SecondaryPhysicsEngine.getSecondaryBonesCount(group);
+          setSecondaryBonesInfo(secBones);
           if (skeletonHelperRef.current && previewScene) {
             previewScene.remove(skeletonHelperRef.current);
             skeletonHelperRef.current = null;
@@ -721,11 +743,20 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     setIsRiggingLoading(true);
     try {
       const previewScene = previewSceneRef.current;
+      let rawModel: THREE.Group | THREE.Object3D;
+
+      if (currentPreviewGroupRef.current && (!modelToRig || modelToRig === assembly?.than_co_ban || modelToRig === assembly?.base_body)) {
+        // Auto-Rig entire assembled character using SkeletonUtils for deep bone cloning
+        rawModel = SkeletonUtils.clone(currentPreviewGroupRef.current) as THREE.Group;
+      } else {
+        rawModel = await AssetLoaderRegistry.loadCharacterPart(modelToRig);
+      }
+
       if (currentPreviewGroupRef.current) {
         previewScene.remove(currentPreviewGroupRef.current);
         currentPreviewGroupRef.current = null;
       }
-      const rawModel = await AssetLoaderRegistry.loadCharacterPart(modelToRig);
+
       const rigResult = AutoRigEngine.rigModel(rawModel);
       rigResultRef.current = rigResult;
       currentPreviewGroupRef.current = rigResult.rootGroup;
@@ -915,8 +946,18 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
             {activeTab === 'rigging' && (
               <CharacterAutoRigTab
                 availableCategories={availableCategories}
+                assembly={assembly}
+                onAssemblyChange={(updatedAssembly) => setAssembly(updatedAssembly)}
+                currentPreviewGroupRef={currentPreviewGroupRef}
                 modelToRig={modelToRig}
-                onSelectModelToRig={setModelToRig}
+                onSelectModelToRig={(modelPath) => {
+                  setAssembly((prev) => ({
+                    ...prev,
+                    than_co_ban: modelPath,
+                    base_body: modelPath,
+                  }));
+                  setModelToRig(modelPath);
+                }}
                 isRigged={isRigged}
                 isRiggingLoading={isRiggingLoading}
                 onRunAutoRig={handleRunAutoRig}
@@ -953,6 +994,11 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                 onToggleSkeletonHelper={() => setShowSkeletonHelper((prev) => !prev)}
                 hasBones={hasBones}
                 totalBonesCount={totalBonesCount}
+                secondaryBonesInfo={secondaryBonesInfo}
+                physicsEnabled={physicsEnabled}
+                onTogglePhysics={setPhysicsEnabled}
+                physicsIntensity={physicsIntensity}
+                onChangePhysicsIntensity={setPhysicsIntensity}
                 currentModelPath={assembly?.than_co_ban || assembly?.base_body || modelToRig}
                 onSelectModel={(modelPath) => {
                   setAssembly((prev) => ({
@@ -968,12 +1014,8 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
             {activeTab === 'map' && (
               <MapDesignerPanel
                 scene={scene}
-                selectedMapPath={selectedMapPath}
-                selectedSkyTime={selectedSkyTime}
-                onSelectMapPath={setSelectedMapPath}
-                onSelectSkyTime={setSelectedSkyTime}
-                onApplyMapPreset={handleApplyMapPreset}
-                isAppliedSuccess={isAppliedSuccess}
+                onUpdateScene={onUpdateScene}
+                onSelectMap={setSelectedMapPath}
               />
             )}
           </div>

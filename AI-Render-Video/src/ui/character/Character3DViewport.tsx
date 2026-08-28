@@ -352,16 +352,31 @@ export const Character3DViewport: React.FC<Character3DViewportProps> = ({
                     cursor: 'pointer',
                   }}
                 >
-                  <option value="idle">🧘 Dáng Đứng Thở Sống Động (Idle)</option>
-                  <option value="walk">🚶 Dáng Đi Chuẩn Điện Ảnh (Walk)</option>
-                  <option value="run">🏃 Chạy Nhanh Hành Động (Sprint)</option>
-                  <option value="slash">⚔️ Xuất Chiêu Kiếm Pháp (Slash)</option>
-                  <option value="cast_spell">✨ Niệm Chú Pháp Thuật (Cast Spell)</option>
-                  <option value="defend">🛡️ Thế Thủ Võ Thuật (Guard)</option>
-                  <option value="dance">💃 Vũ Đạo Nhịp Điệu (Dance)</option>
-                  <option value="wave">👋 Vẫy Tay Chào (Wave)</option>
-                  <option value="sit">🪑 Tư Thế Ngồi (Sit)</option>
-                  <option value="t_pose">🤸 T-Pose (Chuẩn)</option>
+                  <optgroup label="🌸 Nữ Tính & Anime (Female)">
+                    <option value="female_idle">🌸 Dáng Nữ Đứng Duyên Dáng</option>
+                    <option value="female_walk">👠 Bước Đi Nữ Tính Catwalk</option>
+                    <option value="female_run">🎀 Chạy Nữ Anime Dễ Thương</option>
+                    <option value="female_dance">💃 Vũ Đạo Idol K-Pop</option>
+                    <option value="female_cast_spell">✨ Niệm Phép Tiên Nữ</option>
+                    <option value="female_wave">👋 Nữ Vẫy Tay E Thẹn</option>
+                    <option value="female_sit">🪑 Ngồi Bắt Chéo Chân</option>
+                    <option value="female_archer">🏹 Nữ Cung Thủ Giương Cung</option>
+                  </optgroup>
+                  <optgroup label="⚔️ Nam Tính & Chiến Binh (Male)">
+                    <option value="male_idle">🛡️ Dáng Nam Đứng Vững Chãi</option>
+                    <option value="male_walk">🚶‍♂️ Sải Bước Oai Phong (Power Walk)</option>
+                    <option value="male_run">🏃‍♂️ Chạy Nhanh Chiến Binh (Sprint)</option>
+                    <option value="male_slash">⚔️ Trảm Kích Kiếm Pháp</option>
+                    <option value="male_guard">🥊 Thế Thủ Quyền Cước</option>
+                    <option value="male_charge">🔥 Tụ Khí Gồng Lực</option>
+                    <option value="male_salute">🤝 Bái Quyền Kỵ Sĩ</option>
+                    <option value="male_sit">👑 Ngồi Tướng Quân Bệ Vệ</option>
+                  </optgroup>
+                  <optgroup label="🎭 Chung & Biểu Cảm (Universal)">
+                    <option value="victory_jump">🎉 Nhảy Mừng Chiến Thắng</option>
+                    <option value="exhausted">😮‍💨 Thở Dốc Mệt Mỏi</option>
+                    <option value="t_pose">🤸 T-Pose (Chuẩn)</option>
+                  </optgroup>
                 </select>
               </div>
             )}

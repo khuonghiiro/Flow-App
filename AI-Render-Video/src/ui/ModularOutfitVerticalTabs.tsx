@@ -42,6 +42,7 @@ import { CharacterHUDCard } from './character/CharacterHUDCard';
 import { CharacterProfileModal, CustomAttributeItem } from './character/CharacterProfileModal';
 import { PartMaterialPanel, AvailablePartItem } from './character/PartMaterialPanel';
 import { SelectedPartInfo } from './workbench/Interactive3DPartSelector';
+import { NativeFileDialogHelper } from '../utils/NativeFileDialogHelper';
 
 interface ModularOutfitVerticalTabsProps {
   scene: MasterSceneConfig;
