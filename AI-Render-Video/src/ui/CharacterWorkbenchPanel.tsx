@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import {
   Wrench,
@@ -15,14 +15,20 @@ import {
   Loader,
   Grid,
   Box,
+  MousePointerClick,
+  Move3D,
+  Palette,
 } from 'lucide-react';
-import { MasterSceneConfig, CharacterAssembly } from '../types/scene';
+import { MasterSceneConfig, CharacterAssembly, PartMaterialCustomization } from '../types/scene';
 import { AutoRigEngine, AutoRigResult } from '../core/actors/AutoRigEngine';
 import { AssetLoaderRegistry } from '../core/assets/AssetLoaderRegistry';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ModularOutfitVerticalTabs } from './ModularOutfitVerticalTabs';
 import { MapDesignerPanel } from './MapDesignerPanel';
 import { FaceSliderConfig, DEFAULT_FACE_SLIDERS, fetchLiveCharacterCategories, CharacterCategory } from './CharacterAssetRegistry';
+import { Interactive3DPartSelector, SelectedPartInfo } from './workbench/Interactive3DPartSelector';
+import { AvailablePartItem } from './character/PartMaterialPanel';
+import { MaterialOverrideEngine } from '../core/materials/MaterialOverrideEngine';
 
 interface CharacterWorkbenchPanelProps {
   scene: MasterSceneConfig;
@@ -99,6 +105,11 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
   const [showFloorGrid, setShowFloorGrid] = useState<boolean>(true);
   const [showWireframe, setShowWireframe] = useState<boolean>(false);
 
+  // 3D Viewport Interaction Mode: 'orbit' (camera rotation) vs 'select' (touch part selection)
+  const [viewportMode, setViewportMode] = useState<'orbit' | 'select'>('orbit');
+  const [selectedPartInfo, setSelectedPartInfo] = useState<SelectedPartInfo | null>(null);
+  const partSelectorRef = useRef<Interactive3DPartSelector>(new Interactive3DPartSelector());
+
   // Facial slider state with LocalStorage persistence
   const [faceSliders, setFaceSliders] = useState<FaceSliderConfig>(() => {
     try {
@@ -125,12 +136,127 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     }
   }, [showFloorGrid]);
 
+  // Sync Controls with Interaction Mode
+  useEffect(() => {
+    if (previewControlsRef.current) {
+      previewControlsRef.current.enabled = viewportMode === 'orbit';
+    }
+  }, [viewportMode]);
+
+  // Canvas Click Handler for Touch-Selecting Mesh Parts
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (viewportMode !== 'select' || !canvasContainerRef.current || !previewCameraRef.current || !previewSceneRef.current) return;
+
+    const hit = partSelectorRef.current.hitTest(
+      e,
+      canvasContainerRef.current,
+      previewCameraRef.current,
+      previewSceneRef.current
+    );
+
+    if (hit) {
+      setSelectedPartInfo(hit);
+      partSelectorRef.current.attachHighlight(hit.mesh, previewSceneRef.current);
+    } else {
+      setSelectedPartInfo(null);
+      partSelectorRef.current.removeHighlight(previewSceneRef.current);
+    }
+  };
+
+  // Material Override Application & Sync
+  const handleApplyMaterialOverride = (meshKey: string, override: PartMaterialCustomization) => {
+    const nextOverrides = {
+      ...(assembly.material_overrides || {}),
+      [meshKey]: override,
+    };
+    const nextAss = {
+      ...assembly,
+      material_overrides: nextOverrides,
+    };
+    setAssembly(nextAss);
+    MaterialOverrideEngine.applyMaterialOverrides(previewSceneRef.current, nextOverrides);
+  };
+
+  const handleResetMaterialOverride = (meshKey: string) => {
+    const nextOverrides = { ...(assembly.material_overrides || {}) };
+    delete nextOverrides[meshKey];
+    const nextAss = {
+      ...assembly,
+      material_overrides: nextOverrides,
+    };
+    setAssembly(nextAss);
+    MaterialOverrideEngine.applyMaterialOverrides(previewSceneRef.current, nextOverrides);
+  };
+
+  const [availableParts, setAvailableParts] = useState<AvailablePartItem[]>([]);
+
+  // Collect all mesh parts from the 3D scene whenever models finish loading
+  useEffect(() => {
+    if (!previewSceneRef.current) return;
+    const parts: AvailablePartItem[] = [];
+    const seen = new Set<string>();
+
+    previewSceneRef.current.traverse((c) => {
+      if ((c as THREE.Mesh).isMesh) {
+        const mesh = c as THREE.Mesh;
+        const rawKey = mesh.name || mesh.parent?.name || '';
+        if (!rawKey || seen.has(rawKey) || (mesh as any).isGridHelper || (mesh as any).isBoxHelper || (mesh as any).isLine) return;
+        seen.add(rawKey);
+
+        const friendly = Interactive3DPartSelector.getPartFriendlyInfo(mesh);
+        parts.push({
+          key: rawKey,
+          name: friendly.displayName,
+          categoryLabel: friendly.categoryLabel,
+          categoryIcon: friendly.categoryIcon,
+        });
+      }
+    });
+
+    setAvailableParts(parts);
+  }, [assembly, isPreviewLoading]);
+
+  // Handler to select a part by key (e.g. from the right panel part list)
+  const handleSelectPartKey = (partKey: string) => {
+    if (!previewSceneRef.current) return;
+    let foundMesh: THREE.Mesh | null = null;
+    previewSceneRef.current.traverse((c) => {
+      if (!foundMesh && (c as THREE.Mesh).isMesh) {
+        const mesh = c as THREE.Mesh;
+        if (mesh.name === partKey || mesh.parent?.name === partKey) {
+          foundMesh = mesh;
+        }
+      }
+    });
+
+    if (foundMesh) {
+      const friendly = Interactive3DPartSelector.getPartFriendlyInfo(foundMesh);
+      const override = (assembly.material_overrides || {})[partKey] || {};
+      setSelectedPartInfo({
+        mesh: foundMesh,
+        meshKey: partKey,
+        displayName: friendly.displayName,
+        categoryLabel: friendly.categoryLabel,
+        categoryIcon: friendly.categoryIcon,
+        initialColor: override.color || '#ffffff',
+        initialRoughness: override.roughness ?? 0.6,
+        initialMetalness: override.metalness ?? 0.05,
+        initialEmissive: override.emissive || '#000000',
+        initialEmissiveIntensity: override.emissiveIntensity ?? 0.0,
+        initialWireframe: override.wireframe ?? false,
+        initialVisible: override.visible ?? true,
+      });
+      partSelectorRef.current.attachHighlight(foundMesh, previewSceneRef.current);
+    }
+  };
+
   // Sync Facial Sliders & Wireframe to 3D Preview Models
   useEffect(() => {
     if (previewSceneRef.current) {
       applySlidersToModelGroup(previewSceneRef.current, faceSliders, showWireframe);
+      MaterialOverrideEngine.applyMaterialOverrides(previewSceneRef.current, assembly.material_overrides);
     }
-  }, [showWireframe, baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity]);
+  }, [showWireframe, baseFaceOpacity, eyebrowOpacity, pupilOpacity, noseOpacity, mouthOpacity, skinSmoothness, costumeOpacity, assembly.material_overrides]);
 
   // Khi chọn face mới: Tự động cho mặt cũ, mắt, mũi, miệng, lông mày gốc về 0% để dùng trọn vẹn Face mới
   const handleSelectFace = (newFacePath: string) => {
@@ -327,6 +453,17 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     };
   }, [activeTab]);
 
+  // Memoized 3D Model Asset Paths Signature:
+  // Dynamically tracks all asset parts in assembly (excluding non-model sliders/materials), completely preventing unwanted reloads on slider or color edits!
+  const assetPartsSignature = useMemo(() => {
+    if (!assembly || typeof assembly !== 'object') return '';
+    return Object.entries(assembly)
+      .filter(([k]) => k !== 'material_overrides' && k !== 'sliders' && k !== 'skin_color' && k !== 'hair_color' && k !== 'eye_color')
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}:${Array.isArray(v) ? v.join(',') : v}`)
+      .join('|');
+  }, [assembly]);
+
   // Update 3D Preview when Modular Selection changes (with Face Z-Fighting Fix)
   useEffect(() => {
     if (!previewSceneRef.current || activeTab !== 'modular') return;
@@ -348,68 +485,99 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     const partsToLoad: { key: string; path: string }[] = [];
     if (assembly && typeof assembly === 'object') {
       for (const [key, val] of Object.entries(assembly)) {
-        if (key === 'sliders' || key === 'skin_color' || key === 'hair_color' || key === 'eye_color') continue;
+        if (key === 'sliders' || key === 'skin_color' || key === 'hair_color' || key === 'eye_color' || key === 'material_overrides') continue;
         if (key === 'base_body' && assembly.than_co_ban) continue;
         if (key === 'costume' && assembly.trang_phuc) continue;
         if (key === 'face' && assembly.khuon_mat) continue;
         if (key === 'hairstyle' && assembly.kieu_toc) continue;
+        if (key === 'beard' && assembly.kieu_rau) continue;
+        if (key === 'shoes' && assembly.giay_dep) continue;
+        if (key === 'hat' && assembly.mu_non) continue;
+        if (key === 'eyebrow' && assembly.long_may) continue;
+        if (key === 'eye' && assembly.mat) continue;
+        if (key === 'nose' && assembly.mui) continue;
+        if (key === 'mouth' && assembly.mieng) continue;
 
-        if (typeof val === 'string' && val.trim()) {
-          partsToLoad.push({ key, path: val });
-        } else if (Array.isArray(val)) {
+        if (Array.isArray(val)) {
           val.forEach((p, idx) => {
-            if (typeof p === 'string' && p.trim()) {
-              partsToLoad.push({ key: `${key}_${idx}`, path: p });
-            }
+            if (typeof p === 'string' && p.trim()) partsToLoad.push({ key: `${key}_${idx}`, path: p });
           });
+        } else if (typeof val === 'string' && val.trim()) {
+          partsToLoad.push({ key, path: val });
         }
       }
     }
 
-    if (!partsToLoad.some(p => p.key === 'than_co_ban' || p.key === 'base_body' || p.key === 'body')) {
-      const bodyPath = firstActor?.model || availableCategories.find(c => c.id === 'than_co_ban')?.items[0]?.path || '';
+    // Always ensure Base Body is loaded if not explicitly present in assembly
+    if (!partsToLoad.some((p) => p.key === 'than_co_ban' || p.key === 'base_body' || p.key === 'body')) {
+      const bodyPath =
+        firstActor?.model ||
+        availableCategories.find((c) => c.id === 'than_co_ban')?.items[0]?.path ||
+        '';
       if (bodyPath) {
         partsToLoad.unshift({ key: 'than_co_ban', path: bodyPath });
       }
     }
 
+    if (partsToLoad.length === 0) {
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    // Tải an toàn tất cả các bộ phận modular (Base Body, Trang Phục, Tóc, Khuôn Mặt, Mắt...)
     Promise.all(
-      partsToLoad.map(async (p) => {
+      partsToLoad.map(async ({ key, path }) => {
         try {
-          const model = await AssetLoaderRegistry.loadCharacterPart(p.path);
-          return { key: p.key, model };
+          const model = await AssetLoaderRegistry.loadCharacterPart(path);
+          return { key, path, model };
         } catch (err) {
-          console.warn(`[Workbench] Không thể tải bộ phận ${p.key} (${p.path}):`, err);
+          console.warn(`[Workbench] Không thể tải bộ phận ${key} (${path}):`, err);
           return null;
         }
       })
     )
       .then((results) => {
         if (!isMounted) return;
-        const loadedList = results.filter((item): item is { key: string; model: THREE.Group } => item !== null);
+        const loadedList = results.filter(
+          (item): item is { key: string; path: string; model: THREE.Group } => item !== null
+        );
 
-        const hasFace = loadedList.some((item) => item.key === 'khuon_mat' || item.key === 'face' || item.key.includes('face'));
-        const bodyItem = loadedList.find((item) => item.key === 'than_co_ban' || item.key === 'base_body' || item.key === 'body');
-        const faceItem = loadedList.find((item) => item.key === 'khuon_mat' || item.key === 'face' || item.key.includes('face'));
+        if (loadedList.length === 0) {
+          setIsPreviewLoading(false);
+          return;
+        }
 
-        // Dynamic Anatomical Snapping: Khớp chính xác vị trí và chiều cao của Face theo Body (Nam/Nữ)
-        if (bodyItem && faceItem) {
-          bodyItem.model.updateMatrixWorld(true);
-          faceItem.model.updateMatrixWorld(true);
+        // XỬ LÝ KHUÔN MẶT LẮP RÁP (FACE ATTACHMENT & AUTO-SNAP)
+        const faceItem = loadedList.find(
+          (item) => item.key === 'khuon_mat' || item.key === 'face'
+        );
+        const hasFace = Boolean(faceItem);
+
+        if (faceItem) {
+          const bodyItem = loadedList.find(
+            (item) =>
+              item.key === 'than_co_ban' ||
+              item.key === 'base_body' ||
+              item.key === 'body'
+          );
 
           let bodyFaceMesh: THREE.Mesh | null = null;
-          bodyItem.model.traverse((c) => {
-            if ((c as THREE.Mesh).isMesh && !bodyFaceMesh) {
-              const mesh = c as THREE.Mesh;
-              const n = mesh.name.toLowerCase();
-              const p = (mesh.parent?.name || '').toLowerCase();
-              const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-              const m = mats.map((mat: any) => mat?.name?.toLowerCase() || '').join(' ');
-              if (n.includes('face') || p.includes('face') || m.includes('face')) {
-                bodyFaceMesh = mesh;
+          if (bodyItem) {
+            bodyItem.model.traverse((c) => {
+              if ((c as THREE.Mesh).isMesh) {
+                const nodeName = c.name.toLowerCase();
+                const parentName = (c.parent?.name || '').toLowerCase();
+                if (
+                  nodeName.includes('face') ||
+                  nodeName.includes('head') ||
+                  parentName.includes('face') ||
+                  parentName.includes('head')
+                ) {
+                  if (!bodyFaceMesh) bodyFaceMesh = c as THREE.Mesh;
+                }
               }
-            }
-          });
+            });
+          }
 
           let addonFaceMesh: THREE.Mesh | null = null;
           faceItem.model.traverse((c) => {
@@ -500,8 +668,9 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
           group.position.set(-center.x, -bbox.min.y, -center.z);
         }
 
-        // Instantly apply face sliders to newly loaded model without needing manual slider drag!
+        // Instantly apply face sliders and custom material overrides to newly loaded model!
         applySlidersToModelGroup(group, faceSliders, showWireframe);
+        MaterialOverrideEngine.applyMaterialOverrides(group, assembly?.material_overrides);
 
         setIsPreviewLoading(false);
       })
@@ -513,7 +682,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
     return () => {
       isMounted = false;
     };
-  }, [assembly, activeTab, sceneReadyToken]);
+  }, [assetPartsSignature, activeTab, sceneReadyToken]);
 
   // Execute Auto-Rigging on Selected Model
   const handleRunAutoRig = async () => {
@@ -737,6 +906,50 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   <Sparkles size={14} /> 3D Character Viewport
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {/* Mode Toggle: Orbit Camera vs Touch-Select Parts */}
+                  <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)' }}>
+                    <button
+                      onClick={() => {
+                        setViewportMode('orbit');
+                        setSelectedPartInfo(null);
+                        if (previewSceneRef.current) partSelectorRef.current.removeHighlight(previewSceneRef.current);
+                      }}
+                      title="Chế độ Xoay Camera 360°"
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        background: viewportMode === 'orbit' ? 'rgba(56, 189, 248, 0.25)' : 'transparent',
+                        color: viewportMode === 'orbit' ? '#38bdf8' : '#94a3b8',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <Move3D size={11} /> Xoay 3D
+                    </button>
+                    <button
+                      onClick={() => setViewportMode('select')}
+                      title="Chế độ Click chạm vào bộ phận để đổi màu & chỉnh chất liệu"
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        background: viewportMode === 'select' ? 'rgba(168, 85, 247, 0.25)' : 'transparent',
+                        color: viewportMode === 'select' ? '#c084fc' : '#94a3b8',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <MousePointerClick size={11} /> Chạm Chọn Sửa
+                    </button>
+                  </div>
+
                   <button
                     onClick={() => setShowFloorGrid((prev) => !prev)}
                     title={showFloorGrid ? "Ẩn lưới sàn" : "Hiện lưới sàn"}
@@ -803,7 +1016,17 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
               </div>
 
               {/* 3D Canvas Container */}
-              <div style={{ flex: 1, position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden' }}>
+              <div
+                onClick={handleCanvasClick}
+                style={{
+                  flex: 1,
+                  position: 'relative',
+                  width: '100%',
+                  minHeight: 0,
+                  overflow: 'hidden',
+                  cursor: viewportMode === 'select' ? 'pointer' : 'default',
+                }}
+              >
                 <div ref={canvasContainerRef} style={{ width: '100%', height: '100%' }} />
 
                 {isPreviewLoading && (
@@ -821,6 +1044,7 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                       color: '#38bdf8',
                       fontWeight: 600,
                       fontSize: 12,
+                      zIndex: 30,
                     }}
                   >
                     <Loader size={24} className="animate-spin" />
@@ -828,21 +1052,38 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   </div>
                 )}
 
-                {/* Mouse Orbit Hint */}
+                {/* Interaction Mode Hint */}
                 <div
                   style={{
                     position: 'absolute',
                     top: 8,
                     left: 8,
                     fontSize: 10,
-                    color: 'rgba(255,255,255,0.5)',
+                    color: viewportMode === 'select' ? '#c084fc' : 'rgba(255,255,255,0.6)',
                     pointerEvents: 'none',
-                    background: 'rgba(0,0,0,0.4)',
-                    padding: '3px 8px',
-                    borderRadius: 4,
+                    background: viewportMode === 'select' ? 'rgba(88, 28, 135, 0.6)' : 'rgba(0,0,0,0.5)',
+                    border: viewportMode === 'select' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(255,255,255,0.1)',
+                    backdropFilter: 'blur(4px)',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    zIndex: 20,
                   }}
                 >
-                  🖱️ Chuột trái: Xoay 360° | Cuộn: Zoom
+                  {viewportMode === 'select' ? (
+                    <>
+                      <MousePointerClick size={12} />
+                      <span>Chế độ Chạm Chọn: Click trực tiếp vào Áo, Quần, Giày, Tóc... để đổi màu & chất liệu ở cột bên phải</span>
+                    </>
+                  ) : (
+                    <>
+                      <Move3D size={12} />
+                      <span>Chế độ Xoay 3D: Chuột trái xoay 360° | Cuộn chuột để Zoom</span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -924,6 +1165,12 @@ export const CharacterWorkbenchPanel: React.FC<CharacterWorkbenchPanelProps> = (
                   sliders={faceSliders}
                   onSlidersChange={handleFaceSlidersChange}
                   onCaptureSnapshot={handleCaptureSnapshot}
+                  selectedPartInfo={selectedPartInfo}
+                  onSelectPartKey={handleSelectPartKey}
+                  isTouchSelectActive={viewportMode === 'select'}
+                  availableParts={availableParts}
+                  onApplyMaterialOverride={handleApplyMaterialOverride}
+                  onResetMaterialOverride={handleResetMaterialOverride}
                 />
               )}
 

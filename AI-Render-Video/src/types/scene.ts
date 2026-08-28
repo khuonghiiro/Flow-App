@@ -258,6 +258,17 @@ export interface FaceSliderConfig {
   costumeOpacity: number;
 }
 
+export interface PartMaterialCustomization {
+  color?: string;               // Hex color tint (e.g. "#ff0055" or "#00ffcc")
+  roughness?: number;           // 0.0 to 1.0 (0 = glossy, 1 = matte)
+  metalness?: number;           // 0.0 to 1.0 (0 = dielectric, 1 = metallic)
+  emissive?: string;            // Hex emissive glow color (e.g. "#00e5ff")
+  emissiveIntensity?: number;   // 0.0 to 5.0 (Glow power)
+  wireframe?: boolean;          // Bật/tắt wireframe cho riêng mesh part này
+  visible?: boolean;            // Bật/tắt ẩn hiện mesh part này
+  opacity?: number;             // 0.0 to 1.0 (Độ trong suốt)
+}
+
 /** Lắp ráp nhân vật từ các parts modular - hoàn toàn động theo cấu hình thư mục & asset_structure.json */
 export interface CharacterAssembly {
   base_body?: string;          // Alias chuẩn cho than_co_ban
@@ -276,6 +287,7 @@ export interface CharacterAssembly {
   skin_color?: string;         // "#ffd1b3"
   hair_color?: string;         // "#1a1a2e"
   eye_color?: string;          // "#4a90d9"
+  material_overrides?: Record<string, PartMaterialCustomization>; // Tùy chỉnh màu sắc & vật liệu PBR cho từng bộ phận mesh
   // Dynamic arbitrary parts: any category ID or folder name from asset_structure.json (e.g. 'canh', 'duoi', 'ao_choang', 'vu_khi', etc.)
   [categoryKey: string]: any;
 }

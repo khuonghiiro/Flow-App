@@ -21,6 +21,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  Palette,
 } from 'lucide-react';
 import {
   CHARACTER_CATEGORIES,
@@ -34,11 +35,13 @@ import {
   CharacterSkillItem,
   buildCharacterProfile,
 } from './CharacterAssetRegistry';
-import { MasterSceneConfig, ActorConfig, CharacterAssembly, CharacterProfileData } from '../types/scene';
+import { MasterSceneConfig, ActorConfig, CharacterAssembly, CharacterProfileData, PartMaterialCustomization } from '../types/scene';
 import { Live3DThumbnail } from './Live3DThumbnail';
 import { PresetsBar, CustomPreset } from './character/PresetsBar';
 import { CharacterHUDCard } from './character/CharacterHUDCard';
 import { CharacterProfileModal, CustomAttributeItem } from './character/CharacterProfileModal';
+import { PartMaterialPanel, AvailablePartItem } from './character/PartMaterialPanel';
+import { SelectedPartInfo } from './workbench/Interactive3DPartSelector';
 
 interface ModularOutfitVerticalTabsProps {
   scene: MasterSceneConfig;
@@ -48,6 +51,12 @@ interface ModularOutfitVerticalTabsProps {
   sliders: FaceSliderConfig;
   onSlidersChange: (sliders: FaceSliderConfig) => void;
   onCaptureSnapshot?: () => string;
+  selectedPartInfo?: SelectedPartInfo | null;
+  onSelectPartKey?: (partKey: string) => void;
+  isTouchSelectActive?: boolean;
+  availableParts?: AvailablePartItem[];
+  onApplyMaterialOverride?: (meshKey: string, override: PartMaterialCustomization) => void;
+  onResetMaterialOverride?: (meshKey: string) => void;
 }
 
 export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps> = ({
@@ -58,6 +67,12 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   sliders,
   onSlidersChange,
   onCaptureSnapshot,
+  selectedPartInfo,
+  onSelectPartKey,
+  isTouchSelectActive = false,
+  availableParts = [],
+  onApplyMaterialOverride,
+  onResetMaterialOverride,
 }) => {
   const [categories, setCategories] = useState<CharacterCategory[]>(CHARACTER_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState('than_co_ban');
@@ -66,13 +81,20 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
   const [useSharedFaceSliders, setUseSharedFaceSliders] = useState(true);
   const [selectedActorId, setSelectedActorId] = useState(scene.actors[0]?.id || '');
 
+  // Automatically switch to Material Customizer tab when a 3D part is touched/selected
+  useEffect(() => {
+    if (selectedPartInfo) {
+      setActiveCategoryId('_materials');
+    }
+  }, [selectedPartInfo]);
+
   // Visible categories filtered by empty count (always show _lap_rap and key tabs)
   const visibleCategories = hideEmptyCategories
     ? categories.filter((cat) => cat.id === '_lap_rap' || cat.id === 'nhan_vat_lap_rap' || cat.id === 'than_co_ban' || cat.id === 'trang_phuc' || filterByGender(cat.items, genderFilter).length > 0)
     : categories;
 
   useEffect(() => {
-    if (activeCategoryId !== '_sliders') {
+    if (activeCategoryId !== '_sliders' && activeCategoryId !== '_materials') {
       const isCurrentVisible = visibleCategories.some((c) => c.id === activeCategoryId);
       if (!isCurrentVisible && visibleCategories.length > 0) {
         setActiveCategoryId(visibleCategories[0].id);
@@ -839,6 +861,38 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
               </button>
             );
           })}
+          {/* Material Customizer Tab: Only show when touch select is active or material overrides exist or part is selected */}
+          {(isTouchSelectActive || selectedPartInfo || (assembly.material_overrides && Object.keys(assembly.material_overrides).length > 0)) && (
+            <button
+              onClick={() => setActiveCategoryId('_materials')}
+              title="Chỉnh sửa Màu Sắc & Vật Liệu PBR từng bộ phận"
+              style={{
+                width: '100%',
+                minHeight: 40,
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 8px',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: 6,
+                borderLeft: activeCategoryId === '_materials' ? '3px solid #a855f7' : '3px solid transparent',
+                background: activeCategoryId === '_materials' ? 'rgba(168, 85, 247, 0.22)' : 'rgba(168, 85, 247, 0.08)',
+                color: activeCategoryId === '_materials' ? '#c084fc' : '#d8b4fe',
+                boxSizing: 'border-box',
+                transition: 'all 0.15s ease',
+                boxShadow: activeCategoryId === '_materials' ? '0 0 12px rgba(168, 85, 247, 0.3)' : 'none',
+              }}
+            >
+              <Palette size={16} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', overflow: 'hidden', flex: 1 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Màu & Vật Liệu</span>
+                <span style={{ fontSize: 8, color: activeCategoryId === '_materials' ? '#c084fc' : '#a855f7', fontWeight: 600 }}>PBR & Glow</span>
+              </div>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveCategoryId('_sliders')}
             title="Cấu Hình Slider Khuôn Mặt"
@@ -872,7 +926,16 @@ export const ModularOutfitVerticalTabs: React.FC<ModularOutfitVerticalTabsProps>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           {/* 1. Items Grid / Sliders / Assembled Characters Area */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }}>
-            {activeCategoryId === '_sliders' ? (
+            {activeCategoryId === '_materials' ? (
+              <PartMaterialPanel
+                assembly={assembly}
+                selectedPart={selectedPartInfo || null}
+                availableParts={availableParts}
+                onSelectPartKey={(key) => onSelectPartKey && onSelectPartKey(key)}
+                onApplyOverride={(key, ov) => onApplyMaterialOverride && onApplyMaterialOverride(key, ov)}
+                onResetOverride={(key) => onResetMaterialOverride && onResetMaterialOverride(key)}
+              />
+            ) : activeCategoryId === '_sliders' ? (
               <SlidersPanel
                 sliders={currentSliders}
                 sliderDefs={SLIDER_DEFS}
@@ -1212,6 +1275,131 @@ function ItemsGrid({ items, selectedPath, onSelect, fallbackIcon }: {
   );
 }
 
+function SliderRow({
+  def,
+  val,
+  quickPresets,
+  onChange,
+}: {
+  def: {
+    key: keyof FaceSliderConfig;
+    label: string;
+    icon: string;
+    min: number;
+    description: string;
+    color: string;
+  };
+  val: number;
+  quickPresets: number[];
+  onChange: (key: keyof FaceSliderConfig, value: number) => void;
+}) {
+  const [localVal, setLocalVal] = useState(val);
+
+  useEffect(() => {
+    setLocalVal(val);
+  }, [val]);
+
+  const percent = Math.round(localVal * 100);
+
+  const handleCommit = (newVal: number) => {
+    setLocalVal(newVal);
+    onChange(def.key, newVal);
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        padding: '8px 12px',
+        borderRadius: 8,
+        background: 'rgba(255, 255, 255, 0.025)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+        transition: 'all 0.15s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 14 }}>{def.icon}</span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>{def.label}</span>
+            <span style={{ fontSize: 9, color: '#64748b' }}>{def.description}</span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 44,
+            padding: '2px 6px',
+            borderRadius: 6,
+            background: percent === 0 ? 'rgba(239, 68, 68, 0.15)' : percent === 100 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.15)',
+            border: `1px solid ${percent === 0 ? 'rgba(239, 68, 68, 0.3)' : percent === 100 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(56, 189, 248, 0.3)'}`,
+            color: percent === 0 ? '#f87171' : percent === 100 ? '#34d399' : '#38bdf8',
+            fontSize: 11,
+            fontWeight: 800,
+          }}
+        >
+          {percent}%
+        </div>
+      </div>
+
+      {/* Smooth Range Slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
+        <input
+          type="range"
+          min={def.min}
+          max={1.0}
+          step={0.01}
+          value={localVal}
+          onChange={(e) => setLocalVal(parseFloat(e.target.value))}
+          onPointerUp={() => handleCommit(localVal)}
+          onMouseUp={() => handleCommit(localVal)}
+          onTouchEnd={() => handleCommit(localVal)}
+          onKeyUp={() => handleCommit(localVal)}
+          style={{
+            flex: 1,
+            accentColor: def.color,
+            height: 5,
+            cursor: 'pointer',
+          }}
+        />
+      </div>
+
+      {/* Quick Preset Buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+        {quickPresets.map((preset) => {
+          const isPresetActive = Math.abs(localVal - preset) < 0.03;
+          return (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => handleCommit(preset)}
+              style={{
+                flex: 1,
+                padding: '3px 0',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: 4,
+                cursor: 'pointer',
+                background: isPresetActive ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                border: isPresetActive ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: isPresetActive ? '#38bdf8' : '#94a3b8',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {preset === 0 ? '0%' : preset === 1 ? '100%' : `${Math.round(preset * 100)}%`}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SlidersPanel({
   sliders,
   sliderDefs,
@@ -1307,96 +1495,14 @@ function SlidersPanel({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sliderDefs.map((def) => {
           const val = sliders[def.key] ?? (def.key === 'baseFaceOpacity' || def.key === 'noseOpacity' || def.key === 'mouthOpacity' ? 0.0 : 1.0);
-          const percent = Math.round(val * 100);
-
           return (
-            <div
+            <SliderRow
               key={def.key}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-                padding: '8px 12px',
-                borderRadius: 8,
-                background: 'rgba(255, 255, 255, 0.025)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>{def.icon}</span>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>{def.label}</span>
-                    <span style={{ fontSize: 9, color: '#64748b' }}>{def.description}</span>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: 44,
-                    padding: '2px 6px',
-                    borderRadius: 6,
-                    background: percent === 0 ? 'rgba(239, 68, 68, 0.15)' : percent === 100 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.15)',
-                    border: `1px solid ${percent === 0 ? 'rgba(239, 68, 68, 0.3)' : percent === 100 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(56, 189, 248, 0.3)'}`,
-                    color: percent === 0 ? '#f87171' : percent === 100 ? '#34d399' : '#38bdf8',
-                    fontSize: 11,
-                    fontWeight: 800,
-                  }}
-                >
-                  {percent}%
-                </div>
-              </div>
-
-              {/* Smooth Range Slider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
-                <input
-                  type="range"
-                  min={def.min}
-                  max={1.0}
-                  step={0.01}
-                  value={val}
-                  onChange={(e) => onChange(def.key, parseFloat(e.target.value))}
-                  style={{
-                    flex: 1,
-                    accentColor: def.color,
-                    height: 5,
-                    cursor: 'pointer',
-                  }}
-                />
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                {quickPresets.map((preset) => {
-                  const isPresetActive = Math.abs(val - preset) < 0.03;
-                  return (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => onChange(def.key, preset)}
-                      style={{
-                        flex: 1,
-                        padding: '3px 0',
-                        fontSize: 9,
-                        fontWeight: 700,
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        border: isPresetActive ? `1px solid ${def.color}` : '1px solid rgba(255, 255, 255, 0.08)',
-                        background: isPresetActive ? `rgba(${hexToRgb(def.color)}, 0.25)` : 'rgba(255, 255, 255, 0.02)',
-                        color: isPresetActive ? '#ffffff' : '#94a3b8',
-                        transition: 'all 0.1s ease',
-                      }}
-                    >
-                      {preset === 0 ? '0% (Ẩn)' : preset === 1 ? '100%' : `${Math.round(preset * 100)}%`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              def={def}
+              val={val}
+              quickPresets={quickPresets}
+              onChange={onChange}
+            />
           );
         })}
       </div>
