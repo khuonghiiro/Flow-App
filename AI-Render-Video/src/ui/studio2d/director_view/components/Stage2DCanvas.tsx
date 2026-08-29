@@ -1,12 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import {
-  Compass,
-  RotateCw,
-  Eye,
-  Crown,
-  Maximize2,
-  Minimize2,
-  Sparkles,
   Move,
   ZoomIn,
   ZoomOut,
@@ -283,22 +276,80 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
       if (item.type === 'prop') {
         const prop = item.data;
         const propImg = getImage(prop.path);
+        const propShotOverride = activeShot.props?.[prop.id];
+        const activeProp = propShotOverride || prop;
+        const growthStage = activeProp.growthStage || 'normal';
 
         ctx.save();
         // Parallax offset for tree/props
-        const parallaxDx = currentScenePanX * (1 - (prop.parallaxFactor || 1.0));
-        ctx.translate(prop.position[0] - parallaxDx, prop.position[1]);
-        ctx.rotate((prop.rotation * Math.PI) / 180);
-        ctx.scale(prop.flipX ? -prop.scale[0] : prop.scale[0], prop.scale[1]);
-        ctx.globalAlpha = prop.opacity ?? 1.0;
-        if (prop.blendMode && prop.blendMode !== 'normal') {
-          ctx.globalCompositeOperation = prop.blendMode as GlobalCompositeOperation;
+        const parallaxDx = currentScenePanX * (1 - (activeProp.parallaxFactor || 1.0));
+        ctx.translate(activeProp.position[0] - parallaxDx, activeProp.position[1]);
+
+        let extraScaleX = 1.0;
+        let extraScaleY = 1.0;
+        let extraRotation = 0;
+
+        if (growthStage === 'seed_sprout') {
+          // 🌱 Mầm non (Thu nhỏ 0.35x, nhú mầm)
+          extraScaleX = 0.35;
+          extraScaleY = 0.35 + Math.sin(nowSec * 3) * 0.03;
+        } else if (growthStage === 'grow_big') {
+          // 🌿 Cây lớn dần / Vươn cao (1.25x scale)
+          extraScaleX = 1.25 + Math.sin(nowSec * 2) * 0.03;
+          extraScaleY = 1.25 + Math.sin(nowSec * 2) * 0.03;
+        } else if (growthStage === 'bloom_flowers') {
+          // 🌸 Nở hoa (Tỏa sắc hồng phấn hoa)
+          extraScaleX = 1.15;
+          extraScaleY = 1.15;
+          ctx.shadowColor = '#f472b6';
+          ctx.shadowBlur = 18;
+        } else if (growthStage === 'bear_fruit') {
+          // 🍎 Kết trái / Ra quả chín
+          extraScaleX = 1.1;
+          extraScaleY = 1.1;
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 14;
+        } else if (growthStage === 'sway_wind') {
+          // 🍃 Đung đưa theo gió thổi
+          extraRotation = Math.sin(nowSec * 4 + activeProp.position[0] * 0.01) * 0.08;
+        } else if (growthStage === 'glow_magic') {
+          // ✨ Tỏa sáng tiên khí
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 24;
+        }
+
+        ctx.rotate(((activeProp.rotation * Math.PI) / 180) + extraRotation);
+        ctx.scale((activeProp.flipX ? -activeProp.scale[0] : activeProp.scale[0]) * extraScaleX, activeProp.scale[1] * extraScaleY);
+        ctx.globalAlpha = activeProp.opacity ?? 1.0;
+        if (activeProp.blendMode && activeProp.blendMode !== 'normal') {
+          ctx.globalCompositeOperation = activeProp.blendMode as GlobalCompositeOperation;
         }
 
         if (propImg && propImg.complete) {
           const pw = propImg.width || 120;
           const ph = propImg.height || 120;
           ctx.drawImage(propImg, -pw / 2, -ph / 2, pw, ph);
+
+          // Extra Visual Effects for Flower Bloom / Fruit Bear
+          if (growthStage === 'bloom_flowers') {
+            ctx.fillStyle = '#f472b6';
+            for (let b = 0; b < 4; b++) {
+              const bx = Math.sin(nowSec * 2 + b * 1.5) * (pw * 0.35);
+              const by = -ph * 0.3 + Math.cos(nowSec * 2 + b * 1.5) * (ph * 0.2);
+              ctx.beginPath();
+              ctx.arc(bx, by, 5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else if (growthStage === 'bear_fruit') {
+            ctx.fillStyle = '#ef4444';
+            for (let f = 0; f < 3; f++) {
+              const fx = (f - 1) * (pw * 0.25);
+              const fy = -ph * 0.25 + Math.sin(nowSec * 1.5 + f) * 3;
+              ctx.beginPath();
+              ctx.arc(fx, fy, 7, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
 
           // If selected, draw interactive bounding box
           if (selectedPropId === prop.id) {
@@ -332,10 +383,24 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
           const slashP = (rawP * 2) % 1;
           animOffsetY = Math.sin(slashP * Math.PI) * -22;
           animRot = (slashP - 0.5) * 0.35;
+        } else if (actState.actionPose === 'combat_cast') {
+          animOffsetY = Math.sin(nowSec * 5) * 8 - 10;
+          animRot = Math.sin(nowSec * 3) * 0.04;
         } else if (actState.actionPose === 'talk_dialogue') {
-          animOffsetY += Math.sin(nowSec * 7) * 1.5;
+          animOffsetY += Math.sin(nowSec * 7) * 2.0;
+          animRot = Math.sin(nowSec * 3.5) * 0.02;
         } else if (actState.actionPose === 'shocked_back') {
-          animOffsetY = Math.sin(rawP * Math.PI * 10) * -4;
+          animOffsetY = Math.sin(rawP * Math.PI * 10) * -6;
+          animRot = -0.15;
+        } else if (actState.actionPose === 'fly_dash') {
+          animOffsetY = Math.sin(nowSec * 6) * 5 - 15;
+          animRot = 0.12;
+        } else if (actState.actionPose === 'walk_cycle') {
+          animOffsetY = Math.abs(Math.sin(nowSec * 8)) * -7;
+          animRot = Math.sin(nowSec * 8) * 0.04;
+        } else {
+          // idle_breathe
+          animOffsetY = Math.sin(nowSec * 3.0) * 2.0;
         }
 
         ctx.save();
@@ -680,150 +745,6 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
         </button>
       </div>
 
-      {/* ─── FLOATING 360° ORBIT GIMBAL HUD (Top-Right HUD) ──────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 14,
-          right: 14,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 6,
-          background: 'rgba(9, 13, 22, 0.88)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
-          borderRadius: 12,
-          padding: '8px 10px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.6), 0 0 15px rgba(56, 189, 248, 0.15)',
-          zIndex: 20,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Compass size={12} /> CAMERA 360°
-          </span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: isTopDownMode ? '#facc15' : '#4ade80' }}>
-            {isTopDownMode ? '👑 TOP-DOWN' : `${Math.round(currentCamAngle)}°`}
-          </span>
-        </div>
-
-        {/* Rotary Visual Compass Wheel */}
-        <div
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{
-            position: 'relative',
-            width: 84,
-            height: 84,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, #090d16 0%, #030712 100%)',
-            border: '2px solid rgba(56, 189, 248, 0.4)',
-            boxShadow: '0 0 10px rgba(56, 189, 248, 0.2) inset',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              width: 3,
-              height: 32,
-              background: 'linear-gradient(to top, #38bdf8, #ec4899)',
-              borderRadius: 2,
-              bottom: 42,
-              left: 'calc(50% - 1.5px)',
-              transformOrigin: 'bottom center',
-              transform: `rotate(${currentCamAngle}deg)`,
-              transition: 'transform 0.05s linear',
-              zIndex: 5,
-            }}
-          />
-
-          {[0, 90, 180, 270].map((deg) => {
-            const rad = ((deg - 90) * Math.PI) / 180;
-            const x = 42 + 30 * Math.cos(rad) - 7;
-            const y = 42 + 30 * Math.sin(rad) - 7;
-            const isSelected = Math.abs(deg - currentCamAngle) < 22.5;
-
-            return (
-              <button
-                key={deg}
-                onClick={() => onUpdateCameraAngle(deg, currentPitch)}
-                style={{
-                  position: 'absolute',
-                  left: x,
-                  top: y,
-                  width: 14,
-                  height: 14,
-                  borderRadius: '50%',
-                  background: isSelected ? '#38bdf8' : 'rgba(255,255,255,0.15)',
-                  border: isSelected ? '1px solid #fff' : 'none',
-                  fontSize: 7,
-                  color: isSelected ? '#000' : '#fff',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 8,
-                }}
-              >
-                {deg === 0 ? 'S' : deg === 90 ? 'E' : deg === 180 ? 'N' : 'W'}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Top-Down View Toggle Button */}
-        <button
-          onClick={() => onUpdateCameraAngle(currentCamAngle, isTopDownMode ? 0 : 60)}
-          title="Bật/Tắt Góc quay nhìn từ trên đỉnh đầu xuống (Top-down / Bird's eye)"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            width: '100%',
-            padding: '4px 6px',
-            borderRadius: 6,
-            background: isTopDownMode ? 'linear-gradient(135deg, #eab308, #ca8a04)' : 'rgba(255,255,255,0.06)',
-            border: isTopDownMode ? '1px solid #facc15' : '1px solid rgba(255,255,255,0.1)',
-            color: isTopDownMode ? '#000' : '#e2e8f0',
-            fontSize: 9.5,
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          <Crown size={11} /> {isTopDownMode ? 'Đỉnh Đầu (60°)' : 'Ngang Tầm Mắt (0°)'}
-        </button>
-
-        {/* Quick 8 Angles Snap Pills */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, width: '100%' }}>
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-            <button
-              key={deg}
-              onClick={() => onUpdateCameraAngle(deg, currentPitch)}
-              style={{
-                padding: '2px 0',
-                fontSize: 8.5,
-                fontWeight: Math.abs(deg - currentCamAngle) < 22.5 ? 700 : 500,
-                borderRadius: 3,
-                background: Math.abs(deg - currentCamAngle) < 22.5 ? '#0284c7' : 'rgba(255,255,255,0.04)',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                textAlign: 'center',
-              }}
-            >
-              {deg}°
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Direct Drag Instructions Hint */}
       <div
         style={{
@@ -843,7 +764,7 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
           pointerEvents: 'none',
         }}
       >
-        <Move size={11} color="#38bdf8" /> Cuộn chuột để Zoom • Kéo để xoay 360°
+        <Move size={11} color="#38bdf8" /> Cuộn chuột để Zoom • Kéo để di chuyển / xoay góc
       </div>
     </div>
   );

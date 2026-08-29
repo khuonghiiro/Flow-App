@@ -1,21 +1,26 @@
-import React from 'react';
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  Film,
-  Camera,
-  MessageSquare,
-  Sparkles,
-  Zap,
-  Repeat,
-} from 'lucide-react';
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
+import React, { useState, useRef } from 'react';
 import {
   Director2DProject,
   MultiAngleDirectorShot,
+  ActionPoseType,
+  PropGrowthStage,
 } from '../../../../types/studio2d_director';
+import { findShotAtTime } from './timeline/timelineConstants';
+import { TimelineHeaderToolbar } from './timeline/TimelineHeaderToolbar';
+import { TimelineTrackRuler } from './timeline/TimelineTrackRuler';
+import { TimelineActorTrack } from './timeline/TimelineActorTrack';
+import { TimelineDialogueTrack } from './timeline/TimelineDialogueTrack';
+import { TimelinePropTrack } from './timeline/TimelinePropTrack';
+import { TimelineCameraTrack } from './timeline/TimelineCameraTrack';
+import { TimelineActionModal } from './timeline/TimelineActionModal';
+import { TimelineDialogueModal } from './timeline/TimelineDialogueModal';
+import { TimelinePropGrowthModal } from './timeline/TimelinePropGrowthModal';
+import { TimelineShotDurationModal } from './timeline/TimelineShotDurationModal';
 
-interface Timeline2DScrubberProps {
+export interface Timeline2DScrubberProps {
   project: Director2DProject;
   currentTime: number;
   isPlaying: boolean;
@@ -23,6 +28,9 @@ interface Timeline2DScrubberProps {
   onSeek: (time: number) => void;
   activeShotId: string;
   onSelectShot: (shotId: string) => void;
+  onUpdateProject?: (updated: Director2DProject) => void;
+  selectedActorId?: string | null;
+  onSelectActor?: (actorId: string) => void;
 }
 
 export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
@@ -33,10 +41,15 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
   onSeek,
   activeShotId,
   onSelectShot,
+  onUpdateProject,
+  selectedActorId,
+  onSelectActor,
 }) => {
-  const totalDuration = project.shots.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Compute start & end timestamps for each shot
+  // Compute total duration and shot boundaries
+  const totalDuration = project.shots.reduce((sum, s) => sum + s.durationSeconds, 0);
   let accumulatedTime = 0;
   const shotTimeline = project.shots.map((shot) => {
     const start = accumulatedTime;
@@ -45,20 +58,167 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
     return { shot, start, end };
   });
 
-  const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+  // Modal States
+  const [actionModal, setActionModal] = useState<{
+    isOpen: boolean;
+    actorId: string;
+    targetShotId: string;
+    targetTime: number;
+    currentPose: ActionPoseType;
+  } | null>(null);
+
+  const [dialogueModal, setDialogueModal] = useState<{
+    isOpen: boolean;
+    targetShotId: string;
+    targetTime: number;
+    text: string;
+    speakerId: string;
+  } | null>(null);
+
+  const [propModal, setPropModal] = useState<{
+    isOpen: boolean;
+    propId: string;
+    targetShotId: string;
+    targetTime: number;
+    currentStage: PropGrowthStage;
+  } | null>(null);
+
+  const [shotDurationModal, setShotDurationModal] = useState<{
+    isOpen: boolean;
+    shotId: string;
+    duration: number;
+    title: string;
+  } | null>(null);
+
+  // Seek time calculation from mouse event on tracks container
+  const seekFromClientX = (clientX: number) => {
+    if (!containerRef.current || totalDuration <= 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const trackLeft = rect.left + 140; // 140px header offset
+    const trackWidth = rect.width - 140;
+    if (trackWidth <= 0) return;
+    const clickX = clientX - trackLeft;
+    const pct = Math.max(0, Math.min(1, clickX / trackWidth));
     onSeek(pct * totalDuration);
   };
 
-  // Format digital timecode (MM:SS.ms)
-  const formatTimecode = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    const ms = Math.floor((sec % 1) * 100);
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+  const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    seekFromClientX(e.clientX);
   };
+
+  // Playhead Needle Drag & Hold Scrubbing Handler
+  const handleNeedleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      seekFromClientX(moveEvent.clientX);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // 1. Apply Action
+  const handleApplyAction = (pose: ActionPoseType) => {
+    if (!actionModal || !onUpdateProject) return;
+    const { actorId, targetShotId } = actionModal;
+    const updatedShots = project.shots.map((s) => {
+      if (s.id === targetShotId) {
+        const curActor = s.actors[actorId] || {
+          actorId,
+          worldFacingAngle: 0,
+          positionStart: [0, 50],
+          positionEnd: [0, 50],
+          scale: 1.6,
+          zIndex: 10,
+          actionPose: 'idle_breathe' as ActionPoseType,
+        };
+        return { ...s, actors: { ...s.actors, [actorId]: { ...curActor, actionPose: pose } } };
+      }
+      return s;
+    });
+    onUpdateProject({ ...project, shots: updatedShots });
+    setActionModal(null);
+  };
+
+  // 2. Apply Dialogue
+  const handleApplyDialogue = (dialogueText: string, speakerId: string) => {
+    if (!dialogueModal || !onUpdateProject) return;
+    const { targetShotId } = dialogueModal;
+    const updatedShots = project.shots.map((s) =>
+      s.id === targetShotId
+        ? { ...s, dialogueText, speakerActorId: speakerId || s.speakerActorId || project.actors[0]?.id }
+        : s
+    );
+    onUpdateProject({ ...project, shots: updatedShots });
+    setDialogueModal(null);
+  };
+
+  // 3. Apply Prop Growth
+  const handleApplyPropGrowth = (stage: PropGrowthStage) => {
+    if (!propModal || !onUpdateProject) return;
+    const { propId, targetShotId } = propModal;
+    const baseProp = project.props?.find((p) => p.id === propId);
+    if (!baseProp) return;
+
+    const updatedShots = project.shots.map((s) => {
+      if (s.id === targetShotId) {
+        const curProps = s.props || {};
+        const existing = curProps[propId] || baseProp;
+        return { ...s, props: { ...curProps, [propId]: { ...existing, growthStage: stage } } };
+      }
+      return s;
+    });
+    onUpdateProject({ ...project, shots: updatedShots });
+    setPropModal(null);
+  };
+
+  // 4. Add New Shot
+  const handleAddNewShot = (duration: number = 3.0) => {
+    if (!onUpdateProject) return;
+    const lastShot = project.shots[project.shots.length - 1];
+    const newIndex = project.shots.length + 1;
+    const newShot: MultiAngleDirectorShot = {
+      id: `shot_${Date.now().toString().slice(-6)}`,
+      title: `Shot ${newIndex} (${duration}s)`,
+      durationSeconds: duration,
+      camera: lastShot ? { ...lastShot.camera } : { angleStart: 0, angleEnd: 0, zoomStart: 1.1, zoomEnd: 1.2, panStart: [0, 0], panEnd: [0, 0] },
+      actors: lastShot
+        ? JSON.parse(JSON.stringify(lastShot.actors))
+        : {
+            [project.actors[0]?.id || 'char_1']: {
+              actorId: project.actors[0]?.id || 'char_1',
+              worldFacingAngle: 0,
+              positionStart: [-100, 40],
+              positionEnd: [-100, 40],
+              scale: 1.6,
+              zIndex: 10,
+              actionPose: 'talk_dialogue',
+            },
+          },
+      speakerActorId: project.actors[0]?.id,
+      dialogueText: '',
+    };
+    onUpdateProject({ ...project, shots: [...project.shots, newShot] });
+    onSelectShot(newShot.id);
+  };
+
+  // 5. Update Duration
+  const handleUpdateDuration = (shotId: string, duration: number) => {
+    if (!onUpdateProject) return;
+    const dur = Math.max(0.5, Math.min(60, duration));
+    const updated = project.shots.map((s) => (s.id === shotId ? { ...s, durationSeconds: dur } : s));
+    onUpdateProject({ ...project, shots: updated });
+    setShotDurationModal(null);
+  };
+
+  const activeShotObj = project.shots.find((s) => s.id === activeShotId) || project.shots[0];
 
   return (
     <div
@@ -66,222 +226,174 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 13, 22, 0.98) 100%)',
-        border: '1px solid rgba(56, 189, 248, 0.2)',
+        background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(9, 13, 22, 0.99) 100%)',
+        border: '1px solid rgba(56, 189, 248, 0.3)',
         borderRadius: 10,
-        padding: '10px 14px',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.05)',
+        padding: '8px 12px',
+        boxShadow: '0 10px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.08)',
+        position: 'relative',
+        transition: 'all 0.25s ease',
       }}
     >
-      {/* ─── TOP PLAYBACK TOOLBAR ──────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Play/Pause Button */}
-          <button
-            onClick={onTogglePlay}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              background: isPlaying
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-                : 'linear-gradient(135deg, #0284c7, #38bdf8)',
-              color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: isPlaying ? '0 0 14px rgba(239,68,68,0.5)' : '0 0 14px rgba(56,189,248,0.5)',
-              transition: 'all 0.15s',
-            }}
-          >
-            {isPlaying ? <Pause size={16} /> : <Play size={16} style={{ marginLeft: 2 }} />}
-          </button>
+      {/* 1. Header Toolbar */}
+      <TimelineHeaderToolbar
+        project={project}
+        currentTime={currentTime}
+        totalDuration={totalDuration}
+        isPlaying={isPlaying}
+        activeShotObj={activeShotObj}
+        selectedActorId={selectedActorId}
+        isExpanded={isExpanded}
+        onTogglePlay={onTogglePlay}
+        onSeek={onSeek}
+        onToggleExpand={() => setIsExpanded(!isExpanded)}
+        onOpenActionModal={() => {
+          if (!selectedActorId) return;
+          const { shot } = findShotAtTime(project, currentTime, totalDuration);
+          const curPose = shot.actors[selectedActorId]?.actionPose || 'idle_breathe';
+          setActionModal({ isOpen: true, actorId: selectedActorId, targetShotId: shot.id, targetTime: currentTime, currentPose: curPose });
+        }}
+        onOpenDialogueModal={() => {
+          const { shot } = findShotAtTime(project, currentTime, totalDuration);
+          setDialogueModal({
+            isOpen: true,
+            targetShotId: shot.id,
+            targetTime: currentTime,
+            text: shot.dialogueText || '',
+            speakerId: shot.speakerActorId || selectedActorId || project.actors[0]?.id,
+          });
+        }}
+        onOpenDurationModal={() => {
+          if (activeShotObj) {
+            setShotDurationModal({ isOpen: true, shotId: activeShotObj.id, duration: activeShotObj.durationSeconds, title: activeShotObj.title });
+          }
+        }}
+        onAddNewShot={handleAddNewShot}
+      />
 
-          {/* Reset to Start */}
-          <button
-            onClick={() => onSeek(0)}
-            title="Quay lại đầu video"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#94a3b8',
-              cursor: 'pointer',
-            }}
-          >
-            <RotateCcw size={12} />
-          </button>
-
-          {/* Glowing Digital Timecode */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'rgba(2, 6, 23, 0.85)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              borderRadius: 6,
-              padding: '4px 10px',
-              fontFamily: 'monospace',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#38bdf8',
-              boxShadow: '0 0 8px rgba(56, 189, 248, 0.15) inset',
-            }}
-          >
-            <span>{formatTimecode(currentTime)}</span>
-            <span style={{ color: '#475569' }}>/</span>
-            <span style={{ color: '#94a3b8' }}>{formatTimecode(totalDuration)}</span>
-          </div>
-        </div>
-
-        {/* Center/Right Timeline Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8' }}>
-            <Film size={13} color="#38bdf8" /> Multi-Track 2.5D Studio ({project.shots.length} shots)
-          </div>
-        </div>
-      </div>
-
-      {/* ─── MULTI-TRACK PROFESSIONAL TIMELINE LANES ─────────────────── */}
+      {/* 2. Scrollable Multi-Track Lanes Container */}
       <div
-        onClick={handleTrackClick}
+        ref={containerRef}
         style={{
-          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           gap: 3,
-          background: 'rgba(2, 6, 23, 0.9)',
+          background: 'rgba(2, 6, 23, 0.94)',
           borderRadius: 8,
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          padding: '6px 4px',
-          cursor: 'pointer',
-          userSelect: 'none',
-          overflow: 'hidden',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          padding: '4px 6px',
+          position: 'relative',
+          maxHeight: isExpanded ? 360 : 175,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          transition: 'max-height 0.25s ease',
         }}
       >
-        {/* Lane 1: Camera & Shot Lane */}
-        <div style={{ position: 'relative', height: 26, display: 'flex', width: '100%', gap: 2 }}>
-          {shotTimeline.map(({ shot, start, end }, idx) => {
-            const widthPct = totalDuration > 0 ? (shot.durationSeconds / totalDuration) * 100 : 0;
-            const isSelected = shot.id === activeShotId;
-            const isTopDown = (shot.camera.pitchStart ?? 0) >= 45;
+        {/* Ruler with sub-second precision and drag seeking */}
+        <TimelineTrackRuler totalDuration={totalDuration} onSeek={onSeek} />
 
-            return (
-              <div
-                key={shot.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectShot(shot.id);
-                  onSeek(start);
-                }}
-                style={{
-                  width: `${widthPct}%`,
-                  height: '100%',
-                  background: isSelected
-                    ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(56, 189, 248, 0.25))'
-                    : 'rgba(255, 255, 255, 0.04)',
-                  border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0 6px',
-                  fontSize: 9.5,
-                  fontWeight: 700,
-                  color: isSelected ? '#38bdf8' : '#cbd5e1',
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <span>
-                  #{idx + 1} {shot.title.split(':')[0]}
-                </span>
-                <span style={{ fontSize: 8.5, color: isTopDown ? '#facc15' : '#4ade80' }}>
-                  {isTopDown ? '👑 Top' : `🎥 ${shot.camera.angleStart}°`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        {/* Actor Tracks */}
+        {project.actors.map((actor) => (
+          <TimelineActorTrack
+            key={actor.id}
+            actor={actor}
+            selectedActorId={selectedActorId}
+            currentTime={currentTime}
+            totalDuration={totalDuration}
+            shotTimeline={shotTimeline}
+            onSelectActor={onSelectActor}
+            onSelectShot={onSelectShot}
+            onTrackClick={handleTrackClick}
+            onOpenActionModal={(actorId, shotId, time, currentPose) =>
+              setActionModal({ isOpen: true, actorId, targetShotId: shotId, targetTime: time, currentPose })
+            }
+          />
+        ))}
 
-        {/* Lane 2: Dialogue & Subtitles Lane */}
-        <div style={{ position: 'relative', height: 20, display: 'flex', width: '100%', gap: 2 }}>
-          {shotTimeline.map(({ shot }, idx) => {
-            const widthPct = totalDuration > 0 ? (shot.durationSeconds / totalDuration) * 100 : 0;
-            const hasDialogue = Boolean(shot.dialogueText);
+        {/* Dialogue Track */}
+        <TimelineDialogueTrack
+          actors={project.actors}
+          currentTime={currentTime}
+          totalDuration={totalDuration}
+          shotTimeline={shotTimeline}
+          onSelectShot={onSelectShot}
+          onTrackClick={handleTrackClick}
+          onOpenDialogueModal={(shotId, time, text, speakerId) =>
+            setDialogueModal({ isOpen: true, targetShotId: shotId, targetTime: time, text, speakerId })
+          }
+        />
 
-            return (
-              <div
-                key={`dlg_${shot.id}`}
-                style={{
-                  width: `${widthPct}%`,
-                  height: '100%',
-                  background: hasDialogue ? 'rgba(168, 85, 247, 0.18)' : 'transparent',
-                  border: hasDialogue ? '1px dashed rgba(168, 85, 247, 0.4)' : 'none',
-                  borderRadius: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '0 6px',
-                  fontSize: 8.5,
-                  color: '#c084fc',
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {hasDialogue && (
-                  <>
-                    <MessageSquare size={10} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{shot.dialogueText}</span>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {/* Props & Flora Track */}
+        <TimelinePropTrack
+          props={project.props}
+          currentTime={currentTime}
+          totalDuration={totalDuration}
+          shotTimeline={shotTimeline}
+          onSelectShot={onSelectShot}
+          onTrackClick={handleTrackClick}
+          onOpenPropModal={(propId, shotId, time, currentStage) =>
+            setPropModal({ isOpen: true, propId, targetShotId: shotId, targetTime: time, currentStage })
+          }
+        />
 
-        {/* High-Precision Glowing Playhead Needle */}
+        {/* Camera Track */}
+        <TimelineCameraTrack
+          activeShotId={activeShotId}
+          totalDuration={totalDuration}
+          shotTimeline={shotTimeline}
+          onSelectShot={onSelectShot}
+          onSeek={onSeek}
+          onTrackClick={handleTrackClick}
+        />
+
+        {/* ─── DRAGGABLE GLOWING PLAYHEAD NEEDLE ──────────────────────── */}
         {totalDuration > 0 && (
           <div
+            onMouseDown={handleNeedleMouseDown}
             style={{
               position: 'absolute',
               top: 0,
               bottom: 0,
-              left: `${(currentTime / totalDuration) * 100}%`,
-              width: 2,
-              background: '#38bdf8',
-              boxShadow: '0 0 8px #38bdf8, 0 0 14px rgba(56, 189, 248, 0.8)',
-              pointerEvents: 'none',
-              zIndex: 20,
+              left: `calc(140px + (100% - 140px) * ${currentTime / totalDuration})`,
+              width: 14,
+              transform: 'translateX(-50%)',
+              cursor: 'ew-resize',
+              zIndex: 40,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
+            title={`Con trỏ phát: ${currentTime.toFixed(2)}s. Nhấn giữ và kéo để tua thời gian.`}
           >
-            {/* Playhead Handle Diamond */}
+            {/* Top Diamond Grab Handle */}
             <div
               style={{
-                position: 'absolute',
-                top: -3,
-                left: -4,
-                width: 10,
-                height: 10,
-                background: '#38bdf8',
+                width: 14,
+                height: 14,
+                background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
                 transform: 'rotate(45deg)',
-                boxShadow: '0 0 8px #38bdf8',
+                boxShadow: '0 0 10px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.8)',
+                border: '1.5px solid #fff',
+                cursor: 'ew-resize',
+                marginTop: 2,
+              }}
+            />
+
+            {/* Glowing Vertical Needle Line */}
+            <div
+              style={{
+                width: 2.5,
+                flex: 1,
+                background: '#38bdf8',
+                boxShadow: '0 0 10px #38bdf8, 0 0 18px rgba(56, 189, 248, 0.95)',
+                pointerEvents: 'none',
               }}
             />
           </div>
         )}
       </div>
 
-      {/* Smooth Range Slider */}
+      {/* 3. Range Slider */}
       <input
         type="range"
         min="0"
@@ -289,14 +401,47 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
         step="0.02"
         value={currentTime}
         onChange={(e) => onSeek(parseFloat(e.target.value))}
-        style={{
-          width: '100%',
-          height: 4,
-          accentColor: '#38bdf8',
-          cursor: 'pointer',
-          margin: 0,
-        }}
+        style={{ width: '100%', height: 5, accentColor: '#38bdf8', cursor: 'pointer', margin: 0 }}
       />
+
+      {/* 4. Modals */}
+      {actionModal && (
+        <TimelineActionModal
+          modalState={actionModal}
+          project={project}
+          onClose={() => setActionModal(null)}
+          onApplyAction={handleApplyAction}
+        />
+      )}
+
+      {dialogueModal && (
+        <TimelineDialogueModal
+          modalState={dialogueModal}
+          project={project}
+          onClose={() => setDialogueModal(null)}
+          onChangeText={(text) => setDialogueModal({ ...dialogueModal, text })}
+          onChangeSpeaker={(speakerId) => setDialogueModal({ ...dialogueModal, speakerId })}
+          onApplyDialogue={handleApplyDialogue}
+        />
+      )}
+
+      {propModal && (
+        <TimelinePropGrowthModal
+          modalState={propModal}
+          project={project}
+          onClose={() => setPropModal(null)}
+          onApplyPropGrowth={handleApplyPropGrowth}
+        />
+      )}
+
+      {shotDurationModal && (
+        <TimelineShotDurationModal
+          modalState={shotDurationModal}
+          onClose={() => setShotDurationModal(null)}
+          onChangeDuration={(dur) => setShotDurationModal({ ...shotDurationModal, duration: dur })}
+          onApplyDuration={handleUpdateDuration}
+        />
+      )}
     </div>
   );
 };

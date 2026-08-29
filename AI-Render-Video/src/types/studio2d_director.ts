@@ -107,6 +107,15 @@ export interface CameraTrajectoryConfig {
   shakeIntensity?: number; // 0..1 (default 0.0)
 }
 
+export type PropGrowthStage =
+  | 'normal'         // Cây / Đạo cụ bình thường
+  | 'seed_sprout'    // 🌱 Mầm non / Mới nảy mầm (Thu nhỏ 0.35x, nhú lên từ đất)
+  | 'grow_big'       // 🌿 Cây lớn dần / Vươn cao (Mở rộng kích thước 1.25x)
+  | 'bloom_flowers'  // 🌸 Nở hoa rực rỡ (Tỏa cánh hoa & phấn hoa bay)
+  | 'bear_fruit'     // 🍎 Kết trái / Ra quả (Xuất hiện chùm quả chín xum xuê)
+  | 'sway_wind'      // 🍃 Đung đưa theo gió thổi
+  | 'glow_magic';    // ✨ Tỏa sáng tiên khí / Linh mộc
+
 export interface ScenePropItem {
   id: string;
   name: string;
@@ -121,6 +130,7 @@ export interface ScenePropItem {
   parallaxFactor: number; // 0.1 for far, 0.4 for midground, 1.0 for actors, 1.4 for foreground
   blendMode?: 'normal' | 'screen' | 'multiply' | 'lighter';
   flipX?: boolean;
+  growthStage?: PropGrowthStage;
 }
 
 export interface MultiAngleDirectorShot {

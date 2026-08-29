@@ -1,5 +1,5 @@
 import React, { useState, useRef, Suspense } from 'react';
-import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench, Scissors } from 'lucide-react';
+import { Film, MessageSquare, Swords, Bot, Map, Layers, Download, Sparkles, Settings, Clapperboard, FolderUp, Loader, FolderOpen, Maximize2, Minimize2, Move, Lightbulb, Wrench, Scissors, Upload, RotateCcw } from 'lucide-react';
 import { MasterSceneConfig, DialogueManifestItem, EnvironmentOverride, CharacterAssembly } from '../types/scene';
 import type { ThreeRenderer } from '../core/engine/ThreeRenderer';
 import type { ActiveSubtitle } from '../core/subtitles/SubtitleSynchronizer';
@@ -197,6 +197,32 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
       onImportCustomMap(files as any);
     }
     e.target.value = '';
+  };
+
+  const handleExport2DJson = () => {
+    window.dispatchEvent(new CustomEvent('flowmy:export-2d-project'));
+  };
+
+  const handleImport2DJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        window.dispatchEvent(new CustomEvent('flowmy:import-2d-project-text', { detail: text }));
+      } catch (err: any) {
+        alert('Lỗi đọc file JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleReset2DProject = () => {
+    if (confirm('Khôi phục lại dự án hoạt ảnh mẫu đối thoại phản bác ban đầu?')) {
+      window.dispatchEvent(new CustomEvent('flowmy:reset-2d-project'));
+    }
   };
 
   return (
@@ -504,7 +530,7 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
                 onClick={() => setShowStudio2DModal(true)}
                 title="Mở Xưởng Cắt Ghép Sprite, Tách Nền & Vectorizer"
@@ -524,6 +550,80 @@ export const StudioLayout: React.FC<StudioLayoutProps> = ({
                 }}
               >
                 <Scissors size={12} /> Xưởng Tách Sprite & Cắt Ghép
+              </button>
+
+              {/* Import JSON Button */}
+              <label
+                htmlFor="studio-2d-import-json-topbar"
+                title="Nhập file JSON dự án đã lưu để chạy lại"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#e2e8f0',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                <Upload size={12} /> Nhập File JSON
+                <input
+                  id="studio-2d-import-json-topbar"
+                  type="file"
+                  accept=".json"
+                  style={{ display: 'none' }}
+                  onChange={handleImport2DJson}
+                />
+              </label>
+
+              {/* Export JSON Button */}
+              <button
+                onClick={handleExport2DJson}
+                title="Xuất toàn bộ cấu hình dự án hoạt ảnh ra file JSON"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  color: '#38bdf8',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <Download size={12} /> Xuất File JSON
+              </button>
+
+              {/* Reset / Standard Template Button */}
+              <button
+                onClick={handleReset2DProject}
+                title="Khôi phục dự án hoạt ảnh mẫu đối thoại phản bác ban đầu"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#94a3b8',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <RotateCcw size={11} /> Mẫu Chuẩn
               </button>
             </div>
           )}

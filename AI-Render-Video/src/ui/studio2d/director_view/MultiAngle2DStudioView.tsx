@@ -120,22 +120,18 @@ export const MultiAngle2DStudioView: React.FC = () => {
     return () => cancelAnimationFrame(animFrame);
   }, [isPlaying, totalDuration]);
 
-  // Export JSON Handler
-  const handleExportJson = () => {
-    exportProjectToJson(project);
-    setSaveToast('Đã xuất file JSON thành công!');
-    setTimeout(() => setSaveToast(null), 3000);
-  };
+  // Listen to TopBar events for JSON export, JSON import, and Template reset
+  useEffect(() => {
+    const handleExportEvent = () => {
+      exportProjectToJson(project);
+      setSaveToast('Đã xuất file JSON thành công!');
+      setTimeout(() => setSaveToast(null), 3000);
+    };
 
-  // Import JSON Handler
-  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
+    const handleImportTextEvent = (e: any) => {
       try {
-        const text = event.target?.result as string;
+        const text = e.detail;
+        if (!text) return;
         const imported = importProjectFromJson(text);
         setProject(imported);
         if (imported.shots.length > 0) {
@@ -148,9 +144,27 @@ export const MultiAngle2DStudioView: React.FC = () => {
         alert(err.message);
       }
     };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
+
+    const handleResetEvent = () => {
+      setProject(DEFAULT_2D_DIRECTOR_PROJECT);
+      if (DEFAULT_2D_DIRECTOR_PROJECT.shots.length > 0) {
+        setActiveShotId(DEFAULT_2D_DIRECTOR_PROJECT.shots[0].id);
+        setCurrentTime(0);
+      }
+      setSaveToast('Đã khôi phục dự án mẫu chuẩn!');
+      setTimeout(() => setSaveToast(null), 3000);
+    };
+
+    window.addEventListener('flowmy:export-2d-project', handleExportEvent);
+    window.addEventListener('flowmy:import-2d-project-text', handleImportTextEvent);
+    window.addEventListener('flowmy:reset-2d-project', handleResetEvent);
+
+    return () => {
+      window.removeEventListener('flowmy:export-2d-project', handleExportEvent);
+      window.removeEventListener('flowmy:import-2d-project-text', handleImportTextEvent);
+      window.removeEventListener('flowmy:reset-2d-project', handleResetEvent);
+    };
+  }, [project]);
 
   const handleUpdateCameraAngle = (yawDeg: number, pitchDeg?: number) => {
     if (!currentShot) return;
@@ -182,105 +196,34 @@ export const MultiAngle2DStudioView: React.FC = () => {
         background: '#070b14',
         color: '#f8fafc',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      {/* ─── 2D SUB-HEADER ACTION BAR ─────────────────────────────────── */}
-      <div
-        style={{
-          height: 44,
-          padding: '0 16px',
-          background: 'rgba(15, 23, 42, 0.95)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8' }}>
-            🎬 Xưởng Ghép Ảnh, Cây Cối & Hoạt Ảnh 2.5D:
-          </span>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>{project.title}</span>
+      {/* Floating Save Toast Notification */}
+      {saveToast && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 14,
+            right: 20,
+            zIndex: 9999,
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(74, 222, 128, 0.5)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+            color: '#4ade80',
+            fontSize: 12,
+            fontWeight: 700,
+            padding: '8px 16px',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <Check size={14} /> {saveToast}
         </div>
-
-        {/* Action Buttons: JSON Export, JSON Import, Reset */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {saveToast && (
-            <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Check size={13} /> {saveToast}
-            </span>
-          )}
-
-          {/* Import JSON Button */}
-          <label
-            title="Nhập file JSON dự án đã lưu để chạy lại"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '4px 10px',
-              borderRadius: 6,
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: '#e2e8f0',
-              fontSize: 11,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <Upload size={12} /> Nhập File JSON
-            <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportJson} />
-          </label>
-
-          {/* Export JSON Button */}
-          <button
-            onClick={handleExportJson}
-            title="Xuất toàn bộ cấu hình dự án hoạt ảnh ra file JSON"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '4px 10px',
-              borderRadius: 6,
-              background: 'rgba(56, 189, 248, 0.15)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              color: '#38bdf8',
-              fontSize: 11,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <Download size={12} /> Xuất File JSON
-          </button>
-
-          {/* Reset Demo Button */}
-          <button
-            onClick={() => {
-              if (confirm('Khôi phục lại dự án hoạt ảnh mẫu đối thoại phản bác ban đầu?')) {
-                setProject(DEFAULT_2D_DIRECTOR_PROJECT);
-                setActiveShotId(DEFAULT_2D_DIRECTOR_PROJECT.shots[0].id);
-                setCurrentTime(0);
-              }
-            }}
-            title="Khôi phục dự án hoạt ảnh mẫu"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 8px',
-              borderRadius: 6,
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#94a3b8',
-              fontSize: 11,
-              cursor: 'pointer',
-            }}
-          >
-            <RotateCcw size={11} /> Mẫu Chuẩn
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* ─── 3-COLUMN STUDIO WORKSPACE ───────────────────────────────── */}
       <div
@@ -343,7 +286,7 @@ export const MultiAngle2DStudioView: React.FC = () => {
             )}
           </div>
 
-          {/* Bottom Timeline Scrubber */}
+          {/* Bottom Multi-Track Timeline Scrubber */}
           <div style={{ flexShrink: 0 }}>
             <Timeline2DScrubber
               project={project}
@@ -363,6 +306,9 @@ export const MultiAngle2DStudioView: React.FC = () => {
                   acc += s.durationSeconds;
                 }
               }}
+              onUpdateProject={setProject}
+              selectedActorId={selectedActorId}
+              onSelectActor={setSelectedActorId}
             />
           </div>
         </div>
