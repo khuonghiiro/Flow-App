@@ -279,6 +279,84 @@ export const MotionTrajectoryEditor: React.FC<MotionTrajectoryEditorProps> = ({
             />
           </div>
 
+          {/* Scaling and Z-Index Controls */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 6, marginTop: 4 }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Tỉ lệ (Scale):</span>
+                <span style={{ fontSize: 9.5, color: '#38bdf8', fontWeight: 700 }}>
+                  {(actorState.scale || 1.6).toFixed(2)}x
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.2"
+                max="5.0"
+                step="0.05"
+                value={actorState.scale || 1.6}
+                onChange={(e) => updateActorState({ scale: parseFloat(e.target.value) || 1.0 })}
+                style={{ width: '100%', accentColor: '#38bdf8' }}
+              />
+            </div>
+            <div>
+              <span style={{ fontSize: 9.5, color: '#94a3b8', display: 'block', marginBottom: 2 }}>
+                Lớp (Z-Index):
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => updateActorState({ zIndex: Math.max(1, (actorState.zIndex || 10) - 1) })}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 3,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={actorState.zIndex || 10}
+                  onChange={(e) => updateActorState({ zIndex: parseInt(e.target.value) || 10 })}
+                  style={{
+                    width: '100%',
+                    padding: '2px 4px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    background: '#090d16',
+                    border: '1px solid #334155',
+                    color: '#38bdf8',
+                    borderRadius: 3,
+                  }}
+                />
+                <button
+                  onClick={() => updateActorState({ zIndex: (actorState.zIndex || 10) + 1 })}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 3,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Position Coordinates */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 4 }}>
             <div>

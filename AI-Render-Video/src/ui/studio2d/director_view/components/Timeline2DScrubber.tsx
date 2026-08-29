@@ -12,13 +12,14 @@ import { findShotAtTime } from './timeline/timelineConstants';
 import { TimelineHeaderToolbar } from './timeline/TimelineHeaderToolbar';
 import { TimelineTrackRuler } from './timeline/TimelineTrackRuler';
 import { TimelineActorTrack } from './timeline/TimelineActorTrack';
-import { TimelineDialogueTrack } from './timeline/TimelineDialogueTrack';
 import { TimelinePropTrack } from './timeline/TimelinePropTrack';
 import { TimelineCameraTrack } from './timeline/TimelineCameraTrack';
+import { TimelineContextMenu } from './timeline/TimelineContextMenu';
 import { TimelineActionModal } from './timeline/TimelineActionModal';
 import { TimelineDialogueModal } from './timeline/TimelineDialogueModal';
 import { TimelinePropGrowthModal } from './timeline/TimelinePropGrowthModal';
-import { TimelineShotDurationModal } from './timeline/TimelineShotDurationModal';
+import { TimelineTotalDurationModal } from './timeline/TimelineTotalDurationModal';
+import { TimelineVisibilityModal } from './timeline/TimelineVisibilityModal';
 
 export interface Timeline2DScrubberProps {
   project: Director2DProject;
@@ -31,6 +32,8 @@ export interface Timeline2DScrubberProps {
   onUpdateProject?: (updated: Director2DProject) => void;
   selectedActorId?: string | null;
   onSelectActor?: (actorId: string) => void;
+  selectedPropId?: string | null;
+  onSelectProp?: (propId: string) => void;
 }
 
 export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
@@ -44,8 +47,13 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
   onUpdateProject,
   selectedActorId,
   onSelectActor,
+  selectedPropId,
+  onSelectProp,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverX, setHoverX] = useState<number | null>(null);
+  const [isDurationModalOpen, setIsDurationModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Compute total duration and shot boundaries
@@ -58,7 +66,7 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
     return { shot, start, end };
   });
 
-  // Modal States
+  // Modal & Context Menu States
   const [actionModal, setActionModal] = useState<{
     isOpen: boolean;
     actorId: string;
@@ -83,45 +91,58 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
     currentStage: PropGrowthStage;
   } | null>(null);
 
-  const [shotDurationModal, setShotDurationModal] = useState<{
+  const [visibilityModal, setVisibilityModal] = useState<{
     isOpen: boolean;
-    shotId: string;
-    duration: number;
+    type: 'actor' | 'prop';
+    id: string;
     title: string;
+    from: number;
+    to: number;
   } | null>(null);
 
-  // Seek time calculation from mouse event on tracks container
-  const seekFromClientX = (clientX: number) => {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    actorId: string;
+    actorName: string;
+    shotId: string;
+    time: number;
+  } | null>(null);
+
+  // Mouse move over tracks container
+  const handleContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || totalDuration <= 0) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const trackLeft = rect.left + 140; // 140px header offset
+    const trackLeft = rect.left + 140;
     const trackWidth = rect.width - 140;
     if (trackWidth <= 0) return;
-    const clickX = clientX - trackLeft;
+
+    const clickX = e.clientX - trackLeft;
+    if (clickX < 0) {
+      setHoverTime(null);
+      setHoverX(null);
+      return;
+    }
+
     const pct = Math.max(0, Math.min(1, clickX / trackWidth));
-    onSeek(pct * totalDuration);
+    setHoverTime(pct * totalDuration);
+    setHoverX(e.clientX - rect.left);
+  };
+
+  const handleContainerMouseLeave = () => {
+    setHoverTime(null);
+    setHoverX(null);
   };
 
   const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    seekFromClientX(e.clientX);
-  };
-
-  // Playhead Needle Drag & Hold Scrubbing Handler
-  const handleNeedleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      seekFromClientX(moveEvent.clientX);
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    if (!containerRef.current || totalDuration <= 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const trackLeft = rect.left + 140;
+    const trackWidth = rect.width - 140;
+    if (trackWidth <= 0) return;
+    const clickX = e.clientX - trackLeft;
+    const pct = Math.max(0, Math.min(1, clickX / trackWidth));
+    onSeek(pct * totalDuration);
   };
 
   // 1. Apply Action
@@ -179,46 +200,54 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
     setPropModal(null);
   };
 
-  // 4. Add New Shot
-  const handleAddNewShot = (duration: number = 3.0) => {
-    if (!onUpdateProject) return;
-    const lastShot = project.shots[project.shots.length - 1];
-    const newIndex = project.shots.length + 1;
-    const newShot: MultiAngleDirectorShot = {
-      id: `shot_${Date.now().toString().slice(-6)}`,
-      title: `Shot ${newIndex} (${duration}s)`,
-      durationSeconds: duration,
-      camera: lastShot ? { ...lastShot.camera } : { angleStart: 0, angleEnd: 0, zoomStart: 1.1, zoomEnd: 1.2, panStart: [0, 0], panEnd: [0, 0] },
-      actors: lastShot
-        ? JSON.parse(JSON.stringify(lastShot.actors))
-        : {
-            [project.actors[0]?.id || 'char_1']: {
-              actorId: project.actors[0]?.id || 'char_1',
-              worldFacingAngle: 0,
-              positionStart: [-100, 40],
-              positionEnd: [-100, 40],
-              scale: 1.6,
-              zIndex: 10,
-              actionPose: 'talk_dialogue',
-            },
-          },
-      speakerActorId: project.actors[0]?.id,
-      dialogueText: '',
-    };
-    onUpdateProject({ ...project, shots: [...project.shots, newShot] });
-    onSelectShot(newShot.id);
+  // 4. Apply Visibility Time Window
+  const handleApplyVisibility = (from: number, to: number) => {
+    if (!visibilityModal || !onUpdateProject) return;
+    const { type, id } = visibilityModal;
+
+    if (type === 'actor') {
+      const updatedShots = project.shots.map((s) => {
+        const curActor = s.actors[id] || {
+          actorId: id,
+          worldFacingAngle: 0,
+          positionStart: [0, 50],
+          positionEnd: [0, 50],
+          scale: 1.6,
+          zIndex: 10,
+          actionPose: 'idle_breathe' as ActionPoseType,
+        };
+        return { ...s, actors: { ...s.actors, [id]: { ...curActor, visibleFrom: from, visibleTo: to } } };
+      });
+      onUpdateProject({ ...project, shots: updatedShots });
+    } else if (type === 'prop') {
+      const updatedProps = (project.props || []).map((p) =>
+        p.id === id ? { ...p, visibleFrom: from, visibleTo: to } : p
+      );
+      onUpdateProject({ ...project, props: updatedProps });
+    }
+    setVisibilityModal(null);
   };
 
-  // 5. Update Duration
-  const handleUpdateDuration = (shotId: string, duration: number) => {
-    if (!onUpdateProject) return;
-    const dur = Math.max(0.5, Math.min(60, duration));
-    const updated = project.shots.map((s) => (s.id === shotId ? { ...s, durationSeconds: dur } : s));
+  // 5. Update Total Duration
+  const handleApplyTotalDuration = (newTotal: number) => {
+    if (!onUpdateProject || project.shots.length === 0) return;
+    const ratio = newTotal / Math.max(1, totalDuration);
+    const updatedShots = project.shots.map((s) => ({
+      ...s,
+      durationSeconds: Math.max(0.5, Number((s.durationSeconds * ratio).toFixed(2))),
+    }));
+    onUpdateProject({ ...project, shots: updatedShots });
+    setIsDurationModalOpen(false);
+  };
+
+  // 6. Quick Extend Duration
+  const handleExtendDuration = (secondsToAdd: number) => {
+    if (!onUpdateProject || project.shots.length === 0) return;
+    const updated = project.shots.map((s, idx) =>
+      idx === project.shots.length - 1 ? { ...s, durationSeconds: s.durationSeconds + secondsToAdd } : s
+    );
     onUpdateProject({ ...project, shots: updated });
-    setShotDurationModal(null);
   };
-
-  const activeShotObj = project.shots.find((s) => s.id === activeShotId) || project.shots[0];
 
   return (
     <div
@@ -241,7 +270,6 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
         currentTime={currentTime}
         totalDuration={totalDuration}
         isPlaying={isPlaying}
-        activeShotObj={activeShotObj}
         selectedActorId={selectedActorId}
         isExpanded={isExpanded}
         onTogglePlay={onTogglePlay}
@@ -263,17 +291,15 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
             speakerId: shot.speakerActorId || selectedActorId || project.actors[0]?.id,
           });
         }}
-        onOpenDurationModal={() => {
-          if (activeShotObj) {
-            setShotDurationModal({ isOpen: true, shotId: activeShotObj.id, duration: activeShotObj.durationSeconds, title: activeShotObj.title });
-          }
-        }}
-        onAddNewShot={handleAddNewShot}
+        onOpenTotalDurationModal={() => setIsDurationModalOpen(true)}
+        onExtendDuration={handleExtendDuration}
       />
 
       {/* 2. Scrollable Multi-Track Lanes Container */}
       <div
         ref={containerRef}
+        onMouseMove={handleContainerMouseMove}
+        onMouseLeave={handleContainerMouseLeave}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -289,8 +315,8 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
           transition: 'max-height 0.25s ease',
         }}
       >
-        {/* Ruler with sub-second precision and drag seeking */}
-        <TimelineTrackRuler totalDuration={totalDuration} onSeek={onSeek} />
+        {/* Ruler */}
+        <TimelineTrackRuler currentTime={currentTime} totalDuration={totalDuration} onSeek={onSeek} />
 
         {/* Actor Tracks */}
         {project.actors.map((actor) => (
@@ -298,41 +324,46 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
             key={actor.id}
             actor={actor}
             selectedActorId={selectedActorId}
+            activeShotId={activeShotId}
             currentTime={currentTime}
             totalDuration={totalDuration}
             shotTimeline={shotTimeline}
-            onSelectActor={onSelectActor}
+            onSelectActor={(id) => {
+              onSelectActor?.(id);
+              onSelectProp?.('');
+            }}
             onSelectShot={onSelectShot}
             onTrackClick={handleTrackClick}
             onOpenActionModal={(actorId, shotId, time, currentPose) =>
               setActionModal({ isOpen: true, actorId, targetShotId: shotId, targetTime: time, currentPose })
             }
+            onOpenVisibilityModal={(actorId, actorName, from, to) =>
+              setVisibilityModal({ isOpen: true, type: 'actor', id: actorId, title: actorName, from, to })
+            }
+            onOpenContextMenu={(e, actorId, actorName, shotId, time) =>
+              setContextMenu({ x: e.clientX, y: e.clientY, actorId, actorName, shotId, time })
+            }
           />
         ))}
-
-        {/* Dialogue Track */}
-        <TimelineDialogueTrack
-          actors={project.actors}
-          currentTime={currentTime}
-          totalDuration={totalDuration}
-          shotTimeline={shotTimeline}
-          onSelectShot={onSelectShot}
-          onTrackClick={handleTrackClick}
-          onOpenDialogueModal={(shotId, time, text, speakerId) =>
-            setDialogueModal({ isOpen: true, targetShotId: shotId, targetTime: time, text, speakerId })
-          }
-        />
 
         {/* Props & Flora Track */}
         <TimelinePropTrack
           props={project.props}
+          selectedPropId={selectedPropId}
           currentTime={currentTime}
           totalDuration={totalDuration}
           shotTimeline={shotTimeline}
           onSelectShot={onSelectShot}
+          onSelectProp={(id) => {
+            onSelectProp?.(id);
+            onSelectActor?.('');
+          }}
           onTrackClick={handleTrackClick}
           onOpenPropModal={(propId, shotId, time, currentStage) =>
             setPropModal({ isOpen: true, propId, targetShotId: shotId, targetTime: time, currentStage })
+          }
+          onOpenVisibilityModal={(propId, propName, from, to) =>
+            setVisibilityModal({ isOpen: true, type: 'prop', id: propId, title: propName, from, to })
           }
         />
 
@@ -346,49 +377,38 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
           onTrackClick={handleTrackClick}
         />
 
-        {/* ─── DRAGGABLE GLOWING PLAYHEAD NEEDLE ──────────────────────── */}
-        {totalDuration > 0 && (
+        {/* ─── GHOST HOVER GUIDE LINE (FOLLOWS MOUSE) ────────────────────── */}
+        {hoverTime !== null && hoverX !== null && Math.abs(hoverTime - currentTime) > 0.05 && (
           <div
-            onMouseDown={handleNeedleMouseDown}
             style={{
               position: 'absolute',
               top: 0,
               bottom: 0,
-              left: `calc(140px + (100% - 140px) * ${currentTime / totalDuration})`,
-              width: 14,
-              transform: 'translateX(-50%)',
-              cursor: 'ew-resize',
-              zIndex: 40,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
+              left: hoverX,
+              width: 1,
+              background: 'rgba(244, 63, 94, 0.45)',
+              pointerEvents: 'none',
+              zIndex: 30,
             }}
-            title={`Con trỏ phát: ${currentTime.toFixed(2)}s. Nhấn giữ và kéo để tua thời gian.`}
           >
-            {/* Top Diamond Grab Handle */}
             <div
               style={{
-                width: 14,
-                height: 14,
-                background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
-                transform: 'rotate(45deg)',
-                boxShadow: '0 0 10px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.8)',
-                border: '1.5px solid #fff',
-                cursor: 'ew-resize',
-                marginTop: 2,
+                position: 'absolute',
+                top: 1,
+                left: 4,
+                background: 'rgba(15, 23, 42, 0.95)',
+                color: '#fda4af',
+                padding: '1px 5px',
+                borderRadius: 3,
+                border: '1px solid rgba(244, 63, 94, 0.4)',
+                fontSize: 8.5,
+                fontWeight: 700,
+                fontFamily: 'monospace',
+                whiteSpace: 'nowrap',
               }}
-            />
-
-            {/* Glowing Vertical Needle Line */}
-            <div
-              style={{
-                width: 2.5,
-                flex: 1,
-                background: '#38bdf8',
-                boxShadow: '0 0 10px #38bdf8, 0 0 18px rgba(56, 189, 248, 0.95)',
-                pointerEvents: 'none',
-              }}
-            />
+            >
+              {hoverTime.toFixed(2)}s
+            </div>
           </div>
         )}
       </div>
@@ -404,7 +424,37 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
         style={{ width: '100%', height: 5, accentColor: '#38bdf8', cursor: 'pointer', margin: 0 }}
       />
 
-      {/* 4. Modals */}
+      {/* 4. Right-Click Context Menu */}
+      {contextMenu && (
+        <TimelineContextMenu
+          menuState={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onOpenActionModal={() => {
+            const shot = project.shots.find((s) => s.id === contextMenu.shotId);
+            const curPose = shot?.actors[contextMenu.actorId]?.actionPose || 'idle_breathe';
+            setActionModal({
+              isOpen: true,
+              actorId: contextMenu.actorId,
+              targetShotId: contextMenu.shotId,
+              targetTime: contextMenu.time,
+              currentPose: curPose,
+            });
+          }}
+          onOpenDialogueModal={() => {
+            const shot = project.shots.find((s) => s.id === contextMenu.shotId);
+            setDialogueModal({
+              isOpen: true,
+              targetShotId: contextMenu.shotId,
+              targetTime: contextMenu.time,
+              text: shot?.dialogueText || '',
+              speakerId: shot?.speakerActorId || contextMenu.actorId,
+            });
+          }}
+          onOpenDurationModal={() => setIsDurationModalOpen(true)}
+        />
+      )}
+
+      {/* 5. Modals */}
       {actionModal && (
         <TimelineActionModal
           modalState={actionModal}
@@ -434,12 +484,25 @@ export const Timeline2DScrubber: React.FC<Timeline2DScrubberProps> = ({
         />
       )}
 
-      {shotDurationModal && (
-        <TimelineShotDurationModal
-          modalState={shotDurationModal}
-          onClose={() => setShotDurationModal(null)}
-          onChangeDuration={(dur) => setShotDurationModal({ ...shotDurationModal, duration: dur })}
-          onApplyDuration={handleUpdateDuration}
+      {visibilityModal && (
+        <TimelineVisibilityModal
+          isOpen={visibilityModal.isOpen}
+          title={visibilityModal.title}
+          totalDuration={totalDuration}
+          currentTime={currentTime}
+          initialFrom={visibilityModal.from}
+          initialTo={visibilityModal.to}
+          onClose={() => setVisibilityModal(null)}
+          onApply={handleApplyVisibility}
+        />
+      )}
+
+      {isDurationModalOpen && (
+        <TimelineTotalDurationModal
+          isOpen={isDurationModalOpen}
+          currentDuration={totalDuration}
+          onClose={() => setIsDurationModalOpen(false)}
+          onApply={handleApplyTotalDuration}
         />
       )}
     </div>

@@ -3,7 +3,6 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Film,
   MessageSquare,
   Zap,
   ChevronLeft,
@@ -11,8 +10,9 @@ import {
   Clock,
   Maximize2,
   Minimize2,
+  Plus,
 } from 'lucide-react';
-import { Director2DProject, MultiAngleDirectorShot } from '../../../../../types/studio2d_director';
+import { Director2DProject } from '../../../../../types/studio2d_director';
 import { formatTimecode } from './timelineConstants';
 
 interface TimelineHeaderToolbarProps {
@@ -20,7 +20,6 @@ interface TimelineHeaderToolbarProps {
   currentTime: number;
   totalDuration: number;
   isPlaying: boolean;
-  activeShotObj?: MultiAngleDirectorShot;
   selectedActorId?: string | null;
   isExpanded: boolean;
   onTogglePlay: () => void;
@@ -28,8 +27,8 @@ interface TimelineHeaderToolbarProps {
   onToggleExpand: () => void;
   onOpenActionModal: () => void;
   onOpenDialogueModal: () => void;
-  onOpenDurationModal: () => void;
-  onAddNewShot: (duration: number) => void;
+  onOpenTotalDurationModal: () => void;
+  onExtendDuration: (secondsToAdd: number) => void;
 }
 
 export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
@@ -37,7 +36,6 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
   currentTime,
   totalDuration,
   isPlaying,
-  activeShotObj,
   selectedActorId,
   isExpanded,
   onTogglePlay,
@@ -45,22 +43,22 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
   onToggleExpand,
   onOpenActionModal,
   onOpenDialogueModal,
-  onOpenDurationModal,
-  onAddNewShot,
+  onOpenTotalDurationModal,
+  onExtendDuration,
 }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-      {/* Left Playback Controls */}
+      {/* Left Playback Controls & Video Duration */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
           onClick={onTogglePlay}
-          title={isPlaying ? 'Tạm dừng (Space)' : 'Phát kịch bản (Space)'}
+          title={isPlaying ? 'Tạm dừng video (Space)' : 'Phát toàn bộ kịch bản ghép video (Space)'}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 36,
-            height: 36,
+            width: 34,
+            height: 34,
             borderRadius: 8,
             background: isPlaying
               ? 'linear-gradient(135deg, #ef4444, #dc2626)'
@@ -72,18 +70,18 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             transition: 'all 0.15s',
           }}
         >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: 2 }} />}
+          {isPlaying ? <Pause size={17} /> : <Play size={17} style={{ marginLeft: 2 }} />}
         </button>
 
         <button
           onClick={() => onSeek(0)}
-          title="Quay lại đầu video (0.00s)"
+          title="Quay về đầu video (0.00s)"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 30,
-            height: 30,
+            width: 28,
+            height: 28,
             borderRadius: 6,
             background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.12)',
@@ -91,7 +89,7 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             cursor: 'pointer',
           }}
         >
-          <RotateCcw size={13} />
+          <RotateCcw size={12} />
         </button>
 
         <button
@@ -101,8 +99,8 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 28,
-            height: 30,
+            width: 26,
+            height: 28,
             borderRadius: 6,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -110,7 +108,7 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             cursor: 'pointer',
           }}
         >
-          <ChevronLeft size={14} />
+          <ChevronLeft size={13} />
         </button>
 
         <button
@@ -120,8 +118,8 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 28,
-            height: 30,
+            width: 26,
+            height: 28,
             borderRadius: 6,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -129,7 +127,7 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             cursor: 'pointer',
           }}
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={13} />
         </button>
 
         {/* Digital Timecode */}
@@ -140,10 +138,10 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             gap: 6,
             background: 'rgba(2, 6, 23, 0.9)',
             border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: 8,
-            padding: '4px 10px',
+            borderRadius: 6,
+            padding: '3px 8px',
             fontFamily: 'monospace',
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: 700,
             color: '#38bdf8',
             boxShadow: '0 0 10px rgba(56, 189, 248, 0.2) inset',
@@ -154,47 +152,28 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
           <span style={{ color: '#94a3b8' }}>{formatTimecode(totalDuration)}</span>
         </div>
 
-        {/* Shot Duration Pill */}
-        {activeShotObj && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'rgba(56, 189, 248, 0.12)',
-              border: '1px solid rgba(56, 189, 248, 0.35)',
-              borderRadius: 8,
-              padding: '3px 8px',
-              fontSize: 11,
-              color: '#e2e8f0',
-              fontWeight: 600,
-            }}
-          >
-            <Film size={12} color="#38bdf8" />
-            <span style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeShotObj.title}
-            </span>
-            <button
-              onClick={onOpenDurationModal}
-              title="Bấm để chỉnh sửa độ dài giây của Shot này"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-                padding: '2px 6px',
-                borderRadius: 4,
-                background: 'rgba(56, 189, 248, 0.2)',
-                border: '1px solid #38bdf8',
-                color: '#38bdf8',
-                fontSize: 10,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              <Clock size={10} /> {activeShotObj.durationSeconds}s
-            </button>
-          </div>
-        )}
+        {/* Total Video Duration Editor Pill */}
+        <button
+          onClick={onOpenTotalDurationModal}
+          title="Bấm để chỉnh tổng thời lượng video hoàn chỉnh"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 8px',
+            borderRadius: 6,
+            background: 'rgba(56, 189, 248, 0.15)',
+            border: '1px solid #38bdf8',
+            color: '#38bdf8',
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          <Clock size={12} />
+          <span>Tổng video: {totalDuration.toFixed(1)}s</span>
+          <span style={{ fontSize: 9, opacity: 0.8 }}>✏️</span>
+        </button>
       </div>
 
       {/* Right Controls: Actions, Presets, Expand Button */}
@@ -202,12 +181,12 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
         {selectedActorId && (
           <button
             onClick={onOpenActionModal}
-            title={`Gắn động tác cho nhân vật đang chọn tại ${formatTimecode(currentTime)}`}
+            title={`Gắn động tác tại ${formatTimecode(currentTime)}`}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 5,
-              padding: '5px 10px',
+              padding: '4px 9px',
               borderRadius: 6,
               background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(56, 189, 248, 0.25))',
               border: '1px solid rgba(56, 189, 248, 0.5)',
@@ -228,7 +207,7 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: 5,
-            padding: '5px 10px',
+            padding: '4px 9px',
             borderRadius: 6,
             background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(236, 72, 153, 0.25))',
             border: '1px solid rgba(168, 85, 247, 0.45)',
@@ -241,20 +220,20 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
           <MessageSquare size={13} /> Gắn Thoại
         </button>
 
-        {/* Flexible Add Shot Presets */}
-        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', padding: '2px 4px', gap: 3 }}>
-          <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600, paddingLeft: 2 }}>+Shot:</span>
-          {[1, 2, 3, 5, 10].map((sec) => (
+        {/* Quick Extend Video Duration */}
+        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', padding: '2px 4px', gap: 3 }}>
+          <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600, paddingLeft: 2 }}>Tăng:</span>
+          {[2, 5, 10].map((sec) => (
             <button
               key={sec}
-              onClick={() => onAddNewShot(sec)}
-              title={`Thêm đoạn diễn hoạt mới dài ${sec} giây`}
+              onClick={() => onExtendDuration(sec)}
+              title={`Kéo dài thêm ${sec} giây cho video`}
               style={{
-                padding: '3px 6px',
+                padding: '2px 6px',
                 borderRadius: 4,
-                background: sec === 3 ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.06)',
-                border: sec === 3 ? '1px solid #38bdf8' : 'none',
-                color: sec === 3 ? '#38bdf8' : '#e2e8f0',
+                background: 'rgba(255,255,255,0.06)',
+                border: 'none',
+                color: '#e2e8f0',
                 fontSize: 10,
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -273,7 +252,7 @@ export const TimelineHeaderToolbar: React.FC<TimelineHeaderToolbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: 4,
-            padding: '5px 8px',
+            padding: '4px 8px',
             borderRadius: 6,
             background: isExpanded ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
             border: isExpanded ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',

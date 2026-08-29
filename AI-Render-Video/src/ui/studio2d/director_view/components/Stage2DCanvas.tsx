@@ -1,10 +1,15 @@
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import {
   Move,
   ZoomIn,
   ZoomOut,
-  Maximize,
   Hand,
+  Compass,
+  Rotate3d,
+  Layers,
 } from 'lucide-react';
 import {
   Director2DProject,
@@ -20,6 +25,7 @@ interface Stage2DCanvasProps {
   project: Director2DProject;
   activeShot: MultiAngleDirectorShot;
   shotProgress: number; // 0..1 (progress inside current shot)
+  currentTime?: number;
   isPlaying: boolean;
   selectedActorId: string | null;
   selectedPartId?: string | null;
@@ -29,7 +35,11 @@ interface Stage2DCanvasProps {
   onSelectProp?: (propId: string) => void;
   onUpdateCameraAngle: (yawDeg: number, pitchDeg?: number) => void;
   onUpdateActorPosition?: (actorId: string, pos: [number, number]) => void;
+  onUpdateActorScale?: (actorId: string, scale: number) => void;
+  onUpdateActorZIndex?: (actorId: string, delta: number) => void;
   onUpdatePropPosition?: (propId: string, pos: [number, number]) => void;
+  onUpdatePropScale?: (propId: string, scale: number) => void;
+  onUpdatePropZIndex?: (propId: string, delta: number) => void;
   showTrajectoryLine?: boolean;
 }
 
@@ -49,10 +59,27 @@ interface Particle {
   type: 'leaf' | 'sparkle' | 'mist';
 }
 
+interface BBoxCorner {
+  x: number;
+  y: number;
+  cursor: 'nwse-resize' | 'nesw-resize';
+}
+
+interface ActiveBBoxInfo {
+  type: 'actor' | 'prop';
+  id: string;
+  centerX: number;
+  centerY: number;
+  initDist: number;
+  initScale: number;
+  corners: BBoxCorner[];
+}
+
 export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
   project,
   activeShot,
   shotProgress,
+  currentTime,
   isPlaying,
   selectedActorId,
   selectedPartId,
@@ -62,21 +89,46 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
   onSelectProp,
   onUpdateCameraAngle,
   onUpdateActorPosition,
+  onUpdateActorScale,
+  onUpdateActorZIndex,
   onUpdatePropPosition,
+  onUpdatePropScale,
+  onUpdatePropZIndex,
   showTrajectoryLine = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const particlesRef = useRef<Particle[]>([]);
 
-  // Interactive Viewport Zoom & Pan State
+  // Refs for stable keyboard listener access (avoids interval teardown during holding)
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const activeShotRef = useRef(activeShot);
+  activeShotRef.current = activeShot;
+  const selectedActorIdRef = useRef(selectedActorId);
+  selectedActorIdRef.current = selectedActorId;
+  const selectedPropIdRef = useRef(selectedPropId);
+  selectedPropIdRef.current = selectedPropId;
+  const onUpdateActorScaleRef = useRef(onUpdateActorScale);
+  onUpdateActorScaleRef.current = onUpdateActorScale;
+  const onUpdatePropScaleRef = useRef(onUpdatePropScale);
+  onUpdatePropScaleRef.current = onUpdatePropScale;
+  const onUpdateActorZIndexRef = useRef(onUpdateActorZIndex);
+  onUpdateActorZIndexRef.current = onUpdateActorZIndex;
+  const onUpdatePropZIndexRef = useRef(onUpdatePropZIndex);
+  onUpdatePropZIndexRef.current = onUpdatePropZIndex;
+
+  // Interactive Viewport Tools: 'hand' (Default: Move & Transform) vs 'orbit360' (360° Angle Orbit)
+  const [activeTool, setActiveTool] = useState<'hand' | 'orbit360'>('hand');
   const [viewportZoom, setViewportZoom] = useState<number>(1.0);
   const [viewportPan, setViewportPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isPanToolActive, setIsPanToolActive] = useState<boolean>(false);
+  const [zToast, setZToast] = useState<{ text: string; time: number } | null>(null);
+
+  // Exact screen-space bounding box handles
+  const activeBBoxRef = useRef<ActiveBBoxInfo | null>(null);
 
   const isDraggingRef = useRef(false);
-  const dragModeRef = useRef<'orbit' | 'pan' | 'prop' | 'actor'>('orbit');
-  const draggingTargetIdRef = useRef<string | null>(null);
+  const dragModeRef = useRef<'orbit' | 'pan' | 'move_actor' | 'move_prop' | 'scale_actor' | 'scale_prop'>('pan');
   const dragStartRef = useRef<{
     x: number;
     y: number;
@@ -86,6 +138,8 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
     startPanY: number;
     itemStartX: number;
     itemStartY: number;
+    itemInitScale: number;
+    itemInitDist: number;
   }>({
     x: 0,
     y: 0,
@@ -95,12 +149,117 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
     startPanY: 0,
     itemStartX: 0,
     itemStartY: 0,
+    itemInitScale: 1.0,
+    itemInitDist: 100,
   });
+
+  const scaleHoldTimerRef = useRef<number | null>(null);
+
+  // ─── STABLE KEYBOARD SHORTCUT LISTENER ──────────────────────────────────
+  useEffect(() => {
+    const stepScale = (delta: number) => {
+      const curActorId = selectedActorIdRef.current;
+      const curPropId = selectedPropIdRef.current;
+      const curShot = activeShotRef.current;
+      const curProj = projectRef.current;
+
+      if (curActorId && onUpdateActorScaleRef.current && curShot) {
+        const curScale = curShot.actors[curActorId]?.scale ?? 1.6;
+        const newScale = Math.max(0.2, Math.min(5.0, Number((curScale + delta).toFixed(2))));
+        onUpdateActorScaleRef.current(curActorId, newScale);
+        setZToast({
+          text: `🔍 Tỉ lệ (Scale): ${newScale.toFixed(2)}x ${delta > 0 ? '🔼' : '🔽'}`,
+          time: Date.now(),
+        });
+      } else if (curPropId && onUpdatePropScaleRef.current && curProj) {
+        const curProp = curProj.props.find((p) => p.id === curPropId);
+        const curScale = curProp?.scale[0] ?? 1.0;
+        const newScale = Math.max(0.2, Math.min(5.0, Number((curScale + delta).toFixed(2))));
+        onUpdatePropScaleRef.current(curPropId, newScale);
+        setZToast({
+          text: `🔍 Tỉ lệ (Scale): ${newScale.toFixed(2)}x ${delta > 0 ? '🔼' : '🔽'}`,
+          time: Date.now(),
+        });
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      const isPlus = e.key === '+' || e.key === '=' || e.code === 'NumpadAdd' || e.code === 'Equal';
+      const isMinus = e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract' || e.code === 'Minus';
+
+      if (!isPlus && !isMinus) return;
+
+      if (e.shiftKey) {
+        // Continuous Scaling Mode
+        e.preventDefault();
+        const delta = isPlus ? 0.05 : -0.05;
+
+        // If OS repeat or timer already active, still perform step if not in timer
+        if (!scaleHoldTimerRef.current) {
+          stepScale(delta); // initial immediate step
+          scaleHoldTimerRef.current = window.setInterval(() => {
+            stepScale(delta);
+          }, 45);
+        }
+      } else {
+        // Single Step Z-Index Mode
+        const curActorId = selectedActorIdRef.current;
+        const curPropId = selectedPropIdRef.current;
+        const curShot = activeShotRef.current;
+        const curProj = projectRef.current;
+
+        if (isPlus) {
+          if (curActorId && onUpdateActorZIndexRef.current && curShot) {
+            onUpdateActorZIndexRef.current(curActorId, 1);
+            const curZ = (curShot.actors[curActorId]?.zIndex || 10) + 1;
+            setZToast({ text: `Lớp hiển thị (Z-Index): ${curZ} ⬆️`, time: Date.now() });
+          } else if (curPropId && onUpdatePropZIndexRef.current && curProj) {
+            onUpdatePropZIndexRef.current(curPropId, 1);
+            const curProp = curProj.props.find((p) => p.id === curPropId);
+            const curZ = (curProp?.zIndex || 5) + 1;
+            setZToast({ text: `Lớp hiển thị (Z-Index): ${curZ} ⬆️`, time: Date.now() });
+          }
+        } else if (isMinus) {
+          if (curActorId && onUpdateActorZIndexRef.current && curShot) {
+            onUpdateActorZIndexRef.current(curActorId, -1);
+            const curZ = Math.max(1, (curShot.actors[curActorId]?.zIndex || 10) - 1);
+            setZToast({ text: `Lớp hiển thị (Z-Index): ${curZ} ⬇️`, time: Date.now() });
+          } else if (curPropId && onUpdatePropZIndexRef.current && curProj) {
+            onUpdatePropZIndexRef.current(curPropId, -1);
+            const curProp = curProj.props.find((p) => p.id === curPropId);
+            const curZ = Math.max(1, (curProp?.zIndex || 5) - 1);
+            setZToast({ text: `Lớp hiển thị (Z-Index): ${curZ} ⬇️`, time: Date.now() });
+          }
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const isPlus = e.key === '+' || e.key === '=' || e.code === 'NumpadAdd' || e.code === 'Equal';
+      const isMinus = e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract' || e.code === 'Minus';
+      if (isPlus || isMinus || e.key === 'Shift') {
+        if (scaleHoldTimerRef.current) {
+          clearInterval(scaleHoldTimerRef.current);
+          scaleHoldTimerRef.current = null;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (scaleHoldTimerRef.current) clearInterval(scaleHoldTimerRef.current);
+    };
+  }, []);
 
   // Initialize Atmospheric Particle System
   useEffect(() => {
     const arr: Particle[] = [];
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 24; i++) {
       arr.push({
         x: Math.random() * 960,
         y: Math.random() * 540,
@@ -119,7 +278,6 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
   const cam = activeShot.camera;
   const currentCamAngle = cam.angleStart + (cam.angleEnd - cam.angleStart) * shotProgress;
   const currentPitch = (cam.pitchStart ?? 0) + ((cam.pitchEnd ?? 0) - (cam.pitchStart ?? 0)) * shotProgress;
-  const isTopDownMode = currentPitch >= 45;
 
   // Preload Images Cache
   const getImage = useCallback((url: string): HTMLImageElement | null => {
@@ -137,49 +295,60 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
   // Compute Relative Angle
   const resolveAngleSprite = (
     actorId: string,
-    worldAngle: number,
+    worldFacingAngle: number,
     camAngle: number,
     pitch: number
   ): { url: string; flipX: boolean } => {
     const actor = project.actors.find((a) => a.id === actorId);
     if (!actor) return { url: '', flipX: false };
 
-    const relAngle = ((worldAngle - camAngle) % 360 + 360) % 360;
+    let relYaw = (worldFacingAngle - camAngle) % 360;
+    if (relYaw < 0) relYaw += 360;
+
+    let nearest = STANDARD_8_ANGLES[0];
+    let minDiff = 999;
+    for (const opt of STANDARD_8_ANGLES) {
+      const diff = Math.min(Math.abs(relYaw - opt.deg), 360 - Math.abs(relYaw - opt.deg));
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearest = opt;
+      }
+    }
 
     if (pitch >= 45) {
-      const closestTop = TOP_DOWN_ANGLES.reduce((prev, curr) =>
-        Math.abs(curr.deg - relAngle) < Math.abs(prev.deg - relAngle) ? curr : prev
-      );
-
-      let topUrl = actor.sprites[closestTop.id] || '';
-      let topFlipX = false;
-      if (!topUrl && actor.autoMirrorSymmetry && closestTop.mirroredFrom) {
-        topUrl = actor.sprites[closestTop.mirroredFrom] || '';
-        topFlipX = true;
+      let topNearest = TOP_DOWN_ANGLES[0];
+      let topMin = 999;
+      for (const opt of TOP_DOWN_ANGLES) {
+        const diff = Math.min(Math.abs(relYaw - opt.deg), 360 - Math.abs(relYaw - opt.deg));
+        if (diff < topMin) {
+          topMin = diff;
+          topNearest = opt;
+        }
       }
-      if (topUrl) return { url: topUrl, flipX: topFlipX };
+      const topSprite = actor.topDownSprites?.[topNearest.id];
+      if (topSprite) return { url: topSprite, flipX: false };
     }
 
-    const closest = STANDARD_8_ANGLES.reduce((prev, curr) =>
-      Math.abs(curr.deg - relAngle) < Math.abs(prev.deg - relAngle) ? curr : prev
-    );
+    const sprite = actor.sprites[nearest.id];
+    if (sprite) return { url: sprite, flipX: false };
 
-    let url = actor.sprites[closest.id] || '';
-    let flipX = false;
-
-    if (!url && actor.autoMirrorSymmetry && closest.mirroredFrom) {
-      url = actor.sprites[closest.mirroredFrom] || '';
-      flipX = true;
+    const flipFallbackMap: Partial<Record<StandardHorizontalAngle, StandardHorizontalAngle>> = {
+      front_left: 'front_right',
+      front_right: 'front_left',
+      side_left: 'side_right',
+      side_right: 'side_left',
+      back_left: 'back_right',
+      back_right: 'back_left',
+    };
+    const paired = flipFallbackMap[nearest.id];
+    if (paired && actor.sprites[paired]) {
+      return { url: actor.sprites[paired]!, flipX: true };
     }
 
-    if (!url) {
-      url = actor.sprites.front || Object.values(actor.sprites)[0] || '';
-    }
-
-    return { url, flipX };
+    return { url: actor.sprites.front || Object.values(actor.sprites)[0] || '', flipX: false };
   };
 
-  // Main Render Loop (60 FPS with Props, Particles, Physics, Shading & Transitions)
+  // ─── MAIN CANVAS RENDER LOOP ──────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -188,89 +357,107 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
 
     const w = canvas.width;
     const h = canvas.height;
-    const rawP = Math.max(0, Math.min(1, shotProgress));
+    const rawP = shotProgress;
     const smoothP = easeInOutCubic(rawP);
-    const nowSec = performance.now() / 1000;
+    // When paused, nowSec is fixed to currentTime so objects never vibrate/jitter!
+    const nowSec = isPlaying ? performance.now() / 1000 : currentTime ?? 0;
 
-    // Camera Pan & Zoom Interpolation
-    const currentSceneZoom = cam.zoomStart + (cam.zoomEnd - cam.zoomStart) * smoothP;
-    const currentScenePanX = cam.panStart[0] + (cam.panEnd[0] - cam.panStart[0]) * smoothP;
-    const currentScenePanY = cam.panStart[1] + (cam.panEnd[1] - cam.panStart[1]) * smoothP;
+    // 1. Camera Calculations
     const animatedCamAngle = cam.angleStart + (cam.angleEnd - cam.angleStart) * smoothP;
     const animatedPitch = (cam.pitchStart ?? 0) + ((cam.pitchEnd ?? 0) - (cam.pitchStart ?? 0)) * smoothP;
+    const currentZoom = cam.zoomStart + (cam.zoomEnd - cam.zoomStart) * smoothP;
+    const currentPanX = cam.panStart[0] + (cam.panEnd[0] - cam.panStart[0]) * smoothP;
+    const currentPanY = cam.panStart[1] + (cam.panEnd[1] - cam.panStart[1]) * smoothP;
+
+    let shakeX = 0;
+    let shakeY = 0;
+    if (isPlaying && cam.shakeIntensity && cam.shakeIntensity > 0) {
+      const shakeMag = cam.shakeIntensity * 12;
+      shakeX = (Math.sin(nowSec * 35) + Math.sin(nowSec * 73)) * shakeMag * 0.5;
+      shakeY = (Math.cos(nowSec * 41) + Math.cos(nowSec * 61)) * shakeMag * 0.5;
+    }
 
     ctx.clearRect(0, 0, w, h);
 
-    // Apply Workspace Viewport Pan & Zoom
+    // Apply Viewport Zoom & Pan
     ctx.save();
     ctx.translate(w / 2 + viewportPan.x, h / 2 + viewportPan.y);
     ctx.scale(viewportZoom, viewportZoom);
     ctx.translate(-w / 2, -h / 2);
 
-    // Apply Scene Camera Pan & Zoom
+    // Camera Center Origin
     ctx.save();
-    ctx.translate(w / 2 + currentScenePanX, h / 2 + currentScenePanY);
-    ctx.scale(currentSceneZoom, currentSceneZoom);
+    ctx.translate(w / 2 + shakeX, h / 2 + shakeY);
+    ctx.scale(currentZoom, currentZoom);
 
-    // 1. Render Background Layers with Smooth Parallax Depth
+    const currentScenePanX = currentPanX + ((animatedCamAngle % 360) / 360) * 450;
+    const currentScenePanY = currentPanY + (animatedPitch / 90) * 120;
+
+    // 2. Background Layers with Parallax
     for (const bg of project.backgroundLayers) {
       const bgImg = getImage(bg.path);
       if (bgImg && bgImg.complete) {
         ctx.save();
         ctx.globalAlpha = bg.opacity ?? 1.0;
-        const bgW = 1280;
-        const bgH = 720;
-        const parallaxX = bg.offset[0] - currentScenePanX * bg.parallaxFactor;
-        const parallaxY = bg.offset[1] - currentScenePanY * bg.parallaxFactor;
-        ctx.drawImage(bgImg, -bgW / 2 + parallaxX, -bgH / 2 + parallaxY, bgW, bgH);
+        const pFactor = bg.parallaxFactor ?? 0.2;
+        const dx = currentScenePanX * pFactor + (bg.offset?.[0] || 0);
+        const dy = currentScenePanY * pFactor + (bg.offset?.[1] || 0);
+
+        const imgW = bgImg.width || 1920;
+        const imgH = bgImg.height || 1080;
+        const scale = Math.max(w / imgW, h / imgH) * 1.35;
+        const drawW = imgW * scale;
+        const drawH = imgH * scale;
+
+        ctx.drawImage(bgImg, -drawW / 2 - dx, -drawH / 2 - dy, drawW, drawH);
         ctx.restore();
       }
     }
 
-    // 2. Render Perspective 3D Orientation Aura on Stage Ground
-    ctx.save();
-    ctx.translate(0, 80);
-    const pitchScaleY = animatedPitch >= 45 ? 0.75 : 0.28;
-    ctx.scale(1, pitchScaleY);
-    const rad = ((animatedCamAngle - 90) * Math.PI) / 180;
-
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
-    ctx.lineWidth = 1.5;
-    for (let r = 90; r <= 360; r += 90) {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r, r * 0.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
+    // Ground Plane Grid in 360 / Top-Down Mode
+    if (animatedPitch > 25) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+      ctx.lineWidth = 1;
+      for (let r = 80; r <= 320; r += 80) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r, r * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(rad) * 320, Math.sin(rad) * 160);
-    ctx.stroke();
-    ctx.restore();
 
-    // 3. Render Combined Stage Elements (Scene Props + Actors) sorted by Z-Index
+    // 3. Render Combined Stage Elements (Props + Actors)
     type RenderItem =
       | { type: 'actor'; zIndex: number; data: any }
       | { type: 'prop'; zIndex: number; data: ScenePropItem };
 
     const renderList: RenderItem[] = [];
+    const currentEvalTime = currentTime ?? (shotProgress * (activeShot?.durationSeconds || 3));
 
-    // Add actors
+    // Filter by Visibility Time Window
     for (const actState of Object.values(activeShot.actors)) {
-      renderList.push({ type: 'actor', zIndex: actState.zIndex, data: actState });
+      const visFrom = actState.visibleFrom ?? 0;
+      const visTo = actState.visibleTo ?? 999999;
+      if (currentEvalTime >= visFrom && currentEvalTime <= visTo) {
+        renderList.push({ type: 'actor', zIndex: actState.zIndex ?? 10, data: actState });
+      }
     }
-    // Add props
+
     if (project.props && Array.isArray(project.props)) {
       for (const p of project.props) {
-        if (p.visible) {
-          renderList.push({ type: 'prop', zIndex: p.zIndex, data: p });
+        const propShotOverride = activeShot.props?.[p.id];
+        const activeP = propShotOverride || p;
+        const visFrom = activeP.visibleFrom ?? 0;
+        const visTo = activeP.visibleTo ?? 999999;
+        if (activeP.visible !== false && currentEvalTime >= visFrom && currentEvalTime <= visTo) {
+          renderList.push({ type: 'prop', zIndex: activeP.zIndex ?? 5, data: p });
         }
       }
     }
 
-    // Sort ascending by zIndex
     renderList.sort((a, b) => a.zIndex - b.zIndex);
+    activeBBoxRef.current = null;
 
     for (const item of renderList) {
       if (item.type === 'prop') {
@@ -281,7 +468,6 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
         const growthStage = activeProp.growthStage || 'normal';
 
         ctx.save();
-        // Parallax offset for tree/props
         const parallaxDx = currentScenePanX * (1 - (activeProp.parallaxFactor || 1.0));
         ctx.translate(activeProp.position[0] - parallaxDx, activeProp.position[1]);
 
@@ -289,81 +475,90 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
         let extraScaleY = 1.0;
         let extraRotation = 0;
 
-        if (growthStage === 'seed_sprout') {
-          // 🌱 Mầm non (Thu nhỏ 0.35x, nhú mầm)
-          extraScaleX = 0.35;
-          extraScaleY = 0.35 + Math.sin(nowSec * 3) * 0.03;
-        } else if (growthStage === 'grow_big') {
-          // 🌿 Cây lớn dần / Vươn cao (1.25x scale)
-          extraScaleX = 1.25 + Math.sin(nowSec * 2) * 0.03;
-          extraScaleY = 1.25 + Math.sin(nowSec * 2) * 0.03;
-        } else if (growthStage === 'bloom_flowers') {
-          // 🌸 Nở hoa (Tỏa sắc hồng phấn hoa)
-          extraScaleX = 1.15;
-          extraScaleY = 1.15;
-          ctx.shadowColor = '#f472b6';
-          ctx.shadowBlur = 18;
-        } else if (growthStage === 'bear_fruit') {
-          // 🍎 Kết trái / Ra quả chín
-          extraScaleX = 1.1;
-          extraScaleY = 1.1;
-          ctx.shadowColor = '#ef4444';
-          ctx.shadowBlur = 14;
-        } else if (growthStage === 'sway_wind') {
-          // 🍃 Đung đưa theo gió thổi
-          extraRotation = Math.sin(nowSec * 4 + activeProp.position[0] * 0.01) * 0.08;
-        } else if (growthStage === 'glow_magic') {
-          // ✨ Tỏa sáng tiên khí
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 24;
+        if (isPlaying) {
+          if (growthStage === 'seed_sprout') {
+            extraScaleX = 0.35;
+            extraScaleY = 0.35 + Math.sin(nowSec * 3) * 0.03;
+          } else if (growthStage === 'grow_big') {
+            extraScaleX = 1.25 + Math.sin(nowSec * 2) * 0.03;
+            extraScaleY = 1.25 + Math.sin(nowSec * 2) * 0.03;
+          } else if (growthStage === 'bloom_flowers') {
+            extraScaleX = 1.15;
+            extraScaleY = 1.15;
+            ctx.shadowColor = '#f472b6';
+            ctx.shadowBlur = 16;
+          } else if (growthStage === 'bear_fruit') {
+            extraScaleX = 1.1;
+            extraScaleY = 1.1;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 12;
+          } else if (growthStage === 'sway_wind') {
+            extraRotation = Math.sin(nowSec * 4 + activeProp.position[0] * 0.01) * 0.08;
+          } else if (growthStage === 'glow_magic') {
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 20;
+          }
         }
 
         ctx.rotate(((activeProp.rotation * Math.PI) / 180) + extraRotation);
         ctx.scale((activeProp.flipX ? -activeProp.scale[0] : activeProp.scale[0]) * extraScaleX, activeProp.scale[1] * extraScaleY);
         ctx.globalAlpha = activeProp.opacity ?? 1.0;
-        if (activeProp.blendMode && activeProp.blendMode !== 'normal') {
-          ctx.globalCompositeOperation = activeProp.blendMode as GlobalCompositeOperation;
-        }
 
         if (propImg && propImg.complete) {
           const pw = propImg.width || 120;
           const ph = propImg.height || 120;
           ctx.drawImage(propImg, -pw / 2, -ph / 2, pw, ph);
 
-          // Extra Visual Effects for Flower Bloom / Fruit Bear
-          if (growthStage === 'bloom_flowers') {
-            ctx.fillStyle = '#f472b6';
-            for (let b = 0; b < 4; b++) {
-              const bx = Math.sin(nowSec * 2 + b * 1.5) * (pw * 0.35);
-              const by = -ph * 0.3 + Math.cos(nowSec * 2 + b * 1.5) * (ph * 0.2);
-              ctx.beginPath();
-              ctx.arc(bx, by, 5, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          } else if (growthStage === 'bear_fruit') {
-            ctx.fillStyle = '#ef4444';
-            for (let f = 0; f < 3; f++) {
-              const fx = (f - 1) * (pw * 0.25);
-              const fy = -ph * 0.25 + Math.sin(nowSec * 1.5 + f) * 3;
-              ctx.beginPath();
-              ctx.arc(fx, fy, 7, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-
-          // If selected, draw interactive bounding box
+          // ─── INTERACTIVE BOUNDING BOX FOR SELECTED PROP ────────────────
           if (selectedPropId === prop.id) {
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
-            ctx.strokeRect(-pw / 2 - 4, -ph / 2 - 4, pw + 8, ph + 8);
+            // Compute 100% exact screen coordinates via matrix transform
+            const m = ctx.getTransform();
+            const pTL = m.transformPoint(new DOMPoint(-pw / 2 - 6, -ph / 2 - 6));
+            const pTR = m.transformPoint(new DOMPoint(pw / 2 + 6, -ph / 2 - 6));
+            const pBL = m.transformPoint(new DOMPoint(-pw / 2 - 6, ph / 2 + 6));
+            const pBR = m.transformPoint(new DOMPoint(pw / 2 + 6, ph / 2 + 6));
+            const pC = m.transformPoint(new DOMPoint(0, 0));
+
+            activeBBoxRef.current = {
+              type: 'prop',
+              id: prop.id,
+              centerX: pC.x,
+              centerY: pC.y,
+              initDist: Math.hypot(pTR.x - pC.x, pTR.y - pC.y),
+              initScale: activeProp.scale[0],
+              corners: [
+                { x: pTL.x, y: pTL.y, cursor: 'nwse-resize' },
+                { x: pTR.x, y: pTR.y, cursor: 'nesw-resize' },
+                { x: pBL.x, y: pBL.y, cursor: 'nesw-resize' },
+                { x: pBR.x, y: pBR.y, cursor: 'nwse-resize' },
+              ],
+            };
+
+            ctx.strokeStyle = '#4ade80';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(-pw / 2 - 6, -ph / 2 - 6, pw + 12, ph + 12);
             ctx.setLineDash([]);
-            // Corner handles
-            ctx.fillStyle = '#38bdf8';
-            ctx.fillRect(-pw / 2 - 8, -ph / 2 - 8, 8, 8);
-            ctx.fillRect(pw / 2, -ph / 2 - 8, 8, 8);
-            ctx.fillRect(-pw / 2 - 8, ph / 2, 8, 8);
-            ctx.fillRect(pw / 2, ph / 2, 8, 8);
+
+            // 4 Corner Resize Handles
+            ctx.fillStyle = '#4ade80';
+            ctx.fillRect(-pw / 2 - 10, -ph / 2 - 10, 8, 8);
+            ctx.fillRect(pw / 2 + 2, -ph / 2 - 10, 8, 8);
+            ctx.fillRect(-pw / 2 - 10, ph / 2 + 2, 8, 8);
+            ctx.fillRect(pw / 2 + 2, ph / 2 + 2, 8, 8);
+
+            // BBox Title Tag
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.fillRect(-pw / 2 - 6, -ph / 2 - 28, pw + 12, 18);
+            ctx.fillStyle = '#4ade80';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+              `🌲 ${activeProp.name} • (${activeProp.position[0]}, ${activeProp.position[1]}) • Tỉ lệ: ${activeProp.scale[0]}x • Lớp(Z): ${activeProp.zIndex ?? 5}`,
+              0,
+              -ph / 2 - 16
+            );
+            ctx.textAlign = 'start';
           }
         }
         ctx.restore();
@@ -376,31 +571,29 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
         const posX = actState.positionStart[0] + (actState.positionEnd[0] - actState.positionStart[0]) * smoothP;
         const posY = actState.positionStart[1] + (actState.positionEnd[1] - actState.positionStart[1]) * smoothP;
 
-        let animOffsetY = Math.sin(nowSec * 3.5) * 2.5;
-        let animRot = Math.sin(nowSec * 2.0) * 0.015;
+        let animOffsetY = 0;
+        let animRot = 0;
 
-        if (actState.actionPose === 'combat_slash') {
-          const slashP = (rawP * 2) % 1;
-          animOffsetY = Math.sin(slashP * Math.PI) * -22;
-          animRot = (slashP - 0.5) * 0.35;
-        } else if (actState.actionPose === 'combat_cast') {
-          animOffsetY = Math.sin(nowSec * 5) * 8 - 10;
-          animRot = Math.sin(nowSec * 3) * 0.04;
-        } else if (actState.actionPose === 'talk_dialogue') {
-          animOffsetY += Math.sin(nowSec * 7) * 2.0;
-          animRot = Math.sin(nowSec * 3.5) * 0.02;
-        } else if (actState.actionPose === 'shocked_back') {
-          animOffsetY = Math.sin(rawP * Math.PI * 10) * -6;
-          animRot = -0.15;
-        } else if (actState.actionPose === 'fly_dash') {
-          animOffsetY = Math.sin(nowSec * 6) * 5 - 15;
-          animRot = 0.12;
-        } else if (actState.actionPose === 'walk_cycle') {
-          animOffsetY = Math.abs(Math.sin(nowSec * 8)) * -7;
-          animRot = Math.sin(nowSec * 8) * 0.04;
-        } else {
-          // idle_breathe
-          animOffsetY = Math.sin(nowSec * 3.0) * 2.0;
+        if (isPlaying) {
+          animOffsetY = Math.sin(nowSec * 3.5) * 2.5;
+          animRot = Math.sin(nowSec * 2.0) * 0.015;
+
+          if (actState.actionPose === 'combat_slash') {
+            const slashP = (rawP * 2) % 1;
+            animOffsetY = Math.sin(slashP * Math.PI) * -22;
+            animRot = (slashP - 0.5) * 0.35;
+          } else if (actState.actionPose === 'combat_cast') {
+            animOffsetY = Math.sin(nowSec * 5) * 8 - 10;
+          } else if (actState.actionPose === 'talk_dialogue') {
+            animOffsetY += Math.sin(nowSec * 7) * 2.0;
+          } else if (actState.actionPose === 'shocked_back') {
+            animOffsetY = Math.sin(rawP * Math.PI * 10) * -6;
+          } else if (actState.actionPose === 'fly_dash') {
+            animOffsetY = Math.sin(nowSec * 6) * 5 - 15;
+            animRot = 0.12;
+          } else if (actState.actionPose === 'walk_cycle') {
+            animOffsetY = Math.abs(Math.sin(nowSec * 8)) * -7;
+          }
         }
 
         ctx.save();
@@ -417,56 +610,80 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
         );
         const spriteImg = getImage(url);
 
-        const isMirrored = flipX || actState.flipX;
-        ctx.scale(isMirrored ? -totalScale : totalScale, totalScale);
-
         if (spriteImg && spriteImg.complete) {
-          const sprW = 120;
-          const sprH = animatedPitch >= 45 ? 180 : 240;
-          ctx.drawImage(spriteImg, -sprW / 2, -sprH + 20, sprW, sprH);
-        }
+          const sw = (spriteImg.width || 200) * totalScale * 0.45;
+          const sh = (spriteImg.height || 300) * totalScale * 0.45;
 
-        // Selection ring
-        if (selectedActorId === actState.actorId) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.ellipse(0, 10, 38, 11, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        ctx.restore();
-
-        // Motion Trajectory Line
-        if (
-          showTrajectoryLine &&
-          (actState.positionStart[0] !== actState.positionEnd[0] ||
-            actState.positionStart[1] !== actState.positionEnd[1])
-        ) {
           ctx.save();
-          ctx.strokeStyle = selectedActorId === actState.actorId ? '#f59e0b' : 'rgba(255,255,255,0.3)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.moveTo(actState.positionStart[0], actState.positionStart[1]);
-          ctx.lineTo(actState.positionEnd[0], actState.positionEnd[1]);
-          ctx.stroke();
-          ctx.fillStyle = '#f59e0b';
-          ctx.beginPath();
-          ctx.arc(actState.positionEnd[0], actState.positionEnd[1], 4, 0, Math.PI * 2);
-          ctx.fill();
+          if (flipX || actState.flipX) ctx.scale(-1, 1);
+          ctx.drawImage(spriteImg, -sw / 2, -sh + 20, sw, sh);
           ctx.restore();
+
+          // ─── INTERACTIVE BOUNDING BOX FOR SELECTED ACTOR ───────────────
+          if (selectedActorId === actState.actorId) {
+            // Compute 100% exact screen coordinates via matrix transform
+            const m = ctx.getTransform();
+            const pTL = m.transformPoint(new DOMPoint(-sw / 2 - 6, -sh + 14));
+            const pTR = m.transformPoint(new DOMPoint(sw / 2 + 6, -sh + 14));
+            const pBL = m.transformPoint(new DOMPoint(-sw / 2 - 6, 26));
+            const pBR = m.transformPoint(new DOMPoint(sw / 2 + 6, 26));
+            const pC = m.transformPoint(new DOMPoint(0, -sh / 2 + 20));
+
+            activeBBoxRef.current = {
+              type: 'actor',
+              id: actState.actorId,
+              centerX: pC.x,
+              centerY: pC.y,
+              initDist: Math.hypot(pTR.x - pC.x, pTR.y - pC.y),
+              initScale: actState.scale || 1.6,
+              corners: [
+                { x: pTL.x, y: pTL.y, cursor: 'nwse-resize' },
+                { x: pTR.x, y: pTR.y, cursor: 'nesw-resize' },
+                { x: pBL.x, y: pBL.y, cursor: 'nesw-resize' },
+                { x: pBR.x, y: pBR.y, cursor: 'nwse-resize' },
+              ],
+            };
+
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(-sw / 2 - 6, -sh + 14, sw + 12, sh + 12);
+            ctx.setLineDash([]);
+
+            // 4 Corner Resize Handles
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(-sw / 2 - 10, -sh + 10, 8, 8);
+            ctx.fillRect(sw / 2 + 2, -sh + 10, 8, 8);
+            ctx.fillRect(-sw / 2 - 10, 22, 8, 8);
+            ctx.fillRect(sw / 2 + 2, 22, 8, 8);
+
+            // BBox Title Tag
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.fillRect(-sw / 2 - 6, -sh - 8, sw + 12, 18);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+              `👤 ${actorProf.name} • (${Math.round(posX)}, ${Math.round(posY)}) • Tỉ lệ: ${(actState.scale || 1.6).toFixed(2)}x • Lớp(Z): ${actState.zIndex ?? 10}`,
+              0,
+              -sh + 4
+            );
+            ctx.textAlign = 'start';
+          }
         }
+        ctx.restore();
       }
     }
 
-    // 4. Render Atmospheric Floating Particles
+    // 4. Atmospheric Particles
     for (const p of particlesRef.current) {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.rot += p.vRot;
-      if (p.x < -100) p.x = 1060;
-      if (p.y > 600) p.y = -40;
+      if (isPlaying) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vRot;
+        if (p.x < -100) p.x = 1060;
+        if (p.y > 600) p.y = -40;
+      }
 
       ctx.save();
       ctx.translate(p.x - 480, p.y - 270);
@@ -480,8 +697,6 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
         ctx.fill();
       } else {
         ctx.fillStyle = '#38bdf8';
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 6;
         ctx.beginPath();
         ctx.arc(0, 0, p.size * 0.6, 0, Math.PI * 2);
         ctx.fill();
@@ -489,74 +704,40 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
       ctx.restore();
     }
 
-    // 5. Cinematic Speedlines during Combat / Slash Action
-    const hasCombat = Object.values(activeShot.actors).some((a) => a.actionPose === 'combat_slash');
-    if (hasCombat) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 8; i++) {
-        const lineY = -200 + i * 55 + Math.sin(nowSec * 15 + i) * 10;
-        ctx.beginPath();
-        ctx.moveTo(-450, lineY);
-        ctx.lineTo(450, lineY - 30);
-        ctx.stroke();
+    ctx.restore(); // Camera restore
+    ctx.restore(); // Viewport restore
+  }, [
+    project,
+    activeShot,
+    shotProgress,
+    currentTime,
+    isPlaying,
+    selectedActorId,
+    selectedPartId,
+    selectedPropId,
+    showTrajectoryLine,
+    viewportZoom,
+    viewportPan,
+    getImage,
+  ]);
+
+  // Helper to test if mouse click/hover is near BBox Corner Handles
+  const checkCornerHandleHit = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const bbox = activeBBoxRef.current;
+    if (!canvas || !bbox || !bbox.corners) return null;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseCanvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const mouseCanvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    for (const corner of bbox.corners) {
+      if (Math.hypot(mouseCanvasX - corner.x, mouseCanvasY - corner.y) <= 16) {
+        return corner.cursor;
       }
-      ctx.restore();
     }
-
-    ctx.restore(); // Restore Scene Camera Transform
-
-    // 6. Cinematic Shot Transitions
-    const transitionType = activeShot.transitionIn || 'none';
-    if (rawP < 0.2) {
-      const transP = rawP / 0.2;
-      if (transitionType === 'flash_white') {
-        ctx.fillStyle = `rgba(255, 255, 255, ${(1 - transP) * 0.85})`;
-        ctx.fillRect(0, 0, w, h);
-      } else if (transitionType === 'fade_black') {
-        ctx.fillStyle = `rgba(2, 6, 23, ${1 - transP})`;
-        ctx.fillRect(0, 0, w, h);
-      } else if (transitionType === 'whip_pan') {
-        ctx.fillStyle = `rgba(56, 189, 248, ${(1 - transP) * 0.35})`;
-        ctx.fillRect(0, 0, w, h);
-      }
-    }
-
-    // 7. Cinematic Vignette
-    const vigGrad = ctx.createRadialGradient(w / 2, h / 2, w * 0.35, w / 2, h / 2, w * 0.7);
-    vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-    vigGrad.addColorStop(1, 'rgba(2,6,23,0.65)');
-    ctx.fillStyle = vigGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // 8. Safe Zone Frame Box (16:9 Border)
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(12, 12, w - 24, h - 24);
-
-    // 9. Dialogue Subtitle Banner
-    if (activeShot.dialogueText) {
-      const bannerH = 50;
-      ctx.fillStyle = 'rgba(9, 13, 22, 0.92)';
-      ctx.fillRect(24, h - bannerH - 24, w - 48, bannerH);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-      ctx.strokeRect(24, h - bannerH - 24, w - 48, bannerH);
-
-      const speaker = project.actors.find((a) => a.id === activeShot.speakerActorId);
-      const speakerName = speaker?.name || 'Nhân vật';
-
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 12.5px sans-serif';
-      ctx.fillText(`${speaker?.avatarIcon || '💬'} [${speakerName}]:`, 42, h - bannerH / 2 - 14);
-
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '13.5px sans-serif';
-      ctx.fillText(activeShot.dialogueText, 42, h - bannerH / 2 + 8);
-    }
-
-    ctx.restore(); // Restore Workspace Viewport Transform
-  }, [project, activeShot, shotProgress, selectedActorId, selectedPartId, selectedPropId, showTrajectoryLine, viewportZoom, viewportPan, getImage]);
+    return null;
+  };
 
   // Mouse Wheel Zoom
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -568,40 +749,102 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
   // Mouse Down
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = true;
-    const isPan = isPanToolActive || e.button === 1 || e.button === 2 || e.shiftKey;
+    const cornerHit = checkCornerHandleHit(e);
+    const canvas = canvasRef.current;
+    const rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 960, height: 540 };
+    const mouseCanvasX = (e.clientX - rect.left) * (960 / rect.width);
+    const mouseCanvasY = (e.clientY - rect.top) * (540 / rect.height);
 
-    if (isPan) {
-      dragModeRef.current = 'pan';
-    } else {
+    if (activeTool === 'orbit360') {
       dragModeRef.current = 'orbit';
+    } else if (cornerHit && activeBBoxRef.current) {
+      // Corner scaling mode
+      const bbox = activeBBoxRef.current;
+      dragModeRef.current = bbox.type === 'actor' ? 'scale_actor' : 'scale_prop';
+      dragStartRef.current.itemInitScale = bbox.initScale;
+      dragStartRef.current.itemInitDist = Math.max(20, Math.hypot(mouseCanvasX - bbox.centerX, mouseCanvasY - bbox.centerY));
+    } else {
+      // Hand / Move mode
+      if (selectedActorId && onUpdateActorPosition) {
+        const curActorState = activeShot.actors[selectedActorId];
+        dragModeRef.current = 'move_actor';
+        dragStartRef.current.itemStartX = curActorState?.positionStart[0] ?? 0;
+        dragStartRef.current.itemStartY = curActorState?.positionStart[1] ?? 50;
+      } else if (selectedPropId && onUpdatePropPosition) {
+        const curProp = project.props.find((p) => p.id === selectedPropId);
+        dragModeRef.current = 'move_prop';
+        dragStartRef.current.itemStartX = curProp?.position[0] ?? 0;
+        dragStartRef.current.itemStartY = curProp?.position[1] ?? 0;
+      } else {
+        dragModeRef.current = 'pan';
+      }
     }
 
     dragStartRef.current = {
+      ...dragStartRef.current,
       x: e.clientX,
       y: e.clientY,
       startAngle: cam.angleStart,
       startPitch: cam.pitchStart ?? 0,
       startPanX: viewportPan.x,
       startPanY: viewportPan.y,
-      itemStartX: 0,
-      itemStartY: 0,
     };
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current) return;
+    const canvas = canvasRef.current;
+    const corner = checkCornerHandleHit(e);
+
+    if (!isDraggingRef.current) {
+      if (canvas) {
+        if (activeTool === 'orbit360') {
+          canvas.style.cursor = 'crosshair';
+        } else if (corner) {
+          canvas.style.cursor = corner;
+        } else {
+          canvas.style.cursor = 'grab';
+        }
+      }
+      return;
+    }
+
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
+    const scaleAdj = viewportZoom * (cam.zoomStart || 1.0);
 
-    if (dragModeRef.current === 'pan') {
+    const rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 960, height: 540 };
+    const mouseCanvasX = (e.clientX - rect.left) * (960 / rect.width);
+    const mouseCanvasY = (e.clientY - rect.top) * (540 / rect.height);
+
+    if (dragModeRef.current === 'orbit') {
+      const newAngle = ((dragStartRef.current.startAngle + dx * 0.6) % 360 + 360) % 360;
+      const newPitch = Math.max(0, Math.min(90, dragStartRef.current.startPitch - dy * 0.4));
+      onUpdateCameraAngle(Math.round(newAngle), Math.round(newPitch));
+    } else if (dragModeRef.current === 'scale_actor' && selectedActorId && onUpdateActorScale && activeBBoxRef.current) {
+      const bbox = activeBBoxRef.current;
+      const currentDist = Math.hypot(mouseCanvasX - bbox.centerX, mouseCanvasY - bbox.centerY);
+      const ratio = currentDist / Math.max(20, dragStartRef.current.itemInitDist);
+      const newScale = Math.max(0.2, Math.min(5.0, Number((dragStartRef.current.itemInitScale * ratio).toFixed(2))));
+      onUpdateActorScale(selectedActorId, newScale);
+    } else if (dragModeRef.current === 'scale_prop' && selectedPropId && onUpdatePropScale && activeBBoxRef.current) {
+      const bbox = activeBBoxRef.current;
+      const currentDist = Math.hypot(mouseCanvasX - bbox.centerX, mouseCanvasY - bbox.centerY);
+      const ratio = currentDist / Math.max(20, dragStartRef.current.itemInitDist);
+      const newScale = Math.max(0.2, Math.min(5.0, Number((dragStartRef.current.itemInitScale * ratio).toFixed(2))));
+      onUpdatePropScale(selectedPropId, newScale);
+    } else if (dragModeRef.current === 'move_actor' && selectedActorId && onUpdateActorPosition) {
+      const newX = Math.round(dragStartRef.current.itemStartX + dx / Math.max(0.1, scaleAdj));
+      const newY = Math.round(dragStartRef.current.itemStartY + dy / Math.max(0.1, scaleAdj));
+      onUpdateActorPosition(selectedActorId, [newX, newY]);
+    } else if (dragModeRef.current === 'move_prop' && selectedPropId && onUpdatePropPosition) {
+      const newX = Math.round(dragStartRef.current.itemStartX + dx / Math.max(0.1, scaleAdj));
+      const newY = Math.round(dragStartRef.current.itemStartY + dy / Math.max(0.1, scaleAdj));
+      onUpdatePropPosition(selectedPropId, [newX, newY]);
+    } else if (dragModeRef.current === 'pan') {
       setViewportPan({
         x: dragStartRef.current.startPanX + dx,
         y: dragStartRef.current.startPanY + dy,
       });
-    } else if (dragModeRef.current === 'orbit') {
-      const newAngle = ((dragStartRef.current.startAngle + dx * 0.6) % 360 + 360) % 360;
-      const newPitch = Math.max(0, Math.min(90, dragStartRef.current.startPitch - dy * 0.4));
-      onUpdateCameraAngle(Math.round(newAngle), Math.round(newPitch));
     }
   };
 
@@ -640,38 +883,88 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
           maxHeight: '100%',
           aspectRatio: '16/9',
           objectFit: 'contain',
-          cursor: isPanToolActive ? 'grab' : isDraggingRef.current ? 'grabbing' : 'crosshair',
+          cursor: activeTool === 'orbit360' ? 'crosshair' : isDraggingRef.current ? 'grabbing' : 'grab',
           userSelect: 'none',
         }}
       />
 
-      {/* ─── FLOATING VIEWPORT ZOOM & PAN CONTROLS (Top-Left HUD) ─────────── */}
+      {/* ─── TOP-RIGHT INTERACTIVE TOOLBAR (Hand / 360° / Zoom) ───────────── */}
       <div
         style={{
           position: 'absolute',
           top: 14,
-          left: 14,
+          right: 14,
           display: 'flex',
           alignItems: 'center',
-          gap: 4,
-          background: 'rgba(9, 13, 22, 0.88)',
+          gap: 5,
+          background: 'rgba(9, 13, 22, 0.92)',
           backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: 8,
           padding: '4px 6px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
           zIndex: 20,
         }}
       >
+        {/* 1. Hand / Transform Tool (DEFAULT ACTIVE) */}
+        <button
+          onClick={() => setActiveTool('hand')}
+          title="Bàn tay: Kéo đối tượng để di chuyển, kéo 4 góc BBox để co dãn size (Phím Shift +/- chỉnh Scale, +/- chỉnh Z-Index)"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            borderRadius: 5,
+            background: activeTool === 'hand' ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+            border: activeTool === 'hand' ? '1px solid #38bdf8' : '1px solid transparent',
+            color: activeTool === 'hand' ? '#38bdf8' : '#94a3b8',
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Hand size={13} />
+          <span>Bàn tay</span>
+        </button>
+
+        {/* 2. 360° Orbit Tool */}
+        <button
+          onClick={() => setActiveTool('orbit360')}
+          title="Chế độ 360°: Kéo chuột trên khung tranh để xoay 360 độ góc camera quanh sân khấu"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            borderRadius: 5,
+            background: activeTool === 'orbit360' ? 'linear-gradient(135deg, #7c3aed, #a855f7)' : 'rgba(255, 255, 255, 0.05)',
+            border: activeTool === 'orbit360' ? '1px solid #c084fc' : '1px solid transparent',
+            color: activeTool === 'orbit360' ? '#ffffff' : '#94a3b8',
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: activeTool === 'orbit360' ? '0 0 12px rgba(168, 85, 247, 0.4)' : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Rotate3d size={13} />
+          <span>360°</span>
+        </button>
+
+        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.12)', margin: '0 2px' }} />
+
+        {/* 3. Zoom Controls */}
         <button
           onClick={() => setViewportZoom((z) => Math.max(0.25, z * 0.85))}
-          title="Thu nhỏ Viewport (Zoom Out)"
+          title="Thu nhỏ Viewport"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             borderRadius: 4,
             background: 'rgba(255,255,255,0.06)',
             border: 'none',
@@ -679,7 +972,7 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
             cursor: 'pointer',
           }}
         >
-          <ZoomOut size={13} />
+          <ZoomOut size={12} />
         </button>
 
         <button
@@ -687,9 +980,9 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
             setViewportZoom(1.0);
             setViewportPan({ x: 0, y: 0 });
           }}
-          title="Khôi phục tỉ lệ 100%"
+          title="Tỉ lệ 100%"
           style={{
-            padding: '2px 6px',
+            padding: '2px 5px',
             fontSize: 10,
             fontFamily: 'monospace',
             fontWeight: 700,
@@ -705,13 +998,13 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
 
         <button
           onClick={() => setViewportZoom((z) => Math.min(4.0, z * 1.15))}
-          title="Phóng to Viewport (Zoom In)"
+          title="Phóng to Viewport"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             borderRadius: 4,
             background: 'rgba(255,255,255,0.06)',
             border: 'none',
@@ -719,33 +1012,67 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
             cursor: 'pointer',
           }}
         >
-          <ZoomIn size={13} />
-        </button>
-
-        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 2px' }} />
-
-        {/* Pan Hand Tool Toggle */}
-        <button
-          onClick={() => setIsPanToolActive(!isPanToolActive)}
-          title={isPanToolActive ? 'Đang bật Pan (Kéo di chuyển khung tranh)' : 'Bật chế độ Pan di chuyển'}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 26,
-            height: 26,
-            borderRadius: 4,
-            background: isPanToolActive ? 'rgba(56, 189, 248, 0.3)' : 'rgba(255,255,255,0.06)',
-            border: isPanToolActive ? '1px solid #38bdf8' : 'none',
-            color: isPanToolActive ? '#38bdf8' : '#cbd5e1',
-            cursor: 'pointer',
-          }}
-        >
-          <Hand size={13} />
+          <ZoomIn size={12} />
         </button>
       </div>
 
-      {/* Direct Drag Instructions Hint */}
+      {/* ─── LIVE 360° COMPASS OVERLAY (Top-Center when active) ──────────── */}
+      {activeTool === 'orbit360' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 14,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(168, 85, 247, 0.5)',
+            borderRadius: 20,
+            padding: '4px 12px',
+            color: '#e9d5ff',
+            fontSize: 11,
+            fontWeight: 700,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+            zIndex: 15,
+            pointerEvents: 'none',
+          }}
+        >
+          <Compass size={14} color="#c084fc" />
+          <span>360° Xoay Góc: <b>{Math.round(currentCamAngle)}°</b> (Cao: {Math.round(currentPitch)}°)</span>
+        </div>
+      )}
+
+      {/* ─── TRANSIENT HUD TOAST ─────────────────────────────────────────── */}
+      {zToast && Date.now() - zToast.time < 1800 && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid #38bdf8',
+            borderRadius: 8,
+            padding: '6px 14px',
+            color: '#38bdf8',
+            fontSize: 12,
+            fontWeight: 800,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
+            zIndex: 30,
+            pointerEvents: 'none',
+          }}
+        >
+          <Layers size={14} />
+          <span>{zToast.text}</span>
+        </div>
+      )}
+
+      {/* Keyboard Shortcut Helper Hint */}
       <div
         style={{
           position: 'absolute',
@@ -754,17 +1081,17 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          background: 'rgba(2, 6, 23, 0.75)',
+          background: 'rgba(2, 6, 23, 0.85)',
           backdropFilter: 'blur(8px)',
           border: '1px solid rgba(255, 255, 255, 0.08)',
           borderRadius: 6,
           padding: '4px 8px',
-          color: '#94a3b8',
+          color: '#cbd5e1',
           fontSize: 9.5,
           pointerEvents: 'none',
         }}
       >
-        <Move size={11} color="#38bdf8" /> Cuộn chuột để Zoom • Kéo để di chuyển / xoay góc
+        <Move size={11} color="#38bdf8" /> Kéo góc hoặc giữ <b>[Shift + / -]</b> để Co Dãn • Phím <b>[+]</b> / <b>[-]</b> chỉnh Z-Index
       </div>
     </div>
   );

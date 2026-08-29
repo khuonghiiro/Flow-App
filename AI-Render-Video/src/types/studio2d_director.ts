@@ -93,6 +93,8 @@ export interface ActorStateInKeyframe {
   actionPose: ActionPoseType;
   flipX?: boolean;
   opacity?: number;
+  visibleFrom?: number; // Giây bắt đầu xuất hiện (mặc định 0.0s)
+  visibleTo?: number;   // Giây kết thúc / biến mất (mặc định hết thời lượng)
 }
 
 export interface CameraTrajectoryConfig {
@@ -131,12 +133,22 @@ export interface ScenePropItem {
   blendMode?: 'normal' | 'screen' | 'multiply' | 'lighter';
   flipX?: boolean;
   growthStage?: PropGrowthStage;
+  visibleFrom?: number; // Giây bắt đầu xuất hiện
+  visibleTo?: number;   // Giây kết thúc / biến mất
+}
+
+export interface DirectorScene {
+  id: string;
+  name: string; // e.g. "Cảnh 1: Sơn Môn", "Cảnh 2: Hậu Sơn Thác Nước"
+  backgroundLayers: BackgroundLayer2D[];
+  transitionIn?: 'none' | 'fade_black' | 'flash_white' | 'whip_pan';
 }
 
 export interface MultiAngleDirectorShot {
   id: string;
   title: string;
   durationSeconds: number;
+  sceneId?: string; // Cảnh liên kết
   camera: CameraTrajectoryConfig;
   actors: Record<string, ActorStateInKeyframe>;
   props?: Record<string, ScenePropItem>;
@@ -166,6 +178,8 @@ export interface Director2DProject {
   updatedAt: string;
   stageWidth: number;
   stageHeight: number;
+  scenes?: DirectorScene[]; // Danh sách các cảnh quay
+  activeSceneId?: string;
   backgroundLayers: BackgroundLayer2D[];
   props: ScenePropItem[]; // Global Scene Props (Trees, Rocks, Foreground Leaves, VFX, GIF layers)
   actors: Actor2DProfile[];

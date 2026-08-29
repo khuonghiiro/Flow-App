@@ -184,6 +184,106 @@ export const MultiAngle2DStudioView: React.FC = () => {
     setProject({ ...project, shots: updated });
   };
 
+  const handleUpdateActorPosition = (actorId: string, pos: [number, number]) => {
+    if (!currentShot) return;
+    const updated = project.shots.map((s) => {
+      if (s.id === currentShot.id) {
+        const curActor = s.actors[actorId] || {
+          actorId,
+          worldFacingAngle: 0,
+          positionStart: pos,
+          positionEnd: pos,
+          scale: 1.6,
+          zIndex: 10,
+          actionPose: 'idle_breathe' as ActionPoseType,
+        };
+        return {
+          ...s,
+          actors: {
+            ...s.actors,
+            [actorId]: {
+              ...curActor,
+              positionStart: pos,
+              positionEnd: pos,
+            },
+          },
+        };
+      }
+      return s;
+    });
+    setProject({ ...project, shots: updated });
+  };
+
+  const handleUpdateActorScale = (actorId: string, scale: number) => {
+    if (!currentShot) return;
+    const updated = project.shots.map((s) => {
+      if (s.id === currentShot.id) {
+        const curActor = s.actors[actorId];
+        if (!curActor) return s;
+        return {
+          ...s,
+          actors: {
+            ...s.actors,
+            [actorId]: {
+              ...curActor,
+              scale: Math.max(0.2, Math.min(5.0, Number(scale.toFixed(2)))),
+            },
+          },
+        };
+      }
+      return s;
+    });
+    setProject({ ...project, shots: updated });
+  };
+
+  const handleUpdateActorZIndex = (actorId: string, delta: number) => {
+    if (!currentShot) return;
+    const updated = project.shots.map((s) => {
+      if (s.id === currentShot.id) {
+        const curActor = s.actors[actorId];
+        if (!curActor) return s;
+        const newZ = Math.max(1, Math.min(100, (curActor.zIndex || 10) + delta));
+        return {
+          ...s,
+          actors: {
+            ...s.actors,
+            [actorId]: {
+              ...curActor,
+              zIndex: newZ,
+            },
+          },
+        };
+      }
+      return s;
+    });
+    setProject({ ...project, shots: updated });
+  };
+
+  const handleUpdatePropPosition = (propId: string, pos: [number, number]) => {
+    const updatedProps = (project.props || []).map((p) =>
+      p.id === propId ? { ...p, position: pos } : p
+    );
+    setProject({ ...project, props: updatedProps });
+  };
+
+  const handleUpdatePropScale = (propId: string, scale: number) => {
+    const updatedProps = (project.props || []).map((p) =>
+      p.id === propId
+        ? { ...p, scale: [Number(scale.toFixed(2)), Number(scale.toFixed(2))] as [number, number] }
+        : p
+    );
+    setProject({ ...project, props: updatedProps });
+  };
+
+  const handleUpdatePropZIndex = (propId: string, delta: number) => {
+    const updatedProps = (project.props || []).map((p) =>
+      p.id === propId
+        ? { ...p, zIndex: Math.max(1, Math.min(100, (p.zIndex || 5) + delta)) }
+        : p
+    );
+    setProject({ ...project, props: updatedProps });
+  };
+
   const activeActor = project.actors.find((a) => a.id === selectedActorId) || project.actors[0];
 
   return (
@@ -274,14 +374,33 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 project={project}
                 activeShot={currentShot}
                 shotProgress={shotProgress}
+                currentTime={currentTime}
                 isPlaying={isPlaying}
                 selectedActorId={selectedActorId}
                 selectedPartId={selectedPartId}
                 selectedPropId={selectedPropId}
-                onSelectActor={setSelectedActorId}
+                onSelectActor={(id) => {
+                  setSelectedActorId(id);
+                  if (id) {
+                    setSelectedPropId(null);
+                    setRightTab('motion');
+                  }
+                }}
                 onSelectPart={setSelectedPartId}
-                onSelectProp={setSelectedPropId}
+                onSelectProp={(id) => {
+                  setSelectedPropId(id);
+                  if (id) {
+                    setSelectedActorId(null);
+                    setRightTab('props');
+                  }
+                }}
                 onUpdateCameraAngle={handleUpdateCameraAngle}
+                onUpdateActorPosition={handleUpdateActorPosition}
+                onUpdateActorScale={handleUpdateActorScale}
+                onUpdateActorZIndex={handleUpdateActorZIndex}
+                onUpdatePropPosition={handleUpdatePropPosition}
+                onUpdatePropScale={handleUpdatePropScale}
+                onUpdatePropZIndex={handleUpdatePropZIndex}
               />
             )}
           </div>
@@ -308,7 +427,21 @@ export const MultiAngle2DStudioView: React.FC = () => {
               }}
               onUpdateProject={setProject}
               selectedActorId={selectedActorId}
-              onSelectActor={setSelectedActorId}
+              onSelectActor={(id) => {
+                setSelectedActorId(id);
+                if (id) {
+                  setSelectedPropId(null);
+                  setRightTab('motion');
+                }
+              }}
+              selectedPropId={selectedPropId}
+              onSelectProp={(id) => {
+                setSelectedPropId(id);
+                if (id) {
+                  setSelectedActorId(null);
+                  setRightTab('props');
+                }
+              }}
             />
           </div>
         </div>

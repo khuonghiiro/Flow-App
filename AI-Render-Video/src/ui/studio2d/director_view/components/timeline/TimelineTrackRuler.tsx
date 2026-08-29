@@ -1,12 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { formatTimeWithMs } from './timelineConstants';
 
 interface TimelineTrackRulerProps {
+  currentTime: number;
   totalDuration: number;
   onSeek: (time: number) => void;
 }
 
 export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
+  currentTime,
   totalDuration,
   onSeek,
 }) => {
@@ -62,6 +64,7 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
   // Determine tick step based on total duration
   const subTickStep = totalDuration > 30 ? 0.5 : totalDuration > 15 ? 0.25 : 0.1;
   const totalSubTicks = Math.ceil(totalDuration / subTickStep);
+  const activePct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
 
   return (
     <div
@@ -80,8 +83,8 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
         style={{
           width: 140,
           flexShrink: 0,
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 9.5,
+          fontWeight: 800,
           color: '#38bdf8',
           display: 'flex',
           alignItems: 'center',
@@ -90,7 +93,7 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
           letterSpacing: '0.5px',
         }}
       >
-        <span>📏 THƯỚC (ms)</span>
+        <span>📏 GIÂY (s) & ms</span>
       </div>
 
       {/* Precision Ruler Lane with drag & hover */}
@@ -130,19 +133,19 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
                 pointerEvents: 'none',
               }}
             >
-              {/* Second number displayed clearly on TOP of the tick */}
+              {/* Number centered along the vertical ruler tick line */}
               {isMajorSecond ? (
                 <span
                   style={{
                     transform: 'translateX(-50%)',
-                    fontSize: 9.5,
+                    fontSize: 10,
                     fontWeight: 800,
                     color: '#38bdf8',
                     fontFamily: 'monospace',
                     lineHeight: '12px',
                   }}
                 >
-                  {Math.round(t)}s
+                  {Math.round(t)}
                 </span>
               ) : isHalfSecond && totalDuration <= 15 ? (
                 <span
@@ -155,7 +158,7 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
                     lineHeight: '12px',
                   }}
                 >
-                  .5s
+                  .5
                 </span>
               ) : (
                 <div style={{ height: 12 }} />
@@ -177,7 +180,44 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
           );
         })}
 
-        {/* Enhanced Large Live Hover Tooltip & Red Hairline */}
+        {/* Active Time Indicator on Ruler */}
+        {totalDuration > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: `${activePct}%`,
+              width: 1.5,
+              background: '#f43f5e',
+              boxShadow: '0 0 8px #f43f5e',
+              pointerEvents: 'none',
+              zIndex: 35,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 1,
+                left: 4,
+                background: 'linear-gradient(135deg, #f43f5e, #be123c)',
+                color: '#fff',
+                padding: '1px 5px',
+                borderRadius: 3,
+                border: '1px solid #fda4af',
+                fontSize: 9,
+                fontWeight: 800,
+                fontFamily: 'monospace',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(244, 63, 94, 0.6)',
+              }}
+            >
+              ⏱️ {formatTimeWithMs(currentTime)}
+            </div>
+          </div>
+        )}
+
+        {/* Live Hover Tooltip & Red Hairline on Hover */}
         {hoverTime !== null && (
           <div
             style={{
@@ -185,8 +225,8 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
               top: 0,
               bottom: 0,
               left: hoverX,
-              width: 1.5,
-              background: '#f43f5e',
+              width: 1,
+              background: 'rgba(244, 63, 94, 0.5)',
               pointerEvents: 'none',
               zIndex: 30,
             }}
@@ -194,21 +234,20 @@ export const TimelineTrackRuler: React.FC<TimelineTrackRulerProps> = ({
             <div
               style={{
                 position: 'absolute',
-                top: 0,
-                left: 6,
-                background: 'linear-gradient(135deg, #f43f5e, #be123c)',
-                color: '#fff',
-                padding: '3px 8px',
-                borderRadius: 5,
-                border: '1px solid #fda4af',
-                fontSize: 11,
-                fontWeight: 800,
+                top: 1,
+                left: 4,
+                background: 'rgba(15, 23, 42, 0.95)',
+                color: '#fda4af',
+                padding: '1px 5px',
+                borderRadius: 3,
+                border: '1px solid rgba(244, 63, 94, 0.4)',
+                fontSize: 8.5,
+                fontWeight: 700,
                 fontFamily: 'monospace',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 4px 14px rgba(244, 63, 94, 0.5), 0 2px 6px rgba(0,0,0,0.6)',
               }}
             >
-              ⏱️ {formatTimeWithMs(hoverTime)}
+              {formatTimeWithMs(hoverTime)}
             </div>
           </div>
         )}
