@@ -90,6 +90,7 @@ export interface ActorStateInKeyframe {
   positionEnd: [number, number];
   scale: number;
   zIndex: number;
+  rotation?: number; // Góc xoay độ (-180..180 hoặc 0..360)
   actionPose: ActionPoseType;
   flipX?: boolean;
   opacity?: number;

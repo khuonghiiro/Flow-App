@@ -44,8 +44,6 @@ export function generateAngleSvgSample(charName: string, color: string, angle: S
         <line x1="${crownX - 22}" y1="${crownY - 6}" x2="${crownX + 22}" y2="${crownY - 6}" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round"/>
         <rect x="20" y="80" width="10" height="48" rx="4" fill="${swordColor}" stroke="#fff" stroke-width="1"/>
         <circle cx="25" cy="75" r="6" fill="#fbbf24"/>
-        <rect x="15" y="4" width="110" height="18" rx="4" fill="rgba(15,23,42,0.9)" stroke="${auraColor}" stroke-width="1"/>
-        <text x="70" y="16" font-size="9" font-family="sans-serif" font-weight="bold" fill="#facc15" text-anchor="middle">👑 ĐỈNH ĐẦU ${angle.replace('top_down_', '').toUpperCase()}</text>
       </svg>
     `.trim();
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -114,8 +112,6 @@ export function generateAngleSvgSample(charName: string, color: string, angle: S
         ${mouth}
       `}
       ${swordFront}
-      <rect x="15" y="2" width="80" height="15" rx="4" fill="rgba(15,23,42,0.9)" stroke="${auraColor}" stroke-width="0.8"/>
-      <text x="55" y="13" font-size="8" font-family="sans-serif" font-weight="bold" fill="#38bdf8" text-anchor="middle">${angle.toUpperCase()}</text>
     </svg>
   `.trim();
 
@@ -140,36 +136,25 @@ export function generateBackgroundSvg(title: string, color1: string, color2: str
           <stop offset="40%" stop-color="#fef08a" stop-opacity="0.3"/>
           <stop offset="100%" stop-color="#fef08a" stop-opacity="0"/>
         </radialGradient>
-        <linearGradient id="mistGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="rgba(56, 189, 248, 0)"/>
-          <stop offset="50%" stop-color="rgba(56, 189, 248, 0.15)"/>
-          <stop offset="100%" stop-color="rgba(56, 189, 248, 0)"/>
-        </linearGradient>
       </defs>
       <rect width="1280" height="720" fill="url(#skyGrad)"/>
-      <circle cx="1020" cy="180" r="140" fill="url(#moonGlow)"/>
-      <circle cx="1020" cy="180" r="65" fill="#fef9c3"/>
-      <path d="M0 400 Q180 200 420 380 T880 320 T1280 390 L1280 720 L0 720 Z" fill="#0f172a" opacity="0.6"/>
-      <path d="M0 480 Q260 310 580 460 T1150 420 L1280 480 L1280 720 L0 720 Z" fill="#091428" opacity="0.85"/>
-      <path d="M820 340 L850 310 L880 340 L860 380 L830 370 Z" fill="#091428" opacity="0.9"/>
-      <path d="M320 360 L345 335 L370 360 L355 390 Z" fill="#091428" opacity="0.9"/>
-      <rect x="845" y="280" width="20" height="30" fill="#020617"/>
-      <path d="M835 285 Q855 270 875 285 L870 290 Q855 280 840 290 Z" fill="#f59e0b"/>
-      <rect x="0" y="460" width="1280" height="120" fill="url(#mistGrad)"/>
-      <g stroke="#042f2e" stroke-linecap="round">
-        <line x1="60" y1="720" x2="80" y2="350" stroke-width="10"/>
-        <line x1="100" y1="720" x2="115" y2="300" stroke-width="8"/>
-        <line x1="135" y1="720" x2="145" y2="400" stroke-width="6"/>
-        <line x1="1180" y1="720" x2="1160" y2="320" stroke-width="11"/>
-        <line x1="1220" y1="720" x2="1205" y2="280" stroke-width="8"/>
+      <circle cx="1020" cy="220" r="85" fill="url(#moonGlow)"/>
+      <circle cx="1020" cy="220" r="50" fill="#fef08a"/>
+      <path d="M0 480 Q320 280 640 460 T1280 420 L1280 720 L0 720 Z" fill="${color2}" opacity="0.8"/>
+      <path d="M0 540 Q400 360 800 520 T1280 500 L1280 720 L0 720 Z" fill="${color1}" opacity="0.95"/>
+      <path d="M0 610 Q500 480 960 620 L1280 600 L1280 720 L0 720 Z" fill="#020617"/>
+      <g stroke="#047857" stroke-width="3" opacity="0.7">
+        <line x1="80" y1="720" x2="80" y2="350"/>
+        <line x1="115" y1="720" x2="115" y2="300"/>
+        <line x1="150" y1="720" x2="150" y2="380"/>
+        <line x1="1100" y1="720" x2="1100" y2="320"/>
+        <line x1="1140" y1="720" x2="1140" y2="290"/>
+        <line x1="1180" y1="720" x2="1180" y2="360"/>
       </g>
       <path d="M80 360 Q120 350 140 370 Q110 380 80 360 Z" fill="#065f46"/>
       <path d="M115 320 Q155 310 175 330 Q145 340 115 320 Z" fill="#047857"/>
       <path d="M1160 330 Q1120 320 1100 340 Q1130 350 1160 330 Z" fill="#065f46"/>
-      <rect x="0" y="600" width="1280" height="120" fill="rgba(6, 182, 212, 0.12)"/>
       <ellipse cx="1020" cy="660" rx="90" ry="16" fill="rgba(254, 240, 138, 0.25)"/>
-      <rect x="520" y="660" width="240" height="32" rx="6" fill="rgba(2, 6, 23, 0.7)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="1"/>
-      <text x="640" y="682" font-size="13" font-family="serif" font-weight="bold" fill="#38bdf8" text-anchor="middle" letter-spacing="4">${title}</text>
     </svg>
   `.trim();
 

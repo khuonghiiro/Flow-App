@@ -357,6 +357,43 @@ export const MotionTrajectoryEditor: React.FC<MotionTrajectoryEditorProps> = ({
             </div>
           </div>
 
+          {/* Rotation Control */}
+          <div style={{ marginTop: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+              <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Góc xoay (Rotation):</span>
+              <span style={{ fontSize: 9.5, color: '#38bdf8', fontWeight: 700 }}>
+                {Math.round(actorState.rotation || 0)}°
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                step="1"
+                value={actorState.rotation || 0}
+                onChange={(e) => updateActorState({ rotation: parseInt(e.target.value) || 0 })}
+                style={{ flex: 1, accentColor: '#38bdf8' }}
+              />
+              <button
+                onClick={() => updateActorState({ rotation: 0 })}
+                title="Khôi phục góc thẳng đứng 0° (phím R hoặc 0)"
+                style={{
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#cbd5e1',
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                0°
+              </button>
+            </div>
+          </div>
+
           {/* Position Coordinates */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 4 }}>
             <div>
