@@ -18,6 +18,7 @@ export interface SlicerAssemblyActionCardProps {
   onOpenSaveKitModal?: () => void;
   onOpenCatalogModal?: () => void;
   onApplyAsNewBaseImage?: () => void;
+  onTransferToAnimationSlicer?: () => void;
   checkedCount?: number;
   onBatchSeparateChecked?: () => Promise<void>;
   isBatchProcessing?: boolean;
@@ -39,6 +40,7 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
   onOpenSaveKitModal,
   onOpenCatalogModal,
   onApplyAsNewBaseImage,
+  onTransferToAnimationSlicer,
   checkedCount = 0,
   onBatchSeparateChecked,
   isBatchProcessing = false,
@@ -235,6 +237,31 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
           </button>
         )}
 
+        {/* Transfer to Animation Slicer Tab 1.2 */}
+        {onTransferToAnimationSlicer && (
+          <button
+            onClick={onTransferToAnimationSlicer}
+            style={{
+              height: 32,
+              fontSize: 10.5,
+              fontWeight: 700,
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #0284c7 0%, #a855f7 100%)',
+              color: '#ffffff',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              boxShadow: '0 2px 10px rgba(56, 189, 248, 0.35)',
+              gridColumn: 'span 2',
+            }}
+            title="Chuyển các ô đã cắt hoặc ảnh hiện tại sang Tab 1.2 để ghép hoạt ảnh chuyển động"
+          >
+            🎬 Chuyển Sang Tab Hoạt Ảnh (Tab 1.2)
+          </button>
+        )}
       </div>
     </div>
   );

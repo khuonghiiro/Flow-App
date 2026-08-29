@@ -90,12 +90,9 @@ export interface ActorStateInKeyframe {
   positionEnd: [number, number];
   scale: number;
   zIndex: number;
-  rotation?: number; // Góc xoay độ (-180..180 hoặc 0..360)
   actionPose: ActionPoseType;
   flipX?: boolean;
   opacity?: number;
-  visibleFrom?: number; // Giây bắt đầu xuất hiện (mặc định 0.0s)
-  visibleTo?: number;   // Giây kết thúc / biến mất (mặc định hết thời lượng)
 }
 
 export interface CameraTrajectoryConfig {
@@ -108,53 +105,14 @@ export interface CameraTrajectoryConfig {
   panStart: [number, number]; // [dx, dy]
   panEnd: [number, number];
   shakeIntensity?: number; // 0..1 (default 0.0)
-  frameWidth?: number; // Base 16:9 view frame width in scene coordinates (default 720)
-  frameHeight?: number; // Base 16:9 view frame height in scene coordinates (default 405)
-}
-
-export type PropGrowthStage =
-  | 'normal'         // Cây / Đạo cụ bình thường
-  | 'seed_sprout'    // 🌱 Mầm non / Mới nảy mầm (Thu nhỏ 0.35x, nhú lên từ đất)
-  | 'grow_big'       // 🌿 Cây lớn dần / Vươn cao (Mở rộng kích thước 1.25x)
-  | 'bloom_flowers'  // 🌸 Nở hoa rực rỡ (Tỏa cánh hoa & phấn hoa bay)
-  | 'bear_fruit'     // 🍎 Kết trái / Ra quả (Xuất hiện chùm quả chín xum xuê)
-  | 'sway_wind'      // 🍃 Đung đưa theo gió thổi
-  | 'glow_magic';    // ✨ Tỏa sáng tiên khí / Linh mộc
-
-export interface ScenePropItem {
-  id: string;
-  name: string;
-  category: 'tree' | 'rock' | 'building' | 'foreground' | 'vfx' | 'item' | 'custom';
-  path: string; // Image / SVG / GIF data URL
-  position: [number, number]; // [x, y] in scene space (-600..600)
-  scale: [number, number]; // [scaleX, scaleY]
-  rotation: number; // degrees
-  zIndex: number; // lower = behind actors, higher = in front of actors (foreground)
-  opacity: number;
-  visible: boolean;
-  parallaxFactor: number; // 0.1 for far, 0.4 for midground, 1.0 for actors, 1.4 for foreground
-  blendMode?: 'normal' | 'screen' | 'multiply' | 'lighter';
-  flipX?: boolean;
-  growthStage?: PropGrowthStage;
-  visibleFrom?: number; // Giây bắt đầu xuất hiện
-  visibleTo?: number;   // Giây kết thúc / biến mất
-}
-
-export interface DirectorScene {
-  id: string;
-  name: string; // e.g. "Cảnh 1: Sơn Môn", "Cảnh 2: Hậu Sơn Thác Nước"
-  backgroundLayers: BackgroundLayer2D[];
-  transitionIn?: 'none' | 'fade_black' | 'flash_white' | 'whip_pan';
 }
 
 export interface MultiAngleDirectorShot {
   id: string;
   title: string;
   durationSeconds: number;
-  sceneId?: string; // Cảnh liên kết
   camera: CameraTrajectoryConfig;
   actors: Record<string, ActorStateInKeyframe>;
-  props?: Record<string, ScenePropItem>;
   speakerActorId?: string;
   dialogueText?: string;
   sfxSoundUrl?: string;
@@ -181,10 +139,7 @@ export interface Director2DProject {
   updatedAt: string;
   stageWidth: number;
   stageHeight: number;
-  scenes?: DirectorScene[]; // Danh sách các cảnh quay
-  activeSceneId?: string;
   backgroundLayers: BackgroundLayer2D[];
-  props: ScenePropItem[]; // Global Scene Props (Trees, Rocks, Foreground Leaves, VFX, GIF layers)
   actors: Actor2DProfile[];
   shots: MultiAngleDirectorShot[];
 }

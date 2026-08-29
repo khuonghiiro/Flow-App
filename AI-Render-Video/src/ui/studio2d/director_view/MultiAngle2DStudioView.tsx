@@ -13,13 +13,11 @@ import {
   Puzzle,
   Sliders,
   Image as ImageIcon,
-  Trees,
 } from 'lucide-react';
 import {
   Director2DProject,
   MultiAngleDirectorShot,
   Actor2DProfile,
-  ScenePropItem,
 } from '../../../types/studio2d_director';
 import {
   DEFAULT_2D_DIRECTOR_PROJECT,
@@ -28,7 +26,6 @@ import {
 } from './utils/jsonProjectHelper';
 import { ActorAngleSlotManager } from './components/ActorAngleSlotManager';
 import { LayerStackingAssembler } from './components/LayerStackingAssembler';
-import { ScenePropManager } from './components/ScenePropManager';
 import { Stage2DCanvas } from './components/Stage2DCanvas';
 import { ShotSequencerPanel } from './components/ShotSequencerPanel';
 import { MotionTrajectoryEditor } from './components/MotionTrajectoryEditor';
@@ -54,10 +51,7 @@ export const MultiAngle2DStudioView: React.FC = () => {
     project.actors[0]?.id || 'char_tieu_dao'
   );
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
-  const [selectedPropId, setSelectedPropId] = useState<string | null>(
-    project.props?.[0]?.id || 'prop_truc_1'
-  );
-  const [rightTab, setRightTab] = useState<'props' | 'layers' | 'sprites' | 'motion'>('props');
+  const [rightTab, setRightTab] = useState<'sprites' | 'layers' | 'motion'>('layers');
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
@@ -84,11 +78,13 @@ export const MultiAngle2DStudioView: React.FC = () => {
     accumulated += shot.durationSeconds;
   }
 
+  // If time overflows
   if (!currentShot && project.shots.length > 0) {
     currentShot = project.shots[project.shots.length - 1];
     shotProgress = 1;
   }
 
+  // Sync activeShotId if user pauses or timeline moves
   useEffect(() => {
     if (currentShot && currentShot.id !== activeShotId) {
       setActiveShotId(currentShot.id);
@@ -108,7 +104,7 @@ export const MultiAngle2DStudioView: React.FC = () => {
         setCurrentTime((prev) => {
           const next = prev + delta;
           if (next >= totalDuration) {
-            return 0;
+            return 0; // Loop back
           }
           return next;
         });
@@ -120,18 +116,22 @@ export const MultiAngle2DStudioView: React.FC = () => {
     return () => cancelAnimationFrame(animFrame);
   }, [isPlaying, totalDuration]);
 
-  // Listen to TopBar events for JSON export, JSON import, and Template reset
-  useEffect(() => {
-    const handleExportEvent = () => {
-      exportProjectToJson(project);
-      setSaveToast('Đã xuất file JSON thành công!');
-      setTimeout(() => setSaveToast(null), 3000);
-    };
+  // Export JSON Handler
+  const handleExportJson = () => {
+    exportProjectToJson(project);
+    setSaveToast('Đã xuất file JSON thành công!');
+    setTimeout(() => setSaveToast(null), 3000);
+  };
 
-    const handleImportTextEvent = (e: any) => {
+  // Import JSON Handler
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
       try {
-        const text = e.detail;
-        if (!text) return;
+        const text = event.target?.result as string;
         const imported = importProjectFromJson(text);
         setProject(imported);
         if (imported.shots.length > 0) {
@@ -144,242 +144,26 @@ export const MultiAngle2DStudioView: React.FC = () => {
         alert(err.message);
       }
     };
-
-    const handleResetEvent = () => {
-      setProject(DEFAULT_2D_DIRECTOR_PROJECT);
-      if (DEFAULT_2D_DIRECTOR_PROJECT.shots.length > 0) {
-        setActiveShotId(DEFAULT_2D_DIRECTOR_PROJECT.shots[0].id);
-        setCurrentTime(0);
-      }
-      setSaveToast('Đã khôi phục dự án mẫu chuẩn!');
-      setTimeout(() => setSaveToast(null), 3000);
-    };
-
-    window.addEventListener('flowmy:export-2d-project', handleExportEvent);
-    window.addEventListener('flowmy:import-2d-project-text', handleImportTextEvent);
-    window.addEventListener('flowmy:reset-2d-project', handleResetEvent);
-
-    return () => {
-      window.removeEventListener('flowmy:export-2d-project', handleExportEvent);
-      window.removeEventListener('flowmy:import-2d-project-text', handleImportTextEvent);
-      window.removeEventListener('flowmy:reset-2d-project', handleResetEvent);
-    };
-  }, [project]);
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleUpdateCameraAngle = (yawDeg: number, pitchDeg?: number) => {
     if (!currentShot) return;
     const updated = project.shots.map((s) =>
       s.id === currentShot.id
         ? {
-            ...s,
-            camera: {
-              ...s.camera,
-              angleStart: yawDeg,
-              angleEnd: yawDeg,
-              ...(pitchDeg !== undefined ? { pitchStart: pitchDeg, pitchEnd: pitchDeg } : {}),
-            },
-          }
-        : s
-    );
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdateActorPosition = (actorId: string, pos: [number, number]) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        const curActor = s.actors[actorId] || {
-          actorId,
-          worldFacingAngle: 0,
-          positionStart: pos,
-          positionEnd: pos,
-          scale: 1.6,
-          zIndex: 10,
-          actionPose: 'idle_breathe' as ActionPoseType,
-        };
-        return {
-          ...s,
-          actors: {
-            ...s.actors,
-            [actorId]: {
-              ...curActor,
-              positionStart: pos,
-              positionEnd: pos,
-            },
-          },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdateActorScale = (actorId: string, scale: number) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        const curActor = s.actors[actorId];
-        if (!curActor) return s;
-        return {
-          ...s,
-          actors: {
-            ...s.actors,
-            [actorId]: {
-              ...curActor,
-              scale: Math.max(0.2, Math.min(5.0, Number(scale.toFixed(2)))),
-            },
-          },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdateActorZIndex = (actorId: string, delta: number) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        const curActor = s.actors[actorId];
-        if (!curActor) return s;
-        const newZ = Math.max(1, Math.min(100, (curActor.zIndex || 10) + delta));
-        return {
-          ...s,
-          actors: {
-            ...s.actors,
-            [actorId]: {
-              ...curActor,
-              zIndex: newZ,
-            },
-          },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdatePropPosition = (propId: string, pos: [number, number]) => {
-    const updatedProps = (project.props || []).map((p) =>
-      p.id === propId ? { ...p, position: pos } : p
-    );
-    setProject({ ...project, props: updatedProps });
-  };
-
-  const handleUpdatePropScale = (propId: string, scale: number) => {
-    const updatedProps = (project.props || []).map((p) =>
-      p.id === propId
-        ? { ...p, scale: [Number(scale.toFixed(2)), Number(scale.toFixed(2))] as [number, number] }
-        : p
-    );
-    setProject({ ...project, props: updatedProps });
-  };
-
-  const handleUpdatePropZIndex = (propId: string, delta: number) => {
-    const updatedProps = (project.props || []).map((p) =>
-      p.id === propId
-        ? { ...p, zIndex: Math.max(1, Math.min(100, (p.zIndex || 5) + delta)) }
-        : p
-    );
-    setProject({ ...project, props: updatedProps });
-  };
-  const handleUpdateActorRotation = (actorId: string, rotDeg: number) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        const curActor = s.actors[actorId];
-        if (!curActor) return s;
-        return {
-          ...s,
-          actors: {
-            ...s.actors,
-            [actorId]: {
-              ...curActor,
-              rotation: Math.round(rotDeg),
-            },
-          },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdateActorFacingAngle = (actorId: string, angleDeg: number, flipX?: boolean) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        const curActor = s.actors[actorId];
-        if (!curActor) return s;
-        return {
-          ...s,
-          actors: {
-            ...s.actors,
-            [actorId]: {
-              ...curActor,
-              worldFacingAngle: Math.round(angleDeg),
-              flipX: flipX !== undefined ? flipX : curActor.flipX,
-            },
-          },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdateActorFlipX = (actorId: string, flipX: boolean) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        const curActor = s.actors[actorId];
-        if (!curActor) return s;
-        return {
-          ...s,
-          actors: {
-            ...s.actors,
-            [actorId]: {
-              ...curActor,
-              flipX,
-            },
-          },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdatePropFlipX = (propId: string, flipX: boolean) => {
-    const updatedProps = (project.props || []).map((p) =>
-      p.id === propId ? { ...p, flipX } : p
-    );
-    setProject({ ...project, props: updatedProps });
-  };
-
-  const handleUpdateCameraFrame = (width: number, height: number) => {
-    if (!currentShot) return;
-    const updated = project.shots.map((s) => {
-      if (s.id === currentShot.id) {
-        return {
           ...s,
           camera: {
             ...s.camera,
-            frameWidth: width,
-            frameHeight: height,
+            angleStart: yawDeg,
+            angleEnd: yawDeg,
+            ...(pitchDeg !== undefined ? { pitchStart: pitchDeg, pitchEnd: pitchDeg } : {}),
           },
-        };
-      }
-      return s;
-    });
-    setProject({ ...project, shots: updated });
-  };
-
-  const handleUpdatePropRotation = (propId: string, rotDeg: number) => {
-    const updatedProps = (project.props || []).map((p) =>
-      p.id === propId ? { ...p, rotation: Math.round(rotDeg) } : p
+        }
+        : s
     );
-    setProject({ ...project, props: updatedProps });
+    setProject({ ...project, shots: updated });
   };
 
   const activeActor = project.actors.find((a) => a.id === selectedActorId) || project.actors[0];
@@ -394,40 +178,111 @@ export const MultiAngle2DStudioView: React.FC = () => {
         background: '#070b14',
         color: '#f8fafc',
         overflow: 'hidden',
-        position: 'relative',
       }}
     >
-      {/* Floating Save Toast Notification */}
-      {saveToast && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 14,
-            right: 20,
-            zIndex: 9999,
-            background: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid rgba(74, 222, 128, 0.5)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
-            color: '#4ade80',
-            fontSize: 12,
-            fontWeight: 700,
-            padding: '8px 16px',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <Check size={14} /> {saveToast}
+      {/* ─── 2D SUB-HEADER ACTION BAR ─────────────────────────────────── */}
+      <div
+        style={{
+          height: 44,
+          padding: '0 16px',
+          background: 'rgba(15, 23, 42, 0.95)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8' }}>
+            🎬 Xưởng Cắt Ghép & Hoạt Ảnh 2.5D:
+          </span>
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>{project.title}</span>
         </div>
-      )}
+
+        {/* Action Buttons: JSON Export, JSON Import, Run Video */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {saveToast && (
+            <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Check size={13} /> {saveToast}
+            </span>
+          )}
+
+          {/* Import JSON Button */}
+          <label
+            title="Nhập file JSON dự án đã lưu để chạy lại"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: '#e2e8f0',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Upload size={12} /> Nhập File JSON
+            <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportJson} />
+          </label>
+
+          {/* Export JSON Button */}
+          <button
+            onClick={handleExportJson}
+            title="Xuất toàn bộ cấu hình dự án hoạt ảnh ra file JSON"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 10px',
+              borderRadius: 6,
+              background: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: '#38bdf8',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Download size={12} /> Xuất File JSON
+          </button>
+
+          {/* Reset Demo Button */}
+          <button
+            onClick={() => {
+              if (confirm('Khôi phục lại dự án hoạt ảnh mẫu đối thoại phản bác ban đầu?')) {
+                setProject(DEFAULT_2D_DIRECTOR_PROJECT);
+                setActiveShotId(DEFAULT_2D_DIRECTOR_PROJECT.shots[0].id);
+                setCurrentTime(0);
+              }
+            }}
+            title="Khôi phục dự án hoạt ảnh mẫu"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 8px',
+              borderRadius: 6,
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              color: '#94a3b8',
+              fontSize: 11,
+              cursor: 'pointer',
+            }}
+          >
+            <RotateCcw size={11} /> Mẫu Chuẩn
+          </button>
+        </div>
+      </div>
 
       {/* ─── 3-COLUMN STUDIO WORKSPACE ───────────────────────────────── */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '310px 1fr 370px',
+          gridTemplateColumns: '310px 1fr 360px',
           gap: 10,
           padding: 10,
           flex: 1,
@@ -472,44 +327,17 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 project={project}
                 activeShot={currentShot}
                 shotProgress={shotProgress}
-                currentTime={currentTime}
                 isPlaying={isPlaying}
                 selectedActorId={selectedActorId}
                 selectedPartId={selectedPartId}
-                selectedPropId={selectedPropId}
-                onSelectActor={(id) => {
-                  setSelectedActorId(id);
-                  if (id) {
-                    setSelectedPropId(null);
-                    setRightTab('motion');
-                  }
-                }}
+                onSelectActor={setSelectedActorId}
                 onSelectPart={setSelectedPartId}
-                onSelectProp={(id) => {
-                  setSelectedPropId(id);
-                  if (id) {
-                    setSelectedActorId(null);
-                    setRightTab('props');
-                  }
-                }}
                 onUpdateCameraAngle={handleUpdateCameraAngle}
-                onUpdateActorPosition={handleUpdateActorPosition}
-                onUpdateActorScale={handleUpdateActorScale}
-                onUpdateActorRotation={handleUpdateActorRotation}
-                onUpdateActorFacingAngle={handleUpdateActorFacingAngle}
-                onUpdateActorFlipX={handleUpdateActorFlipX}
-                onUpdateActorZIndex={handleUpdateActorZIndex}
-                onUpdatePropPosition={handleUpdatePropPosition}
-                onUpdatePropScale={handleUpdatePropScale}
-                onUpdatePropRotation={handleUpdatePropRotation}
-                onUpdatePropFlipX={handleUpdatePropFlipX}
-                onUpdatePropZIndex={handleUpdatePropZIndex}
-                onUpdateCameraFrame={handleUpdateCameraFrame}
               />
             )}
           </div>
 
-          {/* Bottom Multi-Track Timeline Scrubber */}
+          {/* Bottom Timeline Scrubber */}
           <div style={{ flexShrink: 0 }}>
             <Timeline2DScrubber
               project={project}
@@ -529,28 +357,11 @@ export const MultiAngle2DStudioView: React.FC = () => {
                   acc += s.durationSeconds;
                 }
               }}
-              onUpdateProject={setProject}
-              selectedActorId={selectedActorId}
-              onSelectActor={(id) => {
-                setSelectedActorId(id);
-                if (id) {
-                  setSelectedPropId(null);
-                  setRightTab('motion');
-                }
-              }}
-              selectedPropId={selectedPropId}
-              onSelectProp={(id) => {
-                setSelectedPropId(id);
-                if (id) {
-                  setSelectedActorId(null);
-                  setRightTab('props');
-                }
-              }}
             />
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Scene Props / Layer Stacking / Multi-Angle Sprites / Motion Editor */}
+        {/* RIGHT COLUMN: Layer Stacking / Multi-Angle Sprites / Motion Editor */}
         <div
           style={{
             display: 'flex',
@@ -569,30 +380,8 @@ export const MultiAngle2DStudioView: React.FC = () => {
               borderRadius: 8,
               border: '1px solid rgba(255, 255, 255, 0.1)',
               flexShrink: 0,
-              gap: 2,
             }}
           >
-            <button
-              onClick={() => setRightTab('props')}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3,
-                padding: '6px 2px',
-                borderRadius: 6,
-                fontSize: 9.5,
-                fontWeight: rightTab === 'props' ? 700 : 500,
-                background: rightTab === 'props' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent',
-                color: rightTab === 'props' ? '#fff' : '#94a3b8',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              <Trees size={11} /> Cây Cối & Đạo Cụ
-            </button>
             <button
               onClick={() => setRightTab('layers')}
               style={{
@@ -600,10 +389,10 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 3,
-                padding: '6px 2px',
+                gap: 4,
+                padding: '6px 4px',
                 borderRadius: 6,
-                fontSize: 9.5,
+                fontSize: 10,
                 fontWeight: rightTab === 'layers' ? 700 : 500,
                 background: rightTab === 'layers' ? 'linear-gradient(135deg, #0284c7, #38bdf8)' : 'transparent',
                 color: rightTab === 'layers' ? '#fff' : '#94a3b8',
@@ -612,7 +401,7 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 transition: 'all 0.15s',
               }}
             >
-              <Puzzle size={11} /> Ghép Lớp
+              <Puzzle size={12} /> Lồng Ghép Lớp
             </button>
             <button
               onClick={() => setRightTab('sprites')}
@@ -621,10 +410,10 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 3,
-                padding: '6px 2px',
+                gap: 4,
+                padding: '6px 4px',
                 borderRadius: 6,
-                fontSize: 9.5,
+                fontSize: 10,
                 fontWeight: rightTab === 'sprites' ? 700 : 500,
                 background: rightTab === 'sprites' ? 'linear-gradient(135deg, #a855f7, #c084fc)' : 'transparent',
                 color: rightTab === 'sprites' ? '#fff' : '#94a3b8',
@@ -633,7 +422,7 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 transition: 'all 0.15s',
               }}
             >
-              <ImageIcon size={11} /> 8 Góc
+              <ImageIcon size={12} /> 8 Góc Sprite
             </button>
             <button
               onClick={() => setRightTab('motion')}
@@ -642,10 +431,10 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 3,
-                padding: '6px 2px',
+                gap: 4,
+                padding: '6px 4px',
                 borderRadius: 6,
-                fontSize: 9.5,
+                fontSize: 10,
                 fontWeight: rightTab === 'motion' ? 700 : 500,
                 background: rightTab === 'motion' ? 'linear-gradient(135deg, #f59e0b, #fbbf24)' : 'transparent',
                 color: rightTab === 'motion' ? '#000' : '#94a3b8',
@@ -654,21 +443,12 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 transition: 'all 0.15s',
               }}
             >
-              <Sliders size={11} /> Zoom & Động Tác
+              <Sliders size={12} /> Zoom & Động Tác
             </button>
           </div>
 
           {/* Tab Content */}
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {rightTab === 'props' && (
-              <ScenePropManager
-                props={project.props || []}
-                selectedPropId={selectedPropId}
-                onSelectProp={setSelectedPropId}
-                onUpdateProps={(updated) => setProject({ ...project, props: updated })}
-              />
-            )}
-
             {rightTab === 'layers' && activeActor && (
               <LayerStackingAssembler
                 actor={activeActor}

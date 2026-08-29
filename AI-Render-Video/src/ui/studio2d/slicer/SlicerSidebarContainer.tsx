@@ -39,6 +39,7 @@ export interface SlicerSidebarContainerProps {
   totalCellCount: number;
   onOpenSaveKitModal: () => void;
   onOpenCatalogModal: () => void;
+  onTransferToAnimationSlicer?: () => void;
   checkedCount?: number;
   checkedImageIds?: Set<string>;
   onBatchSeparateChecked?: () => Promise<void>;
@@ -67,6 +68,7 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
   isAIRunning,
   onRunDespeckleOnly,
   onApplyAsNewBaseImage,
+  onTransferToAnimationSlicer,
   enableSmartCrop,
   setEnableSmartCrop,
   smartCropPadding,
@@ -198,6 +200,7 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
       totalCellCount={totalCellCount}
       onOpenSaveKitModal={onOpenSaveKitModal}
       onOpenCatalogModal={onOpenCatalogModal}
+      onTransferToAnimationSlicer={onTransferToAnimationSlicer}
       checkedCount={checkedCount}
       onBatchSeparateChecked={onBatchSeparateChecked}
       isBatchProcessing={isBatchProcessing}

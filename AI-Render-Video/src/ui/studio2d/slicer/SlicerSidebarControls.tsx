@@ -99,6 +99,7 @@ export interface SlicerSidebarControlsProps {
   totalCellCount: number;
   onOpenSaveKitModal?: () => void;
   onOpenCatalogModal?: () => void;
+  onTransferToAnimationSlicer?: () => void;
   checkedCount?: number;
   onBatchSeparateChecked?: () => Promise<void>;
   isBatchProcessing?: boolean;
@@ -192,6 +193,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
   totalCellCount,
   onOpenSaveKitModal,
   onOpenCatalogModal,
+  onTransferToAnimationSlicer,
   checkedCount = 0,
   onBatchSeparateChecked,
   isBatchProcessing = false,
@@ -420,6 +422,7 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         onOpenSaveKitModal={onOpenSaveKitModal}
         onOpenCatalogModal={onOpenCatalogModal}
         onApplyAsNewBaseImage={onApplyAsNewBaseImage}
+        onTransferToAnimationSlicer={onTransferToAnimationSlicer}
         checkedCount={checkedCount}
         onBatchSeparateChecked={onBatchSeparateChecked}
         isBatchProcessing={isBatchProcessing}

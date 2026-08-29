@@ -33,6 +33,9 @@ const Character2DAssembler = React.lazy(() =>
 const AutoGridSlicer3DAssembler = React.lazy(() =>
   import('./AutoGridSlicer3DAssembler').then(m => ({ default: m.AutoGridSlicer3DAssembler }))
 );
+const AnimationSlicerTab = React.lazy(() =>
+  import('./animation_slicer/AnimationSlicerTab').then(m => ({ default: m.AnimationSlicerTab }))
+);
 const Map2DAssembler = React.lazy(() =>
   import('./Map2DAssembler').then(m => ({ default: m.Map2DAssembler }))
 );
@@ -68,7 +71,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'grid_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'anim_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -79,9 +82,10 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
     DEFAULT_SAMPLE_MAPS_2D[0]
   );
 
-  // Transferred Sprite Sheet from Tab 0 (Antigravity AI Agent)
+  // Transferred Sprite Sheet & Frames from Tab 1 / Tab 0
   const [transferredSpriteSheetUrl, setTransferredSpriteSheetUrl] = useState<string | null>(null);
   const [transferredCategoryId, setTransferredCategoryId] = useState<string | undefined>(undefined);
+  const [transferredAnimationFrames, setTransferredAnimationFrames] = useState<string[] | null>(null);
 
   if (!isOpen) return null;
 
@@ -207,6 +211,26 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               }}
             >
               <Grid size={13} /> 1. ⚡ Cắt Lưới & Lắp Ráp 3D
+            </button>
+
+            <button
+              onClick={() => setActiveTab('anim_slicer')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: activeTab === 'anim_slicer' ? 700 : 600,
+                border: 'none',
+                background: activeTab === 'anim_slicer' ? 'linear-gradient(135deg, #0284c7, #a855f7)' : 'transparent',
+                color: activeTab === 'anim_slicer' ? '#ffffff' : '#38bdf8',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Clapperboard size={13} /> 1.2 🎬 Cắt & Ghép Hoạt Ảnh
             </button>
 
             <button
@@ -360,8 +384,23 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               currentAssembly={characterAssembly}
               onApplyAssembly={setCharacterAssembly}
               onSwitchToAssemblyTab={() => setActiveTab('character')}
+              onTransferToAnimationSlicer={(data) => {
+                if (data.frames && data.frames.length > 0) {
+                  setTransferredAnimationFrames(data.frames);
+                } else if (data.spriteSheetUrl) {
+                  setTransferredSpriteSheetUrl(data.spriteSheetUrl);
+                }
+                setActiveTab('anim_slicer');
+              }}
               externalImageUrl={transferredSpriteSheetUrl}
               externalCategoryId={transferredCategoryId}
+            />
+          )}
+
+          {activeTab === 'anim_slicer' && (
+            <AnimationSlicerTab
+              initialFrames={transferredAnimationFrames}
+              externalSpriteSheetUrl={transferredSpriteSheetUrl}
             />
           )}
 

@@ -36,6 +36,7 @@ interface AutoGridSlicer3DAssemblerProps {
   currentAssembly: Character2DAssembly;
   onApplyAssembly: (updatedAssembly: Character2DAssembly) => void;
   onSwitchToAssemblyTab?: () => void;
+  onTransferToAnimationSlicer?: (data: { frames?: string[]; spriteSheetUrl?: string }) => void;
   externalImageUrl?: string | null;
   externalCategoryId?: string;
 }
@@ -44,6 +45,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   currentAssembly,
   onApplyAssembly,
   onSwitchToAssemblyTab,
+  onTransferToAnimationSlicer,
   externalImageUrl,
   externalCategoryId,
 }) => {
@@ -719,6 +721,16 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
           totalCellCount={currentCategory.id === 'single_full_image' ? 1 : currentCategory.cells.length}
           onOpenSaveKitModal={() => setIsSaveKitModalOpen(true)}
           onOpenCatalogModal={() => setIsCatalogOpen(true)}
+          onTransferToAnimationSlicer={() => {
+            if (onTransferToAnimationSlicer) {
+              const frames = Array.from(slicedResults.values()).filter(Boolean);
+              if (frames.length > 0) {
+                onTransferToAnimationSlicer({ frames });
+              } else if (userUploadedImageUrl) {
+                onTransferToAnimationSlicer({ spriteSheetUrl: userUploadedImageUrl });
+              }
+            }
+          }}
           checkedCount={checkedImageIds.size}
           checkedImageIds={checkedImageIds}
           onBatchSeparateChecked={async () => {
