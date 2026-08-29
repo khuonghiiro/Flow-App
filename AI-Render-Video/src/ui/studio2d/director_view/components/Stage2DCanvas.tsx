@@ -10,6 +10,7 @@ import {
   renderGroundGrid,
   renderStageEntities,
   renderParticles,
+  render16to9CameraFrame,
 } from './stage_canvas/stage2dCanvasRenderer';
 
 export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
@@ -36,6 +37,9 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
   onUpdatePropRotation,
   onUpdatePropFlipX,
   onUpdatePropZIndex,
+  onUpdateCameraFrame,
+  isCameraSelected,
+  onSelectCamera,
   showTrajectoryLine = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,6 +48,7 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
 
   // Interactive Viewport Tool Mode
   const [activeTool, setActiveTool] = useState<'hand' | 'orbit360'>('hand');
+  const [showCameraFrame, setShowCameraFrame] = useState<boolean>(true);
   const [viewportZoom, setViewportZoom] = useState<number>(1.0);
   const [viewportPan, setViewportPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -52,7 +57,15 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
 
   const isDraggingRef = useRef(false);
   const dragModeRef = useRef<
-    'orbit' | 'pan' | 'move_actor' | 'move_prop' | 'scale_actor' | 'scale_prop' | 'rotate_actor' | 'rotate_prop'
+    | 'orbit'
+    | 'pan'
+    | 'move_actor'
+    | 'move_prop'
+    | 'scale_actor'
+    | 'scale_prop'
+    | 'scale_camera'
+    | 'rotate_actor'
+    | 'rotate_prop'
   >('pan');
 
   const dragStartRef = useRef<{
@@ -96,6 +109,7 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
     onUpdatePropFlipX,
     onUpdateActorZIndex,
     onUpdatePropZIndex,
+    onUpdateCameraFrame,
   });
 
   // Initialize Atmospheric Particle System
@@ -247,7 +261,27 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
       getImage,
     });
 
-    // 4. Atmospheric Particles
+    // 4. Render 16:9 Camera Viewport Frame (Cinema Safe Area & Scalable View)
+    const baseCamW = cam.frameWidth || 720;
+    const baseCamH = cam.frameHeight || Math.round((baseCamW * 9) / 16);
+    const isCamActive = !!isCameraSelected || (!selectedActorId && !selectedPropId);
+    const cameraBBox = render16to9CameraFrame(
+      ctx,
+      w,
+      h,
+      baseCamW,
+      baseCamH,
+      0,
+      0,
+      isCamActive,
+      showCameraFrame
+    );
+
+    if (cameraBBox && isCamActive && !selectedActorId && !selectedPropId) {
+      activeBBoxRef.current = cameraBBox;
+    }
+
+    // 5. Atmospheric Particles
     renderParticles(ctx, particlesRef.current, isPlaying);
 
     ctx.restore(); // Camera restore
@@ -262,6 +296,8 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
     selectedPartId,
     selectedPropId,
     showTrajectoryLine,
+    showCameraFrame,
+    isCameraSelected,
     viewportZoom,
     viewportPan,
     getImage,
@@ -310,14 +346,19 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
 
     if (activeTool === 'orbit360') {
       dragModeRef.current = 'orbit';
-    } else if (isRotateHit && activeBBoxRef.current) {
+    } else if (isRotateHit && activeBBoxRef.current && activeBBoxRef.current.type !== 'camera') {
       const bbox = activeBBoxRef.current;
       dragModeRef.current = bbox.type === 'actor' ? 'rotate_actor' : 'rotate_prop';
       dragStartRef.current.itemInitRotation = bbox.initRotation;
     } else if (cornerHit && activeBBoxRef.current) {
       const bbox = activeBBoxRef.current;
-      dragModeRef.current = bbox.type === 'actor' ? 'scale_actor' : 'scale_prop';
-      dragStartRef.current.itemInitScale = bbox.initScale;
+      if (bbox.type === 'camera') {
+        dragModeRef.current = 'scale_camera';
+        dragStartRef.current.itemInitScale = bbox.camWidth || 720;
+      } else {
+        dragModeRef.current = bbox.type === 'actor' ? 'scale_actor' : 'scale_prop';
+        dragStartRef.current.itemInitScale = bbox.initScale;
+      }
       dragStartRef.current.itemInitDist = Math.max(20, Math.hypot(mouseCanvasX - bbox.centerX, mouseCanvasY - bbox.centerY));
     } else {
       if (selectedActorId && onUpdateActorPosition) {
@@ -410,6 +451,13 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
       const ratio = currentDist / Math.max(20, dragStartRef.current.itemInitDist);
       const newScale = Math.max(0.2, Math.min(5.0, Number((dragStartRef.current.itemInitScale * ratio).toFixed(2))));
       onUpdatePropScale(selectedPropId, newScale);
+    } else if (dragModeRef.current === 'scale_camera' && onUpdateCameraFrame && activeBBoxRef.current) {
+      const bbox = activeBBoxRef.current;
+      const currentDist = Math.hypot(mouseCanvasX - bbox.centerX, mouseCanvasY - bbox.centerY);
+      const ratio = currentDist / Math.max(20, dragStartRef.current.itemInitDist);
+      const newWidth = Math.max(280, Math.min(1800, Math.round(dragStartRef.current.itemInitScale * ratio)));
+      const newHeight = Math.round((newWidth * 9) / 16);
+      onUpdateCameraFrame(newWidth, newHeight);
     } else if (dragModeRef.current === 'move_actor' && selectedActorId && onUpdateActorPosition) {
       const newX = Math.round(dragStartRef.current.itemStartX + dx / Math.max(0.1, scaleAdj));
       const newY = Math.round(dragStartRef.current.itemStartY + dy / Math.max(0.1, scaleAdj));
@@ -472,11 +520,15 @@ export const Stage2DCanvas: React.FC<Stage2DCanvasProps> = ({
 
       <Stage2DCanvasToolbar
         activeTool={activeTool}
+        showCameraFrame={showCameraFrame}
+        camFrameWidth={cam.frameWidth || 720}
         viewportZoom={viewportZoom}
         currentCamAngle={currentCamAngle}
         currentPitch={currentPitch}
         zToast={zToast}
         onSelectTool={setActiveTool}
+        onToggleCameraFrame={() => setShowCameraFrame((v) => !v)}
+        onSetCameraFrameSize={onUpdateCameraFrame}
         onZoomIn={() => setViewportZoom((z) => Math.min(4.0, z * 1.15))}
         onZoomOut={() => setViewportZoom((z) => Math.max(0.25, z * 0.85))}
         onResetZoom={() => {

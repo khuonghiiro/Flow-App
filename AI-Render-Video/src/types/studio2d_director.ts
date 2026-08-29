@@ -108,6 +108,8 @@ export interface CameraTrajectoryConfig {
   panStart: [number, number]; // [dx, dy]
   panEnd: [number, number];
   shakeIntensity?: number; // 0..1 (default 0.0)
+  frameWidth?: number; // Base 16:9 view frame width in scene coordinates (default 720)
+  frameHeight?: number; // Base 16:9 view frame height in scene coordinates (default 405)
 }
 
 export type PropGrowthStage =

@@ -10,15 +10,20 @@ import {
   Compass,
   Rotate3d,
   Layers,
+  Video,
 } from 'lucide-react';
 
 interface Stage2DCanvasToolbarProps {
   activeTool: 'hand' | 'orbit360';
+  showCameraFrame?: boolean;
+  camFrameWidth?: number;
   viewportZoom: number;
   currentCamAngle: number;
   currentPitch: number;
   zToast: { text: string; time: number } | null;
   onSelectTool: (tool: 'hand' | 'orbit360') => void;
+  onToggleCameraFrame?: () => void;
+  onSetCameraFrameSize?: (width: number, height: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
@@ -26,18 +31,22 @@ interface Stage2DCanvasToolbarProps {
 
 export const Stage2DCanvasToolbar: React.FC<Stage2DCanvasToolbarProps> = ({
   activeTool,
+  showCameraFrame = true,
+  camFrameWidth = 720,
   viewportZoom,
   currentCamAngle,
   currentPitch,
   zToast,
   onSelectTool,
+  onToggleCameraFrame,
+  onSetCameraFrameSize,
   onZoomIn,
   onZoomOut,
   onResetZoom,
 }) => {
   return (
     <>
-      {/* ─── TOP-RIGHT INTERACTIVE TOOLBAR (Hand / 360° / Zoom) ───────────── */}
+      {/* ─── TOP-RIGHT INTERACTIVE TOOLBAR (Hand / 360° / Zoom / Camera Frame) ───────────── */}
       <div
         style={{
           position: 'absolute',
@@ -55,7 +64,64 @@ export const Stage2DCanvasToolbar: React.FC<Stage2DCanvasToolbarProps> = ({
           zIndex: 20,
         }}
       >
-        {/* 1. Hand / Transform Tool (DEFAULT ACTIVE) */}
+        {/* 1. 16:9 Camera Viewport Frame Toggle */}
+        <button
+          onClick={onToggleCameraFrame}
+          title="Khung View Camera 16:9: Giới hạn tầm nhìn video đầu ra chuẩn 16:9 (Kéo 4 góc khung hình để co dãn)"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            borderRadius: 5,
+            background: showCameraFrame ? 'rgba(56, 189, 248, 0.22)' : 'rgba(255, 255, 255, 0.05)',
+            border: showCameraFrame ? '1px solid #38bdf8' : '1px solid transparent',
+            color: showCameraFrame ? '#38bdf8' : '#94a3b8',
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Video size={13} />
+          <span>Khung 16:9</span>
+        </button>
+
+        {/* Camera 16:9 Frame Size Presets */}
+        {showCameraFrame && onSetCameraFrameSize && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            {[
+              { label: '960p', w: 960, h: 540, title: 'Toàn cảnh (960×540)' },
+              { label: '720p', w: 720, h: 405, title: 'Tiêu chuẩn (720×405)' },
+              { label: '540p', w: 540, h: 304, title: 'Trung cảnh (540×304)' },
+              { label: '380p', w: 380, h: 214, title: 'Cận cảnh (380×214)' },
+            ].map((p) => {
+              const isActive = Math.abs((camFrameWidth || 720) - p.w) < 25;
+              return (
+                <button
+                  key={p.label}
+                  onClick={() => onSetCameraFrameSize(p.w, p.h)}
+                  title={p.title}
+                  style={{
+                    padding: '2px 5px',
+                    fontSize: 9.5,
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    background: isActive ? 'rgba(56, 189, 248, 0.3)' : 'rgba(255, 255, 255, 0.05)',
+                    border: isActive ? '1px solid #38bdf8' : '1px solid transparent',
+                    color: isActive ? '#38bdf8' : '#94a3b8',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 2. Hand / Transform Tool (DEFAULT ACTIVE) */}
         <button
           onClick={() => onSelectTool('hand')}
           title="Bàn tay: Kéo đối tượng để di chuyển, kéo 4 góc BBox để co dãn size (Phím Shift +/- chỉnh Scale, +/- chỉnh Z-Index)"
@@ -78,7 +144,7 @@ export const Stage2DCanvasToolbar: React.FC<Stage2DCanvasToolbarProps> = ({
           <span>Bàn tay</span>
         </button>
 
-        {/* 2. 360° Orbit Tool */}
+        {/* 3. 360° Orbit Tool */}
         <button
           onClick={() => onSelectTool('orbit360')}
           title="Chế độ 360°: Kéo chuột trên khung tranh để xoay 360 độ góc camera quanh sân khấu"

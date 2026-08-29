@@ -357,6 +357,24 @@ export const MultiAngle2DStudioView: React.FC = () => {
     setProject({ ...project, props: updatedProps });
   };
 
+  const handleUpdateCameraFrame = (width: number, height: number) => {
+    if (!currentShot) return;
+    const updated = project.shots.map((s) => {
+      if (s.id === currentShot.id) {
+        return {
+          ...s,
+          camera: {
+            ...s.camera,
+            frameWidth: width,
+            frameHeight: height,
+          },
+        };
+      }
+      return s;
+    });
+    setProject({ ...project, shots: updated });
+  };
+
   const handleUpdatePropRotation = (propId: string, rotDeg: number) => {
     const updatedProps = (project.props || []).map((p) =>
       p.id === propId ? { ...p, rotation: Math.round(rotDeg) } : p
@@ -486,6 +504,7 @@ export const MultiAngle2DStudioView: React.FC = () => {
                 onUpdatePropRotation={handleUpdatePropRotation}
                 onUpdatePropFlipX={handleUpdatePropFlipX}
                 onUpdatePropZIndex={handleUpdatePropZIndex}
+                onUpdateCameraFrame={handleUpdateCameraFrame}
               />
             )}
           </div>

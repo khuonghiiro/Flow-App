@@ -451,3 +451,145 @@ export function renderParticles(
     ctx.restore();
   }
 }
+
+/**
+ * Renders the 16:9 Camera Viewport Frame (Cinema Safe Area / Video Output View)
+ * with cinematic letterbox dimming outside the frame, rule-of-thirds grid, corner brackets,
+ * and 4 interactive corner handles for scaling/resizing the 16:9 camera view.
+ */
+export function render16to9CameraFrame(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  camWidth: number,
+  camHeight: number,
+  camCenterX: number,
+  camCenterY: number,
+  isCameraSelected: boolean,
+  showFrame: boolean = true
+): ActiveBBoxInfo | null {
+  if (!showFrame) return null;
+
+  const left = camCenterX - camWidth / 2;
+  const top = camCenterY - camHeight / 2;
+  const right = camCenterX + camWidth / 2;
+  const bottom = camCenterY + camHeight / 2;
+
+  ctx.save();
+
+  // 1. Cinematic Dimmed Outer Mask (Darkens everything outside the 16:9 camera frame)
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.72)';
+  // Top band
+  ctx.fillRect(-2000, -2000, 4000, top - (-2000));
+  // Bottom band
+  ctx.fillRect(-2000, bottom, 4000, 2000 - bottom);
+  // Left band
+  ctx.fillRect(-2000, top, left - (-2000), camHeight);
+  // Right band
+  ctx.fillRect(right, top, 2000 - right, camHeight);
+
+  // 2. 16:9 Camera Frame Border
+  ctx.strokeStyle = isCameraSelected ? '#38bdf8' : 'rgba(56, 189, 248, 0.65)';
+  ctx.lineWidth = isCameraSelected ? 2 : 1.2;
+  ctx.strokeRect(left, top, camWidth, camHeight);
+
+  // 3. Rule of Thirds Guides (Subtle)
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  // Vertical 1/3 and 2/3
+  ctx.moveTo(left + camWidth / 3, top);
+  ctx.lineTo(left + camWidth / 3, bottom);
+  ctx.moveTo(left + (camWidth * 2) / 3, top);
+  ctx.lineTo(left + (camWidth * 2) / 3, bottom);
+  // Horizontal 1/3 and 2/3
+  ctx.moveTo(left, top + camHeight / 3);
+  ctx.lineTo(right, top + camHeight / 3);
+  ctx.moveTo(left, top + (camHeight * 2) / 3);
+  ctx.lineTo(right, top + (camHeight * 2) / 3);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 4. Cinema Corner Marks (L-brackets on all 4 corners)
+  const bracketLen = Math.min(22, camWidth * 0.05);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  // Top-Left
+  ctx.moveTo(left, top + bracketLen);
+  ctx.lineTo(left, top);
+  ctx.lineTo(left + bracketLen, top);
+  // Top-Right
+  ctx.moveTo(right - bracketLen, top);
+  ctx.lineTo(right, top);
+  ctx.lineTo(right, top + bracketLen);
+  // Bottom-Left
+  ctx.moveTo(left, bottom - bracketLen);
+  ctx.lineTo(left, bottom);
+  ctx.lineTo(left + bracketLen, bottom);
+  // Bottom-Right
+  ctx.moveTo(right - bracketLen, bottom);
+  ctx.lineTo(right, bottom);
+  ctx.lineTo(right, bottom - bracketLen);
+  ctx.stroke();
+
+  // 5. Center Crosshair
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(camCenterX - 10, camCenterY);
+  ctx.lineTo(camCenterX + 10, camCenterY);
+  ctx.moveTo(camCenterX, camCenterY - 10);
+  ctx.lineTo(camCenterX, camCenterY + 10);
+  ctx.stroke();
+
+  // 6. Camera Tag Badge (Top Left of Frame)
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+  ctx.fillRect(left + 6, top + 6, 205, 22);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(left + 6, top + 6, 205, 22);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 9.5px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`📹 KHUNG VIEW 16:9 • ${Math.round(camWidth)}×${Math.round(camHeight)}`, left + 12, top + 20);
+
+  // 7. Interactive Handles if Camera is active or hovered
+  const m = ctx.getTransform();
+  const pTL = m.transformPoint(new DOMPoint(left, top));
+  const pTR = m.transformPoint(new DOMPoint(right, top));
+  const pBL = m.transformPoint(new DOMPoint(left, bottom));
+  const pBR = m.transformPoint(new DOMPoint(right, bottom));
+  const pC = m.transformPoint(new DOMPoint(camCenterX, camCenterY));
+
+  // Draw 4 Corner Handles
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(left - 5, top - 5, 10, 10);
+  ctx.fillRect(right - 5, top - 5, 10, 10);
+  ctx.fillRect(left - 5, bottom - 5, 10, 10);
+  ctx.fillRect(right - 5, bottom - 5, 10, 10);
+
+  ctx.restore();
+
+  const cameraBBox: ActiveBBoxInfo = {
+    type: 'camera',
+    id: 'camera_view_frame',
+    centerX: pC.x,
+    centerY: pC.y,
+    initDist: Math.hypot(pTR.x - pC.x, pTR.y - pC.y),
+    initScale: camWidth,
+    initRotation: 0,
+    camWidth,
+    camHeight,
+    corners: [
+      { x: pTL.x, y: pTL.y, cursor: 'nwse-resize' },
+      { x: pTR.x, y: pTR.y, cursor: 'nesw-resize' },
+      { x: pBL.x, y: pBL.y, cursor: 'nesw-resize' },
+      { x: pBR.x, y: pBR.y, cursor: 'nwse-resize' },
+    ],
+    rotateHandle: { x: pC.x, y: pTL.y - 20 },
+  };
+
+  return cameraBBox;
+}

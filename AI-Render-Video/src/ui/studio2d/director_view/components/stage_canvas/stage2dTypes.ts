@@ -30,6 +30,9 @@ export interface Stage2DCanvasProps {
   onUpdatePropRotation?: (propId: string, rotationDeg: number) => void;
   onUpdatePropFlipX?: (propId: string, flipX: boolean) => void;
   onUpdatePropZIndex?: (propId: string, delta: number) => void;
+  onUpdateCameraFrame?: (width: number, height: number, panX?: number, panY?: number) => void;
+  isCameraSelected?: boolean;
+  onSelectCamera?: () => void;
   showTrajectoryLine?: boolean;
 }
 
@@ -56,7 +59,7 @@ export interface BBoxCorner {
 }
 
 export interface ActiveBBoxInfo {
-  type: 'actor' | 'prop';
+  type: 'actor' | 'prop' | 'camera';
   id: string;
   centerX: number;
   centerY: number;
@@ -65,4 +68,6 @@ export interface ActiveBBoxInfo {
   initRotation: number;
   corners: BBoxCorner[];
   rotateHandle: { x: number; y: number };
+  camWidth?: number;
+  camHeight?: number;
 }

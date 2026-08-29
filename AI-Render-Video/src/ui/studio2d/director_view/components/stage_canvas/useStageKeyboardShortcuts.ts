@@ -18,6 +18,7 @@ interface UseStageKeyboardShortcutsParams {
   onUpdatePropFlipX?: (propId: string, flipX: boolean) => void;
   onUpdateActorZIndex?: (actorId: string, delta: number) => void;
   onUpdatePropZIndex?: (propId: string, delta: number) => void;
+  onUpdateCameraFrame?: (width: number, height: number) => void;
 }
 
 export function useStageKeyboardShortcuts({
@@ -34,6 +35,7 @@ export function useStageKeyboardShortcuts({
   onUpdatePropFlipX,
   onUpdateActorZIndex,
   onUpdatePropZIndex,
+  onUpdateCameraFrame,
 }: UseStageKeyboardShortcutsParams) {
   const [zToast, setZToast] = useState<{ text: string; time: number } | null>(null);
 
@@ -64,6 +66,8 @@ export function useStageKeyboardShortcuts({
   onUpdateActorZIndexRef.current = onUpdateActorZIndex;
   const onUpdatePropZIndexRef = useRef(onUpdatePropZIndex);
   onUpdatePropZIndexRef.current = onUpdatePropZIndex;
+  const onUpdateCameraFrameRef = useRef(onUpdateCameraFrame);
+  onUpdateCameraFrameRef.current = onUpdateCameraFrame;
 
   const repeatHoldTimerRef = useRef<number | null>(null);
 
@@ -89,6 +93,16 @@ export function useStageKeyboardShortcuts({
         onUpdatePropScaleRef.current(curPropId, newScale);
         setZToast({
           text: `🔍 Tỉ lệ (Scale): ${newScale.toFixed(2)}x ${delta > 0 ? '🔼' : '🔽'}`,
+          time: Date.now(),
+        });
+      } else if (onUpdateCameraFrameRef.current && curShot) {
+        const curCamW = curShot.camera.frameWidth || 720;
+        const deltaW = delta > 0 ? 30 : -30;
+        const newW = Math.max(320, Math.min(1800, curCamW + deltaW));
+        const newH = Math.round((newW * 9) / 16);
+        onUpdateCameraFrameRef.current(newW, newH);
+        setZToast({
+          text: `📹 Khung Camera 16:9: ${newW}×${newH} ${delta > 0 ? '🔍 Phóng to' : '🔎 Thu nhỏ'}`,
           time: Date.now(),
         });
       }
