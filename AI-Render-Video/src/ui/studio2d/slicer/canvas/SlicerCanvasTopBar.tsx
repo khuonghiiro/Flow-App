@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Eye, Table, Scissors, Target, Grid, Undo2, Redo2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Layers, Eye, Table, Scissors, Target, Grid, Undo2, Redo2, ZoomIn, ZoomOut, Eraser, Square } from 'lucide-react';
 import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
 
 interface SlicerCanvasTopBarProps {
@@ -26,6 +26,16 @@ interface SlicerCanvasTopBarProps {
   onToggleCheckerTheme?: () => void;
   previewDisplayMode: 'transparent' | 'original';
   onModeClick: (mode: 'transparent' | 'original') => void;
+
+  // Eraser tools
+  eraserMode?: 'off' | 'brush' | 'box';
+  setEraserMode?: (m: 'off' | 'brush' | 'box') => void;
+  eraserBrushSize?: number;
+  setEraserBrushSize?: (s: number) => void;
+
+  // Grid Divider Sync Controls
+  dividerSyncMode?: 'all' | 'single';
+  onToggleDividerSyncMode?: () => void;
 }
 
 export const SlicerCanvasTopBar: React.FC<SlicerCanvasTopBarProps> = ({
@@ -52,6 +62,12 @@ export const SlicerCanvasTopBar: React.FC<SlicerCanvasTopBarProps> = ({
   onToggleCheckerTheme,
   previewDisplayMode,
   onModeClick,
+  eraserMode = 'off',
+  setEraserMode,
+  eraserBrushSize = 20,
+  setEraserBrushSize,
+  dividerSyncMode = 'single',
+  onToggleDividerSyncMode,
 }) => {
   return (
     <div
@@ -211,42 +227,128 @@ export const SlicerCanvasTopBar: React.FC<SlicerCanvasTopBarProps> = ({
           </button>
         )}
 
-        {onToggleDirectBBoxCrop && (
+        {/* 🎯 Toggle Chỉnh Lưới: Riêng 1 ảnh VS Toàn bộ ảnh */}
+        {onToggleDividerSyncMode && !isSingleImageMode && currentCategory && currentCategory.id !== 'single_full_image' && currentCategory.cols > 1 && (
           <button
-            onClick={onToggleDirectBBoxCrop}
-            disabled={!hasImage && checkedCount === 0}
+            onClick={onToggleDividerSyncMode}
             style={{
               padding: '3px 8px',
               fontSize: 10,
               fontWeight: 700,
               borderRadius: 4,
-              background: isDirectBBoxCropActive
-                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(147, 51, 234, 0.4))'
-                : 'rgba(255, 255, 255, 0.08)',
-              color: isDirectBBoxCropActive
-                ? '#d8b4fe'
-                : hasImage || checkedCount > 0
-                ? '#cbd5e1'
-                : '#475569',
-              border: isDirectBBoxCropActive
-                ? '1.5px solid #c084fc'
-                : '1px solid rgba(255, 255, 255, 0.15)',
-              cursor: hasImage || checkedCount > 0 ? 'pointer' : 'not-allowed',
+              background:
+                dividerSyncMode === 'single'
+                  ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35))'
+                  : 'linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(56, 189, 248, 0.35))',
+              color: dividerSyncMode === 'single' ? '#a5b4fc' : '#38bdf8',
+              border: dividerSyncMode === 'single' ? '1.5px solid #818cf8' : '1.5px solid #38bdf8',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              boxShadow: isDirectBBoxCropActive ? '0 0 10px rgba(192, 132, 252, 0.4)' : 'none',
+              boxShadow:
+                dividerSyncMode === 'single'
+                  ? '0 0 8px rgba(129, 140, 248, 0.3)'
+                  : '0 0 8px rgba(56, 189, 248, 0.3)',
               transition: 'all 0.15s ease',
             }}
             title={
-              isDirectBBoxCropActive
-                ? 'Đang bật chế độ Cắt Bounding Box - Nhấp để tắt'
-                : 'Bật chế độ Cắt Bounding Box tự động trực tiếp trên khung cắt'
+              dividerSyncMode === 'single'
+                ? 'Đang ở chế độ: Chỉnh lưới RIÊNG TỪNG ẢNH (Không ảnh hưởng các ảnh khác) - Nhấp để chuyển sang ĐỒNG BỘ TOÀN BỘ ẢNH'
+                : 'Đang ở chế độ: Chỉnh lưới ĐỒNG BỘ TOÀN BỘ ẢNH - Nhấp để chuyển sang RIÊNG TỪNG ẢNH'
             }
           >
-            <Scissors size={12} />
-            <span>{isDirectBBoxCropActive ? '✂️ BBox: BẬT' : '✂️ BBox: TẮT'}</span>
+            <span>{dividerSyncMode === 'single' ? '🎯 Lưới: Riêng 1 ảnh' : '🌐 Lưới: Toàn bộ ảnh'}</span>
           </button>
+        )}
+
+        {/* 🧹 Direct Pixel Eraser Brush Toggle */}
+        {setEraserMode && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.35)', padding: '2px 5px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              onClick={() => setEraserMode(eraserMode === 'brush' ? 'off' : 'brush')}
+              style={{
+                padding: '3px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: eraserMode === 'brush'
+                  ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.4), rgba(217, 119, 6, 0.4))'
+                  : 'rgba(255, 255, 255, 0.06)',
+                color: eraserMode === 'brush' ? '#fbbf24' : '#cbd5e1',
+                border: eraserMode === 'brush' ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.1)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: eraserMode === 'brush' ? '0 0 10px rgba(245, 158, 11, 0.4)' : 'none',
+              }}
+              title="Bật cọ tẩy pixel trực tiếp trên khung ảnh hoặc các thẻ ảnh trong lưới"
+            >
+              <Eraser size={12} />
+              <span>{eraserMode === 'brush' ? '🧹 Cọ Tẩy: BẬT' : '🧹 Cọ Tẩy'}</span>
+            </button>
+
+            <button
+              onClick={() => setEraserMode(eraserMode === 'box' ? 'off' : 'box')}
+              style={{
+                padding: '3px 8px',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 4,
+                background: eraserMode === 'box'
+                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.4))'
+                  : 'rgba(255, 255, 255, 0.06)',
+                color: eraserMode === 'box' ? '#fca5a5' : '#cbd5e1',
+                border: eraserMode === 'box' ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: eraserMode === 'box' ? '0 0 10px rgba(239, 68, 68, 0.4)' : 'none',
+              }}
+              title="Kéo chuột tạo vùng chọn hình chữ nhật để xóa toàn bộ pixel bên trong"
+            >
+              <Square size={12} />
+              <span>{eraserMode === 'box' ? '📦 Chọn Xóa: BẬT' : '📦 Chọn Xóa'}</span>
+            </button>
+
+            {eraserMode === 'brush' && setEraserBrushSize && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4, borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                <span style={{ fontSize: 9.5, color: '#f59e0b', fontWeight: 700 }}>Cỡ cọ:</span>
+                <input
+                  type="range"
+                  min="4"
+                  max="100"
+                  step="2"
+                  value={eraserBrushSize}
+                  onChange={(e) => setEraserBrushSize(parseInt(e.target.value, 10))}
+                  style={{ width: 60, accentColor: '#f59e0b' }}
+                />
+                <span style={{ fontSize: 9.5, color: '#fde68a', fontWeight: 700, minWidth: 26 }}>{eraserBrushSize}px</span>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {[8, 16, 24, 40].map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => setEraserBrushSize(sz)}
+                      style={{
+                        padding: '1px 4px',
+                        fontSize: 8.5,
+                        fontWeight: 600,
+                        background: eraserBrushSize === sz ? '#f59e0b' : 'rgba(255,255,255,0.08)',
+                        color: eraserBrushSize === sz ? '#000' : '#cbd5e1',
+                        border: 'none',
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

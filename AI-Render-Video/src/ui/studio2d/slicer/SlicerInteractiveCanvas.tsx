@@ -6,7 +6,6 @@ import { ChromaProcessOptions } from '../../../core/utils/ChromaDespeckleProcess
 // Subcomponents
 import { SlicerCanvasTopBar } from './canvas/SlicerCanvasTopBar';
 import { SlicerGridCardWithBBox } from './canvas/SlicerGridCardWithBBox';
-import { SlicerBBoxControlCard } from './canvas/SlicerBBoxControlCard';
 import { SlicerEyedropperOverlay } from './canvas/SlicerEyedropperOverlay';
 
 export interface SlicerInteractiveCanvasProps {
@@ -45,6 +44,7 @@ export interface SlicerInteractiveCanvasProps {
   directBBoxPadding?: number;
   setDirectBBoxPadding?: (pad: number) => void;
   onApplyDirectBBoxCrop?: () => void;
+  paddingInset?: number;
   chromaOptions?: ChromaProcessOptions;
 
   // Checked images grid mode
@@ -54,9 +54,25 @@ export interface SlicerInteractiveCanvasProps {
   onToggleCheckedItem?: (id: string) => void;
   onClearCheckedImages?: () => void;
 
+  // Eraser Tools
+  eraserMode?: 'off' | 'brush' | 'box';
+  setEraserMode?: (m: 'off' | 'brush' | 'box') => void;
+  eraserBrushSize?: number;
+  setEraserBrushSize?: (s: number) => void;
+  onUpdateItemImage?: (id: string, newDataUrl: string) => void;
+
   // Eyedropper callbacks
   onPickColor?: (hex: string) => void;
   onHoverColor?: (c: { hex: string; r: number; g: number; b: number; x: number; y: number } | null) => void;
+
+  // Grid Divider Shift & Sync Controls
+  colDividers?: number[];
+  rowDividers?: number[];
+  setColDividers?: React.Dispatch<React.SetStateAction<number[]>>;
+  setRowDividers?: React.Dispatch<React.SetStateAction<number[]>>;
+  dividerSyncMode?: 'all' | 'single';
+  onToggleDividerSyncMode?: () => void;
+  onUpdateItemDividers?: (itemId: string, newColDividers?: number[], newRowDividers?: number[]) => void;
 }
 
 export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = ({
@@ -93,14 +109,27 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   directBBoxPadding = 0,
   setDirectBBoxPadding,
   onApplyDirectBBoxCrop,
+  paddingInset = 0,
   chromaOptions,
   checkedImageItems = [],
   activeImageId,
   onSelectCheckedImage,
   onToggleCheckedItem,
   onClearCheckedImages,
+  eraserMode = 'off',
+  setEraserMode,
+  eraserBrushSize = 20,
+  setEraserBrushSize,
+  onUpdateItemImage,
   onPickColor,
   onHoverColor,
+  colDividers,
+  rowDividers,
+  setColDividers,
+  setRowDividers,
+  dividerSyncMode = 'single',
+  onToggleDividerSyncMode,
+  onUpdateItemDividers,
 }) => {
   const [zoom, setZoom] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -109,23 +138,40 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
   const viewportRef = useRef<HTMLDivElement>(null);
 
+interface EraserBoxPoint {
+  screenX: number;
+  screenY: number;
+  canvasX: number;
+  canvasY: number;
+}
+
+  // Single Canvas Eraser States
+  const [isSingleErasing, setIsSingleErasing] = useState<boolean>(false);
+  const [singleLastPt, setSingleLastPt] = useState<{ x: number; y: number } | null>(null);
+  const [singleBoxStart, setSingleBoxStart] = useState<EraserBoxPoint | null>(null);
+  const [singleBoxCurrent, setSingleBoxCurrent] = useState<EraserBoxPoint | null>(null);
+  const [singleCursorPos, setSingleCursorPos] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false });
+
   const handleAutoFitToViewport = useCallback(() => {
     const canvas = imageCanvasRef.current;
     const viewport = viewportRef.current;
     if (!canvas || !viewport) return;
-    const vpW = viewport.clientWidth - 40;
-    const vpH = viewport.clientHeight - 40;
+    const vpW = viewport.clientWidth - 32;
+    const vpH = viewport.clientHeight - 32;
     if (vpW <= 0 || vpH <= 0 || canvas.width <= 0 || canvas.height <= 0) return;
-    const scale = Math.min(vpW / canvas.width, vpH / canvas.height, 1.0);
+    const scale = Math.min(vpW / canvas.width, vpH / canvas.height);
     setZoom(Math.max(0.1, Math.round(scale * 100) / 100));
     setPanOffset({ x: 0, y: 0 });
   }, [imageCanvasRef]);
 
   useEffect(() => {
     if (hasImage && checkedImageItems.length <= 1) {
-      handleAutoFitToViewport();
+      const timer = setTimeout(() => {
+        handleAutoFitToViewport();
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [hasImage, checkedImageItems.length, handleAutoFitToViewport]);
+  }, [hasImage, loadedImage, activeImageId, checkedImageItems.length, handleAutoFitToViewport]);
 
   // Spacebar pan navigation
   useEffect(() => {
@@ -149,21 +195,22 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
   }, []);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (checkedImageItems.length > 1) return;
-    if (e.ctrlKey || e.metaKey || isSpacePressed) {
-      e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-      setZoom((prev) => Math.min(8.0, Math.max(0.05, Math.round(prev * zoomFactor * 100) / 100)));
+    // Khi đang xem danh sách card ảnh (checkedImageItems > 0), cho phép cuộn chuột dọc tự nhiên trừ khi nhấn Ctrl/Cmd để zoom
+    if (checkedImageItems.length > 0 && !e.ctrlKey && !e.metaKey) {
+      return;
+    }
+    e.preventDefault();
+    const zoomFactor = 1.1;
+    if (e.deltaY < 0) {
+      setZoom((prev) => Math.min(8.0, Math.round(prev * zoomFactor * 100) / 100));
     } else {
-      setPanOffset((prev) => ({
-        x: prev.x - e.deltaX * 0.8,
-        y: prev.y - e.deltaY * 0.8,
-      }));
+      setZoom((prev) => Math.max(0.1, Math.round((prev / zoomFactor) * 100) / 100));
     }
   };
 
   const handleContainerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
+    if (eraserMode !== 'off') return;
+    if (isSpacePressed || e.button === 1 || e.altKey) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
@@ -172,15 +219,12 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
 
   const handleContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isPanning) {
-      setPanOffset({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y,
-      });
+      setPanOffset({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
     }
   };
 
   const handleContainerMouseUp = () => {
-    setIsPanning(false);
+    if (isPanning) setIsPanning(false);
   };
 
   const handleModeClick = (mode: 'transparent' | 'original') => {
@@ -191,8 +235,165 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
     }
   };
 
+  // Helper to convert mouse event to single canvas image pixel coords
+  const getSingleCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const handleSingleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (eraserMode === 'off') {
+      onMouseDown(e);
+      return;
+    }
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const pt = {
+      x: screenX * scaleX,
+      y: screenY * scaleY,
+    };
+    setIsSingleErasing(true);
+    setSingleLastPt(pt);
+
+    const ctx = canvas.getContext('2d');
+    if (ctx && eraserMode === 'brush') {
+      const canvasRadius = (eraserBrushSize / 2) * scaleX;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, canvasRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (eraserMode === 'box') {
+      const boxPt: EraserBoxPoint = {
+        screenX,
+        screenY,
+        canvasX: pt.x,
+        canvasY: pt.y,
+      };
+      setSingleBoxStart(boxPt);
+      setSingleBoxCurrent(boxPt);
+    }
+  };
+
+  const handleSingleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (eraserMode !== 'off') {
+      const viewport = viewportRef.current;
+      if (viewport) {
+        const vpRect = viewport.getBoundingClientRect();
+        setSingleCursorPos({
+          x: e.clientX - vpRect.left,
+          y: e.clientY - vpRect.top,
+          size: eraserBrushSize,
+          visible: true,
+        });
+      }
+    }
+
+    if (eraserMode === 'off') {
+      onMouseMove(e);
+      return;
+    }
+
+    if (!isSingleErasing) return;
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const pt = {
+      x: screenX * scaleX,
+      y: screenY * scaleY,
+    };
+    const ctx = canvas.getContext('2d');
+
+    if (eraserMode === 'brush' && singleLastPt && ctx) {
+      const canvasRadius = (eraserBrushSize / 2) * scaleX;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = canvasRadius * 2;
+      ctx.beginPath();
+      ctx.moveTo(singleLastPt.x, singleLastPt.y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, canvasRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      setSingleLastPt(pt);
+    } else if (eraserMode === 'box') {
+      setSingleBoxCurrent({
+        screenX,
+        screenY,
+        canvasX: pt.x,
+        canvasY: pt.y,
+      });
+    }
+  };
+
+  const handleSingleCanvasMouseUp = () => {
+    if (eraserMode === 'off') {
+      onMouseUp();
+      return;
+    }
+    if (!isSingleErasing) return;
+    setIsSingleErasing(false);
+
+    const canvas = imageCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (eraserMode === 'box' && singleBoxStart && singleBoxCurrent && ctx) {
+      const x = Math.min(singleBoxStart.canvasX, singleBoxCurrent.canvasX);
+      const y = Math.min(singleBoxStart.canvasY, singleBoxCurrent.canvasY);
+      const w = Math.abs(singleBoxCurrent.canvasX - singleBoxStart.canvasX);
+      const h = Math.abs(singleBoxCurrent.canvasY - singleBoxStart.canvasY);
+      if (w > 2 && h > 2) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
+      }
+      setSingleBoxStart(null);
+      setSingleBoxCurrent(null);
+    }
+
+    setSingleLastPt(null);
+
+    // If active image item exists, sync updated dataUrl
+    if (activeImageId && onUpdateItemImage) {
+      const newDataUrl = canvas.toDataURL('image/png');
+      onUpdateItemImage(activeImageId, newDataUrl);
+    }
+  };
+
+  const handleSingleCanvasMouseLeave = () => {
+    setSingleCursorPos((prev) => ({ ...prev, visible: false }));
+    if (isSingleErasing) {
+      handleSingleCanvasMouseUp();
+    }
+    if (onMouseLeave) onMouseLeave();
+  };
+
   // Grid card click and mouse move for eyedropper sampling
   const handleGridImageClick = (e: React.MouseEvent<HTMLDivElement>, item: SlicerUploadedImageItem) => {
+    if (eraserMode !== 'off') return;
     if (isEyedropperActive) {
       const card = e.currentTarget;
       const canvas = card.querySelector('canvas');
@@ -289,6 +490,12 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
         onToggleCheckerTheme={onToggleCheckerTheme}
         previewDisplayMode={previewDisplayMode}
         onModeClick={handleModeClick}
+        eraserMode={eraserMode}
+        setEraserMode={setEraserMode}
+        eraserBrushSize={eraserBrushSize}
+        setEraserBrushSize={setEraserBrushSize}
+        dividerSyncMode={dividerSyncMode}
+        onToggleDividerSyncMode={onToggleDividerSyncMode}
       />
 
       {/* Main Viewport */}
@@ -316,6 +523,8 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
               : 'grab'
             : isEyedropperActive
             ? 'crosshair'
+            : eraserMode !== 'off'
+            ? 'crosshair'
             : 'default',
         }}
       >
@@ -326,72 +535,59 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
           eyedropperHoverColor={eyedropperHoverColor}
         />
 
-        {/* Multi-Image Checked Grid Mode OR Single Canvas Mode */}
-        {checkedImageItems.length > 1 ? (
+        {/* Multi-image checked grid view (hoặc 1 ảnh checked đơn lẻ) */}
+        {checkedImageItems.length > 0 ? (
           <div
             style={{
               width: '100%',
               height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              padding: 8,
-              overflow: 'hidden',
+              maxHeight: '100%',
+              minHeight: 0,
+              overflowY: 'auto',
+              display: 'grid',
+              gridTemplateColumns:
+                checkedImageItems.length === 1
+                  ? '1fr'
+                  : 'repeat(auto-fill, minmax(140px, 180px))',
+              gridAutoRows: checkedImageItems.length === 1 ? '1fr' : 'minmax(200px, 320px)',
+              gap: 10,
+              padding: 10,
+              alignContent: 'start',
+              justifyContent: 'center',
+              boxSizing: 'border-box',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: 5 }}>
-                🎯 Đang chọn: <span style={{ color: '#38bdf8', fontWeight: 900 }}>{checkedImageItems.length}</span> ảnh
-              </div>
-              {onClearCheckedImages && (
-                <button
-                  onClick={onClearCheckedImages}
-                  style={{
-                    padding: '2px 7px',
-                    fontSize: 9,
-                    fontWeight: 600,
-                    borderRadius: 4,
-                    background: 'rgba(239, 68, 68, 0.15)',
-                    color: '#f87171',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  ✕ Bỏ chọn
-                </button>
-              )}
-            </div>
-
-            <div
-              style={{
-                flex: 1,
-                display: 'grid',
-                gridTemplateColumns: `repeat(${Math.min(Math.ceil(Math.sqrt(checkedImageItems.length)), 4)}, minmax(0, 1fr))`,
-                gap: 8,
-                overflowY: 'auto',
-                minHeight: 0,
-                padding: 4,
-              }}
-            >
-              {checkedImageItems.map((item) => (
-                <SlicerGridCardWithBBox
-                  key={item.id}
-                  item={item}
-                  isActive={item.id === activeImageId}
-                  isEyedropperActive={isEyedropperActive}
-                  isDirectBBoxCropActive={isDirectBBoxCropActive}
-                  directBBoxPadding={directBBoxPadding}
-                  chromaOptions={chromaOptions}
-                  checkerTheme={checkerTheme}
-                  previewDisplayMode={previewDisplayMode}
-                  onClick={handleGridImageClick}
-                  onMouseMove={handleGridImageMouseMove}
-                  onToggleCheckedItem={onToggleCheckedItem}
-                />
-              ))}
-            </div>
+            {checkedImageItems.map((item) => (
+              <SlicerGridCardWithBBox
+                key={item.id}
+                item={item}
+                isActive={item.id === activeImageId}
+                isEyedropperActive={isEyedropperActive}
+                isDirectBBoxCropActive={isDirectBBoxCropActive}
+                directBBoxPadding={directBBoxPadding}
+                chromaOptions={chromaOptions}
+                checkerTheme={checkerTheme}
+                previewDisplayMode={previewDisplayMode}
+                currentCategory={currentCategory}
+                colDividers={colDividers}
+                rowDividers={rowDividers}
+                setColDividers={setColDividers}
+                setRowDividers={setRowDividers}
+                onUpdateItemDividers={onUpdateItemDividers}
+                paddingInset={paddingInset || directBBoxPadding}
+                eraserMode={eraserMode}
+                eraserBrushSize={eraserBrushSize}
+                onUpdateItemImage={onUpdateItemImage}
+                onClick={handleGridImageClick}
+                onMouseMove={handleGridImageMouseMove}
+                onToggleCheckedItem={onToggleCheckedItem}
+                onPickColor={onPickColor}
+                onHoverColor={onHoverColor}
+              />
+            ))}
           </div>
         ) : (
+          /* Single image main canvas view */
           <>
             {!hasImage && (
               <div
@@ -399,13 +595,9 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  gap: 10,
                   color: '#64748b',
-                  fontSize: 12,
-                  gap: 6,
-                  padding: 24,
                   textAlign: 'center',
-                  userSelect: 'none',
                 }}
               >
                 <div style={{ fontSize: 32, opacity: 0.5 }}>🖼️</div>
@@ -421,9 +613,8 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
                 position: 'relative',
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                 transformOrigin: 'center center',
-                display: hasImage ? 'flex' : 'none',
-                alignItems: 'center',
-                justifyContent: 'center',
+                display: hasImage ? 'inline-block' : 'none',
+                lineHeight: 0,
                 boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(56, 189, 248, 0.25)',
                 borderRadius: 4,
                 transition: isPanning ? 'none' : 'transform 0.05s ease-out',
@@ -432,18 +623,56 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
             >
               <canvas
                 ref={imageCanvasRef}
-                onMouseDown={onMouseDown}
+                onMouseDown={handleSingleCanvasMouseDown}
                 onDoubleClick={onDoubleClick}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onMouseLeave={onMouseLeave || onMouseUp}
+                onMouseMove={handleSingleCanvasMouseMove}
+                onMouseUp={handleSingleCanvasMouseUp}
+                onMouseLeave={handleSingleCanvasMouseLeave}
                 style={{
                   display: 'block',
                   borderRadius: 4,
-                  cursor: isEyedropperActive ? 'crosshair' : isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : 'default',
+                  cursor: isEyedropperActive ? 'crosshair' : isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : eraserMode !== 'off' ? 'crosshair' : undefined,
                 }}
               />
+
+              {/* Single Canvas Box Selection Overlay */}
+              {eraserMode === 'box' && isSingleErasing && singleBoxStart && singleBoxCurrent && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: Math.min(singleBoxStart.screenX, singleBoxCurrent.screenX),
+                    top: Math.min(singleBoxStart.screenY, singleBoxCurrent.screenY),
+                    width: Math.abs(singleBoxCurrent.screenX - singleBoxStart.screenX),
+                    height: Math.abs(singleBoxCurrent.screenY - singleBoxStart.screenY),
+                    border: '2px dashed #ffffff',
+                    outline: '2px dashed #000000',
+                    background: 'rgba(239, 68, 68, 0.25)',
+                    boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)',
+                    pointerEvents: 'none',
+                    zIndex: 40,
+                  }}
+                />
+              )}
             </div>
+
+            {/* Single Canvas Brush Cursor Preview Ring at Viewport Level */}
+            {eraserMode === 'brush' && singleCursorPos.visible && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: singleCursorPos.x,
+                  top: singleCursorPos.y,
+                  width: singleCursorPos.size,
+                  height: singleCursorPos.size,
+                  borderRadius: '50%',
+                  border: '2px solid #f59e0b',
+                  boxShadow: '0 0 10px rgba(245, 158, 11, 0.7), inset 0 0 4px rgba(245, 158, 11, 0.4)',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 50,
+                }}
+              />
+            )}
           </>
         )}
 
@@ -473,17 +702,6 @@ export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = (
             <span>{historyToast.message}</span>
           </div>
         )}
-
-        {/* Floating BBox Control Card */}
-        <SlicerBBoxControlCard
-          isDirectBBoxCropActive={isDirectBBoxCropActive}
-          hasImage={hasImage}
-          checkedCount={checkedImageItems.length}
-          directBBoxPadding={directBBoxPadding}
-          setDirectBBoxPadding={setDirectBBoxPadding}
-          onToggleDirectBBoxCrop={onToggleDirectBBoxCrop}
-          onApplyDirectBBoxCrop={onApplyDirectBBoxCrop}
-        />
       </div>
     </div>
   );

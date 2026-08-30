@@ -108,20 +108,45 @@ export function useSlicerCanvasDrawing({
               ctx.drawImage(img, 0, 0);
             }
           } else {
+            const numCols = Math.max(1, currentCategory.cols || 4);
+            const numRows = Math.max(1, currentCategory.rows || 1);
+            const baseW = colDividers.length > numCols ? colDividers[colDividers.length - 1] : canvas.width;
+            const baseH = rowDividers.length > numRows ? rowDividers[rowDividers.length - 1] : canvas.height;
+
+            const getColX = (c: number) => {
+              if (colDividers.length > c && baseW > 0) {
+                return Math.round((colDividers[c] / baseW) * canvas.width);
+              }
+              return Math.round((c * canvas.width) / numCols);
+            };
+
+            const getRowY = (r: number) => {
+              if (rowDividers.length > r && baseH > 0) {
+                return Math.round((rowDividers[r] / baseH) * canvas.height);
+              }
+              return Math.round((r * canvas.height) / numRows);
+            };
+
             currentCategory.cells.forEach((cell) => {
               const key = `${cell.row}_${cell.col}`;
               const cellCanvas = slicedCanvases.get(key);
               if (cellCanvas && colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
                 const pad = Math.max(0, paddingInset);
-                const rawX0 = colDividers[cell.col];
-                const rawY0 = rowDividers[cell.row];
-                const cellW = Math.max(10, colDividers[cell.col + 1] - rawX0 - pad * 2);
-                const cellH = Math.max(10, rowDividers[cell.row + 1] - rawY0 - pad * 2);
+                const rawX0 = getColX(cell.col);
+                const rawX1 = getColX(cell.col + 1);
+                const rawY0 = getRowY(cell.row);
+                const rawY1 = getRowY(cell.row + 1);
+                const rawW = rawX1 - rawX0;
+                const rawH = rawY1 - rawY0;
+                const safePadX = Math.min(pad, Math.floor(rawW / 3));
+                const safePadY = Math.min(pad, Math.floor(rawH / 3));
+                const cellW = Math.max(10, rawW - safePadX * 2);
+                const cellH = Math.max(10, rawH - safePadY * 2);
                 const cropRect = cellCropRectsRef?.current?.get(key);
 
                 if (enableSmartCrop && cropRect) {
-                  const drawX = rawX0 + pad + cropRect.left;
-                  const drawY = rawY0 + pad + cropRect.top;
+                  const drawX = rawX0 + safePadX + cropRect.left;
+                  const drawY = rawY0 + safePadY + cropRect.top;
                   ctx.drawImage(cellCanvas, drawX, drawY, cropRect.width, cropRect.height);
 
                   // Draw Smart Crop dashed boundary box
@@ -131,7 +156,7 @@ export function useSlicerCanvasDrawing({
                   ctx.strokeRect(drawX, drawY, cropRect.width, cropRect.height);
                   ctx.setLineDash([]);
                 } else {
-                  ctx.drawImage(cellCanvas, rawX0 + pad, rawY0 + pad, cellW, cellH);
+                  ctx.drawImage(cellCanvas, rawX0 + safePadX, rawY0 + safePadY, cellW, cellH);
                 }
               }
             });
@@ -143,92 +168,160 @@ export function useSlicerCanvasDrawing({
         ctx.drawImage(img, 0, 0);
       }
 
-      // Draw Grid Dividers & Badges
+      // Draw Grid Dividers & Badges (Only in original mode or before slicing to avoid drawing lines over transparent characters)
       if (currentCategory.id !== 'single_full_image') {
-        const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
-          if (isBorder) {
-            ctx.setLineDash([]);
-            ctx.lineDashOffset = 0;
-            ctx.lineWidth = 3.0;
-            ctx.strokeStyle = '#000000';
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
+        if (effectiveMode === 'original' || !hasExplicitlySliced) {
+          const numCols = Math.max(1, currentCategory.cols || 4);
+          const numRows = Math.max(1, currentCategory.rows || 1);
+          const baseW = colDividers.length > numCols ? colDividers[colDividers.length - 1] : canvas.width;
+          const baseH = rowDividers.length > numRows ? rowDividers[rowDividers.length - 1] : canvas.height;
 
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = '#38bdf8';
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-          } else {
-            // Lớp 1: Nét đứt màu đen [8, 8] offset 0
-            ctx.lineWidth = 2.5;
-            ctx.strokeStyle = '#000000';
-            ctx.setLineDash([8, 8]);
-            ctx.lineDashOffset = 0;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-
-            // Lớp 2: Nét đứt màu trắng [8, 8] offset 8 xen kẽ chính xác vào khoảng trống
-            ctx.lineWidth = 2.5;
-            ctx.strokeStyle = '#ffffff';
-            ctx.setLineDash([8, 8]);
-            ctx.lineDashOffset = 8;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-
-            // Reset dash và offset
-            ctx.setLineDash([]);
-            ctx.lineDashOffset = 0;
-          }
-        };
-
-        colDividers.forEach((x, c) => drawDualDashLine(x, 0, x, canvas.height, c === 0 || c === colDividers.length - 1));
-        rowDividers.forEach((y, r) => drawDualDashLine(0, y, canvas.width, y, r === 0 || r === rowDividers.length - 1));
-        ctx.setLineDash([]);
-        ctx.lineDashOffset = 0;
-
-        // Angle Badges
-        currentCategory.cells.forEach((cell) => {
-          if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
-            const x0 = colDividers[cell.col];
-            const y0 = rowDividers[cell.row];
-            const w = colDividers[cell.col + 1] - x0;
-            const h = rowDividers[cell.row + 1] - y0;
-            if (w > 45 && h > 28) {
-              const angleDef = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === cell.angle) || STANDARD_ANGLE_DEFINITIONS[0];
-              const badgeText = angleDef.shortLabel || '0° Front';
-              ctx.font = 'bold 10.5px sans-serif';
-              const textMetrics = ctx.measureText(badgeText);
-              const badgeW = Math.max(50, textMetrics.width + 12);
-              ctx.fillStyle = 'rgba(11, 15, 25, 0.85)';
-              ctx.fillRect(x0 + 5, y0 + 5, badgeW, 18);
-              ctx.strokeStyle = '#38bdf8';
-              ctx.lineWidth = 1;
-              ctx.strokeRect(x0 + 5, y0 + 5, badgeW, 18);
-              ctx.fillStyle = '#38bdf8';
-              ctx.fillText(badgeText, x0 + 10, y0 + 18);
+          const getColX = (c: number) => {
+            if (colDividers.length > c && baseW > 0) {
+              return Math.round((colDividers[c] / baseW) * canvas.width);
             }
-          }
-        });
+            return Math.round((c * canvas.width) / numCols);
+          };
 
-        // Selected Cell Highlight
-        if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
-          const x0 = colDividers[selectedCell.col];
-          const y0 = rowDividers[selectedCell.row];
-          const w = colDividers[selectedCell.col + 1] - x0;
-          const h = rowDividers[selectedCell.row + 1] - y0;
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
-          ctx.fillRect(x0, y0, w, h);
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2.0;
-          ctx.strokeRect(x0, y0, w, h);
+          const getRowY = (r: number) => {
+            if (rowDividers.length > r && baseH > 0) {
+              return Math.round((rowDividers[r] / baseH) * canvas.height);
+            }
+            return Math.round((r * canvas.height) / numRows);
+          };
+
+          const baseLw = Math.max(3.5, Math.round(canvas.width / 240));
+          const dashLen = Math.max(10, Math.round(canvas.width / 60));
+
+          const drawDualDashLine = (x1: number, y1: number, x2: number, y2: number, isBorder = false) => {
+            if (isBorder) {
+              ctx.setLineDash([]);
+              ctx.lineDashOffset = 0;
+              ctx.lineWidth = baseLw + 3;
+              ctx.strokeStyle = '#000000';
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+
+              ctx.lineWidth = baseLw;
+              ctx.strokeStyle = '#38bdf8';
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+            } else {
+              // Lớp nền đen viền ngoài tạo tương phản cao
+              ctx.lineWidth = baseLw + 2.5;
+              ctx.strokeStyle = '#000000';
+              ctx.setLineDash([]);
+              ctx.lineDashOffset = 0;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+
+              // Lớp 1: Nét đứt màu đen
+              ctx.lineWidth = baseLw;
+              ctx.strokeStyle = '#000000';
+              ctx.setLineDash([dashLen, dashLen]);
+              ctx.lineDashOffset = 0;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+
+              // Lớp 2: Nét đứt màu trắng xen kẽ
+              ctx.lineWidth = baseLw;
+              ctx.strokeStyle = '#ffffff';
+              ctx.setLineDash([dashLen, dashLen]);
+              ctx.lineDashOffset = dashLen;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+
+              // Reset dash và offset
+              ctx.setLineDash([]);
+              ctx.lineDashOffset = 0;
+            }
+          };
+
+          for (let c = 0; c <= numCols; c++) {
+            const x = getColX(c);
+            drawDualDashLine(x, 0, x, canvas.height, c === 0 || c === numCols);
+          }
+          for (let r = 0; r <= numRows; r++) {
+            const y = getRowY(r);
+            drawDualDashLine(0, y, canvas.width, y, r === 0 || r === numRows);
+          }
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+
+          // Draw Padding Inset green guides inside each cell
+          const pad = Math.max(0, paddingInset);
+          if (pad > 0) {
+            const padLw = Math.max(2.5, Math.round(canvas.width / 300));
+            const padDash = Math.max(6, Math.round(dashLen / 2));
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = padLw;
+            ctx.setLineDash([padDash, padDash]);
+            currentCategory.cells.forEach((cell) => {
+              if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+                const rawX0 = getColX(cell.col);
+                const rawX1 = getColX(cell.col + 1);
+                const rawY0 = getRowY(cell.row);
+                const rawY1 = getRowY(cell.row + 1);
+                const rawW = rawX1 - rawX0;
+                const rawH = rawY1 - rawY0;
+                const safePadX = Math.min(pad, Math.floor(rawW / 3));
+                const safePadY = Math.min(pad, Math.floor(rawH / 3));
+                ctx.strokeRect(rawX0 + safePadX, rawY0 + safePadY, Math.max(4, rawW - safePadX * 2), Math.max(4, rawH - safePadY * 2));
+              }
+            });
+            ctx.setLineDash([]);
+          }
+
+          // Angle Badges
+          currentCategory.cells.forEach((cell) => {
+            if (colDividers.length > cell.col + 1 && rowDividers.length > cell.row + 1) {
+              const x0 = getColX(cell.col);
+              const x1 = getColX(cell.col + 1);
+              const y0 = getRowY(cell.row);
+              const y1 = getRowY(cell.row + 1);
+              const w = x1 - x0;
+              const h = y1 - y0;
+              if (w > 45 && h > 28) {
+                const angleDef = STANDARD_ANGLE_DEFINITIONS.find((a) => a.angle === cell.angle) || STANDARD_ANGLE_DEFINITIONS[0];
+                const badgeText = angleDef.shortLabel || '0° Front';
+                ctx.font = 'bold 10.5px sans-serif';
+                const textMetrics = ctx.measureText(badgeText);
+                const badgeW = Math.max(50, textMetrics.width + 12);
+                ctx.fillStyle = 'rgba(11, 15, 25, 0.85)';
+                ctx.fillRect(x0 + 5, y0 + 5, badgeW, 18);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x0 + 5, y0 + 5, badgeW, 18);
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillText(badgeText, x0 + 10, y0 + 17);
+              }
+            }
+          });
+
+          // Selected Cell Highlight
+          if (selectedCell && colDividers.length > selectedCell.col + 1 && rowDividers.length > selectedCell.row + 1) {
+            const x0 = getColX(selectedCell.col);
+            const x1 = getColX(selectedCell.col + 1);
+            const y0 = getRowY(selectedCell.row);
+            const y1 = getRowY(selectedCell.row + 1);
+            const w = x1 - x0;
+            const h = y1 - y0;
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+            ctx.fillRect(x0, y0, w, h);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.0;
+            ctx.strokeRect(x0, y0, w, h);
+          }
         }
       }
 
@@ -275,18 +368,21 @@ export function useSlicerCanvasDrawing({
           ctx.fillRect(rect.right + 1, rect.top, canvas.width - (rect.right + 1), rect.height);
 
           // Alternating black & white dashed border (Marching ants / Dual dash)
-          // Layer 1: Black dash [6, 6] offset 0
-          ctx.lineWidth = 2.5;
+          const bboxLw = Math.max(3.5, Math.round(canvas.width / 240));
+          const bboxDash = Math.max(10, Math.round(canvas.width / 60));
+
+          // Layer 1: Black dash
+          ctx.lineWidth = bboxLw;
           ctx.strokeStyle = '#000000';
-          ctx.setLineDash([6, 6]);
+          ctx.setLineDash([bboxDash, bboxDash]);
           ctx.lineDashOffset = 0;
           ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
 
-          // Layer 2: White dash [6, 6] offset 6
-          ctx.lineWidth = 2.5;
+          // Layer 2: White dash
+          ctx.lineWidth = bboxLw;
           ctx.strokeStyle = '#ffffff';
-          ctx.setLineDash([6, 6]);
-          ctx.lineDashOffset = 6;
+          ctx.setLineDash([bboxDash, bboxDash]);
+          ctx.lineDashOffset = bboxDash;
           ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
 
           ctx.setLineDash([]);

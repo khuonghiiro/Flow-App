@@ -73,7 +73,7 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
             <input
               type="range"
               min="0"
-              max="40"
+              max="60"
               step="1"
               value={paddingInset}
               onChange={(e) => setPaddingInset(parseInt(e.target.value, 10))}
@@ -81,13 +81,13 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
               style={{ flex: 1, accentColor: '#38bdf8' }}
             />
             <div style={{ display: 'flex', gap: 2 }}>
-              {[0, 4, 8].map((val) => (
+              {[0, 4, 8, 12, 16, 24].map((val) => (
                 <button
                   key={val}
                   onClick={() => { setPaddingInset(val); if (onCommitSliderChange) onCommitSliderChange(); }}
                   style={{
                     height: 20,
-                    padding: '0 5px',
+                    padding: '0 4px',
                     fontSize: 8.5,
                     fontWeight: 600,
                     background: paddingInset === val ? '#0284c7' : 'rgba(255,255,255,0.1)',
@@ -97,7 +97,7 @@ export const SlicerAssemblyActionCard: React.FC<SlicerAssemblyActionCardProps> =
                     cursor: 'pointer',
                   }}
                 >
-                  {val}px
+                  {val}
                 </button>
               ))}
             </div>

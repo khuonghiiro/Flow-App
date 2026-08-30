@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { parsePartFilename, ParsedPartFilenameInfo } from '../../../../core/assets/prompt_builders/PartFilenameParser';
 import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
 
@@ -16,6 +16,14 @@ export interface SlicerUploadedImageItem {
   height: number;
   aspectRatio: number;
   aspectRatioLabel: string;
+  isFrameItem?: boolean;
+  parentSheetOriginalUrl?: string;
+  cellRow?: number;
+  cellCol?: number;
+  parentNumCols?: number;
+  parentNumRows?: number;
+  customColDividers?: number[];
+  customRowDividers?: number[];
 }
 
 export interface SlicerPartGroupItem {
@@ -87,7 +95,12 @@ export function useSlicerMultiImageGallery(options: {
 }) {
   const [imageList, setImageList] = useState<SlicerUploadedImageItem[]>([]);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const activeImageIdRef = useRef<string | null>(activeImageId);
   const [activePartId, setActivePartId] = useState<string | null>(null);
+
+  useEffect(() => {
+    activeImageIdRef.current = activeImageId;
+  }, [activeImageId]);
 
   // Group images by detected part_id (or generic group if unrecognized)
   const partGroups = useMemo<SlicerPartGroupItem[]>(() => {
@@ -230,6 +243,7 @@ export function useSlicerMultiImageGallery(options: {
     imageList,
     setImageList,
     activeImageId,
+    activeImageIdRef,
     activePartId,
     partGroups,
     activeImage,

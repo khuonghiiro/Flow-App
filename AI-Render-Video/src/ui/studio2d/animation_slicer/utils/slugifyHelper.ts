@@ -4,10 +4,10 @@
 
 /**
  * Converts Vietnamese unicode string with accents, spaces and special characters
- * into a safe, filesystem-friendly kebab-case slug for folder names.
- * Example: "Chém Kiếm Lôi Điện" -> "chem-kiem-loi-dien"
+ * into a safe, filesystem-friendly slug for folder names (default: underscore).
+ * Example: "Tôn Ngộ Không" -> "ton_ngo_khong", "Chém Kiếm Lôi Điện" -> "chem_kiem_loi_dien"
  */
-export function slugifyVietnamese(text: string): string {
+export function slugifyVietnamese(text: string, separator: '_' | '-' = '_'): string {
   if (!text) return '';
 
   let str = text.toLowerCase();
@@ -24,28 +24,35 @@ export function slugifyVietnamese(text: string): string {
   // Remove combining diacritical marks
   str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  // Replace special characters, spaces, and punctuation with hyphens
+  // Replace special characters, spaces, and punctuation with separator
   str = str.replace(/[^a-z0-9\s_-]/g, '');
-  str = str.replace(/[\s_]+/g, '-');
+  str = str.replace(/[\s_-]+/g, separator);
 
-  // Remove leading/trailing hyphens and duplicate hyphens
-  str = str.replace(/-+/g, '-');
-  str = str.replace(/^-+|-+$/g, '');
+  // Remove leading/trailing separator
+  str = str.replace(new RegExp(`^\\${separator}+|\\${separator}+$`, 'g'), '');
 
-  return str || 'action-pose';
+  return str || 'custom';
 }
 
 /**
- * Returns a standardized folder path for an action pose and angle
- * Example: ("Chém Kiếm Lôi Điện", 45) -> "actions/chem-kiem-loi-dien/angle-45"
+ * Returns a standardized folder path for character action pose and angle:
+ * Example: ("Tôn Ngộ Không", "Chém Kiếm", 0, "chinh_dien")
+ *       -> "asset_2ds/nhan_vat/ton_ngo_khong/hanh_dong/chem_kiem/chinh_dien"
  */
-export function getActionFolderPath(poseName: string, angleDeg: number): {
+export function getActionFolderPath(
+  characterName: string,
+  poseName: string,
+  angleDeg: number,
+  angleSlugName?: string
+): {
+  characterSlug: string;
   poseSlug: string;
   angleSlug: string;
   fullPath: string;
 } {
-  const poseSlug = slugifyVietnamese(poseName);
-  const angleSlug = `angle-${angleDeg}`;
-  const fullPath = `assets_2d/actions/${poseSlug}/${angleSlug}`;
-  return { poseSlug, angleSlug, fullPath };
+  const characterSlug = slugifyVietnamese(characterName || 'nhan_vat_chinh');
+  const poseSlug = slugifyVietnamese(poseName || 'dong_tac_moi');
+  const angleSlug = angleSlugName || `goc_${angleDeg}`;
+  const fullPath = `asset_2ds/nhan_vat/${characterSlug}/hanh_dong/${poseSlug}/${angleSlug}`;
+  return { characterSlug, poseSlug, angleSlug, fullPath };
 }

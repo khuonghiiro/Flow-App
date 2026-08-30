@@ -164,24 +164,45 @@ export const AnimationSlicerTab: React.FC<AnimationSlicerTabProps> = ({
   // Handle Transferred Initial Frames from Tab 1
   useEffect(() => {
     if (initialFrames && initialFrames.length > 0) {
-      const transferredFrames: AnimationSliceFrame[] = initialFrames.map((url, idx) => ({
-        id: `transferred_frame_${idx}_${Date.now()}`,
-        index: idx,
-        originalDataUrl: url,
-        transparentDataUrl: url,
-        cropRect: { x: 0, y: 0, width: 200, height: 200 },
-        offsetX: 0,
-        offsetY: 0,
-        scale: 1.0,
-        rotation: 0,
-        flipX: false,
-        durationMs: 500,
-      }));
-      setFrames(transferredFrames);
-      setFrameOrder(transferredFrames.map((_, i) => i));
-      setSelectedFrameIndex(0);
-      setToastMessage(`✓ Đã nhận ${transferredFrames.length} khung hình từ Tab 1!`);
-      setTimeout(() => setToastMessage(null), 3000);
+      let isMounted = true;
+      const loadAllFrames = async () => {
+        const loaded: AnimationSliceFrame[] = await Promise.all(
+          initialFrames.map(async (url, idx) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            await new Promise<void>((res) => {
+              img.onload = () => res();
+              img.onerror = () => res();
+              img.src = url;
+            });
+            const w = img.naturalWidth || img.width || 200;
+            const h = img.naturalHeight || img.height || 260;
+            return {
+              id: `transferred_frame_${idx}_${Date.now()}`,
+              index: idx,
+              originalDataUrl: url,
+              transparentDataUrl: url,
+              cropRect: { x: 0, y: 0, width: w, height: h },
+              offsetX: 0,
+              offsetY: 0,
+              scale: 1.0,
+              rotation: 0,
+              flipX: false,
+              durationMs: 500,
+            };
+          })
+        );
+        if (!isMounted) return;
+        setFrames(loaded);
+        setFrameOrder(loaded.map((_, i) => i));
+        setSelectedFrameIndex(0);
+        setToastMessage(`✓ Đã nhận ${loaded.length} khung hình chuẩn từ Tab 1!`);
+        setTimeout(() => setToastMessage(null), 3000);
+      };
+      loadAllFrames();
+      return () => {
+        isMounted = false;
+      };
     } else if (frames.length === 0) {
       handleLoadDemoFrames();
     }

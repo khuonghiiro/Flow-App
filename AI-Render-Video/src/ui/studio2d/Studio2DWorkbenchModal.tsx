@@ -379,7 +379,8 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
         {/* ─── MODAL BODY (Active Tab Component) ───────────────────── */}
         <div style={{ flex: 1, padding: 14, overflow: 'hidden', minHeight: 0 }}>
           <Suspense fallback={<TabLoader />}>
-          {activeTab === 'grid_slicer' && (
+          {/* Tab 1: Cắt Lưới & Tách Nền Sprite Sheet (Giữ nguyên trạng thái không bị mất dữ liệu khi chuyển sang tab khác) */}
+          <div style={{ display: activeTab === 'grid_slicer' ? 'flex' : 'none', width: '100%', height: '100%', flexDirection: 'column' }}>
             <AutoGridSlicer3DAssembler
               currentAssembly={characterAssembly}
               onApplyAssembly={setCharacterAssembly}
@@ -395,14 +396,15 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               externalImageUrl={transferredSpriteSheetUrl}
               externalCategoryId={transferredCategoryId}
             />
-          )}
+          </div>
 
-          {activeTab === 'anim_slicer' && (
+          {/* Tab 1.2: Animation Sequencer & Preview */}
+          <div style={{ display: activeTab === 'anim_slicer' ? 'flex' : 'none', width: '100%', height: '100%', flexDirection: 'column' }}>
             <AnimationSlicerTab
               initialFrames={transferredAnimationFrames}
               externalSpriteSheetUrl={transferredSpriteSheetUrl}
             />
-          )}
+          </div>
 
           {activeTab === 'rig_assembler' && (
             <MultiAngleRigAssembler />

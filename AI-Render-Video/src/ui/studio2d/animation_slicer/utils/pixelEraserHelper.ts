@@ -12,7 +12,8 @@ export interface WorkingCanvasItem {
 }
 
 /**
- * Initializes in-memory offscreen canvases for real-time lag-free erasing
+ * Initializes in-memory offscreen canvases for real-time lag-free erasing across ALL target frames.
+ * Guaranteed to initialize every target frame without skipping unrendered frames.
  */
 export const initWorkingCanvases = (
   frames: AnimationSliceFrame[],
@@ -24,11 +25,17 @@ export const initWorkingCanvases = (
   targetIndices.forEach((idx) => {
     const frame = frames[idx];
     if (!frame) return;
-    const img = getImageFn(frame.transparentDataUrl || frame.originalDataUrl);
-    if (!img || !img.complete) return;
 
-    const fw = img.width || 200;
-    const fh = img.height || 260;
+    const imgUrl = frame.transparentDataUrl || frame.originalDataUrl;
+    const img = imgUrl ? getImageFn(imgUrl) : null;
+
+    let fw = 200;
+    let fh = 260;
+
+    if (img && (img.complete || img.naturalWidth > 0)) {
+      fw = img.naturalWidth || img.width || 200;
+      fh = img.naturalHeight || img.height || 260;
+    }
 
     const offscreen = document.createElement('canvas');
     offscreen.width = fw;
@@ -36,7 +43,10 @@ export const initWorkingCanvases = (
     const ctx = offscreen.getContext('2d');
     if (!ctx) return;
 
-    ctx.drawImage(img, 0, 0, fw, fh);
+    if (img && (img.complete || img.naturalWidth > 0)) {
+      ctx.drawImage(img, 0, 0, fw, fh);
+    }
+
     map.set(idx, { index: idx, canvas: offscreen, ctx, width: fw, height: fh });
   });
 

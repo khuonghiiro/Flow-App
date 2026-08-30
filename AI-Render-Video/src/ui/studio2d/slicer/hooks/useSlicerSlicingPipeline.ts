@@ -9,6 +9,7 @@ import {
   cropCanvasWithPadding,
   PaddedCropRect,
 } from '../../../../core/utils/PixelBoundingBoxAlgorithms';
+import { cleanOuterEdgeDarkBorders } from '../utils/slicerPixelEraserHelper';
 
 export interface UseSlicerSlicingPipelineProps {
   loadedImageRef: React.MutableRefObject<HTMLImageElement | null>;
@@ -133,6 +134,7 @@ export function useSlicerSlicingPipeline({
           if (ctx) {
             ctx.drawImage(img, pad, pad, w, h, 0, 0, w, h);
             processCellChromaAndDespeckle(ctx, w, h, opts);
+            cleanOuterEdgeDarkBorders(ctx, w, h, Math.max(3, Math.min(6, pad)));
 
             let finalCanvas = canvas;
             let dataUrl = canvas.toDataURL('image/png');
@@ -179,14 +181,37 @@ export function useSlicerSlicingPipeline({
             part.angles[singleImageAngle] = dataUrl;
           }
         } else {
+          const numCols = Math.max(1, currentCategory.cols || 4);
+          const numRows = Math.max(1, currentCategory.rows || 1);
+          const imgW = img.naturalWidth || img.width;
+          const imgH = img.naturalHeight || img.height;
+          const baseW = colDividers.length > numCols ? colDividers[colDividers.length - 1] : imgW;
+          const baseH = rowDividers.length > numRows ? rowDividers[rowDividers.length - 1] : imgH;
+
           currentCategory.cells.forEach((cell) => {
-            if (colDividers.length <= cell.col + 1 || rowDividers.length <= cell.row + 1) return;
-            const rawX0 = colDividers[cell.col];
-            const rawY0 = rowDividers[cell.row];
-            const x0 = rawX0 + pad;
-            const y0 = rawY0 + pad;
-            const w = Math.max(10, colDividers[cell.col + 1] - rawX0 - pad * 2);
-            const h = Math.max(10, rowDividers[cell.row + 1] - rawY0 - pad * 2);
+            let rawX0 = Math.round((cell.col * imgW) / numCols);
+            let rawX1 = Math.round(((cell.col + 1) * imgW) / numCols);
+            let rawY0 = Math.round((cell.row * imgH) / numRows);
+            let rawY1 = Math.round(((cell.row + 1) * imgH) / numRows);
+
+            if (colDividers.length > cell.col + 1 && baseW > 0) {
+              rawX0 = Math.round((colDividers[cell.col] / baseW) * imgW);
+              rawX1 = Math.round((colDividers[cell.col + 1] / baseW) * imgW);
+            }
+            if (rowDividers.length > cell.row + 1 && baseH > 0) {
+              rawY0 = Math.round((rowDividers[cell.row] / baseH) * imgH);
+              rawY1 = Math.round((rowDividers[cell.row + 1] / baseH) * imgH);
+            }
+
+            const rawW = rawX1 - rawX0;
+            const rawH = rawY1 - rawY0;
+            const safePadX = Math.min(pad, Math.floor(rawW / 3));
+            const safePadY = Math.min(pad, Math.floor(rawH / 3));
+
+            const x0 = rawX0 + safePadX;
+            const y0 = rawY0 + safePadY;
+            const w = Math.max(10, rawW - safePadX * 2);
+            const h = Math.max(10, rawH - safePadY * 2);
 
             const canvas = document.createElement('canvas');
             canvas.width = w;
@@ -195,6 +220,7 @@ export function useSlicerSlicingPipeline({
             if (ctx) {
               ctx.drawImage(img, x0, y0, w, h, 0, 0, w, h);
               processCellChromaAndDespeckle(ctx, w, h, opts);
+              cleanOuterEdgeDarkBorders(ctx, w, h, Math.max(3, Math.min(6, safePadX)));
 
               const key = `${cell.row}_${cell.col}`;
               let finalCanvas = canvas;

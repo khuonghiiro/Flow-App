@@ -1,3 +1,6 @@
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
 import { useState, useCallback } from 'react';
 import { Character2DAngle, Character2DPartType } from '../../../../types/scene2d';
 import { GRID_CATEGORY_DEFINITIONS, GridCategoryDefinition, GridCellDefinition } from '../../../../core/assets/GridSliceRegistry';
@@ -10,14 +13,14 @@ import {
 
 export interface UseSlicerCategoryStateProps {
   externalCategoryId?: string;
-  loadedImageRef: React.MutableRefObject<HTMLImageElement | null>;
-  loadedImage: HTMLImageElement | null;
-  initUniformDividers: (width: number, height: number, cols: number, rows: number) => void;
-  setSelectedCell: (cell: GridCellDefinition | null) => void;
-  setHasExplicitlySliced: (sliced: boolean) => void;
-  slicedCanvasesRef: React.MutableRefObject<Map<string, HTMLCanvasElement>>;
-  setSlicedResults: (results: Map<string, string>) => void;
-  setPreviewDisplayMode: (mode: 'transparent' | 'original') => void;
+  loadedImageRef?: React.MutableRefObject<HTMLImageElement | null>;
+  loadedImage?: HTMLImageElement | null;
+  initUniformDividers?: (width: number, height: number, cols: number, rows: number) => void;
+  setSelectedCell?: (cell: GridCellDefinition | null) => void;
+  setHasExplicitlySliced?: (sliced: boolean) => void;
+  slicedCanvasesRef?: React.MutableRefObject<Map<string, HTMLCanvasElement>>;
+  setSlicedResults?: (results: Map<string, string>) => void;
+  setPreviewDisplayMode?: (mode: 'transparent' | 'original') => void;
 }
 
 export function useSlicerCategoryState({
@@ -30,7 +33,7 @@ export function useSlicerCategoryState({
   slicedCanvasesRef,
   setSlicedResults,
   setPreviewDisplayMode,
-}: UseSlicerCategoryStateProps) {
+}: UseSlicerCategoryStateProps = {}) {
   const [lastUsedGridCatId, setLastUsedGridCatId] = useState<string>(() => {
     const cachedGrid = loadCachedGridConfig();
     return cachedGrid ? `custom_grid_${cachedGrid.rows}x${cachedGrid.cols}` : externalCategoryId || 'cinematic_single_part_2x3';
@@ -84,17 +87,17 @@ export function useSlicerCategoryState({
         customCategory && customCategory.id === newCatId
           ? customCategory
           : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
-      const img = loadedImage || loadedImageRef.current;
-      if (img) {
+      const img = loadedImage || loadedImageRef?.current;
+      if (img && initUniformDividers) {
         const w = img.naturalWidth || img.width;
         const h = img.naturalHeight || img.height;
         initUniformDividers(w, h, cat.cols, cat.rows);
       }
-      setSelectedCell(null);
-      setHasExplicitlySliced(false);
-      slicedCanvasesRef.current.clear();
-      setSlicedResults(new Map());
-      setPreviewDisplayMode('original');
+      if (setSelectedCell) setSelectedCell(null);
+      if (setHasExplicitlySliced) setHasExplicitlySliced(false);
+      if (slicedCanvasesRef?.current) slicedCanvasesRef.current.clear();
+      if (setSlicedResults) setSlicedResults(new Map());
+      if (setPreviewDisplayMode) setPreviewDisplayMode('original');
     },
     [loadedImage, loadedImageRef, initUniformDividers, customCategory, setSelectedCell, setHasExplicitlySliced, slicedCanvasesRef, setSlicedResults, setPreviewDisplayMode]
   );
@@ -120,17 +123,17 @@ export function useSlicerCategoryState({
       setLastUsedGridCatId(newCat.id);
       saveCachedSingleMode(false);
       setSelectedCatId(newCat.id);
-      const img = loadedImage || loadedImageRef.current;
-      if (img) {
+      const img = loadedImage || loadedImageRef?.current;
+      if (img && initUniformDividers) {
         const w = img.naturalWidth || img.width;
         const h = img.naturalHeight || img.height;
         initUniformDividers(w, h, newCat.cols, newCat.rows);
       }
-      setSelectedCell(null);
-      setHasExplicitlySliced(false);
-      slicedCanvasesRef.current.clear();
-      setSlicedResults(new Map());
-      setPreviewDisplayMode('original');
+      if (setSelectedCell) setSelectedCell(null);
+      if (setHasExplicitlySliced) setHasExplicitlySliced(false);
+      if (slicedCanvasesRef?.current) slicedCanvasesRef.current.clear();
+      if (setSlicedResults) setSlicedResults(new Map());
+      if (setPreviewDisplayMode) setPreviewDisplayMode('original');
     },
     [loadedImage, loadedImageRef, initUniformDividers, setSelectedCell, setHasExplicitlySliced, slicedCanvasesRef, setSlicedResults, setPreviewDisplayMode]
   );

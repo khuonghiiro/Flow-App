@@ -151,6 +151,204 @@ export function serveAssetsPlugin(rootDir: string): Plugin {
         });
       });
 
+      // ─── API: List 2D Characters with Action Sequences ───
+      server.middlewares.use('/api/list-2d-characters', (_req, res) => {
+        try {
+          const nhanVatDir = path.join(rootDir, 'asset_2ds', 'nhan_vat');
+          ensureDir(nhanVatDir);
+          const entries = fs.readdirSync(nhanVatDir, { withFileTypes: true });
+          const bodyParts = new Set([
+            'ban_tay', 'cang_chan', 'cang_tay', 'canh_tay', 'dau', 'dui',
+            'khuon_mat', 'long_may', 'mat', 'mieng', 'mui', 'than_co_ban',
+            'toc_sau', 'toc_truoc', 'trang_phuc', 'vu_khi', '_lap_rap',
+          ]);
+          const characters = entries
+            .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !bodyParts.has(e.name))
+            .map((e) => e.name);
+          
+          // If empty, supply default character
+          if (!characters.includes('nhan_vat_chinh')) {
+            characters.unshift('nhan_vat_chinh');
+          }
+          sendJson(res, characters);
+        } catch (err: any) {
+          sendJsonError(res, err?.message);
+        }
+      });
+
+      // ─── API: List 2D Actions for a Character ───
+      server.middlewares.use('/api/list-2d-actions', (req, res) => {
+        try {
+          const url = new URL(req.url || '', `http://${req.headers.host}`);
+          const charParam = sanitizeName(url.searchParams.get('character') || 'nhan_vat_chinh');
+          const actionsDir = path.join(rootDir, 'asset_2ds', 'nhan_vat', charParam, 'hanh_dong');
+          if (!fs.existsSync(actionsDir) || !fs.statSync(actionsDir).isDirectory()) {
+            sendJson(res, ['chem_kiem', 'di_bo', 'tung_chuong', 'dung_yen']);
+            return;
+          }
+          const entries = fs.readdirSync(actionsDir, { withFileTypes: true });
+          const actions = entries
+            .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+            .map((e) => e.name);
+          sendJson(res, actions.length > 0 ? actions : ['chem_kiem', 'di_bo', 'tung_chuong', 'dung_yen']);
+        } catch (err: any) {
+          sendJsonError(res, err?.message);
+        }
+      });
+
+      // ─── API: Save 2D Animation Motion Sequence ───
+      server.middlewares.use('/api/save-2d-animation-motion', (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const charSlug = sanitizeName(data.character || 'nhan_vat_chinh');
+            const actionSlug = sanitizeName(data.actionName || 'chem_kiem');
+            const angleSlug = sanitizeName(data.angleSlug || `goc_${data.angleDeg ?? 0}`);
+
+            const targetDir = path.join(
+              rootDir,
+              'asset_2ds',
+              'nhan_vat',
+              charSlug,
+              'hanh_dong',
+              actionSlug,
+              angleSlug
+            );
+            ensureDir(targetDir);
+
+            const frames = Array.isArray(data.frames) ? data.frames : [];
+            const savedFramesMeta: any[] = [];
+
+            frames.forEach((f: any, idx: number) => {
+              const frameNum = String(idx + 1).padStart(2, '0');
+              const fileName = `frame_${frameNum}.png`;
+              const filePath = path.join(targetDir, fileName);
+              const imgUrl = f.transparentDataUrl || f.originalDataUrl || f.base64;
+
+              if (imgUrl && imgUrl.includes('base64,')) {
+                const base64Data = imgUrl.split('base64,')[1];
+                fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+              }
+
+              savedFramesMeta.push({
+                index: idx,
+                file: fileName,
+                relPath: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/${angleSlug}/${fileName}`,
+                durationMs: f.durationMs || 500,
+                offsetX: f.offsetX || 0,
+                offsetY: f.offsetY || 0,
+                scale: f.scale || 1.0,
+                rotation: f.rotation || 0,
+                flipX: !!f.flipX,
+              });
+            });
+
+            // Write motion manifest metadata JSON
+            const motionMeta = {
+              character: charSlug,
+              actionName: data.actionDisplayName || data.actionName || actionSlug,
+              actionSlug,
+              angleSlug,
+              angleDeg: data.angleDeg ?? 0,
+              fps: data.fps || 8,
+              loopMode: data.loopMode || 'loop',
+              totalDurationMs: frames.reduce((acc: number, f: any) => acc + (f.durationMs || 500), 0),
+              frameCount: frames.length,
+              frameOrder: data.frameOrder || frames.map((_: any, i: number) => i),
+              frames: savedFramesMeta,
+              savedAt: new Date().toISOString(),
+            };
+
+            fs.writeFileSync(
+              path.join(targetDir, 'motion_meta.json'),
+              JSON.stringify(motionMeta, null, 2),
+              'utf-8'
+            );
+
+            sendJson(res, {
+              success: true,
+              character: charSlug,
+              action: actionSlug,
+              angle: angleSlug,
+              targetDir: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/${angleSlug}`,
+              filesCount: frames.length,
+              metaFile: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/${angleSlug}/motion_meta.json`,
+            });
+          } catch (err: any) {
+            sendJsonError(res, err?.message || 'Lỗi lưu hoạt ảnh 2D');
+          }
+        });
+      });
+
+      // ─── API: Save 2D Parts / Sprites to Disk ───
+      server.middlewares.use('/api/save-2d-parts', (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const genre = sanitizeName(data.genre || 'nhan_vat');
+            const character = sanitizeName(data.character || 'nhan_vat_chinh');
+            const partCategory = sanitizeName(data.partCategory || 'linh_kien');
+            const partDisplayName = data.partDisplayName || data.partCategory || partCategory;
+            const angleSlug = data.angleSlug ? sanitizeName(data.angleSlug) : '';
+
+            // Target directory: asset_2ds/nhan_vat/[character]/[partCategory]/[angleSlug] or asset_2ds/[genre]/[partCategory]
+            let targetDir = path.join(rootDir, 'asset_2ds', genre);
+            if (character && genre === 'nhan_vat') {
+              targetDir = path.join(targetDir, character, partCategory);
+            } else {
+              targetDir = path.join(targetDir, partCategory);
+            }
+            if (angleSlug) {
+              targetDir = path.join(targetDir, angleSlug);
+            }
+            ensureDir(targetDir);
+
+            const items = Array.isArray(data.items) ? data.items : [];
+            const savedFiles: string[] = [];
+
+            items.forEach((item: any, idx: number) => {
+              const rawName = item.name ? sanitizeName(item.name.replace(/\.[^.]+$/, '')) : `part_${idx + 1}`;
+              const fileName = `${rawName}.png`;
+              const filePath = path.join(targetDir, fileName);
+              const imgUrl = item.transparentUrl || item.originalUrl || item.url || item.base64;
+
+              if (imgUrl && imgUrl.includes('base64,')) {
+                const base64Data = imgUrl.split('base64,')[1];
+                fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+              }
+              savedFiles.push(fileName);
+            });
+
+            // Write metadata JSON
+            const meta = {
+              genre,
+              character,
+              partCategory,
+              partDisplayName,
+              angleSlug,
+              savedCount: items.length,
+              savedFiles,
+              savedAt: new Date().toISOString(),
+            };
+            fs.writeFileSync(path.join(targetDir, 'part_meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
+
+            sendJson(res, {
+              success: true,
+              savedCount: items.length,
+              targetDir: path.relative(rootDir, targetDir).replace(/\\/g, '/'),
+            });
+          } catch (err: any) {
+            sendJsonError(res, err?.message || 'Lỗi lưu linh kiện 2D');
+          }
+        });
+      });
+
       // ─── API: List top-level folders in asset_2ds/ ───
       server.middlewares.use('/api/list-2d-folders', (_req, res) => {
         try {

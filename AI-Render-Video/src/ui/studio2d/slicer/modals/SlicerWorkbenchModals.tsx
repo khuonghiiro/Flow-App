@@ -1,3 +1,6 @@
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
 import React from 'react';
 import { Character2DAssembly, Character2DAngle, Character2DPartType } from '../../../../types/scene2d';
 import { GridCategoryDefinition, GridCellDefinition } from '../../../../core/assets/GridSliceRegistry';
@@ -26,35 +29,48 @@ export interface SlicerWorkbenchModalsProps {
   threeEngineRef: React.RefObject<ThreeMultiAngleBillboardEngine | null>;
 
   // Tuner
-  isTunerOpen: boolean;
-  onCloseTuner: () => void;
-  activeAngleInfo: AngleDetectionResult;
-  onJumpToAngle: (deg: number, isTop?: boolean) => void;
+  isTunerOpen?: boolean;
+  onCloseTuner?: () => void;
+  activeAngleInfo?: AngleDetectionResult;
+  onJumpToAngle?: (deg: number, isTop?: boolean) => void;
 
   // Save Kit
   isSaveKitModalOpen: boolean;
   onCloseSaveKitModal: () => void;
   slicedResults: Map<string, string>;
-  categoryLabel: string;
-  targetCategory: string;
+  categoryLabel?: string;
+  targetCategory?: string;
   checkedImageItems?: SlicerUploadedImageItem[];
+  allImages?: SlicerUploadedImageItem[];
 
   // Table Picker
   isTablePickerOpen: boolean;
   onCloseTablePicker: () => void;
-  currentCategory: GridCategoryDefinition;
-  onSelectGridMatrix: (rows: number, cols: number) => void;
+  currentCategory?: GridCategoryDefinition;
+  onSelectTableLayout?: (cols: number, rows: number) => void;
+  onSelectGridMatrix?: (rows: number, cols: number) => void;
+
+  // Smart Crop
+  isSmartCropOpen?: boolean;
+  onCloseSmartCrop?: () => void;
+  onApplySmartCropPadding?: (newPad: number) => void;
 
   // Json Import
   isJsonImportOpen: boolean;
   onCloseJsonImport: () => void;
-  selectedCatId: string;
-  setSingleImageAngle: (ang: Character2DAngle) => void;
-  setSingleImageSlot: (slot: Character2DPartType) => void;
-  hasExplicitlySliced: boolean;
-  handleAutoSliceAndAssemble: () => void;
-  redrawCanvas: () => void;
-  showToast: (msg: string, type: 'undo' | 'redo') => void;
+  onApplyJsonImport?: (assembly: Character2DAssembly) => void;
+  selectedCatId?: string;
+  setSingleImageAngle?: (ang: Character2DAngle) => void;
+  setSingleImageSlot?: (slot: Character2DPartType) => void;
+  hasExplicitlySliced?: boolean;
+  handleAutoSliceAndAssemble?: () => void;
+  redrawCanvas?: () => void;
+  showToast?: (msg: string, type: 'undo' | 'redo') => void;
+
+  // 3D & AI Matting Props
+  threeContainerRef?: React.RefObject<HTMLDivElement | null>;
+  aiModel?: string;
+  setAiModel?: (m: string) => void;
 }
 
 export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
@@ -68,29 +84,32 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
   currentAssembly,
   onApplyAssembly,
   threeEngineRef,
-  isTunerOpen,
-  onCloseTuner,
+  isTunerOpen = false,
+  onCloseTuner = () => {},
   activeAngleInfo,
-  onJumpToAngle,
+  onJumpToAngle = () => {},
   isSaveKitModalOpen,
   onCloseSaveKitModal,
   slicedResults,
-  categoryLabel,
-  targetCategory,
+  categoryLabel = 'Cắt lưới 2D',
+  targetCategory = 'custom',
   checkedImageItems = [],
+  allImages = [],
   isTablePickerOpen,
   onCloseTablePicker,
   currentCategory,
+  onSelectTableLayout,
   onSelectGridMatrix,
   isJsonImportOpen,
   onCloseJsonImport,
+  onApplyJsonImport,
   selectedCatId,
   setSingleImageAngle,
   setSingleImageSlot,
-  hasExplicitlySliced,
-  handleAutoSliceAndAssemble,
-  redrawCanvas,
-  showToast,
+  hasExplicitlySliced = false,
+  handleAutoSliceAndAssemble = () => {},
+  redrawCanvas = () => {},
+  showToast = () => {},
 }) => {
   return (
     <>
@@ -119,7 +138,7 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
         />
       )}
 
-      {isTunerOpen && (
+      {isTunerOpen && activeAngleInfo && (
         <MultiAngleTunerModal
           isOpen={isTunerOpen}
           onClose={onCloseTuner}
@@ -141,6 +160,7 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
           categoryLabel={categoryLabel}
           initialTargetCategory={targetCategory}
           checkedImageItems={checkedImageItems}
+          allImages={allImages}
         />
       )}
 
@@ -148,9 +168,15 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
         <GridTablePickerModal
           isOpen={isTablePickerOpen}
           onClose={onCloseTablePicker}
-          currentRows={currentCategory.rows}
-          currentCols={currentCategory.cols}
-          onSelectGrid={onSelectGridMatrix}
+          currentRows={currentCategory?.rows || 1}
+          currentCols={currentCategory?.cols || 1}
+          onSelectGrid={(rows: number, cols: number) => {
+            if (onSelectTableLayout) {
+              onSelectTableLayout(cols, rows);
+            } else if (onSelectGridMatrix) {
+              onSelectGridMatrix(rows, cols);
+            }
+          }}
         />
       )}
 
@@ -160,11 +186,14 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
           onClose={onCloseJsonImport}
           onApplyJsonMetadata={(metadataList: ParsedJsonMetadataItem[]) => {
             if (!metadataList || metadataList.length === 0) return;
+            if (onApplyJsonImport) {
+              // Legacy direct json handler
+            }
             if (selectedCatId === 'single_full_image') {
               const first = metadataList[0];
-              if (first.angle) setSingleImageAngle(first.angle);
-              if (first.part_id) setSingleImageSlot(first.part_id);
-            } else {
+              if (first.angle && setSingleImageAngle) setSingleImageAngle(first.angle);
+              if (first.part_id && setSingleImageSlot) setSingleImageSlot(first.part_id);
+            } else if (currentCategory && currentCategory.cells) {
               metadataList.forEach((item, idx) => {
                 if (idx < currentCategory.cells.length) {
                   const cell = currentCategory.cells[idx];
@@ -175,7 +204,7 @@ export const SlicerWorkbenchModals: React.FC<SlicerWorkbenchModalsProps> = ({
                 }
               });
             }
-            showToast(`✓ Đã nạp ${metadataList.length} metadata từ JSON Tab 4!`, 'redo');
+            showToast(`✓ Đã nạp ${metadataList.length} metadata từ JSON!`, 'redo');
             if (hasExplicitlySliced) handleAutoSliceAndAssemble();
             else redrawCanvas();
           }}

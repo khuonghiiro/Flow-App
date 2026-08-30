@@ -1,8 +1,13 @@
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { SlicerUploadedImageItem } from '../hooks/useSlicerMultiImageGallery';
 import { PaddedCropRect, detectImageBBoxRect } from '../../../../core/utils/PixelBoundingBoxAlgorithms';
 import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
+import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
+import { eraseBrushStrokeOnCanvas, eraseBoxSelectionOnCanvas } from '../utils/slicerPixelEraserHelper';
 
 interface SlicerGridCardWithBBoxProps {
   item: SlicerUploadedImageItem;
@@ -13,9 +18,21 @@ interface SlicerGridCardWithBBoxProps {
   chromaOptions?: ChromaProcessOptions;
   checkerTheme: 'dark' | 'light';
   previewDisplayMode: 'transparent' | 'original';
+  currentCategory?: GridCategoryDefinition;
+  colDividers?: number[];
+  rowDividers?: number[];
+  setColDividers?: React.Dispatch<React.SetStateAction<number[]>>;
+  setRowDividers?: React.Dispatch<React.SetStateAction<number[]>>;
+  onUpdateItemDividers?: (itemId: string, newColDividers?: number[], newRowDividers?: number[]) => void;
+  paddingInset?: number;
+  eraserMode?: 'off' | 'brush' | 'box';
+  eraserBrushSize?: number;
+  onUpdateItemImage?: (id: string, newDataUrl: string) => void;
   onClick: (e: React.MouseEvent<HTMLDivElement>, item: SlicerUploadedImageItem) => void;
   onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
   onToggleCheckedItem?: (id: string) => void;
+  onPickColor?: (hex: string) => void;
+  onHoverColor?: (color: { hex: string; r: number; g: number; b: number; x: number; y: number } | null) => void;
 }
 
 export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
@@ -27,25 +44,84 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
   chromaOptions,
   checkerTheme,
   previewDisplayMode,
+  currentCategory,
+  colDividers,
+  rowDividers,
+  setColDividers,
+  setRowDividers,
+  onUpdateItemDividers,
+  paddingInset = 0,
+  eraserMode = 'off',
+  eraserBrushSize = 20,
+  onUpdateItemImage,
   onClick,
   onMouseMove,
   onToggleCheckedItem,
+  onPickColor,
+  onHoverColor,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number }>({
+    width: item.width || 800,
+    height: item.height || 600,
+  });
   const [bboxRect, setBboxRect] = useState<PaddedCropRect | null>(null);
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
-  const isSep = Boolean(item.isTransparentSeparated && item.transparentUrl);
+interface EraserBoxPoint {
+  screenX: number;
+  screenY: number;
+  canvasX: number;
+  canvasY: number;
+}
+
+  // Interactive Grid Divider states on each card
+  const [hoveredDivider, setHoveredDivider] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
+  const draggingDividerRef = useRef<{ type: 'col' | 'row'; index: number } | null>(null);
+
+  // Pixel Eraser interactive states on each card
+  const [isErasing, setIsErasing] = useState<boolean>(false);
+  const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
+  const [boxStart, setBoxStart] = useState<EraserBoxPoint | null>(null);
+  const [boxCurrent, setBoxCurrent] = useState<EraserBoxPoint | null>(null);
+  const [hoverCursor, setHoverCursor] = useState<{ x: number; y: number; size: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    size: 20,
+    visible: false,
+  });
+
+  const isSep = Boolean(item.isTransparentSeparated);
   const sourceUrl =
-    previewDisplayMode === 'original' && item.originalUrl
-      ? item.originalUrl
-      : isSep
-      ? item.transparentUrl!
+    previewDisplayMode === 'transparent' && item.transparentUrl
+      ? item.transparentUrl
       : item.originalUrl || item.url;
 
-  // Redraw canvas whenever image, bbox, or padding changes
+  const cardAspectRatio = naturalSize.height > 0 ? naturalSize.width / naturalSize.height : 1;
+
+  // Use per-item custom dividers if present, else fallback to global dividers
+  const effectiveColDividers = item.customColDividers || colDividers;
+  const effectiveRowDividers = item.customRowDividers || rowDividers;
+
+  const getColX = useCallback((c: number, w: number, numCols: number, baseW: number) => {
+    if (effectiveColDividers && effectiveColDividers.length > c && baseW > 0) {
+      return Math.round((effectiveColDividers[c] / baseW) * w);
+    }
+    return Math.round((c * w) / numCols);
+  }, [effectiveColDividers]);
+
+  const getRowY = useCallback((r: number, h: number, numRows: number, baseH: number) => {
+    if (effectiveRowDividers && effectiveRowDividers.length > r && baseH > 0) {
+      return Math.round((effectiveRowDividers[r] / baseH) * h);
+    }
+    return Math.round((r * h) / numRows);
+  }, [effectiveRowDividers]);
+
+  // Redraw canvas on prop changes
   useEffect(() => {
     let isMounted = true;
+    const canvas = canvasRef.current;
+    if (!canvas || !sourceUrl) return;
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -54,10 +130,9 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
       const h = img.naturalHeight || img.height;
       setNaturalSize({ width: w, height: h });
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
       canvas.width = w;
       canvas.height = h;
+
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
@@ -65,39 +140,128 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0);
 
+      // If item is un-separated sprite sheet, draw custom/proportional grid dividers and padding inset guides
+      if (!isSep && currentCategory && currentCategory.id !== 'single_full_image' && currentCategory.cols > 1) {
+        const numCols = Math.max(1, currentCategory.cols || 4);
+        const numRows = Math.max(1, currentCategory.rows || 1);
+        const pad = Math.max(0, paddingInset);
+        const cardLw = Math.max(3.5, Math.round(w / 200));
+        const dashLen = Math.max(10, Math.round(w / 50));
+
+        const baseW = effectiveColDividers && effectiveColDividers.length > numCols ? effectiveColDividers[effectiveColDividers.length - 1] : w;
+        const baseH = effectiveRowDividers && effectiveRowDividers.length > numRows ? effectiveRowDividers[effectiveRowDividers.length - 1] : h;
+
+        // Draw contrast background stroke
+        ctx.lineWidth = cardLw + 2;
+        ctx.strokeStyle = '#000000';
+        ctx.setLineDash([]);
+        for (let c = 1; c < numCols; c++) {
+          const x = getColX(c, w, numCols, baseW);
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let r = 1; r < numRows; r++) {
+          const y = getRowY(r, h, numRows, baseH);
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        // Draw foreground bright cyan dash (or highlight if hovered)
+        ctx.lineWidth = cardLw;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.setLineDash([dashLen, dashLen]);
+
+        for (let c = 1; c < numCols; c++) {
+          const x = getColX(c, w, numCols, baseW);
+          const isHovered = hoveredDivider?.type === 'col' && hoveredDivider?.index === c;
+          if (isHovered) {
+            ctx.save();
+            ctx.lineWidth = cardLw + 3;
+            ctx.strokeStyle = '#fbbf24';
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, h);
+            ctx.stroke();
+            ctx.restore();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, h);
+            ctx.stroke();
+          }
+        }
+        for (let r = 1; r < numRows; r++) {
+          const y = getRowY(r, h, numRows, baseH);
+          const isHovered = hoveredDivider?.type === 'row' && hoveredDivider?.index === r;
+          if (isHovered) {
+            ctx.save();
+            ctx.lineWidth = cardLw + 3;
+            ctx.strokeStyle = '#fbbf24';
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+            ctx.restore();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+          }
+        }
+
+        // Draw padding inset green guides inside each cell
+        if (pad > 0) {
+          const padLw = Math.max(2.5, Math.round(w / 250));
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = padLw;
+          ctx.setLineDash([Math.max(6, Math.round(dashLen / 2)), Math.max(6, Math.round(dashLen / 2))]);
+          for (let r = 0; r < numRows; r++) {
+            for (let c = 0; c < numCols; c++) {
+              const rawX0 = getColX(c, w, numCols, baseW);
+              const rawX1 = getColX(c + 1, w, numCols, baseW);
+              const rawY0 = getRowY(r, h, numRows, baseH);
+              const rawY1 = getRowY(r + 1, h, numRows, baseH);
+              const rawW = rawX1 - rawX0;
+              const rawH = rawY1 - rawY0;
+              const safePadX = Math.min(pad, Math.floor(rawW / 2.5));
+              const safePadY = Math.min(pad, Math.floor(rawH / 2.5));
+              ctx.strokeRect(rawX0 + safePadX, rawY0 + safePadY, Math.max(4, rawW - safePadX * 2), Math.max(4, rawH - safePadY * 2));
+            }
+          }
+        }
+        ctx.setLineDash([]);
+      }
+
       // If BBox is active, calculate and draw BBox overlay with alternating black/white dashed border
       if (isDirectBBoxCropActive) {
         const rect = detectImageBBoxRect(img, chromaOptions, directBBoxPadding, 20);
         if (isMounted) setBboxRect(rect);
 
         if (rect) {
-          // Dim mask outside crop region
           ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-          // Top
           ctx.fillRect(0, 0, w, rect.top);
-          // Bottom
           ctx.fillRect(0, rect.bottom + 1, w, h - (rect.bottom + 1));
-          // Left
           ctx.fillRect(0, rect.top, rect.left, rect.height);
-          // Right
           ctx.fillRect(rect.right + 1, rect.top, w - (rect.right + 1), rect.height);
 
-          // Alternating black & white dashed border (Marching ants / Dual dash)
-          const lw = Math.max(2.5, Math.round(w / 120));
+          const lw = Math.max(3.5, Math.round(w / 180));
+          const bDash = Math.max(10, Math.round(w / 50));
           ctx.lineWidth = lw;
-
-          // Layer 1: Black dash
           ctx.strokeStyle = '#000000';
-          ctx.setLineDash([6, 6]);
-          ctx.lineDashOffset = 0;
+          ctx.setLineDash([bDash, bDash]);
           ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
 
-          // Layer 2: White dash
           ctx.strokeStyle = '#ffffff';
-          ctx.setLineDash([6, 6]);
-          ctx.lineDashOffset = 6;
+          ctx.setLineDash([bDash, bDash]);
+          ctx.lineDashOffset = bDash;
           ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
-
           ctx.setLineDash([]);
         }
       } else {
@@ -109,11 +273,331 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [sourceUrl, isDirectBBoxCropActive, directBBoxPadding, chromaOptions]);
+  }, [
+    sourceUrl,
+    isDirectBBoxCropActive,
+    directBBoxPadding,
+    chromaOptions,
+    isSep,
+    currentCategory,
+    effectiveColDividers,
+    effectiveRowDividers,
+    paddingInset,
+    hoveredDivider,
+    getColX,
+    getRowY,
+  ]);
+
+  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const pt = {
+      x: screenX * scaleX,
+      y: screenY * scaleY,
+    };
+
+    // 0. Eyedropper Sampling Handler
+    if (isEyedropperActive) {
+      e.stopPropagation();
+      if (onPickColor) {
+        const normX = Math.max(0, Math.min(1, screenX / (rect.width || 1)));
+        const normY = Math.max(0, Math.min(1, screenY / (rect.height || 1)));
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          const pxX = Math.min(canvas.width - 1, Math.max(0, Math.floor(normX * canvas.width)));
+          const pxY = Math.min(canvas.height - 1, Math.max(0, Math.floor(normY * canvas.height)));
+          const pixel = ctx.getImageData(pxX, pxY, 1, 1).data;
+          const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
+          onPickColor(hex);
+        }
+      }
+      return;
+    }
+
+    // 1. Divider Dragging Handler
+    if (eraserMode === 'off' && hoveredDivider && !isDirectBBoxCropActive) {
+      e.stopPropagation();
+      try {
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
+      draggingDividerRef.current = hoveredDivider;
+      return;
+    }
+
+    if (eraserMode === 'off') return;
+    e.stopPropagation();
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+
+    setIsErasing(true);
+    setLastPoint(pt);
+
+    if (eraserMode === 'brush') {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const canvasRadius = (eraserBrushSize / 2) * scaleX;
+        eraseBrushStrokeOnCanvas(ctx, pt.x, pt.y, pt.x, pt.y, canvasRadius);
+      }
+    } else if (eraserMode === 'box') {
+      const boxPt: EraserBoxPoint = {
+        screenX,
+        screenY,
+        canvasX: pt.x,
+        canvasY: pt.y,
+      };
+      setBoxStart(boxPt);
+      setBoxCurrent(boxPt);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const pt = {
+      x: screenX * scaleX,
+      y: screenY * scaleY,
+    };
+
+    // 1. Handle Divider Dragging & Hover
+    if (eraserMode === 'off' && !isDirectBBoxCropActive && !isSep && currentCategory && currentCategory.cols > 1) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const numCols = Math.max(1, currentCategory.cols || 4);
+      const numRows = Math.max(1, currentCategory.rows || 1);
+
+      const getInitialCols = (nCols: number, bW: number) => {
+        if (effectiveColDividers && effectiveColDividers.length === nCols + 1 && !effectiveColDividers.some(isNaN)) {
+          return [...effectiveColDividers];
+        }
+        const res: number[] = [];
+        for (let i = 0; i <= nCols; i++) {
+          res.push(Math.round((i * bW) / nCols));
+        }
+        return res;
+      };
+
+      const getInitialRows = (nRows: number, bH: number) => {
+        if (effectiveRowDividers && effectiveRowDividers.length === nRows + 1 && !effectiveRowDividers.some(isNaN)) {
+          return [...effectiveRowDividers];
+        }
+        const res: number[] = [];
+        for (let i = 0; i <= nRows; i++) {
+          res.push(Math.round((i * bH) / nRows));
+        }
+        return res;
+      };
+
+      const currentCols = getInitialCols(numCols, w);
+      const currentRows = getInitialRows(numRows, h);
+      const baseW = currentCols[currentCols.length - 1] || w;
+      const baseH = currentRows[currentRows.length - 1] || h;
+
+      if (draggingDividerRef.current) {
+        if (draggingDividerRef.current.type === 'col') {
+          const idx = draggingDividerRef.current.index;
+          const newNormalized = Math.max(0, Math.min(1, pt.x / w));
+          const newColVal = Math.round(newNormalized * baseW);
+          const minVal = (currentCols[idx - 1] ?? Math.round(((idx - 1) * baseW) / numCols)) + 10;
+          const maxVal = (currentCols[idx + 1] ?? Math.round(((idx + 1) * baseW) / numCols)) - 10;
+          const clamped = Math.max(minVal, Math.min(maxVal, newColVal));
+          const nextCols = [...currentCols];
+          nextCols[idx] = clamped;
+
+          if (onUpdateItemDividers) {
+            onUpdateItemDividers(item.id, nextCols, currentRows);
+          } else if (setColDividers) {
+            setColDividers(nextCols);
+          }
+        } else if (draggingDividerRef.current.type === 'row') {
+          const idx = draggingDividerRef.current.index;
+          const newNormalized = Math.max(0, Math.min(1, pt.y / h));
+          const newRowVal = Math.round(newNormalized * baseH);
+          const minVal = (currentRows[idx - 1] ?? Math.round(((idx - 1) * baseH) / numRows)) + 10;
+          const maxVal = (currentRows[idx + 1] ?? Math.round(((idx + 1) * baseH) / numRows)) - 10;
+          const clamped = Math.max(minVal, Math.min(maxVal, newRowVal));
+          const nextRows = [...currentRows];
+          nextRows[idx] = clamped;
+
+          if (onUpdateItemDividers) {
+            onUpdateItemDividers(item.id, currentCols, nextRows);
+          } else if (setRowDividers) {
+            setRowDividers(nextRows);
+          }
+        }
+        return;
+      }
+
+      // Hit-test dividers for hover cursor
+      const hitThreshold = Math.max(8, Math.round(w / 45));
+      let found: { type: 'col' | 'row'; index: number } | null = null;
+
+      for (let c = 1; c < numCols; c++) {
+        const x = getColX(c, w, numCols, baseW);
+        if (Math.abs(x - pt.x) <= hitThreshold) {
+          found = { type: 'col', index: c };
+          break;
+        }
+      }
+
+      if (!found) {
+        for (let r = 1; r < numRows; r++) {
+          const y = getRowY(r, h, numRows, baseH);
+          if (Math.abs(y - pt.y) <= hitThreshold) {
+            found = { type: 'row', index: r };
+            break;
+          }
+        }
+      }
+
+      setHoveredDivider(found);
+    } else if (hoveredDivider) {
+      setHoveredDivider(null);
+    }
+
+    // 2. Handle Eraser Preview Ring
+    if (eraserMode !== 'off') {
+      setHoverCursor({
+        x: screenX,
+        y: screenY,
+        size: eraserBrushSize,
+        visible: true,
+      });
+    }
+
+    // 3. Handle Eyedropper Live Loupe Hover Sampling
+    if (isEyedropperActive && onHoverColor) {
+      const normX = Math.max(0, Math.min(1, screenX / (rect.width || 1)));
+      const normY = Math.max(0, Math.min(1, screenY / (rect.height || 1)));
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        const pxX = Math.min(canvas.width - 1, Math.max(0, Math.floor(normX * canvas.width)));
+        const pxY = Math.min(canvas.height - 1, Math.max(0, Math.floor(normY * canvas.height)));
+        const pixel = ctx.getImageData(pxX, pxY, 1, 1).data;
+        const hex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase()}`;
+        onHoverColor({
+          hex,
+          r: pixel[0],
+          g: pixel[1],
+          b: pixel[2],
+          x: e.clientX,
+          y: e.clientY,
+        });
+      }
+    }
+
+    if (!isErasing) return;
+    e.stopPropagation();
+
+    if (eraserMode === 'brush') {
+      if (!lastPoint) return;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const canvasRadius = (eraserBrushSize / 2) * scaleX;
+        eraseBrushStrokeOnCanvas(ctx, lastPoint.x, lastPoint.y, pt.x, pt.y, canvasRadius);
+        setLastPoint(pt);
+      }
+    } else if (eraserMode === 'box') {
+      setBoxCurrent({
+        screenX,
+        screenY,
+        canvasX: pt.x,
+        canvasY: pt.y,
+      });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (draggingDividerRef.current) {
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      draggingDividerRef.current = null;
+    }
+
+    if (!isErasing) return;
+    e.stopPropagation();
+    setIsErasing(false);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (eraserMode === 'box' && boxStart && boxCurrent && ctx) {
+      const x = Math.min(boxStart.canvasX, boxCurrent.canvasX);
+      const y = Math.min(boxStart.canvasY, boxCurrent.canvasY);
+      const w = Math.abs(boxCurrent.canvasX - boxStart.canvasX);
+      const h = Math.abs(boxCurrent.canvasY - boxStart.canvasY);
+      if (w > 2 && h > 2) {
+        eraseBoxSelectionOnCanvas(ctx, x, y, w, h);
+      }
+      setBoxStart(null);
+      setBoxCurrent(null);
+    }
+
+    setLastPoint(null);
+
+    if (onUpdateItemImage) {
+      const newDataUrl = canvas.toDataURL('image/png');
+      onUpdateItemImage(item.id, newDataUrl);
+    }
+  };
+
+  const handlePointerLeave = () => {
+    setHoverCursor((prev) => ({ ...prev, visible: false }));
+    if (isEyedropperActive && onHoverColor) {
+      onHoverColor(null);
+    }
+    if (isErasing) {
+      setIsErasing(false);
+      setLastPoint(null);
+      setBoxStart(null);
+      setBoxCurrent(null);
+    }
+  };
+
+  const cardCursor =
+    isEyedropperActive
+      ? 'crosshair'
+      : eraserMode !== 'off'
+      ? 'crosshair'
+      : isDirectBBoxCropActive
+      ? 'crosshair'
+      : hoveredDivider
+      ? hoveredDivider.type === 'col'
+        ? 'col-resize'
+        : 'row-resize'
+      : 'pointer';
 
   return (
     <div
-      onClick={(e) => onClick(e, item)}
+      onClick={(e) => {
+        if (eraserMode === 'off' && !hoveredDivider) {
+          onClick && onClick(e, item);
+        }
+      }}
       onMouseMove={onMouseMove}
       style={{
         borderRadius: 8,
@@ -131,7 +615,7 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
             ? 'rgba(245, 245, 250, 0.9)'
             : 'rgba(15, 23, 42, 0.7)',
         padding: 6,
-        cursor: isEyedropperActive ? 'crosshair' : 'pointer',
+        cursor: cardCursor,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -139,134 +623,179 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
         boxShadow: isActive ? '0 0 12px rgba(56,189,248,0.4)' : '0 2px 8px rgba(0,0,0,0.3)',
         transition: 'all 0.15s ease',
         position: 'relative',
+        userSelect: 'none',
+        width: '100%',
         height: '100%',
-        minHeight: 160,
+        minHeight: 0,
         boxSizing: 'border-box',
       }}
-      title={
-        isEyedropperActive
-          ? `${item.name} • Nhấp để hút màu từ ảnh này`
-          : isDirectBBoxCropActive && bboxRect
-          ? `${item.name} • BBox: ${bboxRect.width}×${bboxRect.height}px`
-          : `${item.name} • Nhấp để sửa riêng • Ctrl+Click để bỏ chọn`
-      }
     >
       {/* Checkbox button */}
-      {!isEyedropperActive && (
-        <div
+      {onToggleCheckedItem && (
+        <button
           onClick={(e) => {
             e.stopPropagation();
-            onToggleCheckedItem?.(item.id);
+            onToggleCheckedItem(item.id);
           }}
           style={{
             position: 'absolute',
-            top: 4,
-            left: 4,
-            zIndex: 9,
-            width: 16,
-            height: 16,
-            borderRadius: 4,
+            top: 10,
+            left: 10,
+            zIndex: 10,
+            width: 22,
+            height: 22,
+            borderRadius: 5,
+            border: '1.5px solid #38bdf8',
             background: '#0284c7',
-            border: '1px solid #38bdf8',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
-          }}
-          title="Bỏ chọn ảnh này"
-        >
-          <Check size={11} color="#ffffff" strokeWidth={3} />
-        </div>
-      )}
-
-      {/* Top right badges */}
-      {isDirectBBoxCropActive && bboxRect && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            zIndex: 8,
-            background: 'rgba(15, 23, 42, 0.92)',
-            color: '#c084fc',
-            fontSize: 8.5,
-            fontWeight: 800,
-            padding: '1px 5px',
-            borderRadius: 3,
-            border: '1px solid rgba(192, 132, 252, 0.5)',
-            fontFamily: 'monospace',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.6)',
-            pointerEvents: 'none',
-          }}
-        >
-          ✂️ {bboxRect.width}×{bboxRect.height}
-        </div>
-      )}
-
-      {isSep && !isDirectBBoxCropActive && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            zIndex: 8,
-            background: 'rgba(34,197,94,0.9)',
             color: '#fff',
-            fontSize: 8,
-            fontWeight: 700,
-            padding: '1px 4px',
-            borderRadius: 3,
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
           }}
         >
-          ✨ Đã tách
-        </div>
+          <Check size={14} strokeWidth={3} />
+        </button>
       )}
 
-      {/* Middle Image Viewport: Canvas fits 100% inside card without cut-off */}
+      {/* Status badge */}
       <div
         style={{
-          flex: 1,
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          zIndex: 10,
+          padding: '2px 6px',
+          borderRadius: 4,
+          fontSize: 9.5,
+          fontWeight: 700,
+          background: isSep ? 'rgba(16,185,129,0.85)' : (item.customColDividers || item.customRowDividers) ? 'rgba(99,102,241,0.9)' : 'rgba(2,132,199,0.85)',
+          color: '#ffffff',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+        }}
+      >
+        {isSep ? '✨ Đã tách' : (item.customColDividers || item.customRowDividers) ? '🎯 Lưới riêng' : '🖼️ Sprite Sheet'}
+      </div>
+
+      {/* Canvas Wrapper with natural responsive aspect ratio fitting the card */}
+      <div
+        style={{
           width: '100%',
-          minHeight: 0,
+          flex: 1,
+          minHeight: 140,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
+          borderRadius: 4,
           position: 'relative',
-          padding: '2px 0',
         }}
       >
-        <canvas
-          ref={canvasRef}
+        <div
           style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             maxWidth: '100%',
             maxHeight: '100%',
-            width: 'auto',
-            height: 'auto',
-            objectFit: 'contain',
-            borderRadius: 4,
-            display: 'block',
-            pointerEvents: 'none',
+            width: '100%',
+            height: '100%',
+            cursor: cardCursor,
           }}
-        />
+        >
+          <canvas
+            ref={canvasRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerLeave}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+              aspectRatio:
+                naturalSize.width > 0 && naturalSize.height > 0
+                  ? `${naturalSize.width} / ${naturalSize.height}`
+                  : 'auto',
+              display: 'block',
+              borderRadius: 4,
+              touchAction: 'none',
+              cursor: cardCursor,
+            }}
+          />
+
+          {/* Brush Preview Ring Overlay */}
+          {eraserMode === 'brush' && hoverCursor.visible && (
+            <div
+              style={{
+                position: 'absolute',
+                left: hoverCursor.x,
+                top: hoverCursor.y,
+                width: hoverCursor.size,
+                height: hoverCursor.size,
+                borderRadius: '50%',
+                border: '1.5px solid #f59e0b',
+                boxShadow: '0 0 8px rgba(245, 158, 11, 0.6), inset 0 0 4px rgba(245, 158, 11, 0.3)',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 20,
+              }}
+            />
+          )}
+
+          {/* Box Selection Eraser Overlay */}
+          {eraserMode === 'box' && isErasing && boxStart && boxCurrent && (
+            <div
+              style={{
+                position: 'absolute',
+                left: Math.min(boxStart.screenX, boxCurrent.screenX),
+                top: Math.min(boxStart.screenY, boxCurrent.screenY),
+                width: Math.abs(boxCurrent.screenX - boxStart.screenX),
+                height: Math.abs(boxCurrent.screenY - boxStart.screenY),
+                border: '2px dashed #ffffff',
+                outline: '2px dashed #000000',
+                background: 'rgba(239, 68, 68, 0.25)',
+                boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)',
+                pointerEvents: 'none',
+                zIndex: 30,
+              }}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Bottom Part Name Tag */}
+      {/* Item metadata label */}
       <div
         style={{
-          fontSize: 9,
-          fontWeight: 700,
-          color: isActive ? '#38bdf8' : '#94a3b8',
-          textAlign: 'center',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
           width: '100%',
-          flexShrink: 0,
-          lineHeight: '13px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: 9.5,
+          color: '#94a3b8',
+          padding: '0 2px',
         }}
       >
-        {item.metadata?.part_name || item.name}
+        <span
+          title={item.name}
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: '70%',
+            fontWeight: 600,
+            color: isActive ? '#38bdf8' : '#e2e8f0',
+          }}
+        >
+          {item.name}
+        </span>
+        <span style={{ fontSize: 9, opacity: 0.8 }}>
+          {naturalSize.width}×{naturalSize.height}
+        </span>
       </div>
     </div>
   );

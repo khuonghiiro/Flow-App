@@ -9,7 +9,6 @@ import { SlicerSourceImageCard } from './sidebar/SlicerSourceImageCard';
 import { SlicerChromaKeyCard } from './sidebar/SlicerChromaKeyCard';
 import { SlicerDespeckleDefringeCard } from './sidebar/SlicerDespeckleDefringeCard';
 import { SlicerAIMattingCard } from './sidebar/SlicerAIMattingCard';
-import { SlicerAssemblyActionCard } from './sidebar/SlicerAssemblyActionCard';
 
 export interface SlicerSidebarControlsProps {
   targetCategory?: string;
@@ -405,28 +404,84 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
         )}
       </div>
 
-      {/* CARD 3: XUẤT BẢN & LẮP RÁP 3D */}
-      <SlicerAssemblyActionCard
-        isProcessing={isProcessing}
-        assemblySuccess={assemblySuccess}
-        slicedCount={slicedCount}
-        totalCellCount={totalCellCount}
-        paddingInset={paddingInset}
-        setPaddingInset={setPaddingInset}
-        enableSmartCrop={enableSmartCrop}
-        setEnableSmartCrop={setEnableSmartCrop}
-        smartCropPadding={smartCropPadding}
-        setSmartCropPadding={setSmartCropPadding}
-        onCommitSliderChange={onCommitSliderChange}
-        onAutoSliceAndAssemble={onAutoSliceAndAssemble}
-        onOpenSaveKitModal={onOpenSaveKitModal}
-        onOpenCatalogModal={onOpenCatalogModal}
-        onApplyAsNewBaseImage={onApplyAsNewBaseImage}
-        onTransferToAnimationSlicer={onTransferToAnimationSlicer}
-        checkedCount={checkedCount}
-        onBatchSeparateChecked={onBatchSeparateChecked}
-        isBatchProcessing={isBatchProcessing}
-      />
+      {/* CARD 3: THU VIỀN Ô CẮT (PADDING INSET) - Chỉ hiển thị khi ở chế độ Ảnh Lưới */}
+      {setPaddingInset && selectedCatId !== 'single_full_image' && (
+        <div
+          style={{
+            background: 'linear-gradient(180deg, rgba(24, 34, 53, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%)',
+            borderRadius: 8,
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            padding: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 7,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+        >
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 6, letterSpacing: '0.2px' }}>
+            <Scissors size={13} color="#38bdf8" />
+            <span>3. Thu Viền Ô (Padding Inset):</span>
+            <span style={{ color: '#4ade80', fontWeight: 700, marginLeft: 'auto' }}>{paddingInset}px</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <input
+              type="range"
+              min="0"
+              max="60"
+              step="1"
+              value={paddingInset}
+              onChange={(e) => setPaddingInset(parseInt(e.target.value, 10))}
+              onPointerUp={() => onCommitSliderChange && onCommitSliderChange()}
+              style={{ flex: 1, accentColor: '#38bdf8' }}
+            />
+            <div style={{ display: 'flex', gap: 2 }}>
+              {[0, 4, 8, 12, 16, 24].map((val) => (
+                <button
+                  key={val}
+                  onClick={() => { setPaddingInset(val); if (onCommitSliderChange) onCommitSliderChange(); }}
+                  style={{
+                    height: 20,
+                    padding: '0 4px',
+                    fontSize: 8.5,
+                    fontWeight: 600,
+                    background: paddingInset === val ? '#0284c7' : 'rgba(255,255,255,0.1)',
+                    color: paddingInset === val ? '#ffffff' : '#cbd5e1',
+                    border: 'none',
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {val}
+                </button>
+              ))}
+            </div>
+          </div>
+          {onApplyAsNewBaseImage && slicedCount > 0 && (
+            <button
+              onClick={onApplyAsNewBaseImage}
+              style={{
+                height: 26,
+                fontSize: 9.5,
+                fontWeight: 600,
+                borderRadius: 5,
+                background: 'linear-gradient(135deg, #0d9488, #059669)',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)',
+                marginTop: 2,
+              }}
+              title="Lưu kết quả bóc tách hiện tại thành ảnh gốc mới"
+            >
+              💾 Lưu kết quả làm mốc gốc mới
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

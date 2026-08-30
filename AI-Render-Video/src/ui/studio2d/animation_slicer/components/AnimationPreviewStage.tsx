@@ -27,6 +27,7 @@ import {
   WorkingCanvasItem,
 } from '../utils/pixelEraserHelper';
 import { StageCropRect, cropAllFramesWithStageRect } from '../utils/manualBBoxCropHelper';
+import { AnimationStageOverlayControls } from './AnimationStageOverlayControls';
 
 interface AnimationPreviewStageProps {
   frames: AnimationSliceFrame[];
@@ -48,6 +49,7 @@ interface AnimationPreviewStageProps {
     updates: Partial<Pick<AnimationSliceFrame, 'offsetX' | 'offsetY' | 'scale' | 'rotation' | 'flipX' | 'durationMs' | 'transparentDataUrl'>>
   ) => void;
   onUpdateMultipleFramesDataUrl: (updates: { index: number; dataUrl: string }[], label?: string) => void;
+  onToggleOnionSkinMode?: () => void;
   onToggleShowBBox: () => void;
   onLoadDemoFrames?: () => void;
 }
@@ -71,6 +73,7 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
   onSelectFrameIndex,
   onUpdateFrameTransform,
   onUpdateMultipleFramesDataUrl,
+  onToggleOnionSkinMode,
   onToggleShowBBox,
   onLoadDemoFrames,
 }) => {
@@ -108,17 +111,36 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
 
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
-  // Image cache loader
+  // Image cache loader with auto-reload trigger
   const getCachedImage = useCallback((url: string): HTMLImageElement | null => {
     if (!url) return null;
     if (imageCacheRef.current.has(url)) {
-      return imageCacheRef.current.get(url)!;
+      const cached = imageCacheRef.current.get(url)!;
+      if (cached.complete || cached.naturalWidth > 0) {
+        return cached;
+      }
     }
     const img = new Image();
+    img.onload = () => {
+      redrawStage();
+    };
     img.src = url;
     imageCacheRef.current.set(url, img);
     return img;
   }, []);
+
+  // Preload all frames images into memory
+  useEffect(() => {
+    frames.forEach((f) => {
+      const url = f.transparentDataUrl || f.originalDataUrl;
+      if (url && !imageCacheRef.current.has(url)) {
+        const img = new Image();
+        img.onload = () => redrawStage();
+        img.src = url;
+        imageCacheRef.current.set(url, img);
+      }
+    });
+  }, [frames]);
 
   // Playback timer loop
   useEffect(() => {
@@ -156,12 +178,7 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
   const currentFrameIdx = isPlaying ? (frameOrder[activeOrderIdx] ?? 0) : (selectedFrameIndex ?? 0);
   const currentFrame = frames[currentFrameIdx] || frames[0];
 
-  // ─── STRICT SEQUENTIAL GHOST (K-1): ───
-  // Frame 1 (index 0) => NULL (Không có bóng ma)
-  // Frame 2 (index 1) => Frame 1 (Bóng ma của Frame 1)
-  // Frame 3 (index 2) => Frame 2 (Bóng ma của Frame 2)
-  // Frame 4 (index 3) => Frame 3 (Bóng ma của Frame 3)
-  // Frame 5 (index 4) => Frame 4 (Bóng ma của Frame 4)
+  // STRICT SEQUENTIAL GHOST (K-1):
   const prevGhostFrame = currentFrameIdx > 0 ? frames[currentFrameIdx - 1] : null;
 
   // Total duration
@@ -213,9 +230,9 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
 
       // ─── 3. ONION SKIN GHOSTS ───
       if (onionSkinMode === 'sequential' && prevGhostFrame) {
-        // Mode: Bóng ma tuần tự (chỉ hiện frame liền trước K-1, Frame 1 không có bóng ma)
-        const prevImg = getCachedImage(prevGhostFrame.transparentDataUrl || prevGhostFrame.originalDataUrl);
-        if (prevImg && prevImg.complete) {
+        const prevWorkingItem = workingCanvasesRef.current?.get(currentFrameIdx - 1);
+        const prevImg = prevWorkingItem ? prevWorkingItem.canvas : getCachedImage(prevGhostFrame.transparentDataUrl || prevGhostFrame.originalDataUrl);
+        if (prevImg) {
           ctx.save();
           ctx.globalAlpha = 0.38;
           ctx.translate(prevGhostFrame.offsetX, prevGhostFrame.offsetY);
@@ -239,7 +256,6 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
           ctx.restore();
         }
       } else if (onionSkinMode === 'all') {
-        // Mode: Chồng tất cả bóng ma các frame khác
         frames.forEach((gf, gIdx) => {
           if (gf.id === currentFrame.id) return;
           const workingItem = workingCanvasesRef.current?.get(gIdx);
@@ -389,6 +405,7 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
       isErasingRef.current = true;
       lastErasePointRef.current = { x, y };
 
+      // Guaranteed to include ALL frame indices when eraseAllFrames is checked
       const targetIndices = eraseAllFrames ? frames.map((_, i) => i) : [currentFrameIdx];
       workingCanvasesRef.current = initWorkingCanvases(frames, targetIndices, getCachedImage);
 
@@ -470,8 +487,16 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
       isErasingRef.current = false;
       lastErasePointRef.current = null;
       const updates = commitWorkingCanvases(workingCanvasesRef.current);
+
+      // Preload updated dataUrls immediately into cache so switching frames shows erased pixels instantly
+      updates.forEach((u) => {
+        const img = new Image();
+        img.src = u.dataUrl;
+        imageCacheRef.current.set(u.dataUrl, img);
+      });
+
       workingCanvasesRef.current = null;
-      onUpdateMultipleFramesDataUrl(updates, 'Tẩy pixel');
+      onUpdateMultipleFramesDataUrl(updates, 'Tẩy pixel tất cả frame');
     }
 
     isDraggingCropRef.current = null;
@@ -606,335 +631,34 @@ export const AnimationPreviewStage: React.FC<AnimationPreviewStageProps> = ({
             </span>
           )}
         </div>
-
-        {/* Undo / Redo Buttons */}
-        {onUndo && (
-          <button
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="Hoàn tác (Ctrl + Z)"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              padding: '4px 6px',
-              borderRadius: 4,
-              fontSize: 9.5,
-              fontWeight: 600,
-              background: canUndo ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.04)',
-              border: canUndo ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.06)',
-              color: canUndo ? '#38bdf8' : '#475569',
-              cursor: canUndo ? 'pointer' : 'not-allowed',
-            }}
-          >
-            <Undo2 size={11} /> <span>Hoàn tác</span>
-          </button>
-        )}
-
-        {onRedo && (
-          <button
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="Làm lại (Ctrl + Y)"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              padding: '4px 6px',
-              borderRadius: 4,
-              fontSize: 9.5,
-              fontWeight: 600,
-              background: canRedo ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.04)',
-              border: canRedo ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.06)',
-              color: canRedo ? '#c084fc' : '#475569',
-              cursor: canRedo ? 'pointer' : 'not-allowed',
-            }}
-          >
-            <Redo2 size={11} /> <span>Làm lại</span>
-          </button>
-        )}
-
-        {/* Auto-Trim BBox Button */}
-        {onAutoTrimAllBBox && frames.length > 0 && (
-          <button
-            onClick={onAutoTrimAllBBox}
-            title="Tự động gọt sát viền Bounding Box cho TẤT CẢ các frame"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              padding: '4px 8px',
-              borderRadius: 4,
-              fontSize: 9.5,
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #059669, #10b981)',
-              border: 'none',
-              color: '#ffffff',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            <Scissors size={11} /> <span>Auto-Trim BBox</span>
-          </button>
-        )}
       </div>
 
-      {/* Top Right Floating Toolbar: Caro Theme + BBox + Zoom */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 10,
-          right: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          background: 'rgba(9, 13, 22, 0.92)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: 6,
-          padding: '4px 6px',
-        }}
-      >
-        {/* Toggle Checkerboard Theme */}
-        <button
-          onClick={() => setCheckerTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-          title={checkerTheme === 'dark' ? 'Chuyển sang nền Caro Trắng' : 'Chuyển sang nền Caro Đen'}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 3,
-            padding: '3px 6px',
-            borderRadius: 4,
-            fontSize: 9.5,
-            fontWeight: 600,
-            background: checkerTheme === 'light' ? '#f8fafc' : 'rgba(255,255,255,0.06)',
-            color: checkerTheme === 'light' ? '#0f172a' : '#cbd5e1',
-            border: '1px solid rgba(255,255,255,0.15)',
-            cursor: 'pointer',
-          }}
-        >
-          {checkerTheme === 'dark' ? <Moon size={11} /> : <Sun size={11} />}
-          <span>{checkerTheme === 'dark' ? 'Caro Đen' : 'Caro Trắng'}</span>
-        </button>
-
-        {/* Toggle BBox */}
-        <button
-          onClick={onToggleShowBBox}
-          title="Bật/tắt khung viền Bounding Box cho từng frame"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 3,
-            padding: '3px 6px',
-            borderRadius: 4,
-            fontSize: 9.5,
-            fontWeight: 600,
-            background: showBBox ? 'rgba(56, 189, 248, 0.3)' : 'rgba(255,255,255,0.06)',
-            color: showBBox ? '#38bdf8' : '#94a3b8',
-            border: showBBox ? '1px solid #38bdf8' : '1px solid transparent',
-            cursor: 'pointer',
-          }}
-        >
-          <Square size={11} />
-          <span>BBox</span>
-        </button>
-
-        {/* Zoom Controls */}
-        <button
-          onClick={() => setZoom((z) => Math.max(0.3, z * 0.85))}
-          title="Thu nhỏ"
-          style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: 2 }}
-        >
-          <ZoomOut size={12} />
-        </button>
-        <button
-          onClick={() => { setZoom(1.0); setPan({ x: 0, y: 0 }); }}
-          style={{ padding: '2px 4px', fontSize: 9, fontWeight: 700, color: '#38bdf8', background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <button
-          onClick={() => setZoom((z) => Math.min(3.5, z * 1.15))}
-          title="Phóng to"
-          style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: 2 }}
-        >
-          <ZoomIn size={12} />
-        </button>
-      </div>
-
-      {/* Floating Tools: Eraser & Manual BBox Crop Bar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 48,
-          right: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          background: 'rgba(9, 13, 22, 0.94)',
-          backdropFilter: 'blur(14px)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: 6,
-          padding: '4px 8px',
-        }}
-      >
-        <button
-          onClick={() => setActiveTool(activeTool === 'eraser' ? 'select' : 'eraser')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '3px 8px',
-            borderRadius: 4,
-            fontSize: 9.5,
-            fontWeight: 700,
-            background: activeTool === 'eraser' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'rgba(255,255,255,0.06)',
-            color: '#ffffff',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: activeTool === 'eraser' ? '0 2px 8px rgba(239, 68, 68, 0.4)' : 'none',
-          }}
-        >
-          <Eraser size={11} /> {activeTool === 'eraser' ? 'Đang Bật Cọ Tẩy' : 'Cọ Tẩy Pixel'}
-        </button>
-
-        <button
-          onClick={() => setActiveTool(activeTool === 'manual_crop' ? 'select' : 'manual_crop')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '3px 8px',
-            borderRadius: 4,
-            fontSize: 9.5,
-            fontWeight: 700,
-            background: activeTool === 'manual_crop' ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.06)',
-            color: '#ffffff',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: activeTool === 'manual_crop' ? '0 2px 8px rgba(16, 185, 129, 0.4)' : 'none',
-          }}
-        >
-          <Crop size={11} /> {activeTool === 'manual_crop' ? 'Đang Kéo Khung Cắt' : 'Tạo Khung Cắt BBox'}
-        </button>
-
-        {activeTool === 'eraser' && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <span style={{ fontSize: 9, color: '#fca5a5' }}>Cỡ: {brushRadius}px</span>
-              <input
-                type="range"
-                min="4"
-                max="60"
-                value={brushRadius}
-                onChange={(e) => setBrushRadius(parseInt(e.target.value))}
-                style={{ width: 60, accentColor: '#ef4444' }}
-              />
-            </div>
-
-            <button
-              onClick={() => setEraseAllFrames(!eraseAllFrames)}
-              title="Khi bật: xóa 1 điểm sẽ xóa xuyên suốt TẤT CẢ các frame chồng lên nhau!"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-                padding: '2px 6px',
-                borderRadius: 4,
-                fontSize: 9,
-                fontWeight: 700,
-                background: eraseAllFrames ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255,255,255,0.05)',
-                border: eraseAllFrames ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
-                color: eraseAllFrames ? '#fca5a5' : '#94a3b8',
-                cursor: 'pointer',
-              }}
-            >
-              <Square size={10} />
-              <span>{eraseAllFrames ? 'Xóa TẤT CẢ Frame' : 'Chỉ Frame Này'}</span>
-            </button>
-          </>
-        )}
-
-        {/* Manual Crop Action Controls */}
-        {activeTool === 'manual_crop' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <button
-              onClick={handleExecuteManualCrop}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '3px 8px',
-                borderRadius: 4,
-                fontSize: 9.5,
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#ffffff',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
-              }}
-            >
-              <Check size={11} /> Cắt BBox Này Cho TẤT CẢ Frame
-            </button>
-
-            <button
-              onClick={() => setActiveTool('select')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '3px',
-                borderRadius: 4,
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#cbd5e1',
-                cursor: 'pointer',
-              }}
-            >
-              <X size={11} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Center Floating Playback Bar */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 12,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          background: 'rgba(9, 13, 22, 0.94)',
-          backdropFilter: 'blur(14px)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
-          borderRadius: 20,
-          padding: '4px 10px',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
-        }}
-      >
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 10px',
-            borderRadius: 14,
-            background: isPlaying ? 'rgba(56, 189, 248, 0.3)' : 'rgba(74, 222, 128, 0.25)',
-            border: isPlaying ? '1px solid #38bdf8' : '1px solid #4ade80',
-            color: isPlaying ? '#38bdf8' : '#4ade80',
-            fontSize: 10,
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          {isPlaying ? <Pause size={11} /> : <Play size={11} />}
-          <span>{isPlaying ? 'Tạm Dừng' : 'Phát'}</span>
-        </button>
-      </div>
+      {/* Floating Overlays & Controls Subcomponent */}
+      <AnimationStageOverlayControls
+        checkerTheme={checkerTheme}
+        setCheckerTheme={setCheckerTheme}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onAutoTrimAllBBox={onAutoTrimAllBBox}
+        onionSkinMode={onionSkinMode}
+        onToggleOnionSkin={onToggleOnionSkinMode || (() => {})}
+        showBBox={showBBox}
+        onToggleShowBBox={onToggleShowBBox}
+        zoom={zoom}
+        setZoom={setZoom}
+        setPan={setPan}
+        activeTool={activeTool}
+        setActiveTool={setActiveTool}
+        brushRadius={brushRadius}
+        setBrushRadius={setBrushRadius}
+        eraseAllFrames={eraseAllFrames}
+        setEraseAllFrames={setEraseAllFrames}
+        handleExecuteManualCrop={handleExecuteManualCrop}
+        isPlaying={isPlaying}
+        setIsPlaying={setIsPlaying}
+      />
     </div>
   );
 };

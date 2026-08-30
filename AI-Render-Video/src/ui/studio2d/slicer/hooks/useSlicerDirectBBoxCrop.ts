@@ -1,28 +1,33 @@
-import { useState, useRef, useCallback } from 'react';
-import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
-import { ChromaProcessOptions, processCellChromaAndDespeckle } from '../../../../core/utils/ChromaDespeckleProcessor';
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
+import { useState, useCallback, useRef } from 'react';
 import { PaddedCropRect, detectImageBBoxRect } from '../../../../core/utils/PixelBoundingBoxAlgorithms';
+import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
 import { SlicerUploadedImageItem, detectAspectRatioLabel } from './useSlicerMultiImageGallery';
+import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
 
 export interface UseSlicerDirectBBoxCropProps {
   loadedImage: HTMLImageElement | null;
   loadedImageRef: React.MutableRefObject<HTMLImageElement | null>;
-  setLoadedImage: (img: HTMLImageElement | null) => void;
+  imageCanvasRef?: React.RefObject<HTMLCanvasElement>;
   setUserUploadedImageUrl: (url: string | null) => void;
+  setLoadedImage: (img: HTMLImageElement | null) => void;
   previewDisplayMode: 'transparent' | 'original';
+  setPreviewDisplayMode: (mode: 'transparent' | 'original') => void;
+  chromaOptions: ChromaProcessOptions;
   currentCategory: GridCategoryDefinition;
+  selectedCatId: string;
   initUniformDividers: (width: number, height: number, cols: number, rows: number) => void;
   slicedCanvasesRef: React.MutableRefObject<Map<string, HTMLCanvasElement>>;
   setSlicedResults: (results: Map<string, string>) => void;
   setHasExplicitlySliced: (sliced: boolean) => void;
-  selectedCatId: string;
-  activeImageId: string | null;
-  setImageList: React.Dispatch<React.SetStateAction<SlicerUploadedImageItem[]>>;
-  pushUndoState: (label?: string) => void;
+  pushUndoState: (actionName: string) => void;
   showToast: (message: string, type: 'undo' | 'redo') => void;
-  chromaOptions?: ChromaProcessOptions;
+  activeImageId: string | null;
+  imageList: SlicerUploadedImageItem[];
+  setImageList: React.Dispatch<React.SetStateAction<SlicerUploadedImageItem[]>>;
   checkedImageIds?: Set<string>;
-  imageList?: SlicerUploadedImageItem[];
 }
 
 interface CropResult {
@@ -33,14 +38,13 @@ interface CropResult {
 }
 
 /**
- * Helper to crop an individual image item by Bounding Box
+ * Pure Bounding Box Cropper: ONLY crops the rectangular region of the image without running chroma keying.
  */
 async function cropImageByBBox(
   srcUrl: string,
   transparentSrc: string | null,
   padding: number,
-  chromaOpts?: ChromaProcessOptions,
-  isTransparentMode: boolean = false
+  chromaOpts?: ChromaProcessOptions
 ): Promise<CropResult | null> {
   const baseImg = new Image();
   baseImg.crossOrigin = 'anonymous';
@@ -71,37 +75,25 @@ async function cropImageByBBox(
   origCtx.drawImage(baseImg, safeLeft, safeTop, safeWidth, safeHeight, 0, 0, safeWidth, safeHeight);
   const croppedOriginalUrl = origCanvas.toDataURL('image/png');
 
-  // 2. Cropped Transparent Canvas
+  // 2. Cropped Transparent Canvas ONLY if transparentSrc already existed
   let croppedTransparentUrl: string | null = null;
-  if (transparentSrc || isTransparentMode) {
+  if (transparentSrc && transparentSrc !== srcUrl) {
     const transCanvas = document.createElement('canvas');
     transCanvas.width = safeWidth;
     transCanvas.height = safeHeight;
     const transCtx = transCanvas.getContext('2d', { willReadFrequently: true });
     if (transCtx) {
-      if (transparentSrc && transparentSrc !== srcUrl) {
-        const transImg = new Image();
-        transImg.crossOrigin = 'anonymous';
-        await new Promise<void>((resolve) => {
-          transImg.onload = () => resolve();
-          transImg.onerror = () => resolve();
-          transImg.src = transparentSrc;
-        });
-        if (transImg.naturalWidth) {
-          transCtx.drawImage(transImg, safeLeft, safeTop, safeWidth, safeHeight, 0, 0, safeWidth, safeHeight);
-        } else {
-          transCtx.drawImage(origCanvas, 0, 0);
-          if (chromaOpts) {
-            processCellChromaAndDespeckle(transCtx, safeWidth, safeHeight, chromaOpts);
-          }
-        }
-      } else {
-        transCtx.drawImage(origCanvas, 0, 0);
-        if (chromaOpts) {
-          processCellChromaAndDespeckle(transCtx, safeWidth, safeHeight, chromaOpts);
-        }
+      const transImg = new Image();
+      transImg.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve) => {
+        transImg.onload = () => resolve();
+        transImg.onerror = () => resolve();
+        transImg.src = transparentSrc;
+      });
+      if (transImg.naturalWidth) {
+        transCtx.drawImage(transImg, safeLeft, safeTop, safeWidth, safeHeight, 0, 0, safeWidth, safeHeight);
+        croppedTransparentUrl = transCanvas.toDataURL('image/png');
       }
-      croppedTransparentUrl = transCanvas.toDataURL('image/png');
     }
   }
 
@@ -116,25 +108,27 @@ async function cropImageByBBox(
 export function useSlicerDirectBBoxCrop({
   loadedImage,
   loadedImageRef,
-  setLoadedImage,
+  imageCanvasRef,
   setUserUploadedImageUrl,
+  setLoadedImage,
   previewDisplayMode,
+  setPreviewDisplayMode,
+  chromaOptions,
   currentCategory,
+  selectedCatId,
   initUniformDividers,
   slicedCanvasesRef,
   setSlicedResults,
   setHasExplicitlySliced,
-  selectedCatId,
-  activeImageId,
-  setImageList,
   pushUndoState,
   showToast,
-  chromaOptions,
+  activeImageId,
+  imageList,
+  setImageList,
   checkedImageIds,
-  imageList = [],
 }: UseSlicerDirectBBoxCropProps) {
   const [isDirectBBoxCropActive, setIsDirectBBoxCropActive] = useState<boolean>(false);
-  const [directBBoxPadding, setDirectBBoxPadding] = useState<number>(10);
+  const [directBBoxPadding, setDirectBBoxPadding] = useState<number>(4);
   const currentBBoxRectRef = useRef<PaddedCropRect | null>(null);
 
   const handleToggleDirectBBoxCrop = useCallback(() => {
@@ -142,7 +136,7 @@ export function useSlicerDirectBBoxCrop({
   }, []);
 
   const handleApplyDirectBBoxCrop = useCallback(async () => {
-    // Mode 1: Multi-Image BBox Crop (when 1 or more images are checked)
+    // Mode 1: Multi-Image BBox Crop (when checked images exist)
     if (checkedImageIds && checkedImageIds.size > 0 && imageList.length > 0) {
       pushUndoState(`Cắt BBox cho ${checkedImageIds.size} ảnh`);
       const updatedMap = new Map<string, CropResult>();
@@ -152,15 +146,9 @@ export function useSlicerDirectBBoxCrop({
         if (!item) continue;
 
         try {
-          const rawSrc = item.originalUrl || item.url;
+          const rawSrc = item.url || item.originalUrl;
           const transSrc = item.isTransparentSeparated && item.transparentUrl ? item.transparentUrl : null;
-          const result = await cropImageByBBox(
-            rawSrc,
-            transSrc,
-            directBBoxPadding,
-            chromaOptions,
-            previewDisplayMode === 'transparent'
-          );
+          const result = await cropImageByBBox(rawSrc, transSrc, directBBoxPadding, chromaOptions);
           if (result) {
             updatedMap.set(item.id, result);
           }
@@ -174,18 +162,12 @@ export function useSlicerDirectBBoxCrop({
           prev.map((item) => {
             if (updatedMap.has(item.id)) {
               const res = updatedMap.get(item.id)!;
-              const hasTrans = Boolean(res.croppedTransparentUrl);
-              const activeUrl =
-                previewDisplayMode === 'transparent' && res.croppedTransparentUrl
-                  ? res.croppedTransparentUrl
-                  : res.croppedOriginalUrl;
-
               return {
                 ...item,
-                url: activeUrl,
+                url: res.croppedOriginalUrl,
                 originalUrl: res.croppedOriginalUrl,
-                transparentUrl: res.croppedTransparentUrl || item.transparentUrl,
-                isTransparentSeparated: hasTrans,
+                transparentUrl: res.croppedTransparentUrl || undefined,
+                isTransparentSeparated: Boolean(res.croppedTransparentUrl),
                 width: res.width,
                 height: res.height,
                 aspectRatio: res.width / res.height,
@@ -199,10 +181,7 @@ export function useSlicerDirectBBoxCrop({
         // Update active image if it was in the crop list
         if (activeImageId && updatedMap.has(activeImageId)) {
           const activeCrop = updatedMap.get(activeImageId)!;
-          const activeUrl =
-            previewDisplayMode === 'transparent' && activeCrop.croppedTransparentUrl
-              ? activeCrop.croppedTransparentUrl
-              : activeCrop.croppedOriginalUrl;
+          const activeUrl = activeCrop.croppedOriginalUrl;
 
           const nextImg = new Image();
           nextImg.crossOrigin = 'anonymous';
@@ -215,19 +194,25 @@ export function useSlicerDirectBBoxCrop({
           nextImg.src = activeUrl;
         }
 
+        setPreviewDisplayMode('original');
+        setHasExplicitlySliced(false);
+        slicedCanvasesRef.current.clear();
+        setSlicedResults(new Map());
         setIsDirectBBoxCropActive(false);
-        showToast(`✓ Đã cắt BBox thành công cho ${updatedMap.size} ảnh!`, 'redo');
+        showToast(`✓ Đã cắt BBox gọn gàng cho ${updatedMap.size} ảnh!`, 'redo');
         return;
       }
     }
 
-    // Mode 2: Single Image BBox Crop (when on main canvas)
+    // Mode 2: Single Image BBox Crop (on main canvas)
+    const canvas = imageCanvasRef?.current;
     const img = loadedImage || loadedImageRef.current;
-    if (!img) return;
+    const sourceElement = (canvas && canvas.width > 0 && canvas.height > 0) ? canvas : img;
+    if (!sourceElement) return;
 
     let rect = currentBBoxRectRef.current;
     if (!rect) {
-      rect = detectImageBBoxRect(img, chromaOptions, directBBoxPadding, 20);
+      rect = detectImageBBoxRect(sourceElement, chromaOptions, directBBoxPadding, 20);
     }
 
     if (!rect) {
@@ -235,8 +220,8 @@ export function useSlicerDirectBBoxCrop({
       return;
     }
 
-    const imgW = img.naturalWidth || img.width;
-    const imgH = img.naturalHeight || img.height;
+    const imgW = sourceElement instanceof HTMLCanvasElement ? sourceElement.width : (sourceElement.naturalWidth || sourceElement.width);
+    const imgH = sourceElement instanceof HTMLCanvasElement ? sourceElement.height : (sourceElement.naturalHeight || sourceElement.height);
     const safeLeft = Math.max(0, Math.min(imgW - 1, rect.left));
     const safeTop = Math.max(0, Math.min(imgH - 1, rect.top));
     const safeWidth = Math.max(1, Math.min(imgW - safeLeft, rect.width));
@@ -253,19 +238,13 @@ export function useSlicerDirectBBoxCrop({
     fullCanvas.height = imgH;
     const fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true });
     if (!fullCtx) return;
-    fullCtx.drawImage(img, 0, 0, imgW, imgH);
+    fullCtx.drawImage(sourceElement, 0, 0, imgW, imgH);
 
-    if (previewDisplayMode === 'original') {
-      cropCtx.drawImage(fullCanvas, safeLeft, safeTop, safeWidth, safeHeight, 0, 0, safeWidth, safeHeight);
-    } else {
-      if (chromaOptions) {
-        processCellChromaAndDespeckle(fullCtx, imgW, imgH, chromaOptions);
-      }
-      cropCtx.drawImage(fullCanvas, safeLeft, safeTop, safeWidth, safeHeight, 0, 0, safeWidth, safeHeight);
-    }
+    // Purely crop the rectangle from current edited image
+    cropCtx.drawImage(fullCanvas, safeLeft, safeTop, safeWidth, safeHeight, 0, 0, safeWidth, safeHeight);
 
     const dataUrl = croppedCanvas.toDataURL('image/png');
-    pushUndoState(previewDisplayMode === 'original' ? 'Cắt ảnh gốc theo BBox' : 'Cắt ảnh trong suốt theo BBox');
+    pushUndoState('Cắt ảnh theo BBox');
 
     const nextImg = new Image();
     nextImg.crossOrigin = 'anonymous';
@@ -277,11 +256,10 @@ export function useSlicerDirectBBoxCrop({
     };
     nextImg.src = dataUrl;
 
-    if (selectedCatId === 'single_full_image' && previewDisplayMode === 'transparent') {
-      slicedCanvasesRef.current.set('0_0', croppedCanvas);
-      setSlicedResults(new Map([['0_0', dataUrl]]));
-      setHasExplicitlySliced(true);
-    }
+    setPreviewDisplayMode('original');
+    setHasExplicitlySliced(false);
+    slicedCanvasesRef.current.clear();
+    setSlicedResults(new Map());
 
     if (activeImageId) {
       setImageList((prev) =>
@@ -290,9 +268,9 @@ export function useSlicerDirectBBoxCrop({
             ? {
                 ...item,
                 url: dataUrl,
-                originalUrl: previewDisplayMode === 'original' ? dataUrl : item.originalUrl,
-                transparentUrl: previewDisplayMode === 'transparent' ? dataUrl : item.transparentUrl,
-                isTransparentSeparated: previewDisplayMode === 'transparent' ? true : item.isTransparentSeparated,
+                originalUrl: dataUrl,
+                transparentUrl: undefined,
+                isTransparentSeparated: false,
                 width: rect.width,
                 height: rect.height,
                 aspectRatio: rect.width / rect.height,
@@ -304,28 +282,28 @@ export function useSlicerDirectBBoxCrop({
     }
 
     setIsDirectBBoxCropActive(false);
-    showToast(`✓ Đã cắt ảnh thành công (${rect.width}×${rect.height}px)!`, 'redo');
+    showToast(`✓ Đã cắt BBox ảnh thành công (${rect.width}×${rect.height}px)!`, 'redo');
   }, [
     checkedImageIds,
     imageList,
     loadedImage,
     loadedImageRef,
-    previewDisplayMode,
+    imageCanvasRef,
     chromaOptions,
-    selectedCatId,
     directBBoxPadding,
     activeImageId,
     pushUndoState,
     setImageList,
     showToast,
-    setSlicedResults,
-    setHasExplicitlySliced,
-    setLoadedImage,
     setUserUploadedImageUrl,
+    setLoadedImage,
     initUniformDividers,
     currentCategory.cols,
     currentCategory.rows,
     slicedCanvasesRef,
+    setSlicedResults,
+    setHasExplicitlySliced,
+    setPreviewDisplayMode,
   ]);
 
   return {

@@ -5,6 +5,7 @@ import { GridCellDefinition } from '../../../../core/assets/GridSliceRegistry';
 export function useSlicerDividers() {
   const [colDividers, setColDividers] = useState<number[]>([]);
   const [rowDividers, setRowDividers] = useState<number[]>([]);
+  const [selectedCell, setSelectedCell] = useState<GridCellDefinition | null>(null);
   const draggingDividerRef = useRef<{ type: 'col' | 'row'; index: number } | null>(null);
 
   // Initialize Default Uniform Dividers (Chia đều tuyệt đối các ô trong 1 ảnh)
@@ -74,15 +75,41 @@ export function useSlicerDividers() {
     [initUniformDividers]
   );
 
+  const shiftColDividers = useCallback((deltaPx: number) => {
+    setColDividers((prev) => {
+      if (prev.length <= 2) return prev;
+      const maxW = prev[prev.length - 1];
+      return prev.map((val, idx) => {
+        if (idx === 0 || idx === prev.length - 1) return val;
+        return Math.max(10, Math.min(maxW - 10, val + deltaPx));
+      });
+    });
+  }, []);
+
+  const shiftRowDividers = useCallback((deltaPx: number) => {
+    setRowDividers((prev) => {
+      if (prev.length <= 2) return prev;
+      const maxH = prev[prev.length - 1];
+      return prev.map((val, idx) => {
+        if (idx === 0 || idx === prev.length - 1) return val;
+        return Math.max(10, Math.min(maxH - 10, val + deltaPx));
+      });
+    });
+  }, []);
+
   return {
     colDividers,
     setColDividers,
     rowDividers,
     setRowDividers,
+    selectedCell,
+    setSelectedCell,
     draggingDividerRef,
     initUniformDividers,
     autoFitDividers,
     adjustColWidth,
     resetAllDividers,
+    shiftColDividers,
+    shiftRowDividers,
   };
 }
