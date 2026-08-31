@@ -1,15 +1,12 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Slicer Bottom Filmstrip Frame Sequence Bar
+// Bottom Filmstrip Frame Sequence Bar (Visibility Eye Toggle & Drag Reordering)
 // =========================================================================================
 import React, { useRef } from 'react';
 import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
   Trash2,
-  Copy,
-  Film,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { VideoSliceFrame } from '../../../../types/video_slicer';
 
@@ -22,7 +19,7 @@ export interface VideoSlicerFilmstripBarProps {
   previewDisplayMode: 'transparent' | 'original';
   onSelectFrameIndex: (index: number) => void;
   onMoveFrame: (fromIdx: number, toIdx: number) => void;
-  onDuplicateFrame: (index: number) => void;
+  onToggleHideFrame: (index: number) => void;
   onDeleteFrame: (index: number) => void;
 }
 
@@ -35,301 +32,225 @@ export const VideoSlicerFilmstripBar: React.FC<VideoSlicerFilmstripBarProps> = (
   previewDisplayMode,
   onSelectFrameIndex,
   onMoveFrame,
-  onDuplicateFrame,
+  onToggleHideFrame,
   onDeleteFrame,
 }) => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const dragItemRef = useRef<number | null>(null);
+  const dragOverItemRef = useRef<number | null>(null);
 
-  const scrollLeft = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -240, behavior: 'smooth' });
-    }
+  if (frames.length === 0) {
+    return null;
+  }
+
+  const handleDragStart = (orderIndex: number) => {
+    dragItemRef.current = orderIndex;
   };
 
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 240, behavior: 'smooth' });
+  const handleDragEnter = (orderIndex: number) => {
+    dragOverItemRef.current = orderIndex;
+  };
+
+  const handleDragEnd = () => {
+    if (dragItemRef.current !== null && dragOverItemRef.current !== null) {
+      onMoveFrame(dragItemRef.current, dragOverItemRef.current);
     }
+    dragItemRef.current = null;
+    dragOverItemRef.current = null;
   };
 
   return (
     <div
       style={{
-        height: 125,
-        background: 'rgba(15, 23, 42, 0.95)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '0 0 8px 8px',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '6px 10px',
-        gap: 8,
+        height: 110,
+        background: 'rgba(11, 15, 25, 0.98)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        padding: '6px 12px',
         boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
         flexShrink: 0,
-        position: 'relative',
+        fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
       }}
     >
-      {/* Filmstrip Header & Badge */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 90,
-          flexShrink: 0,
-          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-          paddingRight: 8,
-        }}
-      >
-        <Film size={18} color="#38bdf8" />
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#f8fafc', marginTop: 2 }}>
-          Chuỗi Frame
-        </div>
-        <div style={{ fontSize: 9, color: '#94a3b8' }}>
-          {frames.length} khung hình
+      {/* Top Header: Total count & Status */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>🎞️ Chuỗi Khung Hình Hoạt Ảnh:</span>
+          <span style={{ color: '#38bdf8' }}>{frames.length} frames</span>
+          <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 400 }}>
+            (Kéo thả để đổi thứ tự • Bấm icon mắt để Ẩn/Bật frame khi phát và xuất)
+          </span>
         </div>
       </div>
 
-      {/* Scroll Left Button */}
-      <button
-        onClick={scrollLeft}
-        title="Cuộn sang trái"
+      {/* Filmstrip Horizontal Scrollable Reel */}
+      <div
         style={{
-          width: 24,
-          height: '100%',
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 4,
-          color: '#94a3b8',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        <ChevronLeft size={16} />
-      </button>
-
-      {/* Frame Thumbnails Carousel Container */}
-      <div
-        ref={scrollContainerRef}
-        style={{
-          flex: 1,
-          height: '100%',
-          display: 'flex',
-          gap: 8,
+          gap: 6,
           overflowX: 'auto',
           overflowY: 'hidden',
-          alignItems: 'center',
-          padding: '4px 0',
-          scrollbarWidth: 'thin',
+          paddingBottom: 4,
+          height: '100%',
         }}
       >
-        {frameOrder.length === 0 ? (
-          <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic', margin: 'auto' }}>
-            Chưa có frame nào. Hãy nạp video và trích xuất chuỗi frame để hiển thị tại đây.
-          </div>
-        ) : (
-          frameOrder.map((frameIdx, seqIdx) => {
-            const frame = frames[frameIdx];
-            if (!frame) return null;
+        {frameOrder.map((frameIdx, orderIdx) => {
+          const frame = frames[frameIdx];
+          if (!frame) return null;
 
-            const isSelected = selectedFrameIndex === frameIdx;
-            const isCurrentlyPlaying = isPlaying && activePlaybackIndex === seqIdx;
+          const isSelected = selectedFrameIndex === frameIdx;
+          const isPlaybackActive = isPlaying && activePlaybackIndex === orderIdx;
+          const isHidden = !!frame.hidden;
 
-            return (
-              <div
-                key={frame.id || `frame_${seqIdx}`}
-                onClick={() => onSelectFrameIndex(frameIdx)}
+          return (
+            <div
+              key={frame.id || `frame_${frameIdx}`}
+              draggable
+              onDragStart={() => handleDragStart(orderIdx)}
+              onDragEnter={() => handleDragEnter(orderIdx)}
+              onDragEnd={handleDragEnd}
+              onClick={() => onSelectFrameIndex(frameIdx)}
+              style={{
+                width: 72,
+                height: 76,
+                flexShrink: 0,
+                background: '#070a13',
+                border: `2px solid ${
+                  isPlaybackActive
+                    ? '#10b981'
+                    : isSelected
+                    ? '#38bdf8'
+                    : isHidden
+                    ? 'rgba(239, 68, 68, 0.4)'
+                    : 'rgba(255, 255, 255, 0.1)'
+                }`,
+                borderRadius: 6,
+                cursor: 'grab',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                boxShadow: isPlaybackActive
+                  ? '0 0 10px rgba(16, 185, 129, 0.5)'
+                  : isSelected
+                  ? '0 0 10px rgba(56, 189, 248, 0.4)'
+                  : 'none',
+                opacity: isHidden ? 0.4 : 1,
+                filter: isHidden ? 'grayscale(0.7)' : 'none',
+                transition: 'all 0.1s ease',
+              }}
+            >
+              {/* Frame Image Thumbnail */}
+              <img
+                src={
+                  previewDisplayMode === 'transparent'
+                    ? frame.transparentDataUrl
+                    : frame.originalDataUrl
+                }
+                alt={`Frame ${orderIdx + 1}`}
                 style={{
-                  width: 84,
+                  width: '100%',
                   height: '100%',
-                  background: isSelected
-                    ? 'rgba(2, 132, 199, 0.25)'
-                    : isCurrentlyPlaying
-                    ? 'rgba(239, 68, 68, 0.25)'
-                    : 'rgba(30, 41, 59, 0.5)',
-                  border: isSelected
-                    ? '2px solid #38bdf8'
-                    : isCurrentlyPlaying
-                    ? '2px solid #ef4444'
-                    : '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: 6,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  padding: 3,
-                  boxSizing: 'border-box',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  position: 'relative',
-                  transition: 'all 0.15s ease',
-                  boxShadow: isSelected
-                    ? '0 0 12px rgba(56, 189, 248, 0.4)'
-                    : isCurrentlyPlaying
-                    ? '0 0 12px rgba(239, 68, 68, 0.4)'
-                    : 'none',
+                  objectFit: 'contain',
+                  transform: `translate(${frame.offsetX * 0.1}px, ${frame.offsetY * 0.1}px) scale(${frame.scale}) rotate(${frame.rotation}deg) ${frame.flipX ? 'scaleX(-1)' : ''}`,
+                }}
+              />
+
+              {/* Order Index Badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: 2,
+                  background: isPlaybackActive ? '#10b981' : isSelected ? '#0284c7' : 'rgba(0, 0, 0, 0.7)',
+                  color: '#fff',
+                  fontSize: 8.5,
+                  fontWeight: 800,
+                  padding: '1px 4px',
+                  borderRadius: 3,
                 }}
               >
-                {/* Frame Index & Duration Badge */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: 8,
-                    fontWeight: 700,
-                    color: isSelected ? '#38bdf8' : '#94a3b8',
-                    marginBottom: 2,
-                    padding: '0 2px',
-                  }}
-                >
-                  <span>F{seqIdx + 1}</span>
-                  <span style={{ fontSize: 7, color: '#64748b' }}>{frame.durationMs}ms</span>
-                </div>
-
-                {/* Thumbnail Image */}
-                <div
-                  style={{
-                    flex: 1,
-                    width: '100%',
-                    minHeight: 0,
-                    backgroundImage:
-                      'linear-gradient(45deg, #182032 25%, transparent 25%), linear-gradient(-45deg, #182032 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #182032 75%), linear-gradient(-45deg, transparent 75%, #182032 75%)',
-                    backgroundSize: '8px 8px',
-                    backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                    backgroundColor: '#0b0f19',
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <img
-                    src={
-                      previewDisplayMode === 'transparent'
-                        ? frame.transparentDataUrl
-                        : frame.originalDataUrl
-                    }
-                    alt={`Frame ${seqIdx + 1}`}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain',
-                      transform: `${frame.flipX ? 'scaleX(-1)' : ''}`,
-                    }}
-                  />
-                </div>
-
-                {/* Quick Frame Action Toolbar */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginTop: 2,
-                    paddingTop: 1,
-                  }}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (seqIdx > 0) onMoveFrame(seqIdx, seqIdx - 1);
-                    }}
-                    disabled={seqIdx === 0}
-                    title="Dời sang trái"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: seqIdx > 0 ? '#94a3b8' : '#475569',
-                      cursor: seqIdx > 0 ? 'pointer' : 'default',
-                      padding: 1,
-                      fontSize: 8,
-                    }}
-                  >
-                    ◀
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDuplicateFrame(frameIdx);
-                    }}
-                    title="Nhân bản frame"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#94a3b8',
-                      cursor: 'pointer',
-                      padding: 1,
-                    }}
-                  >
-                    <Copy size={9} />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteFrame(frameIdx);
-                    }}
-                    title="Xóa frame"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#ef4444',
-                      cursor: 'pointer',
-                      padding: 1,
-                    }}
-                  >
-                    <Trash2 size={9} />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (seqIdx < frameOrder.length - 1) onMoveFrame(seqIdx, seqIdx + 1);
-                    }}
-                    disabled={seqIdx === frameOrder.length - 1}
-                    title="Dời sang phải"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: seqIdx < frameOrder.length - 1 ? '#94a3b8' : '#475569',
-                      cursor: seqIdx < frameOrder.length - 1 ? 'pointer' : 'default',
-                      padding: 1,
-                      fontSize: 8,
-                    }}
-                  >
-                    ▶
-                  </button>
-                </div>
+                #{orderIdx + 1}
               </div>
-            );
-          })
-        )}
-      </div>
 
-      {/* Scroll Right Button */}
-      <button
-        onClick={scrollRight}
-        title="Cuộn sang phải"
-        style={{
-          width: 24,
-          height: '100%',
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 4,
-          color: '#94a3b8',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        <ChevronRight size={16} />
-      </button>
+              {/* Hidden Status Badge */}
+              {isHidden && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: 7.5,
+                    fontWeight: 900,
+                    padding: '1px 3px',
+                    borderRadius: 2,
+                  }}
+                >
+                  ẨN
+                </div>
+              )}
+
+              {/* Bottom Quick Action Overlay on Hover */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: 'rgba(0, 0, 0, 0.85)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '2px 4px',
+                  alignItems: 'center',
+                }}
+              >
+                {/* Eye Toggle Visibility Button (Replaced Duplicate) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleHideFrame(frameIdx);
+                  }}
+                  title={isHidden ? 'Bật lại frame này vào hoạt ảnh' : 'Ẩn frame này khỏi hoạt ảnh'}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: isHidden ? '#ef4444' : '#34d399',
+                    cursor: 'pointer',
+                    padding: 1,
+                    display: 'flex',
+                  }}
+                >
+                  {isHidden ? <EyeOff size={11} /> : <Eye size={11} />}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteFrame(frameIdx);
+                  }}
+                  title="Xóa frame"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    padding: 1,
+                    display: 'flex',
+                  }}
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Slicer Top Header Bar (Animation Playback, Playback FPS & Light/Dark Checkerboard)
+// Video Slicer Top Header Bar (Save Action Modal & Playback Controls)
 // =========================================================================================
 import React from 'react';
 import {
@@ -16,6 +16,7 @@ import {
   Gauge,
   Sun,
   Moon,
+  Save,
 } from 'lucide-react';
 import { VideoMetadata } from '../../../../types/video_slicer';
 
@@ -35,6 +36,7 @@ export interface VideoSlicerHeaderBarProps {
   checkerTheme: 'dark' | 'light';
   onToggleCheckerTheme: () => void;
   onExportSpriteSheet: () => void;
+  onOpenSavePoseModal?: () => void;
   onTransferToAnimSlicer?: () => void;
   onReset: () => void;
 }
@@ -55,6 +57,7 @@ export const VideoSlicerHeaderBar: React.FC<VideoSlicerHeaderBarProps> = ({
   checkerTheme,
   onToggleCheckerTheme,
   onExportSpriteSheet,
+  onOpenSavePoseModal,
   onTransferToAnimSlicer,
   onReset,
 }) => {
@@ -166,7 +169,7 @@ export const VideoSlicerHeaderBar: React.FC<VideoSlicerHeaderBarProps> = ({
         </div>
       </div>
 
-      {/* Middle Controls: Animation Playback & Speed Controls (Tua Nhanh / Chậm) */}
+      {/* Middle Controls: Animation Playback & Speed Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {viewMode === 'frames' && (
           <>
@@ -347,8 +350,34 @@ export const VideoSlicerHeaderBar: React.FC<VideoSlicerHeaderBarProps> = ({
         )}
       </div>
 
-      {/* Right: Export & Transfer Actions */}
+      {/* Right: Save Action, Transfer & Export Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Save Pose / Action Button (Like Tab 1.2) */}
+        {onOpenSavePoseModal && (
+          <button
+            onClick={onOpenSavePoseModal}
+            disabled={framesCount === 0}
+            title="Lưu chuỗi frame này thành động tác nhân vật (chuẩn Tab 1.2)"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 10px',
+              borderRadius: 6,
+              fontSize: 10.5,
+              fontWeight: 700,
+              border: 'none',
+              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
+              color: '#ffffff',
+              cursor: framesCount > 0 ? 'pointer' : 'not-allowed',
+              opacity: framesCount > 0 ? 1 : 0.5,
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)',
+            }}
+          >
+            <Save size={13} /> 💾 Lưu Động Tác
+          </button>
+        )}
+
         {onTransferToAnimSlicer && (
           <button
             onClick={onTransferToAnimSlicer}

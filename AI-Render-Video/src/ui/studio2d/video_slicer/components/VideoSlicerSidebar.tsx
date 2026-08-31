@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Slicer Left Sidebar Controls (Harmonious Typography & Unified Design System)
+// Video Slicer Left Sidebar Controls (BBox Loading & Harmonious Typography)
 // =========================================================================================
 import React from 'react';
 import {
@@ -80,6 +80,8 @@ export interface VideoSlicerSidebarProps {
   // Logic 3: BBox Cropping
   isBBoxCropMode: boolean;
   setIsBBoxCropMode: (v: boolean) => void;
+  isCroppingBBox?: boolean;
+  cropBBoxStatusText?: string;
   onApplyBBoxCropOnly: () => void;
   onAutoTrimAllBBox: () => void;
 }
@@ -136,6 +138,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
   isEyedropperActive = false,
   isBBoxCropMode,
   setIsBBoxCropMode,
+  isCroppingBBox = false,
+  cropBBoxStatusText = '',
   onApplyBBoxCropOnly,
   onAutoTrimAllBBox,
 }) => {
@@ -344,7 +348,7 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
           }}
         >
           {isExtracting ? <Loader size={12} className="spin" /> : <Scissors size={12} />}
-          {isExtracting ? `Đang cắt (${extractProgress}%)...` : '⚡ Áp Dụng: Cắt Video & Trích Xuất Frame'}
+          {isExtracting ? `Đang trích xuất (${extractProgress}%)...` : '⚡ Áp Dụng: Cắt Video & Trích Xuất Frame'}
         </button>
         {extractStatusText && (
           <div style={{ fontSize: 9.5, color: '#38bdf8', textAlign: 'center' }}>{extractStatusText}</div>
@@ -393,7 +397,7 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             onClick={onApplyBBoxCropOnly}
-            disabled={framesCount === 0}
+            disabled={framesCount === 0 || isCroppingBBox}
             style={{
               flex: 1,
               background: '#d97706',
@@ -403,7 +407,7 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
               padding: '6px 8px',
               fontSize: 10,
               fontWeight: 700,
-              cursor: framesCount > 0 ? 'pointer' : 'not-allowed',
+              cursor: framesCount > 0 && !isCroppingBBox ? 'pointer' : 'not-allowed',
               opacity: framesCount > 0 ? 1 : 0.5,
               display: 'flex',
               alignItems: 'center',
@@ -411,12 +415,13 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
               gap: 4,
             }}
           >
-            <Crop size={11} /> ✂️ Áp Dụng: Cắt BBox
+            {isCroppingBBox ? <Loader size={11} className="spin" /> : <Crop size={11} />}
+            {isCroppingBBox ? 'Đang cắt BBox...' : '✂️ Áp Dụng: Cắt BBox'}
           </button>
 
           <button
             onClick={onAutoTrimAllBBox}
-            disabled={framesCount === 0}
+            disabled={framesCount === 0 || isCroppingBBox}
             title="Tự động phát hiện viền trong suốt và cắt gọn"
             style={{
               background: 'rgba(245, 158, 11, 0.2)',
@@ -426,13 +431,20 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
               padding: '6px 8px',
               fontSize: 10,
               fontWeight: 700,
-              cursor: framesCount > 0 ? 'pointer' : 'not-allowed',
+              cursor: framesCount > 0 && !isCroppingBBox ? 'pointer' : 'not-allowed',
               opacity: framesCount > 0 ? 1 : 0.5,
             }}
           >
             Auto Trim
           </button>
         </div>
+
+        {cropBBoxStatusText && (
+          <div style={{ fontSize: 9.5, color: '#fbbf24', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            {isCroppingBBox && <Loader size={10} className="spin" />}
+            {cropBBoxStatusText}
+          </div>
+        )}
       </div>
 
       {/* ─── LOGIC 3: BÓC NÈN CHROMA KEY (TAB 1 ENGINE) ────────── */}

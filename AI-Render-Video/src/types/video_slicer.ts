@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Animation Slicer Type Definitions
+// Video Animation Slicer Type Definitions (Added hidden visibility flag)
 // =========================================================================================
 
 export interface VideoCropBBox {
@@ -23,6 +23,7 @@ export interface VideoSliceFrame {
   rotation: number;
   flipX: boolean;
   durationMs: number;
+  hidden?: boolean; // When true, frame is excluded from playback loop and action export
 }
 
 export interface VideoMetadata {

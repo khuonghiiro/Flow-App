@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Loop Frame Matcher (Compares candidate frames within 3s to find best animation loop)
+// Video Loop Frame Matcher (Accurate Decoded Pixel Capture & Similarity Search)
 // =========================================================================================
 import { VideoCropBBox } from '../../../../types/video_slicer';
 
@@ -9,6 +9,7 @@ export interface LoopMatchOptions {
   videoDuration: number;
   maxSearchSeconds?: number;
   stepSeconds?: number;
+  minSearchOffset?: number; // Minimum offset after startTime (default 0.8s)
   bbox?: VideoCropBBox | null;
   shouldCancel?: () => boolean;
   onProgress?: (currentSec: number, progressPct: number) => void;
@@ -16,12 +17,13 @@ export interface LoopMatchOptions {
 
 export interface LoopMatchResult {
   bestTimestamp: number;
-  bestSimilarity: number; // 0 to 1 (1 = exact match)
+  bestSimilarity: number;
   scannedFramesCount: number;
 }
 
 /**
  * Extracts a normalized 64x64 pixel buffer from a video element at its current frame
+ * If bbox is provided (percentage or pixel), crops strictly to that detail region
  */
 function captureNormalizedFrame(
   video: HTMLVideoElement,
@@ -36,12 +38,21 @@ function captureNormalizedFrame(
   const vw = video.videoWidth || 640;
   const vh = video.videoHeight || 480;
 
-  if (bbox && bbox.width > 10 && bbox.height > 10) {
-    const sx = Math.max(0, Math.min(bbox.x, vw - 10));
-    const sy = Math.max(0, Math.min(bbox.y, vh - 10));
-    const sw = Math.min(bbox.width, vw - sx);
-    const sh = Math.min(bbox.height, vh - sy);
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sampleSize, sampleSize);
+  ctx.clearRect(0, 0, sampleSize, sampleSize);
+
+  if (bbox && bbox.width > 0 && bbox.height > 0) {
+    const isPct = bbox.width <= 100 && bbox.height <= 100;
+    const rawX = isPct ? (bbox.x / 100) * vw : bbox.x;
+    const rawY = isPct ? (bbox.y / 100) * vh : bbox.y;
+    const rawW = isPct ? (bbox.width / 100) * vw : bbox.width;
+    const rawH = isPct ? (bbox.height / 100) * vh : bbox.height;
+
+    const clampedX = Math.max(0, Math.min(rawX, vw - 10));
+    const clampedY = Math.max(0, Math.min(rawY, vh - 10));
+    const clampedW = Math.max(10, Math.min(rawW, vw - clampedX));
+    const clampedH = Math.max(10, Math.min(rawH, vh - clampedY));
+
+    ctx.drawImage(video, clampedX, clampedY, clampedW, clampedH, 0, 0, sampleSize, sampleSize);
   } else {
     ctx.drawImage(video, 0, 0, sampleSize, sampleSize);
   }
@@ -64,12 +75,12 @@ function calculateFrameSimilarity(data1: Uint8ClampedArray, data2: Uint8ClampedA
     totalDiff += (dr + dg + db) / 3;
   }
 
-  const avgDiff = totalDiff / totalPixels; // 0 to 255
+  const avgDiff = totalDiff / totalPixels;
   return Math.max(0, 1 - avgDiff / 255);
 }
 
 /**
- * Seeks a hidden/clone video element and waits for seeked event
+ * Seeks a video element to target time and waits until decoded frame data is ready
  */
 function seekVideoPromise(video: HTMLVideoElement, targetTime: number): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -78,22 +89,40 @@ function seekVideoPromise(video: HTMLVideoElement, targetTime: number): Promise<
     const onSeeked = () => {
       video.removeEventListener('seeked', onSeeked);
       clearTimeout(timeoutId);
-      resolve();
+
+      // If video has decoded current frame, resolve immediately
+      if (video.readyState >= 2) {
+        resolve();
+      } else {
+        const onCanPlay = () => {
+          video.removeEventListener('canplay', onCanPlay);
+          video.removeEventListener('loadeddata', onCanPlay);
+          resolve();
+        };
+        video.addEventListener('canplay', onCanPlay, { once: true });
+        video.addEventListener('loadeddata', onCanPlay, { once: true });
+      }
     };
 
     video.addEventListener('seeked', onSeeked, { once: true });
-    video.currentTime = targetTime;
 
-    // Timeout safety fallback (150ms)
+    try {
+      video.currentTime = targetTime;
+    } catch {
+      resolve();
+    }
+
+    // Safety timeout fallback (300ms)
     timeoutId = setTimeout(() => {
       video.removeEventListener('seeked', onSeeked);
       resolve();
-    }, 150);
+    }, 300);
   });
 }
 
 /**
- * Finds the candidate frame that most closely matches the Start Frame within max 3s
+ * Finds the candidate frame that most closely matches the Start Frame within search duration
+ * Ensures Start Frame is decoded accurately and candidates start after minSearchOffset (0.8s)
  */
 export async function findBestLoopEndFrame(
   videoSourceUrl: string,
@@ -103,87 +132,94 @@ export async function findBestLoopEndFrame(
     startTime,
     videoDuration,
     maxSearchSeconds = 3.0,
-    stepSeconds = 0.04, // ~25 FPS scanning
+    minSearchOffset = 0.80, // Minimum 0.8s offset
+    stepSeconds = 0.04, // ~25 fps scan precision
     bbox,
     shouldCancel,
     onProgress,
   } = options;
 
-  const searchStart = startTime + 0.25; // Skip first 0.25s to avoid comparing immediate identical frames
-  const searchEnd = Math.min(startTime + maxSearchSeconds, videoDuration);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = videoSourceUrl;
 
-  if (searchStart >= videoDuration) {
-    return { bestTimestamp: Math.min(startTime + 1.0, videoDuration), bestSimilarity: 1, scannedFramesCount: 0 };
-  }
+  // Wait until video metadata and initial frame data are decoded
+  await new Promise<void>((resolve, reject) => {
+    const onReady = () => {
+      if (video.readyState >= 2) {
+        video.removeEventListener('loadeddata', onReady);
+        video.removeEventListener('canplay', onReady);
+        resolve();
+      }
+    };
 
-  // Create offscreen video & canvas for scanning
-  const scannerVideo = document.createElement('video');
-  scannerVideo.src = videoSourceUrl;
-  scannerVideo.muted = true;
-  scannerVideo.playsInline = true;
-  scannerVideo.preload = 'auto';
+    video.addEventListener('loadeddata', onReady);
+    video.addEventListener('canplay', onReady);
+    video.onerror = () => reject(new Error('Không thể nạp video để quét vòng lặp'));
 
-  await new Promise<void>((res) => {
-    scannerVideo.onloadedmetadata = () => res();
-    scannerVideo.onerror = () => res();
+    // Fallback if readyState is already satisfied
+    if (video.readyState >= 2) {
+      resolve();
+    }
   });
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return { bestTimestamp: searchEnd, bestSimilarity: 0.5, scannedFramesCount: 0 };
-  }
+  if (!ctx) throw new Error('Không thể khởi tạo Canvas 2D');
 
-  // 1. Capture reference Start Frame
-  await seekVideoPromise(scannerVideo, startTime);
-  const startFrameBuffer = captureNormalizedFrame(scannerVideo, canvas, ctx, bbox);
+  // Step 1: Seek to Start Frame and capture real decoded pixel buffer
+  await seekVideoPromise(video, startTime);
+  const startFrameBuffer = captureNormalizedFrame(video, canvas, ctx, bbox);
   if (!startFrameBuffer) {
-    return { bestTimestamp: searchEnd, bestSimilarity: 0.5, scannedFramesCount: 0 };
+    throw new Error('Không thể đọc dữ liệu Start Frame');
   }
 
-  let bestTimestamp = searchEnd;
+  // Step 2: Iterate candidate frames starting at least minSearchOffset (0.8s) after startTime
+  const searchMinTime = Math.min(startTime + minSearchOffset, videoDuration);
+  const searchMaxTime = Math.min(startTime + Math.max(minSearchOffset, maxSearchSeconds), videoDuration);
+  const totalSearchRange = Math.max(0.1, searchMaxTime - searchMinTime);
+
+  let bestTimestamp = searchMinTime;
   let bestSimilarity = -1;
-  let scannedCount = 0;
+  let scannedFramesCount = 0;
 
-  const totalRange = searchEnd - searchStart;
-
-  // 2. Scan forward frame by frame
-  for (let t = searchStart; t <= searchEnd; t += stepSeconds) {
+  for (let t = searchMinTime; t <= searchMaxTime; t += stepSeconds) {
     if (shouldCancel && shouldCancel()) {
       break;
     }
 
-    await seekVideoPromise(scannerVideo, t);
-    const candidateBuffer = captureNormalizedFrame(scannerVideo, canvas, ctx, bbox);
+    await seekVideoPromise(video, t);
+    const candidateBuffer = captureNormalizedFrame(video, canvas, ctx, bbox);
+    if (!candidateBuffer) continue;
 
-    if (candidateBuffer) {
-      scannedCount++;
-      const similarity = calculateFrameSimilarity(startFrameBuffer, candidateBuffer);
+    scannedFramesCount++;
+    const sim = calculateFrameSimilarity(startFrameBuffer, candidateBuffer);
 
-      if (similarity > bestSimilarity) {
-        bestSimilarity = similarity;
-        bestTimestamp = Number(t.toFixed(2));
-      }
-
-      // Early stop if almost exact match (> 95% similarity)
-      if (similarity >= 0.95) {
-        break;
-      }
+    if (sim > bestSimilarity) {
+      bestSimilarity = sim;
+      bestTimestamp = Number(t.toFixed(2));
     }
 
-    if (onProgress && totalRange > 0) {
-      const progress = Math.min(100, Math.round(((t - searchStart) / totalRange) * 100));
-      onProgress(t, progress);
+    if (onProgress) {
+      const prog = Math.min(100, Math.round(((t - searchMinTime) / totalSearchRange) * 100));
+      onProgress(t, prog);
+    }
+
+    // Early exit if near perfect match found (> 96%)
+    if (sim >= 0.96) {
+      break;
     }
   }
 
-  // Cleanup scanner video element
-  scannerVideo.src = '';
-  scannerVideo.remove();
+  // Cleanup
+  video.src = '';
+  video.remove();
 
   return {
     bestTimestamp,
     bestSimilarity: Math.max(0, bestSimilarity),
-    scannedFramesCount: scannedCount,
+    scannedFramesCount,
   };
 }

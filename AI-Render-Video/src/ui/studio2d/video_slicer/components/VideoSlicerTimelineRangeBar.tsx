@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// 3-Pin Video Timeline Range Bar (Customizable Scan Duration Input)
+// 3-Pin Video Timeline Range Bar (Manual Scan by Duration / BBox Detail)
 // =========================================================================================
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
@@ -10,8 +10,8 @@ import {
   MapPin,
   Square,
   Loader,
-  Target,
   Sparkles,
+  Crop,
 } from 'lucide-react';
 import { VideoMetadata } from '../../../../types/video_slicer';
 
@@ -28,9 +28,9 @@ export interface VideoSlicerTimelineRangeBarProps {
   isLooping: boolean;
   setIsLooping: (loop: boolean) => void;
 
-  // Auto Loop Matcher Props
-  isAutoFindEnd: boolean;
-  setIsAutoFindEnd: (v: boolean) => void;
+  // Manual Scan Props
+  isScanByBBox: boolean;
+  setIsScanByBBox: (v: boolean) => void;
   maxSearchDuration: number;
   setMaxSearchDuration: (v: number) => void;
   isSearchingEnd: boolean;
@@ -38,7 +38,6 @@ export interface VideoSlicerTimelineRangeBarProps {
   searchStatusText: string;
   onTriggerSearchEnd: () => void;
   onStopSearch: () => void;
-  onStartPinReleased: (newStartTime: number) => void;
 }
 
 export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarProps> = ({
@@ -53,8 +52,8 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
   onTogglePlayVideo,
   isLooping,
   setIsLooping,
-  isAutoFindEnd,
-  setIsAutoFindEnd,
+  isScanByBBox,
+  setIsScanByBBox,
   maxSearchDuration,
   setMaxSearchDuration,
   isSearchingEnd,
@@ -62,7 +61,6 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
   searchStatusText,
   onTriggerSearchEnd,
   onStopSearch,
-  onStartPinReleased,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const [draggingPin, setDraggingPin] = useState<'start' | 'end' | 'play' | null>(null);
@@ -75,7 +73,7 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
   const endPercent = Math.max(0, Math.min(100, (clipEnd / duration) * 100));
   const playPercent = Math.max(0, Math.min(100, (videoCurrentTime / duration) * 100));
 
-  // Convert mouse X client position to seconds on timeline
+  // Convert mouse X position to seconds on timeline
   const getTimeFromMouseEvent = useCallback(
     (e: MouseEvent | React.MouseEvent): number => {
       if (!trackRef.current) return 0;
@@ -87,7 +85,7 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
     [duration]
   );
 
-  // Global mouse handlers for smooth pin dragging
+  // Global mouse handlers for smooth pin dragging (no auto search on release)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!draggingPin) return;
@@ -106,10 +104,6 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
     };
 
     const handleMouseUp = () => {
-      if (draggingPin === 'start') {
-        // Trigger auto search if enabled
-        onStartPinReleased(clipStart);
-      }
       if (draggingPin) setDraggingPin(null);
     };
 
@@ -121,7 +115,7 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [draggingPin, getTimeFromMouseEvent, clipStart, clipEnd, duration, setStartTime, setEndTime, onUserSeekVideoTime, onStartPinReleased]);
+  }, [draggingPin, getTimeFromMouseEvent, clipStart, clipEnd, duration, setStartTime, setEndTime, onUserSeekVideoTime]);
 
   return (
     <div
@@ -136,11 +130,12 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
         gap: 6,
         userSelect: 'none',
         flexShrink: 0,
+        fontFamily: "var(--font-main, 'Be Vietnam Pro', 'Inter', system-ui, sans-serif)",
       }}
     >
-      {/* ─── 1. TIMELINE CONTROLS & AUTO LOOP MATCHER BAR ─────── */}
+      {/* ─── 1. TIMELINE CONTROLS & MANUAL SCAN BAR ──────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        {/* Left: Play/Pause & Auto Find Loop Controls */}
+        {/* Left: Play/Pause & Scan BBox Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             onClick={onTogglePlayVideo}
@@ -164,17 +159,21 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
             {isVideoPlaying ? 'Dừng' : 'Phát'}
           </button>
 
-          {/* Toggle Auto Find Loop End on Start Pin Release */}
+          {/* Toggle Scan by BBox Frame */}
           <button
-            onClick={() => setIsAutoFindEnd(!isAutoFindEnd)}
-            title="Tự động tìm Ghim End khớp vòng lặp khi thả Ghim Start"
+            onClick={() => setIsScanByBBox(!isScanByBBox)}
+            title={
+              isScanByBBox
+                ? 'Đang bật: Chỉ so sánh chi tiết hình ảnh bên trong khung BBox'
+                : 'Bật để chỉ so sánh chi tiết hình ảnh bên trong khung BBox'
+            }
             style={{
-              background: isAutoFindEnd ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.05)',
-              border: `1px solid ${isAutoFindEnd ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)'}`,
+              background: isScanByBBox ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+              border: `1px solid ${isScanByBBox ? '#10b981' : 'rgba(255, 255, 255, 0.1)'}`,
               borderRadius: 4,
-              color: isAutoFindEnd ? '#fbbf24' : '#94a3b8',
+              color: isScanByBBox ? '#34d399' : '#94a3b8',
               padding: '3px 7px',
-              fontSize: 9,
+              fontSize: 9.5,
               fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
@@ -182,7 +181,7 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
               gap: 4,
             }}
           >
-            <Target size={11} /> Auto Tìm End: {isAutoFindEnd ? 'Bật' : 'Tắt'}
+            <Crop size={11} /> Quét BBox: {isScanByBBox ? 'Bật' : 'Tắt'}
           </button>
 
           {/* Custom Search Duration Textbox */}
@@ -196,25 +195,25 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
               border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: 4,
               padding: '2px 5px',
-              fontSize: 9,
+              fontSize: 9.5,
               color: '#94a3b8',
             }}
           >
             <span>Quét:</span>
             <input
               type="number"
-              min={0.5}
+              min={0.8}
               max={Math.max(10, Math.ceil(duration))}
               step={0.5}
               value={maxSearchDuration}
-              onChange={(e) => setMaxSearchDuration(Math.max(0.5, Number(e.target.value)))}
+              onChange={(e) => setMaxSearchDuration(Math.max(0.8, Number(e.target.value)))}
               style={{
                 width: 36,
                 background: '#090e1a',
                 border: '1px solid rgba(56, 189, 248, 0.3)',
                 borderRadius: 3,
                 color: '#38bdf8',
-                fontSize: 9,
+                fontSize: 9.5,
                 fontWeight: 700,
                 textAlign: 'center',
                 padding: '1px 2px',
@@ -234,7 +233,7 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
                 borderRadius: 4,
                 color: '#fff',
                 padding: '3px 8px',
-                fontSize: 9,
+                fontSize: 9.5,
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
@@ -249,22 +248,23 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
             <button
               onClick={onTriggerSearchEnd}
               disabled={!videoMetadata}
-              title={`Quét từng frame trong ${maxSearchDuration}s tiếp theo để tìm frame khớp Start nhất`}
+              title={`Bắt đầu quét từ mốc Start (+${maxSearchDuration}s) ${isScanByBBox ? 'theo khung BBox' : ''} và chốt frame khớp cao nhất`}
               style={{
-                background: 'rgba(16, 185, 129, 0.2)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
+                background: 'linear-gradient(135deg, #0284c7, #10b981)',
+                border: 'none',
                 borderRadius: 4,
-                color: '#34d399',
-                padding: '3px 8px',
-                fontSize: 9,
+                color: '#fff',
+                padding: '4px 10px',
+                fontSize: 10,
                 fontWeight: 700,
                 cursor: videoMetadata ? 'pointer' : 'default',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
+                boxShadow: '0 0 10px rgba(2, 132, 199, 0.4)',
               }}
             >
-              <Sparkles size={11} /> Quét Tìm End
+              <Sparkles size={11} /> {isScanByBBox ? '🔍 Quét BBox End' : '🔍 Quét Tìm End'}
             </button>
           )}
         </div>
@@ -301,7 +301,7 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
               borderRadius: 4,
               color: isLooping ? '#34d399' : '#94a3b8',
               padding: '4px 8px',
-              fontSize: 9,
+              fontSize: 9.5,
               fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
@@ -318,7 +318,6 @@ export const VideoSlicerTimelineRangeBar: React.FC<VideoSlicerTimelineRangeBarPr
       <div
         ref={trackRef}
         onMouseDown={(e) => {
-          // If user clicks track background directly, seek playhead
           const t = getTimeFromMouseEvent(e);
           onUserSeekVideoTime(Number(t.toFixed(2)));
           setDraggingPin('play');

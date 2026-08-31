@@ -310,12 +310,12 @@ class AIMattingHandler(BaseHTTPRequestHandler):
             temp_dir = tempfile.mkdtemp(prefix="flow_video_")
             try:
                 req = json.loads(post_data.decode('utf-8'))
-                video_base64 = req.get('video', '')
-                fps = float(req.get('fps', 8))
-                start_time = float(req.get('startTime', 0))
-                end_time = req.get('endTime', None)
+                video_base64 = req.get('video') or req.get('video_data_url') or ''
+                fps = float(req.get('fps', 12))
+                start_time = float(req.get('startTime', req.get('start_time', 0)))
+                end_time = req.get('endTime', req.get('end_time', None))
                 crop_box = req.get('crop', None)
-                max_frames = int(req.get('maxFrames', 60))
+                max_frames = int(req.get('maxFrames', req.get('max_frames', 500)))
 
                 if ',' in video_base64:
                     video_base64 = video_base64.split(',', 1)[1]
@@ -343,7 +343,7 @@ class AIMattingHandler(BaseHTTPRequestHandler):
                 vf_filters.append(f"fps={fps}")
                 vf_str = ",".join(vf_filters)
 
-                cmd = [ffmpeg_bin, "-y"]
+                cmd = [ffmpeg_bin, "-y", "-threads", "0"]
                 if start_time > 0:
                     cmd.extend(["-ss", str(start_time)])
                 if end_time is not None and float(end_time) > start_time:

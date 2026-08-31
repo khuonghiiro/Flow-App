@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Frame Extraction Engine (Client-side HTML5 + FFmpeg Backend API)
+// Video Frame Extraction Engine (Multi-threaded FFmpeg Engine + Hardware GPU Canvas)
 // =========================================================================================
 import { VideoSliceFrame, VideoMetadata, VideoExtractOptions } from '../../../../types/video_slicer';
 import { getAIMattingApiUrl } from '../../../../core/config/envConfig';
@@ -15,12 +15,15 @@ export async function loadVideoMetadata(fileOrUrl: File | string): Promise<Video
 
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
-    video.preload = 'metadata';
+    video.preload = 'auto';
     video.src = url;
     video.muted = true;
+    video.playsInline = true;
     video.crossOrigin = 'anonymous';
 
-    video.onloadedmetadata = () => {
+    let timer: any;
+    const onReady = () => {
+      clearTimeout(timer);
       const duration = video.duration || 1;
       const width = video.videoWidth || 640;
       const height = video.videoHeight || 360;
@@ -35,15 +38,69 @@ export async function loadVideoMetadata(fileOrUrl: File | string): Promise<Video
       });
     };
 
-    video.onerror = () => {
-      reject(new Error('Không thể đọc thông tin video. Định dạng tệp có thể không tương thích.'));
+    if (video.readyState >= 1) {
+      onReady();
+    } else {
+      video.onloadedmetadata = onReady;
+      video.onerror = () => {
+        clearTimeout(timer);
+        reject(new Error('Không thể đọc thông tin video. Định dạng tệp có thể không tương thích.'));
+      };
+      timer = setTimeout(onReady, 2000);
+      video.load();
+    }
+  });
+}
+
+/**
+ * Helper to convert a blob URL to a Base64 string for backend transmission
+ */
+async function blobUrlToBase64(blobUrl: string): Promise<string> {
+  if (!blobUrl.startsWith('blob:')) {
+    return blobUrl;
+  }
+  const response = await fetch(blobUrl);
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Seeks a video element to target time with minimal latency
+ */
+function seekVideoForFrame(video: HTMLVideoElement, targetTime: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    let timeoutId: any;
+
+    const onSeeked = () => {
+      video.removeEventListener('seeked', onSeeked);
+      clearTimeout(timeoutId);
+      resolve();
     };
+
+    video.addEventListener('seeked', onSeeked, { once: true });
+
+    try {
+      video.currentTime = targetTime;
+    } catch {
+      resolve();
+      return;
+    }
+
+    timeoutId = setTimeout(() => {
+      video.removeEventListener('seeked', onSeeked);
+      resolve();
+    }, 120);
   });
 }
 
 /**
  * Extracts frames client-side using HTML5 Video + Canvas
- * Calculates exact total frames = Math.round(duration * fps) without artificial 30-frame capping
+ * Initialises video texture pipeline to avoid blank/transparent frames
  */
 export async function extractFramesClientSide(
   videoUrl: string,
@@ -54,54 +111,87 @@ export async function extractFramesClientSide(
   const video = document.createElement('video');
   video.src = videoUrl;
   video.muted = true;
+  video.playsInline = true;
   video.crossOrigin = 'anonymous';
+  video.preload = 'auto';
 
-  await new Promise<void>((resolve, reject) => {
-    video.onloadedmetadata = () => resolve();
-    video.onerror = () => reject(new Error('Lỗi nạp video vào Canvas'));
+  // Wait until video metadata and initial frame are ready
+  await new Promise<void>((resolve) => {
+    let timer: any;
+    const finish = () => {
+      clearTimeout(timer);
+      video.removeEventListener('loadedmetadata', finish);
+      video.removeEventListener('loadeddata', finish);
+      video.removeEventListener('canplay', finish);
+      resolve();
+    };
+
+    if (video.readyState >= 2) {
+      finish();
+      return;
+    }
+
+    video.addEventListener('loadedmetadata', finish, { once: true });
+    video.addEventListener('loadeddata', finish, { once: true });
+    video.addEventListener('canplay', finish, { once: true });
+    video.onerror = () => finish();
+    timer = setTimeout(finish, 1500);
+    video.load();
   });
 
-  const duration = Math.max(0.1, (endTime || video.duration) - Math.max(startTime, 0));
-  // Exact calculation based on duration * fps (e.g. 8s * 10 FPS = 80 frames)
+  // Wake up Chrome GPU frame decoder pipeline
+  try {
+    const p = video.play();
+    if (p) await p.catch(() => {});
+    video.pause();
+  } catch {
+    // Ignore autoplay policy restriction
+  }
+
+  const actualStart = Math.max(0, startTime);
+  const actualEnd = endTime > actualStart ? endTime : (video.duration || actualStart + 1);
+  const duration = Math.max(0.05, actualEnd - actualStart);
+
   const totalFrames = Math.max(1, Math.round(duration * fps));
   const interval = totalFrames > 1 ? duration / (totalFrames - 1) : 0;
 
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Không thể khởi tạo 2D Context Canvas');
-
   const srcW = video.videoWidth || 640;
   const srcH = video.videoHeight || 480;
-  const cropX = crop ? Math.max(0, crop.x) : 0;
-  const cropY = crop ? Math.max(0, crop.y) : 0;
-  const cropW = crop ? Math.min(srcW - cropX, crop.width) : srcW;
-  const cropH = crop ? Math.min(srcH - cropY, crop.height) : srcH;
 
-  canvas.width = cropW;
-  canvas.height = cropH;
+  let cropX = 0;
+  let cropY = 0;
+  let cropW = srcW;
+  let cropH = srcH;
+
+  if (crop && crop.width > 0 && crop.height > 0) {
+    const isPct = crop.width <= 100 && crop.height <= 100;
+    const rawX = isPct ? (crop.x / 100) * srcW : crop.x;
+    const rawY = isPct ? (crop.y / 100) * srcH : crop.y;
+    const rawW = isPct ? (crop.width / 100) * srcW : crop.width;
+    const rawH = isPct ? (crop.height / 100) * srcH : crop.height;
+
+    cropX = Math.max(0, Math.min(rawX, srcW - 10));
+    cropY = Math.max(0, Math.min(rawY, srcH - 10));
+    cropW = Math.max(10, Math.min(rawW, srcW - cropX));
+    cropH = Math.max(10, Math.min(rawH, srcH - cropY));
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(10, Math.round(cropW));
+  canvas.height = Math.max(10, Math.round(cropH));
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Không thể khởi tạo 2D Context Canvas');
 
   const frames: VideoSliceFrame[] = [];
 
   for (let i = 0; i < totalFrames; i++) {
-    const targetTime = Math.min(
-      Math.max(startTime, 0) + i * interval,
-      endTime || video.duration
-    );
-    video.currentTime = targetTime;
+    const targetTime =
+      totalFrames === 1
+        ? actualStart
+        : Math.min(actualStart + i * interval, actualEnd);
 
-    await new Promise<void>((resolve) => {
-      let timeoutId: any;
-      const onSeeked = () => {
-        video.removeEventListener('seeked', onSeeked);
-        clearTimeout(timeoutId);
-        resolve();
-      };
-      video.addEventListener('seeked', onSeeked, { once: true });
-      timeoutId = setTimeout(() => {
-        video.removeEventListener('seeked', onSeeked);
-        resolve();
-      }, 150);
-    });
+    await seekVideoForFrame(video, targetTime);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
@@ -114,6 +204,12 @@ export async function extractFramesClientSide(
       timestamp: Number(targetTime.toFixed(3)),
       originalDataUrl: dataUrl,
       transparentDataUrl: dataUrl,
+      cropRect: {
+        x: Number(cropX.toFixed(1)),
+        y: Number(cropY.toFixed(1)),
+        width: Number(cropW.toFixed(1)),
+        height: Number(cropH.toFixed(1)),
+      },
       durationMs: Math.round(1000 / fps),
       offsetX: 0,
       offsetY: 0,
@@ -136,42 +232,66 @@ export async function extractFramesClientSide(
 }
 
 /**
- * Extracts frames via FFmpeg 8.0.1 Backend API endpoint
+ * Extracts frames via multi-threaded FFmpeg Backend API endpoint (RTX 3060 / CPU Multi-threading)
  */
 export async function extractFramesFFmpegBackend(
   videoDataUrl: string,
   options: VideoExtractOptions
 ): Promise<VideoSliceFrame[]> {
   const apiUrl = getAIMattingApiUrl();
+
+  // Convert blob URL to Base64 MP4 before transmission
+  const base64Video = await blobUrlToBase64(videoDataUrl);
+
   const res = await fetch(`${apiUrl}/api/video/extract-frames`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      video_data_url: videoDataUrl,
+      video: base64Video,
+      video_data_url: base64Video,
       fps: options.fps,
+      startTime: options.startTime,
       start_time: options.startTime,
+      endTime: options.endTime,
       end_time: options.endTime,
+      maxFrames: options.maxFrames || 500,
+      max_frames: options.maxFrames || 500,
       crop: options.crop,
     }),
   });
 
   if (!res.ok) {
     const errJson = await res.json().catch(() => ({}));
-    throw new Error(errJson.detail || 'Lỗi từ máy chủ FFmpeg trích xuất video');
+    throw new Error(errJson.error || errJson.detail || 'Lỗi từ máy chủ FFmpeg trích xuất video');
   }
 
   const data = await res.json();
-  return (data.frames || []).map((f: any, idx: number) => ({
-    id: `ffmpeg_${idx}_${Date.now()}`,
-    index: idx,
-    timestamp: f.timestamp || idx * (1 / options.fps),
-    originalDataUrl: f.data_url,
-    transparentDataUrl: f.data_url,
-    durationMs: Math.round(1000 / options.fps),
-    offsetX: 0,
-    offsetY: 0,
-    scale: 1.0,
-    rotation: 0,
-    flipX: false,
-  }));
+  const rawFrames: any[] = data.frames || [];
+
+  if (rawFrames.length === 0) {
+    throw new Error('Máy chủ FFmpeg không trả về khung hình nào');
+  }
+
+  return rawFrames.map((f: any, idx: number) => {
+    const url = typeof f === 'string' ? f : f.data_url;
+    const ts =
+      typeof f === 'string'
+        ? options.startTime + idx * (1 / options.fps)
+        : f.timestamp ?? options.startTime + idx * (1 / options.fps);
+
+    return {
+      id: `ffmpeg_${idx}_${Date.now()}`,
+      index: idx,
+      timestamp: Number(Number(ts).toFixed(3)),
+      originalDataUrl: url,
+      transparentDataUrl: url,
+      cropRect: options.crop || { x: 0, y: 0, width: 0, height: 0 },
+      durationMs: Math.round(1000 / options.fps),
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1.0,
+      rotation: 0,
+      flipX: false,
+    };
+  });
 }

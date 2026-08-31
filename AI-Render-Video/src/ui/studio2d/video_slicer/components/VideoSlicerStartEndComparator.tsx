@@ -1,6 +1,6 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Slicer Start & End Frame Thumbnail Cards (High-Resolution Aspect-Ratio Fit)
+// Video Slicer Start & End Frame Thumbnail Cards (High-Resolution Percentage BBox Crop)
 // =========================================================================================
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Eye } from 'lucide-react';
@@ -20,7 +20,6 @@ export const VideoSlicerFrameCard: React.FC<FrameCardProps> = ({
   type,
   timestamp,
   thumbUrl,
-  aspectRatio,
   onSeek,
   maxHeight = 400,
   maxWidth = 240,
@@ -133,6 +132,7 @@ export const VideoSlicerFrameCard: React.FC<FrameCardProps> = ({
 
 /**
  * Helper hook to capture high-res thumbnails for start & end timestamps
+ * Handles percentage-based BBox cropping accurately
  */
 export function useStartEndThumbnails(
   videoSourceUrl: string,
@@ -177,20 +177,29 @@ export function useStartEndThumbnails(
             const vw = video.videoWidth || 640;
             const vh = video.videoHeight || 480;
 
-            let sx = 0, sy = 0, sw = vw, sh = vh;
-            if (activeBBox && activeBBox.width > 10 && activeBBox.height > 10) {
-              sx = Math.max(0, Math.min(activeBBox.x, vw - 10));
-              sy = Math.max(0, Math.min(activeBBox.y, vh - 10));
-              sw = Math.min(activeBBox.width, vw - sx);
-              sh = Math.min(activeBBox.height, vh - sy);
+            let sx = 0,
+              sy = 0,
+              sw = vw,
+              sh = vh;
+
+            if (activeBBox && activeBBox.width > 0 && activeBBox.height > 0) {
+              const isPct = activeBBox.width <= 100 && activeBBox.height <= 100;
+              const rawX = isPct ? (activeBBox.x / 100) * vw : activeBBox.x;
+              const rawY = isPct ? (activeBBox.y / 100) * vh : activeBBox.y;
+              const rawW = isPct ? (activeBBox.width / 100) * vw : activeBBox.width;
+              const rawH = isPct ? (activeBBox.height / 100) * vh : activeBBox.height;
+
+              sx = Math.max(0, Math.min(rawX, vw - 10));
+              sy = Math.max(0, Math.min(rawY, vh - 10));
+              sw = Math.max(10, Math.min(rawW, vw - sx));
+              sh = Math.max(10, Math.min(rawH, vh - sy));
             }
 
             const canvas = document.createElement('canvas');
-            // Max dimension 320 for high-resolution crisp thumbnail
-            const maxDim = 320;
+            const maxDim = 360;
             const scale = Math.min(1, maxDim / Math.max(sw, sh));
-            canvas.width = Math.round(sw * scale);
-            canvas.height = Math.round(sh * scale);
+            canvas.width = Math.max(10, Math.round(sw * scale));
+            canvas.height = Math.max(10, Math.round(sh * scale));
 
             const ctx = canvas.getContext('2d');
             if (!ctx) {
@@ -210,7 +219,7 @@ export function useStartEndThumbnails(
           timeoutId = setTimeout(() => {
             video.removeEventListener('seeked', onSeeked);
             resolve({ url: '', buffer: null });
-          }, 200);
+          }, 250);
         });
       };
 
@@ -244,7 +253,7 @@ export function useStartEndThumbnails(
       } catch (err) {
         console.warn('Error extracting start/end thumbnails:', err);
       }
-    }, 80);
+    }, 30);
 
     return () => {
       isCancelled = true;

@@ -1,8 +1,8 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Slicer Interactive Canvas Stage (Light/Dark Caro & 4-Corner Percentage BBox)
+// Video Slicer Interactive Canvas Stage (Seamless Playback Without Frame Shrinking)
 // =========================================================================================
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   ZoomIn,
   ZoomOut,
@@ -32,9 +32,9 @@ export interface VideoSlicerCanvasStageProps {
   isLooping: boolean;
   setIsLooping: (loop: boolean) => void;
 
-  // Auto Loop Matcher Props
-  isAutoFindEnd: boolean;
-  setIsAutoFindEnd: (v: boolean) => void;
+  // Manual Loop Matcher Props
+  isScanByBBox: boolean;
+  setIsScanByBBox: (v: boolean) => void;
   maxSearchDuration: number;
   setMaxSearchDuration: (v: number) => void;
   isSearchingEnd: boolean;
@@ -42,7 +42,6 @@ export interface VideoSlicerCanvasStageProps {
   searchStatusText: string;
   onTriggerSearchEnd: () => void;
   onStopSearch: () => void;
-  onStartPinReleased: (newStartTime: number) => void;
 
   frames: VideoSliceFrame[];
   frameOrder: number[];
@@ -73,8 +72,8 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   onTogglePlayVideo,
   isLooping,
   setIsLooping,
-  isAutoFindEnd,
-  setIsAutoFindEnd,
+  isScanByBBox,
+  setIsScanByBBox,
   maxSearchDuration,
   setMaxSearchDuration,
   isSearchingEnd,
@@ -82,7 +81,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   searchStatusText,
   onTriggerSearchEnd,
   onStopSearch,
-  onStartPinReleased,
   frames,
   frameOrder,
   selectedFrameIndex,
@@ -108,12 +106,15 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   const [isBlinking, setIsBlinking] = useState<boolean>(false);
   const [blinkFrame, setBlinkFrame] = useState<'start' | 'end'>('start');
 
+  // Should we show/use BBox?
+  const shouldShowBBox = isBBoxCropMode || isScanByBBox;
+
   // Extract Start & End Frame Thumbnails & Similarity Score
   const { startThumb, endThumb, similarityScore } = useStartEndThumbnails(
     videoMetadata?.dataUrl || '',
     startTime,
     endTime,
-    isBBoxCropMode ? activeBBox : null
+    shouldShowBBox ? activeBBox : null
   );
 
   // BBox dragging & resizing
@@ -125,9 +126,29 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   // Check if video is Vertical / Portrait (Height >= Width)
   const isPortrait = (videoMetadata?.height || 0) >= (videoMetadata?.width || 0);
 
-  // Current active frame
+  // Compute fixed, rock-solid stage viewport dimensions
+  const { stageWidth, stageHeight } = useMemo(() => {
+    const vw = videoMetadata?.width || 640;
+    const vh = videoMetadata?.height || 480;
+    const aspect = vw / vh;
+    const maxH = 430;
+    const maxW = 600;
+
+    let w = maxH * aspect;
+    let h = maxH;
+    if (w > maxW) {
+      w = maxW;
+      h = maxW / aspect;
+    }
+    return {
+      stageWidth: Math.max(160, Math.round(w)),
+      stageHeight: Math.max(160, Math.round(h)),
+    };
+  }, [videoMetadata?.width, videoMetadata?.height]);
+
+  // Current active frame index (strictly maps to actual frame)
   const currentFrameIndex = isAnimationPlaying
-    ? frameOrder[activePlaybackIndex] ?? 0
+    ? activePlaybackIndex
     : selectedFrameIndex !== null
     ? selectedFrameIndex
     : 0;
@@ -135,12 +156,8 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   const currentFrame = frames[currentFrameIndex] || null;
 
   // Previous frame for onion skinning
-  const prevFrameIndex = isAnimationPlaying
-    ? frameOrder[(activePlaybackIndex - 1 + frameOrder.length) % frameOrder.length]
-    : currentFrameIndex > 0
-    ? currentFrameIndex - 1
-    : null;
-  const prevFrame = prevFrameIndex !== null ? frames[prevFrameIndex] : null;
+  const prevFrameIndex = currentFrameIndex > 0 ? currentFrameIndex - 1 : frames.length - 1;
+  const prevFrame = frames.length > 1 ? frames[prevFrameIndex] : null;
 
   // Zoom handlers
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 4.0));
@@ -325,7 +342,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
               }}
             >
               <Sparkles size={11} />
-              Độ Khớp Start/End: {similarityScore}%
+              Độ Khớp {shouldShowBBox ? 'BBox' : 'Start/End'}: {similarityScore}%
             </span>
           )}
 
@@ -425,7 +442,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
           {/* 1. VIEW MODE = LIVE VIDEO WITH ADAPTIVE PREVIEWS */}
           {viewMode === 'video' && videoMetadata ? (
             isPortrait ? (
-              /* ─── 1A. VERTICAL LAYOUT: END (Left) - VIDEO (Center) - START (Right) ─── */
+              /* ─── 1A. VERTICAL LAYOUT: START (Left) - VIDEO (Center) - END (Right) ─── */
               <div
                 style={{
                   display: 'flex',
@@ -435,11 +452,11 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   gap: 16,
                 }}
               >
-                {/* Left Column: End Frame Card */}
+                {/* Left Column: Start Frame Card */}
                 <VideoSlicerFrameCard
-                  type="end"
-                  timestamp={endTime}
-                  thumbUrl={endThumb}
+                  type="start"
+                  timestamp={startTime}
+                  thumbUrl={startThumb}
                   aspectRatio={videoMetadata.width / videoMetadata.height}
                   onSeek={onUserSeekVideoTime}
                   maxHeight={430}
@@ -548,7 +565,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   )}
 
                   {/* Interactive Percentage-Based 4-Corner BBox Overlay on Video */}
-                  {isBBoxCropMode && activeBBox && !isBlinking && (
+                  {shouldShowBBox && activeBBox && !isBlinking && (
                     <div
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => handleBBoxMouseDown(e, 'move')}
@@ -566,7 +583,23 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                         boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
                       }}
                     >
-                      {/* 4 Corner Large Handles (12x12px) */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: -18,
+                          left: 0,
+                          background: '#f59e0b',
+                          color: '#000',
+                          fontSize: 8.5,
+                          fontWeight: 800,
+                          padding: '1px 5px',
+                          borderRadius: 3,
+                          pointerEvents: 'none',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        🎯 Khung So Khớp BBox
+                      </div>
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'nw')} style={{ position: 'absolute', top: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'ne')} style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nesw-resize', borderRadius: 2 }} />
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'se')} style={{ position: 'absolute', bottom: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
@@ -575,11 +608,11 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   )}
                 </div>
 
-                {/* Right Column: Start Frame Card */}
+                {/* Right Column: End Frame Card */}
                 <VideoSlicerFrameCard
-                  type="start"
-                  timestamp={startTime}
-                  thumbUrl={startThumb}
+                  type="end"
+                  timestamp={endTime}
+                  thumbUrl={endThumb}
                   aspectRatio={videoMetadata.width / videoMetadata.height}
                   onSeek={onUserSeekVideoTime}
                   maxHeight={430}
@@ -721,7 +754,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   )}
 
                   {/* Interactive 4-Corner BBox Overlay */}
-                  {isBBoxCropMode && activeBBox && !isBlinking && (
+                  {shouldShowBBox && activeBBox && !isBlinking && (
                     <div
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => handleBBoxMouseDown(e, 'move')}
@@ -739,6 +772,23 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                         boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
                       }}
                     >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: -18,
+                          left: 0,
+                          background: '#f59e0b',
+                          color: '#000',
+                          fontSize: 8.5,
+                          fontWeight: 800,
+                          padding: '1px 5px',
+                          borderRadius: 3,
+                          pointerEvents: 'none',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        🎯 Khung So Khớp BBox
+                      </div>
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'nw')} style={{ position: 'absolute', top: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'ne')} style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nesw-resize', borderRadius: 2 }} />
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'se')} style={{ position: 'absolute', bottom: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
@@ -749,11 +799,13 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
               </div>
             )
           ) : viewMode === 'frames' && currentFrame ? (
-            /* ─── 2. VIEW MODE = FRAMES WITH ZOOM/PAN & LIGHT/DARK CARO ─── */
+            /* ─── 2. VIEW MODE = FRAMES WITH FIXED-DIMENSION JITTER-FREE VIEWPORT ─── */
             <div
               ref={mediaContainerRef}
               style={{
                 position: 'relative',
+                width: stageWidth,
+                height: stageHeight,
                 backgroundImage: checkerTheme === 'light' ? checkerLight : checkerDark,
                 backgroundSize: '16px 16px',
                 backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
@@ -761,7 +813,10 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                 borderRadius: 6,
                 boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)',
                 overflow: 'visible',
-                display: 'inline-block',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
               }}
             >
               {/* Onion Skin Frame */}
@@ -778,6 +833,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                     inset: 0,
                     width: '100%',
                     height: '100%',
+                    objectFit: 'contain',
                     opacity: 0.35,
                     filter: 'hue-rotate(180deg)',
                     pointerEvents: 'none',
@@ -786,26 +842,28 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                 />
               )}
 
-              {/* Main Frame Image */}
+              {/* Main Frame Image: strictly avoids demo preview during playback */}
               <img
                 src={
                   previewDisplayMode === 'transparent'
-                    ? (selectedFrameIndex === currentFrameIndex && demoPeeledUrl) || currentFrame.transparentDataUrl
+                    ? (!isAnimationPlaying && selectedFrameIndex === currentFrameIndex && demoPeeledUrl
+                        ? demoPeeledUrl
+                        : currentFrame.transparentDataUrl)
                     : currentFrame.originalDataUrl
                 }
                 alt={`Frame ${currentFrameIndex + 1}`}
                 style={{
-                  display: 'block',
-                  maxWidth: '650px',
-                  maxHeight: '430px',
+                  width: '100%',
+                  height: '100%',
                   objectFit: 'contain',
+                  display: 'block',
                   pointerEvents: 'none',
                   transform: `translate(${currentFrame.offsetX}px, ${currentFrame.offsetY}px) scale(${currentFrame.scale}) rotate(${currentFrame.rotation}deg) ${currentFrame.flipX ? 'scaleX(-1)' : ''}`,
                 }}
               />
 
               {/* Percentage-Based 4-Corner BBox on Frame */}
-              {isBBoxCropMode && activeBBox && (
+              {shouldShowBBox && activeBBox && (
                 <div
                   onMouseDown={(e) => handleBBoxMouseDown(e, 'move')}
                   style={{
@@ -822,6 +880,23 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                     boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
                   }}
                 >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: -18,
+                      left: 0,
+                      background: '#f59e0b',
+                      color: '#000',
+                      fontSize: 8.5,
+                      fontWeight: 800,
+                      padding: '1px 5px',
+                      borderRadius: 3,
+                      pointerEvents: 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🎯 Khung So Khớp BBox
+                  </div>
                   <div onMouseDown={(e) => handleBBoxMouseDown(e, 'nw')} style={{ position: 'absolute', top: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
                   <div onMouseDown={(e) => handleBBoxMouseDown(e, 'ne')} style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nesw-resize', borderRadius: 2 }} />
                   <div onMouseDown={(e) => handleBBoxMouseDown(e, 'se')} style={{ position: 'absolute', bottom: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
@@ -855,8 +930,8 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
           onTogglePlayVideo={onTogglePlayVideo}
           isLooping={isLooping}
           setIsLooping={setIsLooping}
-          isAutoFindEnd={isAutoFindEnd}
-          setIsAutoFindEnd={setIsAutoFindEnd}
+          isScanByBBox={isScanByBBox}
+          setIsScanByBBox={setIsScanByBBox}
           maxSearchDuration={maxSearchDuration}
           setMaxSearchDuration={setMaxSearchDuration}
           isSearchingEnd={isSearchingEnd}
@@ -864,7 +939,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
           searchStatusText={searchStatusText}
           onTriggerSearchEnd={onTriggerSearchEnd}
           onStopSearch={onStopSearch}
-          onStartPinReleased={onStartPinReleased}
         />
       )}
 

@@ -1,9 +1,11 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Tab 1.3: Video Animation Slicer & Chroma Peeling Studio (FFmpeg 8.0.1 Engine)
+// Tab 1.3: Video Animation Slicer Studio (Accurate Visible Frame Index Mapping)
 // =========================================================================================
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { VideoSliceFrame } from '../../../types/video_slicer';
+import { AnimationSliceFrame } from '../../../types/animation_slicer';
 import { useVideoExtractor } from './hooks/useVideoExtractor';
 import { useVideoChromaPeeling } from './hooks/useVideoChromaPeeling';
 import { useVideoBBoxCrop } from './hooks/useVideoBBoxCrop';
@@ -13,6 +15,7 @@ import { VideoSlicerSidebar } from './components/VideoSlicerSidebar';
 import { VideoSlicerCanvasStage } from './components/VideoSlicerCanvasStage';
 import { VideoSlicerPropertiesPanel } from './components/VideoSlicerPropertiesPanel';
 import { VideoSlicerFilmstripBar } from './components/VideoSlicerFilmstripBar';
+import { AnimationPoseSaveModal } from '../animation_slicer/components/AnimationPoseSaveModal';
 
 export interface VideoAnimationSlicerTabProps {
   onTransferToAnimSlicer?: (data: { frames: string[] }) => void;
@@ -23,6 +26,19 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
   onTransferToAnimSlicer,
   externalVideoUrl,
 }) => {
+  // Toast Notification State
+  const [toastMessage, setToastMessage] = useState<{
+    text: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+
+  const showToast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => {
+      setToastMessage((cur) => (cur?.text === text ? null : cur));
+    }, 3500);
+  }, []);
+
   // 1. Video Extractor & Live Continuous Video Player Hook
   const {
     videoMetadata,
@@ -94,10 +110,12 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     selectedFrameIndex,
   });
 
-  // 3. BBox Video Cropping Hook
+  // 3. BBox Video Cropping Hook (Crops Both URLs and Provides Live Loading Counter)
   const {
     isBBoxCropMode,
     setIsBBoxCropMode,
+    isCroppingBBox,
+    cropStatusText: cropBBoxStatusText,
     handleAutoTrimAllFramesBBox,
     handleApplyCropBoxToAllFrames,
   } = useVideoBBoxCrop({
@@ -105,10 +123,10 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     setFrames,
   });
 
-  // 4. Auto Loop Frame Matcher Hook (Customizable Duration Search)
+  // 4. Manual Loop Frame Matcher Hook (Search from Start Pin with Best Match Selection)
   const {
-    isAutoFindEnd,
-    setIsAutoFindEnd,
+    isScanByBBox,
+    setIsScanByBBox,
     maxSearchDuration,
     setMaxSearchDuration,
     isSearchingEnd,
@@ -116,7 +134,6 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     searchStatusText,
     handleTriggerSearchEnd,
     handleStopSearch,
-    handleStartPinReleased,
   } = useVideoLoopMatcher();
 
   // 5. Pipeline All-in-One Mode States
@@ -136,16 +153,31 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
   const [checkerTheme, setCheckerTheme] = useState<'dark' | 'light'>('dark');
   const animPlaybackTimerRef = useRef<any>(null);
 
-  // Handle Animation Playback Loop: strictly adheres to each frame's own durationMs (Column 3)
+  // 7. Save Action Modal State (Like Tab 1.2)
+  const [isSavePoseModalOpen, setIsSavePoseModalOpen] = useState<boolean>(false);
+
+  // Filter visible active frames (excluding hidden frames)
+  const activeVisibleOrder = useMemo(() => {
+    return frameOrder.filter((idx) => !frames[idx]?.hidden);
+  }, [frameOrder, frames]);
+
+  // Map loop sequence step to actual frame index
+  const activePlaybackFrameIndex = useMemo(() => {
+    if (activeVisibleOrder.length === 0) return 0;
+    return activeVisibleOrder[activePlaybackIndex % activeVisibleOrder.length] ?? 0;
+  }, [activeVisibleOrder, activePlaybackIndex]);
+
+  // Handle Animation Playback Loop: strictly skips hidden frames & adheres to individual durationMs
   useEffect(() => {
-    if (isAnimationPlaying && frameOrder.length > 0) {
-      const currentFrame = frames[frameOrder[activePlaybackIndex]];
+    if (isAnimationPlaying && activeVisibleOrder.length > 0) {
+      const currentIdx = activeVisibleOrder[activePlaybackIndex % activeVisibleOrder.length];
+      const currentFrame = frames[currentIdx];
       const baseDuration = currentFrame?.durationMs || Math.round(1000 / targetFps);
       const speedScale = playbackFps > 0 ? 12 / playbackFps : 1;
       const duration = Math.max(16, Math.round(baseDuration * speedScale));
 
       animPlaybackTimerRef.current = setTimeout(() => {
-        setActivePlaybackIndex((prev) => (prev + 1) % frameOrder.length);
+        setActivePlaybackIndex((prev) => (prev + 1) % activeVisibleOrder.length);
       }, duration);
     }
 
@@ -154,10 +186,22 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
         clearTimeout(animPlaybackTimerRef.current);
       }
     };
-  }, [isAnimationPlaying, activePlaybackIndex, frameOrder, frames, targetFps, playbackFps]);
+  }, [isAnimationPlaying, activePlaybackIndex, activeVisibleOrder, frames, targetFps, playbackFps]);
 
   /**
-   * Triggers manual or auto search for best matching end frame
+   * Toggle Frame Visibility (Eye icon)
+   */
+  const handleToggleHideFrame = useCallback(
+    (index: number) => {
+      setFrames((prev) =>
+        prev.map((f, idx) => (idx === index ? { ...f, hidden: !f.hidden } : f))
+      );
+    },
+    [setFrames]
+  );
+
+  /**
+   * Triggers manual search for best matching end frame starting from Start timestamp
    */
   const handlePerformSearchEnd = useCallback(() => {
     if (!videoMetadata) return;
@@ -171,22 +215,8 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     );
   }, [videoMetadata, startTime, videoCropBBox, handleTriggerSearchEnd, setEndTime, maxSearchDuration]);
 
-  const handleStartPinReleaseAction = useCallback(
-    (newStartTime: number) => {
-      if (!videoMetadata) return;
-      handleStartPinReleased(
-        videoMetadata.dataUrl,
-        newStartTime,
-        videoMetadata.duration,
-        videoCropBBox,
-        (foundEnd) => setEndTime(foundEnd)
-      );
-    },
-    [videoMetadata, videoCropBBox, handleStartPinReleased, setEndTime]
-  );
-
   /**
-   * Individual Action: Apply Extract Original Video Frames ONLY (Does NOT peel background)
+   * Individual Action: Apply Extract Original Video Frames ONLY
    */
   const handleApplyExtractOnly = useCallback(async () => {
     setPreviewDisplayMode('original');
@@ -219,7 +249,6 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     setPipelineStatusText('Đang khởi chạy quy trình liên hoàn...');
 
     try {
-      // Step 1: Extract frames (crop with BBox if pipelineIncludeBBox is active)
       let currentExtractedFrames: VideoSliceFrame[] = [];
       if (pipelineIncludeExtract) {
         setPipelineStatusText('Bước 1/3: Đang trích xuất frame từ video...');
@@ -233,13 +262,11 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
         throw new Error('Chưa có frame nào được trích xuất');
       }
 
-      // Step 2: Crop to BBox if not already cropped during extraction
       if (pipelineIncludeBBox && videoCropBBox && !pipelineIncludeExtract) {
         setPipelineStatusText('Bước 2/3: Đang cắt khung BBox cho các frame...');
         await handleApplyCropBoxToAllFrames(videoCropBBox);
       }
 
-      // Step 3: Chroma Key background peeling
       if (pipelineIncludeChroma) {
         setPipelineStatusText('Bước 3/3: Đang bóc nền trong suốt...');
         await handleApplyChromaToAllFrames();
@@ -252,7 +279,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
       setPipelineStatusText('✓ Hoàn tất xử lý đồng thời tất cả các bước!');
       setTimeout(() => setPipelineStatusText(''), 3000);
     } catch (err: any) {
-      alert(`Lỗi trong quy trình xử lý: ${err.message}`);
+      showToast(`Lỗi quy trình: ${err.message}`, 'error');
     } finally {
       setIsPipelineRunning(false);
     }
@@ -267,6 +294,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     handleApplyCropBoxToAllFrames,
     handleApplyChromaToAllFrames,
     setViewMode,
+    showToast,
   ]);
 
   // Frame Transform / Property update
@@ -310,22 +338,6 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     [setFrames]
   );
 
-  // Duplicate frame
-  const handleDuplicateFrame = useCallback(
-    (index: number) => {
-      const target = frames[index];
-      if (!target) return;
-      const duplicated: VideoSliceFrame = {
-        ...target,
-        id: `dup_${target.id}_${Date.now()}`,
-        index: frames.length,
-      };
-      setFrames((prev) => [...prev, duplicated]);
-      setFrameOrder((prev) => [...prev, frames.length]);
-    },
-    [frames, setFrames, setFrameOrder]
-  );
-
   // Delete frame
   const handleDeleteFrame = useCallback(
     (index: number) => {
@@ -355,15 +367,16 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     [frameOrder, setFrameOrder]
   );
 
-  // Export Spritesheet PNG
+  // Export Spritesheet PNG (Excludes hidden frames)
   const handleExportSpriteSheet = useCallback(async () => {
-    if (frames.length === 0) return;
+    const visibleFrames = frames.filter((f) => !f.hidden);
+    if (visibleFrames.length === 0) return;
 
-    const cols = Math.min(frames.length, 6);
-    const rows = Math.ceil(frames.length / cols);
+    const cols = Math.min(visibleFrames.length, 6);
+    const rows = Math.ceil(visibleFrames.length / cols);
 
     const loadedImgs: HTMLImageElement[] = await Promise.all(
-      frames.map(async (f) => {
+      visibleFrames.map(async (f) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         await new Promise<void>((res) => {
@@ -384,7 +397,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     const ctx = sheetCanvas.getContext('2d');
     if (!ctx) return;
 
-    frames.forEach((_, idx) => {
+    visibleFrames.forEach((_, idx) => {
       const img = loadedImgs[idx];
       if (!img) return;
       const col = idx % cols;
@@ -396,7 +409,27 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     link.download = `video_spritesheet_${Date.now()}.png`;
     link.href = sheetCanvas.toDataURL('image/png');
     link.click();
-  }, [frames, previewDisplayMode]);
+    showToast(`✓ Đã xuất Spritesheet thành công (${visibleFrames.length} frame)!`, 'success');
+  }, [frames, previewDisplayMode, showToast]);
+
+  // Convert visible frames to Tab 1.2 AnimationSliceFrame format for SavePoseModal
+  const saveModalFrames: AnimationSliceFrame[] = useMemo(() => {
+    return frames
+      .filter((f) => !f.hidden)
+      .map((f, idx) => ({
+        id: f.id,
+        index: idx,
+        originalDataUrl: f.originalDataUrl,
+        transparentDataUrl: f.transparentDataUrl,
+        cropRect: f.cropRect,
+        offsetX: f.offsetX,
+        offsetY: f.offsetY,
+        scale: f.scale,
+        rotation: f.rotation,
+        flipX: f.flipX,
+        durationMs: f.durationMs,
+      }));
+  }, [frames]);
 
   // Reset workspace
   const handleReset = useCallback(() => {
@@ -420,8 +453,48 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
         background: '#0b0f19',
         overflow: 'hidden',
         boxSizing: 'border-box',
+        position: 'relative',
       }}
     >
+      {/* ─── FLOATING TOAST NOTIFICATION BANNER ───────────────── */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999999,
+            background:
+              toastMessage.type === 'error'
+                ? 'rgba(220, 38, 38, 0.95)'
+                : toastMessage.type === 'info'
+                ? 'rgba(2, 132, 199, 0.95)'
+                : 'rgba(16, 185, 129, 0.95)',
+            backdropFilter: 'blur(12px)',
+            color: '#fff',
+            padding: '9px 18px',
+            borderRadius: 8,
+            fontSize: 11.5,
+            fontWeight: 700,
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            pointerEvents: 'none',
+          }}
+        >
+          {toastMessage.type === 'error' ? (
+            <AlertCircle size={15} />
+          ) : toastMessage.type === 'info' ? (
+            <Info size={15} />
+          ) : (
+            <CheckCircle2 size={15} />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
       {/* ─── TOP HEADER BAR ────────────────────────────────────── */}
       <VideoSlicerHeaderBar
         videoMetadata={videoMetadata}
@@ -445,12 +518,13 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           setCheckerTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
         }}
         onExportSpriteSheet={handleExportSpriteSheet}
+        onOpenSavePoseModal={() => setIsSavePoseModalOpen(true)}
         onTransferToAnimSlicer={
           onTransferToAnimSlicer && frames.length > 0
             ? () => {
-                const urls = frames.map((f) =>
-                  previewDisplayMode === 'transparent' ? f.transparentDataUrl : f.originalDataUrl
-                );
+                const urls = frames
+                  .filter((f) => !f.hidden)
+                  .map((f) => (previewDisplayMode === 'transparent' ? f.transparentDataUrl : f.originalDataUrl));
                 onTransferToAnimSlicer({ frames: urls });
               }
             : undefined
@@ -525,6 +599,8 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           isEyedropperActive={isEyedropperActive}
           isBBoxCropMode={isBBoxCropMode}
           setIsBBoxCropMode={setIsBBoxCropMode}
+          isCroppingBBox={isCroppingBBox}
+          cropBBoxStatusText={cropBBoxStatusText}
           onApplyBBoxCropOnly={() => {
             if (videoCropBBox) handleApplyCropBoxToAllFrames(videoCropBBox);
           }}
@@ -547,8 +623,8 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           onTogglePlayVideo={handleTogglePlayVideo}
           isLooping={isLooping}
           setIsLooping={setIsLooping}
-          isAutoFindEnd={isAutoFindEnd}
-          setIsAutoFindEnd={setIsAutoFindEnd}
+          isScanByBBox={isScanByBBox}
+          setIsScanByBBox={setIsScanByBBox}
           maxSearchDuration={maxSearchDuration}
           setMaxSearchDuration={setMaxSearchDuration}
           isSearchingEnd={isSearchingEnd}
@@ -556,11 +632,10 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           searchStatusText={searchStatusText}
           onTriggerSearchEnd={handlePerformSearchEnd}
           onStopSearch={handleStopSearch}
-          onStartPinReleased={handleStartPinReleaseAction}
           frames={frames}
           frameOrder={frameOrder}
           selectedFrameIndex={selectedFrameIndex}
-          activePlaybackIndex={activePlaybackIndex}
+          activePlaybackIndex={activePlaybackFrameIndex}
           isAnimationPlaying={isAnimationPlaying}
           demoPeeledUrl={demoPeeledUrl}
           onionSkinMode={onionSkinMode}
@@ -579,7 +654,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           onUpdateFrameTransform={handleUpdateFrameTransform}
           onApplyTransformToAll={handleApplyTransformToAll}
           onSetAllDuration={handleSetAllDuration}
-          onDuplicateFrame={handleDuplicateFrame}
+          onToggleHideFrame={handleToggleHideFrame}
           onDeleteFrame={handleDeleteFrame}
         />
       </div>
@@ -598,9 +673,29 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           setViewMode('frames');
         }}
         onMoveFrame={handleMoveFrame}
-        onDuplicateFrame={handleDuplicateFrame}
+        onToggleHideFrame={handleToggleHideFrame}
         onDeleteFrame={handleDeleteFrame}
       />
+
+      {/* ─── TAB 1.2 SAVE ANIMATION POSE MODAL ────────────────── */}
+      {isSavePoseModalOpen && (
+        <AnimationPoseSaveModal
+          isOpen={isSavePoseModalOpen}
+          onClose={() => setIsSavePoseModalOpen(false)}
+          frames={saveModalFrames}
+          frameOrder={saveModalFrames.map((_, i) => i)}
+          fps={playbackFps}
+          loopMode="loop"
+          onSaveSuccess={(payload) => {
+            setIsSavePoseModalOpen(false);
+            const poseName = payload.poseName || payload.folderSlug || 'Động tác';
+            showToast(
+              `✓ Đã lưu thành công động tác "${poseName}" (${payload.frames?.length || 0} frame, góc ${payload.angleDeg || 0}°) vào thư viện!`,
+              'success'
+            );
+          }}
+        />
+      )}
     </div>
   );
 };
