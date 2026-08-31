@@ -51,29 +51,29 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 6,
+        gap: 5,
         background: 'rgba(9, 13, 22, 0.95)',
         border: '1px solid rgba(56, 189, 248, 0.25)',
         borderRadius: 8,
-        padding: 8,
+        padding: '6px 8px',
         height: '100%',
         overflow: 'hidden',
       }}
     >
       {/* Top Filmstrip Header & Sequence Order Presets */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, height: 26 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
             <Layers size={12} /> CHUỖI FRAME HOẠT ẢNH ({frames.length} frames):
           </span>
           <span style={{ fontSize: 9.5, color: '#facc15', fontWeight: 600 }}>
-            ⏱️ Tổng thời lượng: {(totalDurationMs / 1000).toFixed(2)}s
+            ⏱️ Tổng: {(totalDurationMs / 1000).toFixed(2)}s
           </span>
         </div>
 
         {/* Quick Sequence & Onion Skin Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          {/* Onion Skin Mode Switcher (Right to the left of Loop button) */}
+          {/* Onion Skin Mode Switcher */}
           <button
             onClick={onToggleOnionSkinMode}
             title="Chuyển chế độ Bóng ma: Bóng Ma Tuần Tự (F-1) -> Chồng Tất Cả -> Tắt Bóng Ma"
@@ -81,7 +81,7 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: 4,
               fontSize: 9.5,
               fontWeight: 700,
@@ -96,12 +96,12 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
               boxShadow: onionSkinMode === 'sequential' ? '0 2px 8px rgba(56, 189, 248, 0.4)' : 'none',
             }}
           >
-            <Layers size={11} />
+            <Layers size={10} />
             <span>
               {onionSkinMode === 'sequential'
-                ? '👻 Bóng Ma Tuần Tự (F-1)'
+                ? '👻 Bóng Ma F-1'
                 : onionSkinMode === 'all'
-                ? '👻 Chồng Tất Cả Frame'
+                ? '👻 Chồng Tất Cả'
                 : 'Tắt Bóng Ma'}
             </span>
           </button>
@@ -113,7 +113,7 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
               display: 'flex',
               alignItems: 'center',
               gap: 3,
-              padding: '3px 8px',
+              padding: '2px 7px',
               borderRadius: 4,
               fontSize: 9.5,
               fontWeight: 600,
@@ -123,14 +123,14 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
               cursor: 'pointer',
             }}
           >
-            <Repeat size={10} /> {loopMode === 'ping_pong' ? 'Lặp Ping-Pong' : 'Lặp Tuần Hoàn'}
+            <Repeat size={10} /> {loopMode === 'ping_pong' ? 'Ping-Pong' : 'Lặp Tuần Hoàn'}
           </button>
 
           <button
             onClick={() => onUpdateFrameOrder(frames.map((_, i) => i))}
             title="Khôi phục thứ tự 1 -> 2 -> 3 -> 4"
             style={{
-              padding: '3px 6px',
+              padding: '2px 6px',
               borderRadius: 4,
               fontSize: 9,
               background: 'rgba(255,255,255,0.05)',
@@ -150,7 +150,7 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
             }}
             title="Chuỗi Ping-Pong (1->2->3->4->3->2)"
             style={{
-              padding: '3px 6px',
+              padding: '2px 6px',
               borderRadius: 4,
               fontSize: 9,
               background: 'rgba(168, 85, 247, 0.15)',
@@ -159,7 +159,7 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
               cursor: 'pointer',
             }}
           >
-            Chuỗi Ping-Pong
+            Ping-Pong
           </button>
         </div>
       </div>
@@ -169,13 +169,14 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
         style={{
           flex: 1,
           display: 'flex',
-          gap: 8,
+          gap: 6,
           overflowX: 'auto',
-          padding: '4px 2px',
+          overflowY: 'hidden',
+          padding: '2px 4px',
           background: 'rgba(2, 6, 23, 0.6)',
           borderRadius: 6,
           border: '1px solid rgba(255,255,255,0.05)',
-          alignItems: 'center',
+          alignItems: 'stretch',
         }}
       >
         {frames.map((f, idx) => {
@@ -190,15 +191,17 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 3,
-                padding: 4,
+                justifyContent: 'space-between',
+                gap: 2,
+                padding: '3px 4px',
                 borderRadius: 6,
                 background: isSelected ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255,255,255,0.02)',
                 border: isSelected
                   ? '2px solid #38bdf8'
                   : '1px solid rgba(255,255,255,0.08)',
                 cursor: 'pointer',
-                minWidth: 80,
+                minWidth: 84,
+                width: 84,
                 flexShrink: 0,
                 transition: 'all 0.12s ease',
                 position: 'relative',
@@ -210,8 +213,21 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
                 <span style={{ color: '#4ade80' }}>⏱️ {fDurSec}s</span>
               </div>
 
-              {/* Thumbnail */}
-              <div style={{ width: 68, height: 68, background: '#0a0f1d', borderRadius: 4, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Thumbnail with checkerboard background */}
+              <div
+                style={{
+                  width: 74,
+                  height: 56,
+                  background:
+                    'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 10px 10px',
+                  borderRadius: 4,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
                 <img
                   src={f.transparentDataUrl || f.originalDataUrl}
                   alt={`Frame ${idx + 1}`}
@@ -219,13 +235,24 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
                 />
               </div>
 
-              {/* Quick Actions (Move, Clone, Delete) */}
-              <div style={{ display: 'flex', gap: 2, width: '100%', justifyContent: 'center', marginTop: 1 }}>
+              {/* Quick Actions (Move Left, Clone, Delete, Move Right) */}
+              <div style={{ display: 'flex', gap: 2, width: '100%', justifyContent: 'space-between', marginTop: 1 }}>
                 <button
                   onClick={(e) => { e.stopPropagation(); onMoveFrame(idx, 'left'); }}
                   disabled={idx === 0}
                   title="Di chuyển sang trái"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: idx === 0 ? '#475569' : '#94a3b8', borderRadius: 2, padding: '1px 3px', cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    flex: 1,
+                    height: 18,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: 'none',
+                    color: idx === 0 ? '#475569' : '#94a3b8',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                  }}
                 >
                   <ChevronLeft size={10} />
                 </button>
@@ -233,7 +260,18 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
                 <button
                   onClick={(e) => { e.stopPropagation(); onDuplicateFrame(idx); }}
                   title="Nhân bản frame này"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#38bdf8', borderRadius: 2, padding: '1px 3px', cursor: 'pointer' }}
+                  style={{
+                    flex: 1,
+                    height: 18,
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    border: 'none',
+                    color: '#38bdf8',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
                 >
                   <Plus size={10} />
                 </button>
@@ -242,7 +280,18 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
                   onClick={(e) => { e.stopPropagation(); onDeleteFrame(idx); }}
                   disabled={frames.length <= 1}
                   title="Xóa frame"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: frames.length <= 1 ? '#475569' : '#f87171', borderRadius: 2, padding: '1px 3px', cursor: frames.length <= 1 ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    flex: 1,
+                    height: 18,
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: 'none',
+                    color: frames.length <= 1 ? '#475569' : '#f87171',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: frames.length <= 1 ? 'not-allowed' : 'pointer',
+                  }}
                 >
                   <Trash2 size={10} />
                 </button>
@@ -251,7 +300,18 @@ export const AnimationFrameFilmstripBar: React.FC<AnimationFrameFilmstripBarProp
                   onClick={(e) => { e.stopPropagation(); onMoveFrame(idx, 'right'); }}
                   disabled={idx === frames.length - 1}
                   title="Di chuyển sang phải"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: idx === frames.length - 1 ? '#475569' : '#94a3b8', borderRadius: 2, padding: '1px 3px', cursor: idx === frames.length - 1 ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    flex: 1,
+                    height: 18,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: 'none',
+                    color: idx === frames.length - 1 ? '#475569' : '#94a3b8',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: idx === frames.length - 1 ? 'not-allowed' : 'pointer',
+                  }}
                 >
                   <ChevronRight size={10} />
                 </button>

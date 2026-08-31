@@ -42,9 +42,6 @@ const VideoAnimationSlicerTab = React.lazy(() =>
 const Map2DAssembler = React.lazy(() =>
   import('./Map2DAssembler').then(m => ({ default: m.Map2DAssembler }))
 );
-const ActionSequence2DDirector = React.lazy(() =>
-  import('./ActionSequence2DDirector').then(m => ({ default: m.ActionSequence2DDirector }))
-);
 const MultiAngleRigAssembler = React.lazy(() =>
   import('./MultiAngleRigAssembler').then(m => ({ default: m.MultiAngleRigAssembler }))
 );
@@ -74,7 +71,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'grid_slicer' | 'anim_slicer' | 'video_anim_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'anim_slicer' | 'video_anim_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -355,26 +352,6 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
             >
               <MapIcon size={13} /> 5. Lắp Ráp Map Parallax
             </button>
-
-            <button
-              onClick={() => setActiveTab('director')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 6,
-                fontSize: 11,
-                fontWeight: 600,
-                border: 'none',
-                background: activeTab === 'director' ? '#0284c7' : 'transparent',
-                color: activeTab === 'director' ? '#ffffff' : '#94a3b8',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Clapperboard size={13} /> 6. Kịch Bản & Cắt Cảnh
-            </button>
           </div>
 
           {/* Close Button */}
@@ -477,8 +454,6 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
           {activeTab === 'map' && (
             <Map2DAssembler currentMap={mapPreset} onChangeMap={setMapPreset} />
           )}
-
-          {activeTab === 'director' && <ActionSequence2DDirector />}
           </Suspense>
         </div>
       </div>

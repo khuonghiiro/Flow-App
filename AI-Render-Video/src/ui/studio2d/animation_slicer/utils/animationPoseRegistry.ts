@@ -128,11 +128,43 @@ export function saveAnimationSequence(sequence: AnimationSequenceConfig): void {
     const saved = localStorage.getItem(STORAGE_KEY_SEQUENCES);
     const list: AnimationSequenceConfig[] = saved ? JSON.parse(saved) : [];
     const filtered = list.filter((s) => s.id !== sequence.id);
-    filtered.push(sequence);
+    filtered.unshift(sequence);
     localStorage.setItem(STORAGE_KEY_SEQUENCES, JSON.stringify(filtered));
   } catch (e) {
     console.error('Failed to save animation sequence', e);
   }
+}
+
+/**
+ * Loads all saved animation sequences from localStorage
+ */
+export function loadAllSavedAnimationSequences(): AnimationSequenceConfig[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_SEQUENCES);
+    if (saved) {
+      const list: AnimationSequenceConfig[] = JSON.parse(saved);
+      return Array.isArray(list) ? list : [];
+    }
+  } catch (e) {
+    console.error('Failed to load animation sequences from localStorage', e);
+  }
+  return [];
+}
+
+/**
+ * Deletes a saved animation sequence by ID
+ */
+export function deleteSavedAnimationSequence(sequenceId: string): AnimationSequenceConfig[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_SEQUENCES);
+    const list: AnimationSequenceConfig[] = saved ? JSON.parse(saved) : [];
+    const updated = list.filter((s) => s.id !== sequenceId);
+    localStorage.setItem(STORAGE_KEY_SEQUENCES, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.error('Failed to delete animation sequence', e);
+  }
+  return [];
 }
 
 /**

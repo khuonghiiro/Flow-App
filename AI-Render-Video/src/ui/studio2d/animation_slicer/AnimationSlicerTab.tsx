@@ -7,6 +7,7 @@ import {
   Save,
   Check,
   Sparkles,
+  FolderOpen,
 } from 'lucide-react';
 import {
   AnimationSliceFrame,
@@ -17,6 +18,7 @@ import { AnimationPreviewStage } from './components/AnimationPreviewStage';
 import { AnimationFrameFilmstripBar } from './components/AnimationFrameFilmstripBar';
 import { AnimationPropertiesPanel } from './components/AnimationPropertiesPanel';
 import { AnimationPoseSaveModal } from './components/AnimationPoseSaveModal';
+import { AnimationSequenceLoadModal } from './components/AnimationSequenceLoadModal';
 import { saveAnimationSequence } from './utils/animationPoseRegistry';
 import { useAnimationHistory } from './hooks/useAnimationHistory';
 import { autoTrimAllFramesBBox } from './utils/autoTrimBBoxHelper';
@@ -96,6 +98,7 @@ export const AnimationSlicerTab: React.FC<AnimationSlicerTabProps> = ({
 
   // Modals & Notifications
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // History & Undo/Redo Hook
@@ -109,6 +112,20 @@ export const AnimationSlicerTab: React.FC<AnimationSlicerTabProps> = ({
       setTimeout(() => setToastMessage(null), 2000);
     }
   );
+
+  // Handle selecting a saved sequence to load
+  const handleSelectSequence = (seq: AnimationSequenceConfig) => {
+    if (seq.frames && seq.frames.length > 0) {
+      pushSnapshot(frames, frameOrder, `Nạp hoạt ảnh: ${seq.poseName}`);
+      setFrames(seq.frames);
+      setFrameOrder(seq.frameOrder && seq.frameOrder.length > 0 ? seq.frameOrder : seq.frames.map((_, i) => i));
+      if (seq.fps) setFps(seq.fps);
+      if (seq.loopMode) setLoopMode(seq.loopMode);
+      setSelectedFrameIndex(0);
+      setToastMessage(`✓ Đã mở ${seq.frames.length} frames của "${seq.poseName}" (Góc ${seq.angleDeg}°)!`);
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
 
   // Keyboard Shortcuts for Undo/Redo (Ctrl+Z / Ctrl+Y)
   useEffect(() => {
@@ -432,26 +449,48 @@ export const AnimationSlicerTab: React.FC<AnimationSlicerTabProps> = ({
           </span>
         </div>
 
-        <button
-          onClick={() => setIsSaveModalOpen(true)}
-          disabled={frames.length === 0}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '4px 12px',
-            borderRadius: 6,
-            background: frames.length > 0 ? 'linear-gradient(135deg, #0284c7, #a855f7)' : 'rgba(255,255,255,0.05)',
-            border: 'none',
-            color: frames.length > 0 ? '#ffffff' : '#64748b',
-            fontSize: 11,
-            fontWeight: 700,
-            cursor: frames.length > 0 ? 'pointer' : 'not-allowed',
-            boxShadow: frames.length > 0 ? '0 2px 10px rgba(56, 189, 248, 0.3)' : 'none',
-          }}
-        >
-          <Save size={13} /> Lưu Động Tác
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            onClick={() => setIsLoadModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 12px',
+              borderRadius: 6,
+              background: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              color: '#38bdf8',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(56, 189, 248, 0.2)',
+            }}
+          >
+            <FolderOpen size={13} /> Mở Động Tác
+          </button>
+
+          <button
+            onClick={() => setIsSaveModalOpen(true)}
+            disabled={frames.length === 0}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 12px',
+              borderRadius: 6,
+              background: frames.length > 0 ? 'linear-gradient(135deg, #0284c7, #a855f7)' : 'rgba(255,255,255,0.05)',
+              border: 'none',
+              color: frames.length > 0 ? '#ffffff' : '#64748b',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: frames.length > 0 ? 'pointer' : 'not-allowed',
+              boxShadow: frames.length > 0 ? '0 2px 10px rgba(56, 189, 248, 0.3)' : 'none',
+            }}
+          >
+            <Save size={13} /> Lưu Động Tác
+          </button>
+        </div>
       </div>
 
       {/* Main Workspace (Top: Live Preview Stage + Right: Properties Panel) */}
@@ -502,12 +541,13 @@ export const AnimationSlicerTab: React.FC<AnimationSlicerTabProps> = ({
             onSetAllFramesDuration={handleSetAllFramesDuration}
             onAutoTrimAllBBox={handleAutoTrimAllBBox}
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
+            onOpenLoadModal={() => setIsLoadModalOpen(true)}
           />
         </div>
       </div>
 
       {/* Bottom Area: Filmstrip Frame Sequencer */}
-      <div style={{ flex: '0 0 140px', height: 140, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
+      <div style={{ flex: '0 0 160px', height: 160, minHeight: 160, padding: '0 8px 8px 8px', overflow: 'hidden' }}>
         <AnimationFrameFilmstripBar
           frames={frames}
           frameOrder={frameOrder}
@@ -533,6 +573,13 @@ export const AnimationSlicerTab: React.FC<AnimationSlicerTabProps> = ({
         fps={fps}
         loopMode={loopMode}
         onSaveSuccess={handleSaveSuccess}
+      />
+
+      {/* Load Saved Animation Sequence Modal */}
+      <AnimationSequenceLoadModal
+        isOpen={isLoadModalOpen}
+        onClose={() => setIsLoadModalOpen(false)}
+        onSelectSequence={handleSelectSequence}
       />
     </div>
   );

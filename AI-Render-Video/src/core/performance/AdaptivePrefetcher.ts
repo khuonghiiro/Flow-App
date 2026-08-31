@@ -89,7 +89,6 @@ export function prefetchLazyChunks(delayMs = 2000): void {
       () => import('../../ui/studio2d/Character2DAssembler'),
       () => import('../../ui/studio2d/AutoGridSlicer3DAssembler'),
       () => import('../../ui/studio2d/Map2DAssembler'),
-      () => import('../../ui/studio2d/ActionSequence2DDirector'),
       () => import('../../ui/studio2d/MultiAngleRigAssembler'),
       () => import('../../ui/studio2d/vectorizer/ImageToSvgVectorizerTab'),
       () => import('../../ui/studio2d/agent/AIAntigravityDecomposerPanel'),

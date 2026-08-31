@@ -12,6 +12,7 @@ import {
   Check,
   Sparkles,
   Layers,
+  FolderOpen,
 } from 'lucide-react';
 import { AnimationSliceFrame } from '../../../../types/animation_slicer';
 
@@ -27,6 +28,7 @@ interface AnimationPropertiesPanelProps {
   onSetAllFramesDuration: (durationMs: number) => void;
   onAutoTrimAllBBox?: () => void;
   onOpenSaveModal: () => void;
+  onOpenLoadModal?: () => void;
 }
 
 export const AnimationPropertiesPanel: React.FC<AnimationPropertiesPanelProps> = ({
@@ -38,6 +40,7 @@ export const AnimationPropertiesPanel: React.FC<AnimationPropertiesPanelProps> =
   onSetAllFramesDuration,
   onAutoTrimAllBBox,
   onOpenSaveModal,
+  onOpenLoadModal,
 }) => {
   const activeIdx = selectedFrameIndex ?? 0;
   const durationSec = selectedFrame ? (selectedFrame.durationMs ? selectedFrame.durationMs / 1000 : 0.5) : 0.5;
@@ -286,28 +289,52 @@ export const AnimationPropertiesPanel: React.FC<AnimationPropertiesPanelProps> =
           </button>
         )}
 
-        <button
-          onClick={onOpenSaveModal}
-          disabled={totalFramesCount === 0}
-          style={{
-            width: '100%',
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            borderRadius: 6,
-            background: totalFramesCount > 0 ? 'linear-gradient(135deg, #0284c7, #a855f7)' : 'rgba(255,255,255,0.05)',
-            border: 'none',
-            color: totalFramesCount > 0 ? '#ffffff' : '#64748b',
-            fontSize: 11,
-            fontWeight: 700,
-            cursor: totalFramesCount > 0 ? 'pointer' : 'not-allowed',
-            boxShadow: totalFramesCount > 0 ? '0 2px 12px rgba(56, 189, 248, 0.4)' : 'none',
-          }}
-        >
-          <Save size={13} /> Lưu Động Tác & Tải Script .bat
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: onOpenLoadModal ? '1fr 1fr' : '1fr', gap: 6 }}>
+          {onOpenLoadModal && (
+            <button
+              onClick={onOpenLoadModal}
+              style={{
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                borderRadius: 6,
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                color: '#38bdf8',
+                fontSize: 10.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(56, 189, 248, 0.2)',
+              }}
+            >
+              <FolderOpen size={13} /> Mở Động Tác
+            </button>
+          )}
+
+          <button
+            onClick={onOpenSaveModal}
+            disabled={totalFramesCount === 0}
+            style={{
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              borderRadius: 6,
+              background: totalFramesCount > 0 ? 'linear-gradient(135deg, #0284c7, #a855f7)' : 'rgba(255,255,255,0.05)',
+              border: 'none',
+              color: totalFramesCount > 0 ? '#ffffff' : '#64748b',
+              fontSize: 10.5,
+              fontWeight: 700,
+              cursor: totalFramesCount > 0 ? 'pointer' : 'not-allowed',
+              boxShadow: totalFramesCount > 0 ? '0 2px 12px rgba(56, 189, 248, 0.4)' : 'none',
+            }}
+          >
+            <Save size={13} /> Lưu Động Tác
+          </button>
+        </div>
       </div>
     </div>
   );

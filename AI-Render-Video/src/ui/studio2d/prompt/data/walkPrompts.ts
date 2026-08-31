@@ -121,21 +121,21 @@ CAMERA: Completely locked static camera.`,
       loopType: 'Seamless Loop',
       keyPoints: ['Chân trái và chân phải sải bước chéo 45°', 'Tay đánh nhịp đối xứng', 'Tà áo bay nhẹ về sau'],
     },
-    infoNote: '💡 Góc 45° là góc tối ưu nhất cho game nhập vai 2.5D Isometric và di chuyển cảnh quan.',
-    negativePrompt: `eyes, eyebrows, mouth, nose, rotating to 90 degrees, turning to front, swaying hips wildly, flying, sliding horizontally`,
-    rawPrompt: `TASK: Image-to-video animation, 3 second seamless loop 45° THREE-QUARTER LEFT WALK CYCLE.
+    infoNote: '💡 Góc 45° Sâu (Deep Isometric): Góc tối ưu nhất cho game nhập vai 2.5D Isometric và di chuyển cảnh quan.',
+    negativePrompt: `shallow angle, 20 degree angle, 30 degree angle, almost front view, rotating to 90 degrees, turning to front, eyes, eyebrows, mouth, nose, swaying hips wildly, flying, sliding horizontally`,
+    rawPrompt: `TASK: Image-to-video animation, 3 second seamless loop DEEP 45° THREE-QUARTER LEFT WALK CYCLE.
 Use the 45° left reference image as LOCKED IDENTITY SOURCE.
 
-MOTION SPECIFICATIONS (45° LEFT WALK):
-- Character walks in place maintaining constant 45-degree angle to the left
-- Left leg (closer to camera) and right leg (farther) step forward smoothly in alternating stride
+MOTION SPECIFICATIONS (DEEP 45° LEFT WALK):
+- Character walks in place maintaining constant DEEP 45-degree isometric angle to the left (halfway between front and profile)
+- Left leg (closer to camera) and right leg (farther) step forward smoothly in alternating diagonal stride
 - Clear knee bend and foot roll on each step
 - Arms swing forward and backward in natural counter-motion to legs
 - Fabric, sleeves, and ribbons trail slightly backward as legs push forward
 - Hair sways gently in rhythm with steps
 
 CRITICAL CONSTRAINTS:
-- Keep 45° angle strict from frame 1 to final frame (NO angle drift)
+- Keep true 45° angle strict from frame 1 to final frame (NO shallow angle drift to 20°-30°)
 - Walking in place (in-situ loop)
 - Perfect loop matching start and end frames
 - Pure chroma-key green #00FF00 background
@@ -181,34 +181,34 @@ CAMERA: Static orthographic side lock.`,
   },
   {
     id: 'walk_angle135',
-    title: 'Đi Bộ - 135° Lưng Lệch (Walk 135° Back-Left)',
-    subtitle: 'Hoạt ảnh đi bộ nhìn xéo từ phía sau lưng lệch trái',
+    title: 'Đi Bộ - 135° Lưng Lệch Phải (Walk 135° Back-Right)',
+    subtitle: 'Hoạt ảnh đi bộ nhìn từ phía sau lưng lệch xoay về CẠNH PHẢI ảnh',
     stepCategory: 'step2_walk',
     stepLabel: 'Bước 2: Đi Bộ Theo Góc',
-    icon: '↖️',
+    icon: '↘️',
     promptType: 'video',
-    tags: ['walk', '135deg', 'back_left', 'loop'],
+    tags: ['walk', '135deg', 'back_right', 'loop', 'right'],
     videoGuide: {
       duration: '3 giây',
       fps: '24 / 30 FPS',
-      camera: 'Static Lock 135° Back-Left',
+      camera: 'Static Lock 135° Back-Right',
       loopType: 'Seamless Loop',
-      keyPoints: ['Bóng lưng và tóc bay nhẹ', 'Gót chân nhấc lên từ phía sau', 'Giữ nguyên góc xoay 135°'],
+      keyPoints: ['Bóng lưng và tóc bay nhẹ', 'Gót chân nhấc lên từ phía sau hướng về phải', 'Giữ nguyên góc xoay 135°'],
     },
-    infoNote: '💡 Dùng cho các cảnh nhân vật đi dần ra xa hoặc tiến vào sâu trong bản đồ theo đường chéo.',
-    negativePrompt: `turning to full back 180, turning to side 90, showing face, drifting off center`,
-    rawPrompt: `TASK: Image-to-video animation, 3 second seamless loop 135° BACK-LEFT WALK CYCLE.
-Use the 135° back-left reference image as LOCKED IDENTITY SOURCE.
+    infoNote: '💡 Dùng cho các cảnh nhân vật đi dần ra xa về phía bên phải bản đồ.',
+    negativePrompt: `turning to full back 180, turning to side 90, showing face, drifting off center, turning left`,
+    rawPrompt: `TASK: Image-to-video animation, 3 second seamless loop 135° BACK-RIGHT WALK CYCLE.
+Use the 135° back-right reference image as LOCKED IDENTITY SOURCE.
 
-MOTION SPECIFICATIONS (135° BACK-LEFT):
-- Character walks in place angled away from camera towards upper-left
-- Back of character visible, left shoulder and left leg prominent
+MOTION SPECIFICATIONS (135° BACK-RIGHT):
+- Character walks in place angled away from camera towards upper-right (facing right edge)
+- Back of character visible, right shoulder and right leg prominent
 - Heel lift and leg push-off visible from behind in alternating rhythm
 - Back ribbons, hair, and sash sway softly with torso weight shifts
 - Character strides steadily without wandering
 
 CRITICAL CONSTRAINTS:
-- Maintain 135° back-left orientation throughout
+- Maintain 135° back-right orientation throughout (facing towards right edge)
 - In-place walk cycle
 - Flawless seamless loop
 - Chroma green #00FF00 background

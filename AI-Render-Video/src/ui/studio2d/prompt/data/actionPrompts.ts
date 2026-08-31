@@ -104,33 +104,33 @@ CONSTRAINTS:
   },
   {
     id: 'run_angle135',
-    title: 'Chạy - 135° Lưng Lệch (Run 135° Back-Left)',
-    subtitle: 'Chạy nhanh hướng chéo lên trên từ phía sau lưng',
+    title: 'Chạy - 135° Lưng Lệch Phải (Run 135° Back-Right)',
+    subtitle: 'Chạy nhanh nhìn từ phía sau lưng xoay về CẠNH PHẢI ảnh',
     stepCategory: 'step3_actions',
     stepLabel: 'Bước 3: Chạy Theo Góc',
     icon: '🏃',
     promptType: 'video',
-    tags: ['run', '135deg', 'back_left', 'loop'],
+    tags: ['run', '135deg', 'back_right', 'loop', 'right'],
     videoGuide: {
       duration: '2 - 3 giây',
       fps: '24 / 30 FPS',
-      camera: 'Static Lock 135° Back-Left',
+      camera: 'Static Lock 135° Back-Right',
       loopType: 'Seamless Fast Loop',
-      keyPoints: ['Chạy chéo xa dần camera', 'Bóng lưng và tóc tung bay', 'Chân đạp mạnh về sau'],
+      keyPoints: ['Chạy chéo xa dần camera về phía phải', 'Bóng lưng và tóc tung bay', 'Chân đạp mạnh về sau'],
     },
-    infoNote: '💡 Dùng cho các cảnh nhân vật chạy truy đuổi hoặc rút lui theo đường chéo.',
-    negativePrompt: `eyes, eyebrows, mouth, nose, turning to front, showing face, turning to 90 degrees`,
-    rawPrompt: `TASK: Image-to-video animation, 2-3 second seamless loop 135° BACK-LEFT RUN CYCLE.
-Use the 135° back-left reference image as LOCKED IDENTITY SOURCE.
+    infoNote: '💡 Dùng cho các cảnh nhân vật chạy truy đuổi hoặc rút lui theo đường chéo sang phải.',
+    negativePrompt: `eyes, eyebrows, mouth, nose, turning to front, showing face, turning to 90 degrees, turning left`,
+    rawPrompt: `TASK: Image-to-video animation, 2-3 second seamless loop 135° BACK-RIGHT RUN CYCLE.
+Use the 135° back-right reference image as LOCKED IDENTITY SOURCE.
 
-MOTION (135° BACK-LEFT RUN):
-- Character runs in place angled away from camera towards upper-left
+MOTION (135° BACK-RIGHT RUN):
+- Character runs in place angled away from camera towards upper-right (facing right edge)
 - Vigorous leg drive and heel kick viewed from behind
 - Back sash, hair, and sleeves stream back with rapid momentum
 - Energetic rhythmic tempo
 
 CONSTRAINTS:
-- Maintain 135° back-left angle throughout
+- Maintain 135° back-right angle throughout (facing right edge)
 - Running in place on chroma green #00FF00
 - Seamless looping`,
   },
@@ -270,26 +270,26 @@ CONSTRAINTS:
   },
   {
     id: 'sit_angle135',
-    title: 'Ngồi - 135° Lưng Lệch (Sit 135° - Không Ghế)',
-    subtitle: 'Tư thế ngồi nhìn từ sau lệch trái trên ghế vô hình',
+    title: 'Ngồi - 135° Lưng Lệch Phải (Sit 135° Back-Right - Không Ghế)',
+    subtitle: 'Tư thế ngồi nhìn từ sau lệch xoay về CẠNH PHẢI ảnh trên ghế vô hình',
     stepCategory: 'step3_actions',
     stepLabel: 'Bước 3: Ngồi Theo Góc',
     icon: '🪑',
     promptType: 'video',
-    tags: ['sit', '135deg', 'back_left', 'invisible_chair'],
+    tags: ['sit', '135deg', 'back_right', 'invisible_chair', 'right'],
     videoGuide: {
       duration: '2 - 3 giây',
       fps: '24 FPS',
-      camera: 'Static Lock 135°',
+      camera: 'Static Lock 135° Back-Right',
       loopType: 'Subtle Loop',
-      keyPoints: ['Ngồi nhìn từ phía sau 3/4', 'Không hiển thị ghế', 'Tóc sau rủ tự nhiên'],
+      keyPoints: ['Ngồi nhìn từ phía sau 3/4 hướng sang phải', 'Không hiển thị ghế', 'Tóc sau rủ tự nhiên'],
     },
-    infoNote: '💡 Thích hợp cho các góc quay camera đặt từ sau lưng nhân vật đang ngồi đàm đạo.',
-    negativePrompt: `eyes, eyebrows, mouth, nose, visible chair, visible stool, showing face`,
-    rawPrompt: `TASK: Image-to-video animation, 2-3 second seamless loop 135° BACK-LEFT SITTING ON INVISIBLE CHAIR.
-Use the 135° back-left reference image as LOCKED IDENTITY SOURCE.
+    infoNote: '💡 Thích hợp cho các góc quay camera đặt từ sau lưng nhân vật đang ngồi đàm đạo lệch sang phải.',
+    negativePrompt: `eyes, eyebrows, mouth, nose, visible chair, visible stool, showing face, turning left`,
+    rawPrompt: `TASK: Image-to-video animation, 2-3 second seamless loop 135° BACK-RIGHT SITTING ON INVISIBLE CHAIR.
+Use the 135° back-right reference image as LOCKED IDENTITY SOURCE.
 
-CRITICAL: Character sitting at 135° back-left orientation on an INVISIBLE chair (NO chair/furniture visible).
+CRITICAL: Character sitting at 135° back-right orientation (facing right edge) on an INVISIBLE chair (NO chair/furniture visible).
 - Pure chroma green #00FF00 background
 - Back robes draped naturally, subtle breathing motion
 - Seamless loop`,
