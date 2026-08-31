@@ -397,18 +397,19 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             onClick={onApplyBBoxCropOnly}
-            disabled={framesCount === 0 || isCroppingBBox}
+            disabled={!isBBoxCropMode || framesCount === 0 || isCroppingBBox}
+            title={!isBBoxCropMode ? "Vui lòng bấm 'Bật BBox' trước khi cắt khung" : "Cắt khung theo BBox hiện tại"}
             style={{
               flex: 1,
-              background: '#d97706',
+              background: isBBoxCropMode ? '#d97706' : 'rgba(255, 255, 255, 0.08)',
               border: 'none',
               borderRadius: 6,
-              color: '#fff',
+              color: isBBoxCropMode ? '#fff' : '#64748b',
               padding: '6px 8px',
               fontSize: 10,
               fontWeight: 700,
-              cursor: framesCount > 0 && !isCroppingBBox ? 'pointer' : 'not-allowed',
-              opacity: framesCount > 0 ? 1 : 0.5,
+              cursor: isBBoxCropMode && framesCount > 0 && !isCroppingBBox ? 'pointer' : 'not-allowed',
+              opacity: isBBoxCropMode && framesCount > 0 ? 1 : 0.4,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -421,18 +422,18 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
 
           <button
             onClick={onAutoTrimAllBBox}
-            disabled={framesCount === 0 || isCroppingBBox}
-            title="Tự động phát hiện viền trong suốt và cắt gọn"
+            disabled={!isBBoxCropMode || framesCount === 0 || isCroppingBBox}
+            title={!isBBoxCropMode ? "Vui lòng bấm 'Bật BBox' trước khi Auto Trim" : "Tự động phát hiện viền trong suốt và cắt gọn"}
             style={{
-              background: 'rgba(245, 158, 11, 0.2)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              background: isBBoxCropMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+              border: isBBoxCropMode ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
               borderRadius: 6,
-              color: '#fbbf24',
+              color: isBBoxCropMode ? '#fbbf24' : '#64748b',
               padding: '6px 8px',
               fontSize: 10,
               fontWeight: 700,
-              cursor: framesCount > 0 && !isCroppingBBox ? 'pointer' : 'not-allowed',
-              opacity: framesCount > 0 ? 1 : 0.5,
+              cursor: isBBoxCropMode && framesCount > 0 && !isCroppingBBox ? 'pointer' : 'not-allowed',
+              opacity: isBBoxCropMode && framesCount > 0 ? 1 : 0.4,
             }}
           >
             Auto Trim

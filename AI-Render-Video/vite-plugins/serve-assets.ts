@@ -259,6 +259,11 @@ export function serveAssetsPlugin(rootDir: string): Plugin {
               frameCount: frames.length,
               frameOrder: data.frameOrder || frames.map((_: any, i: number) => i),
               frames: savedFramesMeta,
+              symmetricAngles: {
+                225: { sourceAngleDeg: 135, sourceSlug: 'cheo_sau_trai', flipH: true },
+                270: { sourceAngleDeg: 90, sourceSlug: 'ngang_trai', flipH: true },
+                315: { sourceAngleDeg: 45, sourceSlug: 'cheo_truoc_trai', flipH: true },
+              },
               savedAt: new Date().toISOString(),
             };
 
@@ -268,6 +273,66 @@ export function serveAssetsPlugin(rootDir: string): Plugin {
               'utf-8'
             );
 
+            // Write / Update Action Manifest JSON for full 8-direction resolution
+            const actionDir = path.join(rootDir, 'asset_2ds', 'nhan_vat', charSlug, 'hanh_dong', actionSlug);
+            const manifestPath = path.join(actionDir, 'action_manifest.json');
+            let actionManifest: any = {};
+            if (fs.existsSync(manifestPath)) {
+              try {
+                actionManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+              } catch {}
+            }
+
+            actionManifest.character = charSlug;
+            actionManifest.actionName = data.actionDisplayName || data.actionName || actionSlug;
+            actionManifest.actionSlug = actionSlug;
+            actionManifest.updatedAt = new Date().toISOString();
+
+            if (!actionManifest.angles) {
+              actionManifest.angles = {};
+            }
+
+            actionManifest.angles[String(data.angleDeg ?? 0)] = {
+              deg: data.angleDeg ?? 0,
+              slug: angleSlug,
+              type: 'recorded',
+              relPath: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/${angleSlug}`,
+              frameCount: frames.length,
+              fps: data.fps || 8,
+            };
+
+            actionManifest.angles['225'] = {
+              deg: 225,
+              slug: 'cheo_sau_phai',
+              type: 'symmetric_hflip',
+              sourceAngleDeg: 135,
+              sourceSlug: 'cheo_sau_trai',
+              sourceRelPath: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/cheo_sau_trai`,
+              flipH: true,
+            };
+
+            actionManifest.angles['270'] = {
+              deg: 270,
+              slug: 'ngang_phai',
+              type: 'symmetric_hflip',
+              sourceAngleDeg: 90,
+              sourceSlug: 'ngang_trai',
+              sourceRelPath: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/ngang_trai`,
+              flipH: true,
+            };
+
+            actionManifest.angles['315'] = {
+              deg: 315,
+              slug: 'cheo_truoc_phai',
+              type: 'symmetric_hflip',
+              sourceAngleDeg: 45,
+              sourceSlug: 'cheo_truoc_trai',
+              sourceRelPath: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/cheo_truoc_trai`,
+              flipH: true,
+            };
+
+            fs.writeFileSync(manifestPath, JSON.stringify(actionManifest, null, 2), 'utf-8');
+
             sendJson(res, {
               success: true,
               character: charSlug,
@@ -276,6 +341,7 @@ export function serveAssetsPlugin(rootDir: string): Plugin {
               targetDir: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/${angleSlug}`,
               filesCount: frames.length,
               metaFile: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/${angleSlug}/motion_meta.json`,
+              manifestFile: `asset_2ds/nhan_vat/${charSlug}/hanh_dong/${actionSlug}/action_manifest.json`,
             });
           } catch (err: any) {
             sendJsonError(res, err?.message || 'Lỗi lưu hoạt ảnh 2D');

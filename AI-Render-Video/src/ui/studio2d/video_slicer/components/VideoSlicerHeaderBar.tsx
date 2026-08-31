@@ -35,7 +35,7 @@ export interface VideoSlicerHeaderBarProps {
   onTogglePreviewMode: () => void;
   checkerTheme: 'dark' | 'light';
   onToggleCheckerTheme: () => void;
-  onExportSpriteSheet: () => void;
+  onExportGif: () => void;
   onOpenSavePoseModal?: () => void;
   onTransferToAnimSlicer?: () => void;
   onReset: () => void;
@@ -56,7 +56,7 @@ export const VideoSlicerHeaderBar: React.FC<VideoSlicerHeaderBarProps> = ({
   onTogglePreviewMode,
   checkerTheme,
   onToggleCheckerTheme,
-  onExportSpriteSheet,
+  onExportGif,
   onOpenSavePoseModal,
   onTransferToAnimSlicer,
   onReset,
@@ -404,8 +404,9 @@ export const VideoSlicerHeaderBar: React.FC<VideoSlicerHeaderBarProps> = ({
         )}
 
         <button
-          onClick={onExportSpriteSheet}
+          onClick={onExportGif}
           disabled={framesCount === 0}
+          title="Xuất chuỗi frame thành ảnh GIF động chuyển động"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -422,7 +423,7 @@ export const VideoSlicerHeaderBar: React.FC<VideoSlicerHeaderBarProps> = ({
             boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)',
           }}
         >
-          <Download size={13} /> Xuất Spritesheet
+          <Film size={13} /> 🎞️ Xuất Ảnh GIF
         </button>
 
         <button

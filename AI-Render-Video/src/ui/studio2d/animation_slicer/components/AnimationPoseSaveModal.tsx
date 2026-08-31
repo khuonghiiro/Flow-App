@@ -32,14 +32,17 @@ interface AnimationPoseSaveModalProps {
 }
 
 const DEFAULT_ANGLES = [
-  { id: 'chinh_dien', deg: 0, label: 'Chính Diện (0°)' },
-  { id: 'cheo_truoc_trai', deg: 45, label: 'Chéo Trước Trái (45°)' },
-  { id: 'ngang_trai', deg: 90, label: 'Ngang Trái (90°)' },
-  { id: 'cheo_sau_trai', deg: 135, label: 'Chéo Sau Trái (135°)' },
-  { id: 'sau_lung', deg: 180, label: 'Sau Lưng (180°)' },
-  { id: 'cheo_sau_phai', deg: 225, label: 'Chéo Sau Phải (225°)' },
-  { id: 'ngang_phai', deg: 270, label: 'Ngang Phải (270°)' },
-  { id: 'cheo_truoc_phai', deg: 315, label: 'Chéo Trước Phải (315°)' },
+  { id: 'chinh_dien', deg: 0, label: 'Chính Diện (0°)', symmetricWith: null },
+  { id: 'cheo_truoc_trai', deg: 45, label: 'Chéo Trước Trái (45°)', symmetricWith: '315°' },
+  { id: 'ngang_trai', deg: 90, label: 'Ngang Trái (90°)', symmetricWith: '270°' },
+  { id: 'cheo_sau_trai', deg: 135, label: 'Chéo Sau Trái (135°)', symmetricWith: '225°' },
+  { id: 'sau_lung', deg: 180, label: 'Sau Lưng (180°)', symmetricWith: null },
+];
+
+export const SYMMETRIC_ANGLE_MAPPING = [
+  { targetDeg: 225, label: '225° (Chéo Sau Phải)', sourceDeg: 135, sourceLabel: '135° (Chéo Sau Trái)' },
+  { targetDeg: 270, label: '270° (Ngang Phải)', sourceDeg: 90, sourceLabel: '90° (Ngang Trái)' },
+  { targetDeg: 315, label: '315° (Chéo Trước Phải)', sourceDeg: 45, sourceLabel: '45° (Chéo Trước Trái)' },
 ];
 
 export const VIETNAMESE_NAME_MAP: Record<string, string> = {
@@ -446,9 +449,9 @@ export const AnimationPoseSaveModal: React.FC<AnimationPoseSaveModalProps> = ({
           {/* 3. Angle Selection */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: '#facc15', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Compass size={13} /> 3. Góc Nhìn (Horizontal Angle):
+              <Compass size={13} /> 3. Góc Nhìn Gốc (5 Góc Chuẩn):
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
               {DEFAULT_ANGLES.map((ang) => {
                 const isSelected = selectedAngleDeg === ang.deg;
                 return (
@@ -456,7 +459,7 @@ export const AnimationPoseSaveModal: React.FC<AnimationPoseSaveModalProps> = ({
                     key={ang.id}
                     onClick={() => setSelectedAngleDeg(ang.deg)}
                     style={{
-                      padding: '6px 8px',
+                      padding: '7px 6px',
                       borderRadius: 6,
                       fontSize: 10,
                       fontWeight: isSelected ? 700 : 500,
@@ -464,12 +467,54 @@ export const AnimationPoseSaveModal: React.FC<AnimationPoseSaveModalProps> = ({
                       border: isSelected ? '1px solid #facc15' : '1px solid rgba(255, 255, 255, 0.08)',
                       color: isSelected ? '#facc15' : '#cbd5e1',
                       cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
                     }}
                   >
-                    {ang.label}
+                    <span>{ang.label}</span>
+                    {ang.symmetricWith && (
+                      <span style={{ fontSize: 8.5, color: isSelected ? '#fde047' : '#94a3b8', opacity: 0.85 }}>
+                        ↔ Đối xứng {ang.symmetricWith}
+                      </span>
+                    )}
                   </button>
                 );
               })}
+            </div>
+
+            {/* Symmetry Auto-Flip Notice */}
+            <div
+              style={{
+                background: 'rgba(250, 204, 21, 0.08)',
+                border: '1px dashed rgba(250, 204, 21, 0.3)',
+                borderRadius: 6,
+                padding: '6px 10px',
+                fontSize: 9.5,
+                color: '#fef08a',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3,
+              }}
+            >
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, color: '#facc15' }}>
+                🧭 Quy Ước 3 Góc Đối Xứng Tự Động (Lật Ngang - Horizontal Flip):
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginTop: 2, color: '#e2e8f0' }}>
+                <span style={{ background: 'rgba(0,0,0,0.3)', padding: '3px 6px', borderRadius: 4 }}>
+                  • <b>225°</b> = 135° + hflip
+                </span>
+                <span style={{ background: 'rgba(0,0,0,0.3)', padding: '3px 6px', borderRadius: 4 }}>
+                  • <b>270°</b> = 90° + hflip
+                </span>
+                <span style={{ background: 'rgba(0,0,0,0.3)', padding: '3px 6px', borderRadius: 4 }}>
+                  • <b>315°</b> = 45° + hflip
+                </span>
+              </div>
+              <div style={{ fontSize: 8.5, color: '#94a3b8', marginTop: 1 }}>
+                * Không cần lưu thư mục ảnh trùng lặp, cấu trúc đối xứng sẽ được tự động ghi nhận trong tệp JSON manifest.
+              </div>
             </div>
           </div>
 

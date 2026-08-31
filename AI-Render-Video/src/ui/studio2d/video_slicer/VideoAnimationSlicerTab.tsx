@@ -16,6 +16,7 @@ import { VideoSlicerCanvasStage } from './components/VideoSlicerCanvasStage';
 import { VideoSlicerPropertiesPanel } from './components/VideoSlicerPropertiesPanel';
 import { VideoSlicerFilmstripBar } from './components/VideoSlicerFilmstripBar';
 import { AnimationPoseSaveModal } from '../animation_slicer/components/AnimationPoseSaveModal';
+import { exportFramesToAnimatedGif } from './utils/gifExporter';
 
 export interface VideoAnimationSlicerTabProps {
   onTransferToAnimSlicer?: (data: { frames: string[] }) => void;
@@ -367,50 +368,26 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     [frameOrder, setFrameOrder]
   );
 
-  // Export Spritesheet PNG (Excludes hidden frames)
-  const handleExportSpriteSheet = useCallback(async () => {
+  // Export Animated GIF (Excludes hidden frames)
+  const handleExportGif = useCallback(async () => {
     const visibleFrames = frames.filter((f) => !f.hidden);
-    if (visibleFrames.length === 0) return;
+    if (visibleFrames.length === 0) {
+      showToast('Không có frame nào để xuất GIF', 'error');
+      return;
+    }
 
-    const cols = Math.min(visibleFrames.length, 6);
-    const rows = Math.ceil(visibleFrames.length / cols);
-
-    const loadedImgs: HTMLImageElement[] = await Promise.all(
-      visibleFrames.map(async (f) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        await new Promise<void>((res) => {
-          img.onload = () => res();
-          img.onerror = () => res();
-          img.src = previewDisplayMode === 'transparent' ? f.transparentDataUrl : f.originalDataUrl;
-        });
-        return img;
-      })
+    const frameUrls = visibleFrames.map((f) =>
+      previewDisplayMode === 'transparent' ? f.transparentDataUrl : f.originalDataUrl
     );
 
-    const cellW = loadedImgs[0]?.naturalWidth || 200;
-    const cellH = loadedImgs[0]?.naturalHeight || 200;
-
-    const sheetCanvas = document.createElement('canvas');
-    sheetCanvas.width = cols * cellW;
-    sheetCanvas.height = rows * cellH;
-    const ctx = sheetCanvas.getContext('2d');
-    if (!ctx) return;
-
-    visibleFrames.forEach((_, idx) => {
-      const img = loadedImgs[idx];
-      if (!img) return;
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      ctx.drawImage(img, col * cellW, row * cellH, cellW, cellH);
-    });
-
-    const link = document.createElement('a');
-    link.download = `video_spritesheet_${Date.now()}.png`;
-    link.href = sheetCanvas.toDataURL('image/png');
-    link.click();
-    showToast(`✓ Đã xuất Spritesheet thành công (${visibleFrames.length} frame)!`, 'success');
-  }, [frames, previewDisplayMode, showToast]);
+    try {
+      showToast('Đang khởi tạo tệp ảnh GIF động...', 'info');
+      const res = await exportFramesToAnimatedGif(frameUrls, playbackFps);
+      showToast(`✓ Đã xuất ảnh GIF thành công (${res.count} frame, ${playbackFps} FPS)!`, 'success');
+    } catch (err: any) {
+      showToast(`Lỗi xuất GIF: ${err.message}`, 'error');
+    }
+  }, [frames, previewDisplayMode, playbackFps, showToast]);
 
   // Convert visible frames to Tab 1.2 AnimationSliceFrame format for SavePoseModal
   const saveModalFrames: AnimationSliceFrame[] = useMemo(() => {
@@ -517,7 +494,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
         onToggleCheckerTheme={() => {
           setCheckerTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
         }}
-        onExportSpriteSheet={handleExportSpriteSheet}
+        onExportGif={handleExportGif}
         onOpenSavePoseModal={() => setIsSavePoseModalOpen(true)}
         onTransferToAnimSlicer={
           onTransferToAnimSlicer && frames.length > 0

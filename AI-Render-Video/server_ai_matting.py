@@ -454,6 +454,60 @@ class AIMattingHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
             return
+
+        if self.path == '/api/video/export-gif':
+            content_len = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_len)
+            try:
+                req = json.loads(post_data.decode('utf-8'))
+                frames_b64 = req.get('frames', [])
+                fps = int(req.get('fps', 12))
+                if not frames_b64:
+                    raise Exception('Danh sach frame rong')
+
+                pil_images = []
+                for b64 in frames_b64:
+                    if ',' in b64:
+                        b64 = b64.split(',', 1)[1]
+                    raw_bytes = base64.b64decode(b64)
+                    img = Image.open(io.BytesIO(raw_bytes)).convert('RGBA')
+                    pil_images.append(img)
+
+                gif_buf = io.BytesIO()
+                duration_ms = max(20, int(1000 / max(1, fps)))
+
+                # Save as animated GIF preserving transparency
+                pil_images[0].save(
+                    gif_buf,
+                    format='GIF',
+                    save_all=True,
+                    append_images=pil_images[1:],
+                    duration=duration_ms,
+                    loop=0,
+                    disposal=2
+                )
+
+                gif_b64 = 'data:image/gif;base64,' + base64.b64encode(gif_buf.getvalue()).decode('utf-8')
+
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'success': True,
+                    'gif_data_url': gif_b64,
+                    'frames_count': len(pil_images),
+                    'fps': fps
+                }).encode('utf-8'))
+
+            except Exception as e:
+                print(f"[Export GIF Error] {e}", flush=True)
+                self.send_response(500)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+            return
         else:
             self.send_response(404)
             self.end_headers()
