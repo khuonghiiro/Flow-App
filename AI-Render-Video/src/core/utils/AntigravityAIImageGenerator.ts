@@ -4,6 +4,8 @@
  * Supports public AI inference (Pollinations / HuggingFace) and procedural high-detail anime synthesis.
  */
 
+import { getSidecarApiUrl } from '../config/envConfig';
+
 export interface AIGenerationOptions {
   prompt: string;
   negativePrompt?: string;
@@ -70,7 +72,7 @@ export async function generateCharacterWithAI(
 
   // 1. Send prompt directly to Antigravity AI Local Sidecar
   try {
-    const sidecarResponse = await fetch('http://127.0.0.1:5050/api/generate-character', {
+    const sidecarResponse = await fetch(getSidecarApiUrl('/api/generate-character'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

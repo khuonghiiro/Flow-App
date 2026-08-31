@@ -36,6 +36,9 @@ const AutoGridSlicer3DAssembler = React.lazy(() =>
 const AnimationSlicerTab = React.lazy(() =>
   import('./animation_slicer/AnimationSlicerTab').then(m => ({ default: m.AnimationSlicerTab }))
 );
+const VideoAnimationSlicerTab = React.lazy(() =>
+  import('./video_slicer/VideoAnimationSlicerTab').then(m => ({ default: m.VideoAnimationSlicerTab }))
+);
 const Map2DAssembler = React.lazy(() =>
   import('./Map2DAssembler').then(m => ({ default: m.Map2DAssembler }))
 );
@@ -71,7 +74,7 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'grid_slicer' | 'anim_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
+    'grid_slicer' | 'anim_slicer' | 'video_anim_slicer' | 'rig_assembler' | 'vectorizer' | 'detail_part' | 'character' | 'cropper' | 'prompt' | 'map' | 'director'
   >('grid_slicer');
 
   // Shared 2D Assembly & Map State
@@ -231,6 +234,26 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
               }}
             >
               <Clapperboard size={13} /> 1.2 🎬 Cắt & Ghép Hoạt Ảnh
+            </button>
+
+            <button
+              onClick={() => setActiveTab('video_anim_slicer')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: activeTab === 'video_anim_slicer' ? 700 : 600,
+                border: 'none',
+                background: activeTab === 'video_anim_slicer' ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'transparent',
+                color: activeTab === 'video_anim_slicer' ? '#ffffff' : '#38bdf8',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Clapperboard size={13} /> 1.3 🎥 Video Hoạt Ảnh
             </button>
 
             <button
@@ -403,6 +426,18 @@ export const Studio2DWorkbenchModal: React.FC<Studio2DWorkbenchModalProps> = ({
             <AnimationSlicerTab
               initialFrames={transferredAnimationFrames}
               externalSpriteSheetUrl={transferredSpriteSheetUrl}
+            />
+          </div>
+
+          {/* Tab 1.3: Video Animation Slicer & AI Matting */}
+          <div style={{ display: activeTab === 'video_anim_slicer' ? 'flex' : 'none', width: '100%', height: '100%', flexDirection: 'column' }}>
+            <VideoAnimationSlicerTab
+              onTransferToAnimSlicer={(data) => {
+                if (data.frames && data.frames.length > 0) {
+                  setTransferredAnimationFrames(data.frames);
+                }
+                setActiveTab('anim_slicer');
+              }}
             />
           </div>
 

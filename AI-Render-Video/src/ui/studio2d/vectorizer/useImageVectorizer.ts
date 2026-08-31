@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { getSidecarApiUrl } from '../../../core/config/envConfig';
 import {
   VectorizerPreset,
   VectorizerViewMode,
@@ -99,12 +100,12 @@ export const useImageVectorizer = (initialImageUrl: string = '/demo_rig/hand_000
       console.warn('Base64 conversion warning:', b64Err);
     }
 
-    // 1. Primary: High-Precision Rust VTracer on local Python sidecar (:5050)
+    // 1. Primary: High-Precision Rust VTracer on local Python sidecar
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-      const res = await fetch('http://127.0.0.1:5050/api/vectorize', {
+      const res = await fetch(getSidecarApiUrl('/api/vectorize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

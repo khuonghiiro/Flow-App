@@ -12,6 +12,9 @@ import json
 import base64
 import time
 import gc
+import subprocess
+import tempfile
+import shutil
 
 # Ensure UTF-8 output on Windows consoles
 try:
@@ -30,6 +33,40 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models", "ai_matting")
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.environ["U2NET_HOME"] = MODELS_DIR
+
+# Load .env configuration
+def load_env_file():
+    env_path = os.path.join(PROJECT_ROOT, ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'").strip('"')
+                        if k not in os.environ:
+                            os.environ[k] = v
+        except Exception as e:
+            print(f"[AI Server] Warning reading .env: {e}", flush=True)
+
+load_env_file()
+
+def get_ffmpeg_binary():
+    env_ffmpeg = os.environ.get("FFMPEG_PATH") or os.environ.get("VITE_FFMPEG_PATH")
+    if env_ffmpeg and (os.path.isfile(env_ffmpeg) or env_ffmpeg.endswith(".exe")):
+        return env_ffmpeg
+    
+    known_candidates = [
+        r"D:\UngDung_PC\auto_click_v2\Ffmpeg\ffmpeg.exe",
+        r"D:\UngDung_PC\Flow-App\AI-Image-Animation\venv\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe",
+        "ffmpeg",
+    ]
+    for p in known_candidates:
+        if p == "ffmpeg" or os.path.isfile(p):
+            return p
+    return "ffmpeg"
 
 # Check if rembg is installed
 try:
@@ -265,6 +302,158 @@ class AIMattingHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+            return
+
+        if self.path == '/api/video/extract-frames':
+            content_len = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_len)
+            temp_dir = tempfile.mkdtemp(prefix="flow_video_")
+            try:
+                req = json.loads(post_data.decode('utf-8'))
+                video_base64 = req.get('video', '')
+                fps = float(req.get('fps', 8))
+                start_time = float(req.get('startTime', 0))
+                end_time = req.get('endTime', None)
+                crop_box = req.get('crop', None)
+                max_frames = int(req.get('maxFrames', 60))
+
+                if ',' in video_base64:
+                    video_base64 = video_base64.split(',', 1)[1]
+
+                video_bytes = base64.b64decode(video_base64)
+                input_video_path = os.path.join(temp_dir, "input_video.mp4")
+                with open(input_video_path, "wb") as f:
+                    f.write(video_bytes)
+
+                ffmpeg_bin = get_ffmpeg_binary()
+                out_pattern = os.path.join(temp_dir, "frame_%04d.png")
+
+                vf_filters = []
+                if crop_box:
+                    if isinstance(crop_box, dict) and 'width' in crop_box and 'height' in crop_box:
+                        w = int(crop_box.get('width', 0))
+                        h = int(crop_box.get('height', 0))
+                        x = int(crop_box.get('x', 0))
+                        y = int(crop_box.get('y', 0))
+                        if w > 0 and h > 0:
+                            vf_filters.append(f"crop={w}:{h}:{x}:{y}")
+                    elif isinstance(crop_box, str) and ':' in crop_box:
+                        vf_filters.append(f"crop={crop_box}")
+                
+                vf_filters.append(f"fps={fps}")
+                vf_str = ",".join(vf_filters)
+
+                cmd = [ffmpeg_bin, "-y"]
+                if start_time > 0:
+                    cmd.extend(["-ss", str(start_time)])
+                if end_time is not None and float(end_time) > start_time:
+                    cmd.extend(["-to", str(end_time)])
+                cmd.extend(["-i", input_video_path, "-vf", vf_str, "-vframes", str(max_frames), out_pattern])
+
+                print(f"[AI Video] Running FFmpeg command: {' '.join(cmd)}", flush=True)
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                extracted_frames = []
+                frame_files = sorted([os.path.join(temp_dir, f) for f in os.listdir(temp_dir) if f.startswith("frame_") and f.endswith(".png")])
+                for fpath in frame_files:
+                    with open(fpath, "rb") as img_file:
+                        b64 = base64.b64encode(img_file.read()).decode("utf-8")
+                        extracted_frames.append(f"data:image/png;base64,{b64}")
+
+                print(f"[AI Video] Extracted {len(extracted_frames)} frames successfully via FFmpeg!", flush=True)
+
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'success': True,
+                    'frames': extracted_frames,
+                    'count': len(extracted_frames),
+                    'fps': fps,
+                    'ffmpeg_binary': ffmpeg_bin
+                }).encode('utf-8'))
+
+            except Exception as e:
+                print(f"[AI Video Extraction Error] {e}", flush=True)
+                self.send_response(500)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+            finally:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            return
+
+        if self.path == '/api/video/remove-bg-batch':
+            if not REMBG_AVAILABLE:
+                self.send_response(500)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'error': 'Thu vien rembg chua duoc cai dat. Vui long chay run_ai_matting_server.bat.'
+                }).encode('utf-8'))
+                return
+
+            content_len = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_len)
+            try:
+                req = json.loads(post_data.decode('utf-8'))
+                images = req.get('images', [])
+                model_name = req.get('model', 'birefnet-general')
+
+                session = get_session(model_name)
+                start_t = time.time()
+                results = []
+
+                for idx, img_b64 in enumerate(images):
+                    if ',' in img_b64:
+                        img_b64 = img_b64.split(',', 1)[1]
+                    raw_bytes = base64.b64decode(img_b64)
+                    input_img = Image.open(io.BytesIO(raw_bytes)).convert('RGBA')
+                    
+                    orig_w, orig_h = input_img.size
+                    max_dim = max(orig_w, orig_h)
+                    if max_dim > 2048:
+                        scale = 1536.0 / max_dim
+                        scaled_img = input_img.resize((int(orig_w * scale), int(orig_h * scale)), Image.Resampling.BILINEAR)
+                        mask = remove(scaled_img, session=session, only_mask=True, alpha_matting=False)
+                        mask = mask.resize((orig_w, orig_h), Image.Resampling.BICUBIC)
+                        output_img = input_img.copy()
+                        output_img.putalpha(mask)
+                    else:
+                        output_img = remove(input_img, session=session, alpha_matting=False)
+
+                    buf = io.BytesIO()
+                    output_img.save(buf, format='PNG')
+                    results.append('data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('utf-8'))
+                    print(f"[AI Video Matting] Frame {idx+1}/{len(images)} completed.", flush=True)
+
+                duration = time.time() - start_t
+                gc.collect()
+
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'success': True,
+                    'results': results,
+                    'count': len(results),
+                    'duration_sec': round(duration, 3),
+                    'model_used': model_name
+                }).encode('utf-8'))
+
+            except Exception as e:
+                print(f"[AI Video Matting Error] {e}", flush=True)
+                gc.collect()
+                self.send_response(500)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+            return
         else:
             self.send_response(404)
             self.end_headers()

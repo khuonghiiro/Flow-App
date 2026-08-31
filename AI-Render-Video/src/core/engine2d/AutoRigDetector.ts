@@ -12,6 +12,7 @@ import {
   getBonePresetTemplate,
   suggestBonePreset,
 } from './BoneRig2DEngine';
+import { getSidecarApiUrl } from '../config/envConfig';
 
 export interface AutoRigResult {
   success: boolean;
@@ -28,12 +29,12 @@ export async function autoRigFromImage(
   imageUrl: string,
   partType: Character2DPartType
 ): Promise<AutoRigResult> {
-  // 1. Try Python Computer Vision / MediaPipe Server (:5050/api/auto-rig)
+  // 1. Try Python Computer Vision / MediaPipe Server (/api/auto-rig)
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch('http://127.0.0.1:5050/api/auto-rig', {
+    const res = await fetch(getSidecarApiUrl('/api/auto-rig'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
