@@ -15,14 +15,18 @@ export interface SlicerSidebarContainerProps {
   onUpdateSingleImageAngle: (ang: Character2DAngle) => void;
   singleImageSlot: Character2DPartType;
   onUpdateSingleImageSlot: (slot: Character2DPartType) => void;
-  onAutoDetectAngleFromFilename: () => void;
-  onOpenJsonImportModal: () => void;
+  onAutoDetectAngleFromFilename?: () => void;
+  onOpenJsonImportModal?: () => void;
   userUploadedImageUrl: string | null;
   totalLoadedCount: number;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClearImage: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   filterStates: ReturnType<typeof useSlicerFilterStates>;
+  isEyedropperActive?: boolean;
+  setIsEyedropperActive?: (v: boolean) => void;
+  eyedropperTarget?: 'chroma' | 'fringe' | 'smooth';
+  setEyedropperTarget?: (t: 'chroma' | 'fringe' | 'smooth') => void;
   onRunAIMatting: () => void;
   isAIRunning: boolean;
   onRunDespeckleOnly: () => void;
@@ -64,6 +68,10 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
   onClearImage,
   fileInputRef,
   filterStates,
+  isEyedropperActive: isEyedropperActiveProp,
+  setIsEyedropperActive: setIsEyedropperActiveProp,
+  eyedropperTarget: eyedropperTargetProp,
+  setEyedropperTarget: setEyedropperTargetProp,
   onRunAIMatting,
   isAIRunning,
   onRunDespeckleOnly,
@@ -87,7 +95,8 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
   isBatchProcessing = false,
 }) => {
   const {
-    isEyedropperActive, setIsEyedropperActive,
+    isEyedropperActive: internalIsEyedropperActive,
+    setIsEyedropperActive: internalSetIsEyedropperActive,
     keyColorType, setKeyColorType,
     keyColorHex, setKeyColorHex,
     isolationMode, setIsolationMode,
@@ -103,7 +112,8 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
     despeckleSize, setDespeckleSize,
     whiteSpeckleSensitivity, setWhiteSpeckleSensitivity,
     keepLargestIslandOnly, setKeepLargestIslandOnly,
-    eyedropperTarget, setEyedropperTarget,
+    eyedropperTarget: internalEyedropperTarget,
+    setEyedropperTarget: internalSetEyedropperTarget,
     cleanupMode, setCleanupMode,
     fringeColorType, setFringeColorType,
     fringeColorHex, setFringeColorHex,
@@ -114,6 +124,11 @@ export const SlicerSidebarContainer: React.FC<SlicerSidebarContainerProps> = ({
     smoothColorHex, setSmoothColorHex,
     paddingInset, setPaddingInset,
   } = filterStates;
+
+  const isEyedropperActive = isEyedropperActiveProp !== undefined ? isEyedropperActiveProp : internalIsEyedropperActive;
+  const setIsEyedropperActive = setIsEyedropperActiveProp !== undefined ? setIsEyedropperActiveProp : internalSetIsEyedropperActive;
+  const eyedropperTarget = eyedropperTargetProp !== undefined ? eyedropperTargetProp : internalEyedropperTarget;
+  const setEyedropperTarget = setEyedropperTargetProp !== undefined ? setEyedropperTargetProp : internalSetEyedropperTarget;
 
   return (
     <SlicerSidebarControls

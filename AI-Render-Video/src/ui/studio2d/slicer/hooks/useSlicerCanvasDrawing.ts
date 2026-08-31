@@ -329,26 +329,26 @@ export function useSlicerCanvasDrawing({
       if (isDirectBBoxCropActive && canvas.width > 0 && canvas.height > 0) {
         const chromaOpts: ChromaProcessOptions | undefined = keyColorType
           ? {
-              keyColorType,
-              keyColorHex: keyColorHex || '#00ff00',
-              isolationMode: isolationMode || 'all',
-              tolerance: tolerance ?? 35,
-              feather: feather ?? 2,
-              shadowRetention: 0,
-              strokeWidth: 0,
-              strokeColorHex: '#000000',
-              despeckleSize: 0,
-              whiteSpeckleSensitivity: 0,
-              keepLargestIslandOnly: false,
-              fringeColorType: 'chroma_green',
-              fringeColorHex: '#00ff00',
-              defringeStrength: 0,
-              edgeChoke: 0,
-              edgeSmooth: 0,
-              smoothColorType: 'black',
-              smoothColorHex: '#000000',
-              cleanupMode: 'all',
-            }
+            keyColorType,
+            keyColorHex: keyColorHex || '#00ff00',
+            isolationMode: isolationMode || 'all',
+            tolerance: tolerance ?? 35,
+            feather: feather ?? 2,
+            shadowRetention: 0,
+            strokeWidth: 0,
+            strokeColorHex: '#000000',
+            despeckleSize: 0,
+            whiteSpeckleSensitivity: 0,
+            keepLargestIslandOnly: false,
+            fringeColorType: 'chroma_green',
+            fringeColorHex: '#00ff00',
+            defringeStrength: 0,
+            edgeChoke: 0,
+            edgeSmooth: 0,
+            smoothColorType: 'black',
+            smoothColorHex: '#000000',
+            cleanupMode: 'all',
+          }
           : undefined;
 
         const rect = detectImageBBoxRect(img, chromaOpts, directBBoxPadding, 20);

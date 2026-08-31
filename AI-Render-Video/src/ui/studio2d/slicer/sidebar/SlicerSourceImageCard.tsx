@@ -1,30 +1,14 @@
 import React from 'react';
-import { Layers, Upload, Camera, FileCode, Trash2 } from 'lucide-react';
+import { Layers, Upload, Camera, Trash2 } from 'lucide-react';
 import { STANDARD_ANGLE_DEFINITIONS } from '../../../../core/assets/slicer/SlicerAngleConstants';
 import { Character2DAngle, Character2DPartType } from '../../../../types/scene2d';
 
-export const OBJECT_GENRE_OPTIONS = [
-  { id: 'character', label: '🧑 Nhân Vật (Khớp Xương 2D) [ĐẦY ĐỦ LOGIC]', badge: 'Đầy đủ khớp' },
-  { id: 'animal', label: '🐾 Động Vật & Linh Thú (Creatures & Beasts)', badge: 'Linh thú' },
-  { id: 'tree', label: '🌳 Cây Cối & Thảo Mộc (Vegetation & Trees)', badge: 'Thảo mộc' },
-  { id: 'rock', label: '🪨 Đá Sỏi & Khoáng Thạch (Rocks & Minerals)', badge: 'Khoáng thạch' },
-  { id: 'water', label: '🌊 Sông Nước & Thác Nước (Water & Effects)', badge: 'Sông nước' },
-  { id: 'mountain', label: '🏔️ Đồi Núi & Địa Hình (Terrain & Mountains)', badge: 'Địa hình' },
-  { id: 'building', label: '🏠 Kiến Trúc & Nhà Cửa (Architecture & Buildings)', badge: 'Kiến trúc' },
-  { id: 'weapon_prop', label: '⚔️ Vũ Khí & Đạo Cụ (Props & Weapons)', badge: 'Đạo cụ' },
-  { id: 'vehicle', label: '🚗 Phương Tiện & Thú Cưỡi (Vehicles & Mounts)', badge: 'Phương tiện' },
-];
-
 export interface SlicerSourceImageCardProps {
-  targetCategory?: string;
-  onSelectTargetCategory?: (cat: string) => void;
   isSingleImageMode?: boolean;
   singleImageAngle?: Character2DAngle;
   onUpdateSingleImageAngle?: (angle: Character2DAngle) => void;
   singleImageSlot?: Character2DPartType;
   onUpdateSingleImageSlot?: (slot: Character2DPartType) => void;
-  onAutoDetectAngleFromFilename?: () => void;
-  onOpenJsonImportModal?: () => void;
   userUploadedImageUrl: string | null;
   totalLoadedCount?: number;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -33,15 +17,11 @@ export interface SlicerSourceImageCardProps {
 }
 
 export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
-  targetCategory = 'character',
-  onSelectTargetCategory,
   isSingleImageMode = false,
   singleImageAngle = 'front',
   onUpdateSingleImageAngle,
   singleImageSlot = 'than_co_ban',
   onUpdateSingleImageSlot,
-  onAutoDetectAngleFromFilename,
-  onOpenJsonImportModal,
   userUploadedImageUrl,
   totalLoadedCount = 0,
   onFileUpload,
@@ -79,38 +59,6 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
         >
           {isSingleImageMode ? '🖼️ Ảnh Đơn' : '🔲 Lưới Ma Trận'}
         </span>
-      </div>
-
-      {/* Combobox Thể Loại Đối Tượng (Tương tự Tab 4 Bước 2) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <label style={{ fontSize: 10, fontWeight: 700, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4 }}>
-          📂 Thể Loại Đối Tượng:
-        </label>
-        <select
-          value={targetCategory}
-          onChange={(e) => onSelectTargetCategory && onSelectTargetCategory(e.target.value)}
-          style={{
-            width: '100%',
-            height: 32,
-            padding: '0 8px',
-            fontSize: 11,
-            background: '#090d16',
-            color: '#34d399',
-            border: '1.5px solid rgba(52, 211, 153, 0.5)',
-            borderRadius: 6,
-            fontWeight: 700,
-            cursor: 'pointer',
-            outline: 'none',
-            boxSizing: 'border-box',
-            boxShadow: '0 0 8px rgba(52, 211, 153, 0.15)',
-          }}
-        >
-          {OBJECT_GENRE_OPTIONS.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Single Image Mode Angle & Slot Configurator */}
@@ -151,60 +99,6 @@ export const SlicerSourceImageCard: React.FC<SlicerSourceImageCardProps> = ({
           </div>
         </div>
       )}
-
-      {/* Auto Angle Detection & Tab 4 Metadata Sync Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        <button
-          onClick={onAutoDetectAngleFromFilename}
-          disabled={!userUploadedImageUrl}
-          style={{
-            height: 30,
-            fontSize: 10,
-            fontWeight: 700,
-            borderRadius: 5,
-            background: userUploadedImageUrl
-              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25))'
-              : 'rgba(255,255,255,0.03)',
-            color: userUploadedImageUrl ? '#4ade80' : '#475569',
-            border: userUploadedImageUrl ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255,255,255,0.08)',
-            cursor: userUploadedImageUrl ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            boxShadow: userUploadedImageUrl ? '0 0 8px rgba(74, 222, 128, 0.2)' : 'none',
-            transition: 'all 0.15s ease',
-          }}
-          title="Tự động nhận diện góc quay và slot từ tên file ảnh tải lên (chuẩn Tab 4)"
-        >
-          ⚡ Đặt Góc Theo Tên Ảnh
-        </button>
-
-        {onOpenJsonImportModal && (
-          <button
-            onClick={onOpenJsonImportModal}
-            style={{
-              height: 30,
-              fontSize: 10,
-              fontWeight: 700,
-              borderRadius: 5,
-              background: 'rgba(168, 85, 247, 0.2)',
-              color: '#c084fc',
-              border: '1px solid rgba(168, 85, 247, 0.4)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              boxShadow: '0 0 8px rgba(168, 85, 247, 0.2)',
-              transition: 'all 0.15s ease',
-            }}
-            title="Dán cấu trúc JSON prompt từ Tab 4 để tự động gán metadata cho các góc quay"
-          >
-            <FileCode size={12} /> Nạp JSON Tab 4
-          </button>
-        )}
-      </div>
 
       {/* Upload Main Action Button & Clear */}
       <input

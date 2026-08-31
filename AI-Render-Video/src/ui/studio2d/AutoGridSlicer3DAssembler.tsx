@@ -57,17 +57,18 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFileMetadata, setUploadedFileMetadata] = useState<ParsedPartFilenameInfo | null>(null);
 
-  // 2. Category & Grid Matrix State Hook
-  const {
-    selectedCatId,
-    setSelectedCatId,
-    currentCategory,
-    singleImageSlot,
-    setSingleImageSlot,
-    singleImageAngle,
-    setSingleImageAngle,
-    handleToggleSingleImageMode,
-  } = useSlicerCategoryState({ externalCategoryId });
+  // 2. Canvas & Processing Refs
+  const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const slicedCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const cellCropRectsRef = useRef<Map<string, PaddedCropRect>>(new Map());
+  const draggingDividerRef = useRef<{ isCol: boolean; index: number } | null>(null);
+
+  const [previewDisplayMode, setPreviewDisplayMode] = useState<'transparent' | 'original'>('transparent');
+  const [checkerTheme, setCheckerTheme] = useState<CheckerboardTheme>(loadCachedCheckerTheme());
+  const [slicedResults, setSlicedResults] = useState<Map<string, string>>(new Map());
+  const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [assemblySuccess, setAssemblySuccess] = useState<boolean>(false);
 
   // 3. Grid Dividers Hook
   const {
@@ -83,7 +84,34 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     resetAllDividers,
   } = useSlicerDividers();
 
-  // 4. Chroma & Filter States Hook
+  // 4. Category & Grid Matrix State Hook
+  const {
+    selectedCatId,
+    setSelectedCatId,
+    currentCategory,
+    customCategory,
+    singleImageSlot,
+    setSingleImageSlot,
+    singleImageAngle,
+    setSingleImageAngle,
+    targetCategory,
+    handleSelectTargetCategory,
+    handleToggleSingleImageMode,
+    handleSelectCatId,
+    handleSelectGridMatrix,
+  } = useSlicerCategoryState({
+    externalCategoryId,
+    loadedImageRef,
+    loadedImage,
+    initUniformDividers,
+    setSelectedCell,
+    setHasExplicitlySliced,
+    slicedCanvasesRef,
+    setSlicedResults,
+    setPreviewDisplayMode,
+  });
+
+  // 5. Chroma & Filter States Hook
   const filterStates = useSlicerFilterStates();
   const {
     keyColorType,
@@ -133,21 +161,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     setEnableSmartCrop,
     smartCropPadding,
     setSmartCropPadding,
-    targetCategory,
   } = filterStates;
-
-  // 5. Canvas & Processing Refs
-  const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const slicedCanvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
-  const cellCropRectsRef = useRef<Map<string, PaddedCropRect>>(new Map());
-  const draggingDividerRef = useRef<{ isCol: boolean; index: number } | null>(null);
-
-  const [previewDisplayMode, setPreviewDisplayMode] = useState<'transparent' | 'original'>('transparent');
-  const [checkerTheme, setCheckerTheme] = useState<CheckerboardTheme>(loadCachedCheckerTheme());
-  const [slicedResults, setSlicedResults] = useState<Map<string, string>>(new Map());
-  const [hasExplicitlySliced, setHasExplicitlySliced] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [assemblySuccess, setAssemblySuccess] = useState<boolean>(false);
 
   // 6. Multi-Image Gallery Hook
   const {
@@ -318,6 +332,8 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     singleImageAngle,
     activeImageIdRef,
     setImageList,
+    setCheckedImageIds,
+    setSelectedCatId,
   });
 
   // 11. Eyedropper Manager Hook
@@ -327,7 +343,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     eyedropperTarget,
     setEyedropperTarget,
     eyedropperHoverColor,
-    setEyedropperHoverColor,
+    handleHoverColor,
     handlePickColor,
   } = useSlicerEyedropperManager({
     hasExplicitlySliced,
@@ -338,6 +354,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     setFringeColorHex,
     setKeyColorType,
     setKeyColorHex,
+    showToast,
   });
 
   // 12. Image Sync & Dividers Manager Hook
@@ -401,6 +418,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
     singleImageSlot,
     singleImageAngle,
     setCheckedImageIds,
+    setSelectedCatId,
   });
 
   // 14. Direct BBox Crop Hook
@@ -560,6 +578,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         <SlicerThreeColumnLayout
           showGallery={imageList.length > 0}
           sidebarProps={{
+            targetCategory,
+            onSelectTargetCategory: handleSelectTargetCategory,
+            selectedCatId,
+            onSelectCatId: handleSelectCatId,
+            customCategory,
             currentCategory,
             onOpenGridTablePicker: () => setIsTablePickerOpen(true),
             singleImageSlot,
@@ -597,6 +620,10 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             onClearImage: handleFullClear,
             fileInputRef,
             filterStates,
+            isEyedropperActive,
+            setIsEyedropperActive,
+            eyedropperTarget,
+            setEyedropperTarget,
             onRunAIMatting: () => {
               pushUndoState('AI Tách Nền (GPU)');
               handleRunAIMatting();
@@ -612,42 +639,17 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             assemblySuccess,
             onAutoSliceAndAssemble: () => {
               pushUndoState('Tách nền & Lưu kho');
-              const isMultiCellGrid = currentCategory.id !== 'single_full_image' && currentCategory.cells && currentCategory.cells.length > 1;
-              if (isMultiCellGrid) {
-                if (checkedImageIds.size > 0) {
-                  handleBatchSeparateImages(Array.from(checkedImageIds));
-                } else if (activeImageIdRef.current) {
-                  handleBatchSeparateImages([activeImageIdRef.current]);
-                } else {
-                  handleAutoSliceAndAssemble();
-                }
-              } else {
-                handleAutoSliceAndAssemble();
-              }
+              handleAutoSliceAndAssemble();
             },
             onCommitSliderChange: (overrides) => {
               pushUndoState('Điều chỉnh thông số');
-              const currentActiveId = activeImageIdRef.current;
-              const currentItem = imageList.find((it) => it.id === currentActiveId);
-              const sourceUrl = currentItem?.originalUrl || currentItem?.url || userUploadedImageUrl;
-
               if (hasExplicitlySliced) {
-                if (sourceUrl) {
-                  const baseImg = new Image();
-                  baseImg.crossOrigin = 'anonymous';
-                  baseImg.onload = () => {
-                    loadedImageRef.current = baseImg;
-                    handleAutoSliceAndAssemble(overrides);
-                  };
-                  baseImg.src = sourceUrl;
-                } else {
-                  handleAutoSliceAndAssemble(overrides);
-                }
-
                 if (checkedImageIds.size > 0) {
                   handleBatchSeparateImages(Array.from(checkedImageIds), overrides);
                 } else if (activeImageIdRef.current) {
                   handleBatchSeparateImages([activeImageIdRef.current], overrides);
+                } else {
+                  handleAutoSliceAndAssemble(overrides);
                 }
               } else {
                 redrawCanvas('original');
@@ -687,7 +689,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
             eyedropperTarget,
             eyedropperHoverColor,
             handlePickColor,
-            setEyedropperHoverColor,
+            setEyedropperHoverColor: handleHoverColor,
             currentCategory,
             keyColorType,
             keyColorHex,
@@ -798,9 +800,11 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         isTablePickerOpen={isTablePickerOpen}
         onCloseTablePicker={() => setIsTablePickerOpen(false)}
         currentCategory={currentCategory}
-        onSelectTableLayout={(cols, rows) => {
+        onSelectGridMatrix={(rows, cols) => {
           setIsTablePickerOpen(false);
-          initUniformDividers(loadedImageRef.current?.width || 800, loadedImageRef.current?.height || 600, cols, rows);
+          pushUndoState(`Đổi ma trận lưới (${rows}×${cols})`);
+          handleSelectGridMatrix(rows, cols);
+          showToast(`✓ Đã áp dụng ma trận lưới: ${rows} hàng × ${cols} cột`, 'redo');
         }}
         isCatalogOpen={isCatalogOpen}
         onCloseCatalog={() => setIsCatalogOpen(false)}
@@ -814,7 +818,7 @@ export const AutoGridSlicer3DAssembler: React.FC<AutoGridSlicer3DAssemblerProps>
         slicedResults={slicedResults}
         checkedImageItems={checkedImageItems}
         allImages={imageList}
-        categoryLabel={currentCategory.name}
+        categoryLabel={currentCategory.label || currentCategory.name || 'Cắt lưới 2D'}
         targetCategory={targetCategory}
         isJsonImportOpen={isJsonImportOpen}
         onCloseJsonImport={() => setIsJsonImportOpen(false)}

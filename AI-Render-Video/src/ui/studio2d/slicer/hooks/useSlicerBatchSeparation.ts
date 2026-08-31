@@ -7,8 +7,9 @@ import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistr
 import { ChromaProcessOptions, processCellChromaAndDespeckle } from '../../../../core/utils/ChromaDespeckleProcessor';
 import { SlicerUploadedImageItem, detectAspectRatioLabel } from './useSlicerMultiImageGallery';
 import { ThreeMultiAngleBillboardEngine } from '../../../../core/engine2d/ThreeMultiAngleBillboardEngine';
-import { getAngleDefinitionById } from '../../../../core/assets/slicer/SlicerAngleConstants';
+import { PART_HIERARCHY_CONFIG } from '../../../../core/assets/Asset2DRegistry';
 import { cleanOuterEdgeDarkBorders } from '../utils/slicerPixelEraserHelper';
+import { loadSafeImage } from '../utils/slicerImageLoaderHelper';
 
 export interface UseSlicerBatchSeparationProps {
   imageList: SlicerUploadedImageItem[];
@@ -36,6 +37,7 @@ export interface UseSlicerBatchSeparationProps {
   singleImageSlot: Character2DPartType;
   singleImageAngle: Character2DAngle;
   setCheckedImageIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setSelectedCatId?: (id: string) => void;
 }
 
 export function useSlicerBatchSeparation({
@@ -64,6 +66,7 @@ export function useSlicerBatchSeparation({
   singleImageSlot,
   singleImageAngle,
   setCheckedImageIds,
+  setSelectedCatId,
 }: UseSlicerBatchSeparationProps) {
   const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
 
@@ -85,6 +88,8 @@ export function useSlicerBatchSeparation({
 
       const newFrameItems: SlicerUploadedImageItem[] = [];
       const updatedMap = new Map<string, string>();
+      const sliceResultsMap = new Map<string, string>();
+      const updatedAssembly: Character2DAssembly = JSON.parse(JSON.stringify(currentAssembly));
       const pad = Math.max(0, paddingInset);
 
       try {
@@ -93,16 +98,9 @@ export function useSlicerBatchSeparation({
           if (!item) continue;
 
           try {
-            // Case 1: Item is an already-sliced frame item -> Re-slice cleanly from pristine parent sprite sheet!
+            // Case 1: Item is an already-sliced frame item -> Re-slice cleanly from parent sprite sheet
             if (item.isFrameItem && item.parentSheetOriginalUrl && item.cellCol !== undefined && item.cellRow !== undefined) {
-              const parentImg = new Image();
-              parentImg.crossOrigin = 'anonymous';
-              await new Promise<void>((resolve, reject) => {
-                parentImg.onload = () => resolve();
-                parentImg.onerror = () => reject();
-                parentImg.src = item.parentSheetOriginalUrl!;
-              });
-
+              const parentImg = await loadSafeImage(item.parentSheetOriginalUrl);
               const parentW = parentImg.naturalWidth || parentImg.width;
               const parentH = parentImg.naturalHeight || parentImg.height;
               const numCols = item.parentNumCols || Math.max(1, currentCategory.cols || 4);
@@ -136,19 +134,14 @@ export function useSlicerBatchSeparation({
                 cleanOuterEdgeDarkBorders(cCtx, cellW, cellH, Math.max(3, Math.min(6, safePadX)));
                 const cellDataUrl = cellCanvas.toDataURL('image/png');
                 updatedMap.set(id, cellDataUrl);
+                sliceResultsMap.set(`${item.cellRow}_${item.cellCol}`, cellDataUrl);
+                slicedCanvasesRef.current.set(`${item.cellRow}_${item.cellCol}`, cellCanvas);
               }
               continue;
             }
 
-            // Case 2: Item is an un-separated sprite sheet
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            await new Promise<void>((resolve, reject) => {
-              img.onload = () => resolve();
-              img.onerror = () => reject();
-              img.src = item.originalUrl || item.url;
-            });
-
+            // Case 2: Standard Sprite sheet or single image
+            const img = await loadSafeImage(item.originalUrl || item.url);
             const w = img.naturalWidth || img.width;
             const h = img.naturalHeight || img.height;
 
@@ -156,7 +149,6 @@ export function useSlicerBatchSeparation({
               const numCols = Math.max(1, currentCategory.cols || 4);
               const numRows = Math.max(1, currentCategory.rows || 1);
 
-              // Sort cells in natural reading order
               const sortedCells = [...currentCategory.cells].sort((a, b) => {
                 if (a.row !== b.row) return a.row - b.row;
                 return a.col - b.col;
@@ -216,12 +208,17 @@ export function useSlicerBatchSeparation({
                   processCellChromaAndDespeckle(cCtx, cellW, cellH, effectiveOptions);
                   cleanOuterEdgeDarkBorders(cCtx, cellW, cellH, Math.max(3, Math.min(6, safePadX)));
                   const cellDataUrl = cellCanvas.toDataURL('image/png');
+                  const key = `${cell.row}_${cell.col}`;
+
+                  sliceResultsMap.set(key, cellDataUrl);
+                  slicedCanvasesRef.current.set(key, cellCanvas);
 
                   const frameNumber = idx + 1;
                   const baseName = item.name.replace(/\.[^/.]+$/, '');
+                  const frameLabel = cell.partSlot ? cell.partSlot : `Frame_${String(frameNumber).padStart(2, '0')}`;
                   const frameItem: SlicerUploadedImageItem = {
-                    id: `${item.id}_f${frameNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-                    name: `${baseName}_Frame_${String(frameNumber).padStart(2, '0')}.png`,
+                    id: `${item.id}_f${frameNumber}_${Date.now()}_${idx}`,
+                    name: `${baseName}_${frameLabel}.png`,
                     url: cellDataUrl,
                     originalUrl: cellDataUrl,
                     transparentUrl: cellDataUrl,
@@ -233,27 +230,77 @@ export function useSlicerBatchSeparation({
                     parentNumCols: numCols,
                     parentNumRows: numRows,
                     filterConfig: { ...effectiveOptions },
-                    metadata: item.metadata,
+                    metadata: cell.partSlot ? { ...item.metadata, part_id: cell.partSlot } : item.metadata,
                     width: cellW,
                     height: cellH,
                     aspectRatio: cellW / (cellH || 1),
                     aspectRatioLabel: detectAspectRatioLabel(cellW, cellH),
                   };
                   newFrameItems.push(frameItem);
+
+                  if (cell.partSlot) {
+                    const hierarchy = PART_HIERARCHY_CONFIG[cell.partSlot];
+                    if (!updatedAssembly.parts[cell.partSlot]) {
+                      updatedAssembly.parts[cell.partSlot] = {
+                        path: cellDataUrl,
+                        offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
+                        scale: [1, 1],
+                        rotation: 0,
+                        pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
+                        flipX: false,
+                        flipY: false,
+                        z_index: hierarchy?.defaultZ ?? 1,
+                        z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
+                        opacity: 1,
+                        angles: {},
+                      };
+                    }
+                    const part = updatedAssembly.parts[cell.partSlot]!;
+                    if (cell.angle === 'front' || cell.col === 0) part.path = cellDataUrl;
+                    if (cell.angle) {
+                      if (!part.angles) part.angles = {};
+                      part.angles[cell.angle] = cellDataUrl;
+                    }
+                  }
                 }
               });
             } else {
-              // Single full image separation
-              const canvas = document.createElement('canvas');
-              canvas.width = w;
-              canvas.height = h;
-              const ctx = canvas.getContext('2d', { willReadFrequently: true });
-              if (ctx) {
-                ctx.drawImage(img, 0, 0, w, h);
-                processCellChromaAndDespeckle(ctx, w, h, effectiveOptions);
-                cleanOuterEdgeDarkBorders(ctx, w, h, Math.max(3, Math.min(6, pad)));
-                const dataUrl = canvas.toDataURL('image/png');
+              // Single full image
+              const cellCanvas = document.createElement('canvas');
+              cellCanvas.width = Math.max(10, w - pad * 2);
+              cellCanvas.height = Math.max(10, h - pad * 2);
+              const cCtx = cellCanvas.getContext('2d', { willReadFrequently: true });
+              if (cCtx) {
+                cCtx.drawImage(img, pad, pad, cellCanvas.width, cellCanvas.height, 0, 0, cellCanvas.width, cellCanvas.height);
+                processCellChromaAndDespeckle(cCtx, cellCanvas.width, cellCanvas.height, effectiveOptions);
+                cleanOuterEdgeDarkBorders(cCtx, cellCanvas.width, cellCanvas.height, Math.max(3, Math.min(6, pad)));
+                const dataUrl = cellCanvas.toDataURL('image/png');
+
                 updatedMap.set(id, dataUrl);
+                sliceResultsMap.set('0_0', dataUrl);
+                slicedCanvasesRef.current.set('0_0', cellCanvas);
+
+                const slot = singleImageSlot;
+                const hierarchy = PART_HIERARCHY_CONFIG[slot];
+                if (!updatedAssembly.parts[slot]) {
+                  updatedAssembly.parts[slot] = {
+                    path: dataUrl,
+                    offset: hierarchy?.defaultOffset ? [...hierarchy.defaultOffset] : [0, 0],
+                    scale: [1, 1],
+                    rotation: 0,
+                    pivot: hierarchy?.defaultPivot ? [...hierarchy.defaultPivot] : [0.5, 0.5],
+                    flipX: false,
+                    flipY: false,
+                    z_index: hierarchy?.defaultZ ?? 1,
+                    z_depth_3d: hierarchy?.defaultZDepth3D ?? 0,
+                    opacity: 1,
+                    angles: {},
+                  };
+                }
+                const part = updatedAssembly.parts[slot]!;
+                if (singleImageAngle === 'front') part.path = dataUrl;
+                if (!part.angles) part.angles = {};
+                part.angles[singleImageAngle] = dataUrl;
               }
             }
           } catch (err) {
@@ -261,8 +308,45 @@ export function useSlicerBatchSeparation({
           }
         }
 
-        // Apply updates: Re-slice existing frame items OR expand new ones
-        if (updatedMap.size > 0) {
+        // Update image list: If multi-cell grid, expand into sliced frame items!
+        if (isMultiCellGrid && newFrameItems.length > 0) {
+          const processedSet = new Set(imageIds);
+          setImageList((prev) => {
+            const nextList: SlicerUploadedImageItem[] = [];
+            for (const it of prev) {
+              if (processedSet.has(it.id)) {
+                const frames = newFrameItems.filter((f) => f.parentSheetOriginalUrl === (it.originalUrl || it.url) || f.id.startsWith(it.id));
+                if (frames.length > 0) {
+                  nextList.push(...frames);
+                } else {
+                  nextList.push(it);
+                }
+              } else {
+                nextList.push(it);
+              }
+            }
+            return nextList.length > 0 ? nextList : newFrameItems;
+          });
+
+          if (setCheckedImageIds) {
+            setCheckedImageIds(new Set(newFrameItems.map((f) => f.id)));
+          }
+
+          if (setSelectedCatId) {
+            setSelectedCatId('single_full_image');
+          }
+
+          const firstFrame = newFrameItems[0];
+          if (firstFrame) {
+            activeImageIdRef.current = firstFrame.id;
+            try {
+              const nextImg = await loadSafeImage(firstFrame.url);
+              loadedImageRef.current = nextImg;
+              setLoadedImage(nextImg);
+              setUserUploadedImageUrl(firstFrame.url);
+            } catch {}
+          }
+        } else if (updatedMap.size > 0) {
           setImageList((prev) =>
             prev.map((it) => {
               const newUrl = updatedMap.get(it.id);
@@ -280,54 +364,18 @@ export function useSlicerBatchSeparation({
           );
         }
 
-        // If multi-cell grid: replace the sliced items with individual frame items!
-        if (isMultiCellGrid && newFrameItems.length > 0) {
-          const checkedSet = new Set(imageIds);
-          setImageList((prev) => {
-            const nextList: SlicerUploadedImageItem[] = [];
-            for (const item of prev) {
-              if (checkedSet.has(item.id)) {
-                const framesForItem = newFrameItems.filter((f) => f.parentSheetOriginalUrl === (item.originalUrl || item.url) || f.id.startsWith(item.id));
-                if (framesForItem.length > 0) {
-                  nextList.push(...framesForItem);
-                } else {
-                  nextList.push(item);
-                }
-              } else {
-                nextList.push(item);
-              }
-            }
-            return nextList.length > 0 ? nextList : newFrameItems;
-          });
-
-          // Check all new frame items
-          if (setCheckedImageIds) {
-            setCheckedImageIds(new Set(newFrameItems.map((f) => f.id)));
-          }
-
-          // Set first frame item as active
-          const firstFrame = newFrameItems[0];
-          if (firstFrame) {
-            activeImageIdRef.current = firstFrame.id;
-            const nextImg = new Image();
-            nextImg.crossOrigin = 'anonymous';
-            await new Promise<void>((res) => {
-              nextImg.onload = () => res();
-              nextImg.onerror = () => res();
-              nextImg.src = firstFrame.url;
-            });
-            loadedImageRef.current = nextImg;
-            setLoadedImage(nextImg);
-            setUserUploadedImageUrl(firstFrame.url);
-          }
+        if (sliceResultsMap.size > 0) {
+          setSlicedResults(sliceResultsMap);
         }
 
         setPreviewDisplayMode('transparent');
         setHasExplicitlySliced(true);
+        onApplyAssembly(updatedAssembly);
+        if (threeEngineRef.current) threeEngineRef.current.setAssembly(updatedAssembly);
         redrawCanvas('transparent');
         showToast(
           isMultiCellGrid && newFrameItems.length > 0
-            ? `✓ Đã tách lưới thành công ${newFrameItems.length} frame ảnh!`
+            ? `✓ Đã bóc tách thành công ${newFrameItems.length} ảnh linh kiện!`
             : `✓ Đã tách nền thành công ${imageIds.length} ảnh!`,
           'redo'
         );
@@ -351,10 +399,18 @@ export function useSlicerBatchSeparation({
       setUserUploadedImageUrl,
       setPreviewDisplayMode,
       setHasExplicitlySliced,
+      slicedCanvasesRef,
+      setSlicedResults,
       redrawCanvas,
       showToast,
       pushUndoState,
+      currentAssembly,
+      onApplyAssembly,
+      threeEngineRef,
+      singleImageSlot,
+      singleImageAngle,
       setCheckedImageIds,
+      setSelectedCatId,
     ]
   );
 

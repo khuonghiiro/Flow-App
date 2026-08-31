@@ -44,8 +44,8 @@ export const SlicerGalleryBBoxCard: React.FC<SlicerGalleryBBoxCardProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingBottom: 4,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: isDirectBBoxCropActive ? 4 : 0,
+          borderBottom: isDirectBBoxCropActive ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
         }}
       >
         <span
@@ -86,79 +86,84 @@ export const SlicerGalleryBBoxCard: React.FC<SlicerGalleryBBoxCardProps> = ({
         )}
       </div>
 
-      {/* Padding Slider & Quick Presets */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#cbd5e1' }}>
-          <span style={{ color: '#c084fc', fontWeight: 600 }}>Khoảng cách lề (Padding):</span>
-          <span style={{ color: '#4ade80', fontWeight: 800, fontFamily: 'monospace' }}>
-            +{directBBoxPadding}px
-          </span>
-        </div>
+      {/* Khi BẬT toggle mới hiển thị UI & Logic khoảng cách lề và Nút áp dụng */}
+      {isDirectBBoxCropActive && (
+        <>
+          {/* Padding Slider & Quick Presets */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#cbd5e1' }}>
+              <span style={{ color: '#c084fc', fontWeight: 600 }}>Khoảng cách lề (Padding):</span>
+              <span style={{ color: '#4ade80', fontWeight: 800, fontFamily: 'monospace' }}>
+                +{directBBoxPadding}px
+              </span>
+            </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <input
-            type="range"
-            min="0"
-            max="50"
-            step="1"
-            value={directBBoxPadding}
-            onChange={(e) => setDirectBBoxPadding && setDirectBBoxPadding(parseInt(e.target.value, 10))}
-            style={{ flex: 1, accentColor: '#a855f7', cursor: 'pointer' }}
-          />
-        </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="1"
+                value={directBBoxPadding}
+                onChange={(e) => setDirectBBoxPadding && setDirectBBoxPadding(parseInt(e.target.value, 10))}
+                style={{ flex: 1, accentColor: '#a855f7', cursor: 'pointer' }}
+              />
+            </div>
 
-        <div style={{ display: 'flex', gap: 2 }}>
-          {[0, 5, 10, 15, 20, 30].map((val) => (
+            <div style={{ display: 'flex', gap: 2 }}>
+              {[0, 5, 10, 15, 20, 30].map((val) => (
+                <button
+                  key={val}
+                  onClick={() => setDirectBBoxPadding && setDirectBBoxPadding(val)}
+                  style={{
+                    flex: 1,
+                    height: 18,
+                    fontSize: 8.5,
+                    fontWeight: 600,
+                    borderRadius: 3,
+                    background: directBBoxPadding === val ? '#9333ea' : 'rgba(255,255,255,0.06)',
+                    color: directBBoxPadding === val ? '#ffffff' : '#cbd5e1',
+                    border: directBBoxPadding === val ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {val === 0 ? '0' : `+${val}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Button: Apply BBox to image */}
+          {onApplyDirectBBoxCrop && (
             <button
-              key={val}
-              onClick={() => setDirectBBoxPadding && setDirectBBoxPadding(val)}
+              onClick={onApplyDirectBBoxCrop}
               style={{
-                flex: 1,
-                height: 18,
-                fontSize: 8.5,
-                fontWeight: 600,
-                borderRadius: 3,
-                background: directBBoxPadding === val ? '#9333ea' : 'rgba(255,255,255,0.06)',
-                color: directBBoxPadding === val ? '#ffffff' : '#cbd5e1',
-                border: directBBoxPadding === val ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
+                height: 28,
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: 5,
+                background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                color: '#ffffff',
+                border: '1px solid #c084fc',
                 cursor: 'pointer',
-                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.4)',
+                marginTop: 2,
+                transition: 'all 0.15s ease',
               }}
+              title="Tạo khung bbox và cắt theo khung viền đã nhận diện (không khử nền)"
             >
-              {val === 0 ? '0' : `+${val}`}
+              <Check size={12} />
+              {checkedCount > 1
+                ? `Áp Dụng Khung BBox (${checkedCount} ảnh)`
+                : 'Áp Dụng Khung BBox Vào Ảnh'}
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Action Button: Apply BBox to image */}
-      {onApplyDirectBBoxCrop && (
-        <button
-          onClick={onApplyDirectBBoxCrop}
-          style={{
-            height: 28,
-            fontSize: 10,
-            fontWeight: 700,
-            borderRadius: 5,
-            background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-            color: '#ffffff',
-            border: '1px solid #c084fc',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 5,
-            boxShadow: '0 2px 8px rgba(147, 51, 234, 0.4)',
-            marginTop: 2,
-            transition: 'all 0.15s ease',
-          }}
-          title="Tạo khung bbox và cắt theo khung viền đã nhận diện (không khử nền)"
-        >
-          <Check size={12} />
-          {checkedCount > 1
-            ? `Áp Dụng Khung BBox (${checkedCount} ảnh)`
-            : 'Áp Dụng Khung BBox Vào Ảnh'}
-        </button>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,6 +1,10 @@
+// =========================================================================================
+// AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
+// =========================================================================================
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { parsePartFilename, ParsedPartFilenameInfo } from '../../../../core/assets/prompt_builders/PartFilenameParser';
 import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
+import { loadSafeImage } from '../utils/slicerImageLoaderHelper';
 
 export interface SlicerUploadedImageItem {
   id: string;
@@ -76,23 +80,21 @@ const PART_ICONS: Record<string, string> = {
   master: '🌟',
 };
 
-function readImageDimensions(url: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      resolve({ width: img.naturalWidth || 1024, height: img.naturalHeight || 1024 });
-    };
-    img.onerror = () => {
-      resolve({ width: 1024, height: 1024 });
-    };
-    img.src = url;
-  });
+async function readImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  try {
+    const img = await loadSafeImage(url);
+    return { width: img.naturalWidth || img.width || 1024, height: img.naturalHeight || img.height || 1024 };
+  } catch {
+    return { width: 1024, height: 1024 };
+  }
 }
 
-export function useSlicerMultiImageGallery(options: {
+export interface UseSlicerMultiImageGalleryOptions {
   onSelectActiveImage?: (image: SlicerUploadedImageItem) => void;
-}) {
+  onAutoDetectImage?: (file: File) => void;
+}
+
+export function useSlicerMultiImageGallery(options: UseSlicerMultiImageGalleryOptions = {}) {
   const [imageList, setImageList] = useState<SlicerUploadedImageItem[]>([]);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const activeImageIdRef = useRef<string | null>(activeImageId);
@@ -173,6 +175,9 @@ export function useSlicerMultiImageGallery(options: {
         setActiveImageId(first.id);
         const partId = first.metadata?.part_id || 'other_unassigned';
         setActivePartId(partId);
+        if (first.file && options.onAutoDetectImage) {
+          options.onAutoDetectImage(first.file);
+        }
         if (options.onSelectActiveImage) {
           options.onSelectActiveImage(first);
         }

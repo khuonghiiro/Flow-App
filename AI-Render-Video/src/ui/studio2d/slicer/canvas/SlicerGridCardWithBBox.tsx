@@ -8,10 +8,12 @@ import { PaddedCropRect, detectImageBBoxRect } from '../../../../core/utils/Pixe
 import { ChromaProcessOptions } from '../../../../core/utils/ChromaDespeckleProcessor';
 import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
 import { eraseBrushStrokeOnCanvas, eraseBoxSelectionOnCanvas } from '../utils/slicerPixelEraserHelper';
+import { loadSafeImage } from '../utils/slicerImageLoaderHelper';
 
 interface SlicerGridCardWithBBoxProps {
   item: SlicerUploadedImageItem;
   isActive: boolean;
+  isSingleCard?: boolean;
   isEyedropperActive: boolean;
   isDirectBBoxCropActive: boolean;
   directBBoxPadding: number;
@@ -38,6 +40,7 @@ interface SlicerGridCardWithBBoxProps {
 export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
   item,
   isActive,
+  isSingleCard = false,
   isEyedropperActive,
   isDirectBBoxCropActive,
   directBBoxPadding,
@@ -60,6 +63,7 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
   onPickColor,
   onHoverColor,
 }) => {
+  const cardContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number }>({
     width: item.width || 800,
@@ -67,16 +71,104 @@ export const SlicerGridCardWithBBox: React.FC<SlicerGridCardWithBBoxProps> = ({
   });
   const [bboxRect, setBboxRect] = useState<PaddedCropRect | null>(null);
 
-interface EraserBoxPoint {
-  screenX: number;
-  screenY: number;
-  canvasX: number;
-  canvasY: number;
-}
+  interface EraserBoxPoint {
+    screenX: number;
+    screenY: number;
+    canvasX: number;
+    canvasY: number;
+  }
 
   // Interactive Grid Divider states on each card
   const [hoveredDivider, setHoveredDivider] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
   const draggingDividerRef = useRef<{ type: 'col' | 'row'; index: number } | null>(null);
+
+  // Local card Zoom & Pan states (Ctrl + Wheel để zoom, Space + Drag để pan khi đã zoom)
+  const [cardZoom, setCardZoom] = useState<number>(1.0);
+  const [cardPanOffset, setCardPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isCardPanning, setIsCardPanning] = useState<boolean>(false);
+  const [cardPanStart, setCardPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState<boolean>(false);
+
+  // Space key listener for panning
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        setIsSpacePressed(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+        setIsCardPanning(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Native Non-Passive Wheel listener to completely PREVENT browser page zoom when scrolling / zooming cards
+  useEffect(() => {
+    const el = cardContainerRef.current;
+    if (!el) return;
+
+    const onNativeWheel = (e: WheelEvent) => {
+      // Khi chỉ có 1 ảnh trong khung (isSingleCard) hoặc khi nhấn giữ Ctrl/Cmd:
+      if (isSingleCard || e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const zoomFactor = 1.15;
+        if (e.deltaY < 0) {
+          setCardZoom((prev) => Math.min(8.0, Math.round(prev * zoomFactor * 100) / 100));
+        } else {
+          setCardZoom((prev) => {
+            const next = Math.max(1.0, Math.round((prev / zoomFactor) * 100) / 100);
+            if (next <= 1.0) {
+              setCardPanOffset({ x: 0, y: 0 });
+            }
+            return next;
+          });
+        }
+      }
+    };
+
+    el.addEventListener('wheel', onNativeWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onNativeWheel);
+    };
+  }, [isSingleCard]);
+
+  const handleCardPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (cardZoom > 1.02 && (isSpacePressed || e.button === 1 || e.altKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsCardPanning(true);
+      setCardPanStart({ x: e.clientX - cardPanOffset.x, y: e.clientY - cardPanOffset.y });
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
+  const handleCardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isCardPanning) {
+      e.preventDefault();
+      e.stopPropagation();
+      setCardPanOffset({ x: e.clientX - cardPanStart.x, y: e.clientY - cardPanStart.y });
+    }
+  };
+
+  const handleCardPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isCardPanning) {
+      setIsCardPanning(false);
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
 
   // Pixel Eraser interactive states on each card
   const [isErasing, setIsErasing] = useState<boolean>(false);
@@ -98,9 +190,20 @@ interface EraserBoxPoint {
 
   const cardAspectRatio = naturalSize.height > 0 ? naturalSize.width / naturalSize.height : 1;
 
-  // Use per-item custom dividers if present, else fallback to global dividers
-  const effectiveColDividers = item.customColDividers || colDividers;
-  const effectiveRowDividers = item.customRowDividers || rowDividers;
+  // Use per-item custom dividers if present and matching current matrix dimensions, else fallback to global dividers
+  const effectiveColDividers =
+    item.customColDividers && item.customColDividers.length === (currentCategory?.cols || 1) + 1
+      ? item.customColDividers
+      : colDividers && colDividers.length === (currentCategory?.cols || 1) + 1
+        ? colDividers
+        : null;
+
+  const effectiveRowDividers =
+    item.customRowDividers && item.customRowDividers.length === (currentCategory?.rows || 1) + 1
+      ? item.customRowDividers
+      : rowDividers && rowDividers.length === (currentCategory?.rows || 1) + 1
+        ? rowDividers
+        : null;
 
   const getColX = useCallback((c: number, w: number, numCols: number, baseW: number) => {
     if (effectiveColDividers && effectiveColDividers.length > c && baseW > 0) {
@@ -122,26 +225,25 @@ interface EraserBoxPoint {
     const canvas = canvasRef.current;
     if (!canvas || !sourceUrl) return;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      if (!isMounted) return;
-      const w = img.naturalWidth || img.width;
-      const h = img.naturalHeight || img.height;
-      setNaturalSize({ width: w, height: h });
+    loadSafeImage(sourceUrl)
+      .then((img) => {
+        if (!isMounted) return;
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        setNaturalSize({ width: w, height: h });
 
-      canvas.width = w;
-      canvas.height = h;
+        canvas.width = w;
+        canvas.height = h;
 
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
 
-      // Draw the image
-      ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0);
+        // Draw the image
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0);
 
-      // If item is un-separated sprite sheet, draw custom/proportional grid dividers and padding inset guides
-      if (!isSep && currentCategory && currentCategory.id !== 'single_full_image' && currentCategory.cols > 1) {
+        // Draw custom/proportional grid dividers and padding inset guides ONLY on un-sliced sprite sheets
+        if (!item.isFrameItem && !isSep && currentCategory && currentCategory.id !== 'single_full_image' && (currentCategory.cols > 1 || currentCategory.rows > 1)) {
         const numCols = Math.max(1, currentCategory.cols || 4);
         const numRows = Math.max(1, currentCategory.rows || 1);
         const pad = Math.max(0, paddingInset);
@@ -264,11 +366,13 @@ interface EraserBoxPoint {
           ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
           ctx.setLineDash([]);
         }
-      } else {
-        if (isMounted) setBboxRect(null);
-      }
-    };
-    img.src = sourceUrl;
+        } else {
+          if (isMounted) setBboxRect(null);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load card image:', err);
+      });
 
     return () => {
       isMounted = false;
@@ -301,6 +405,11 @@ interface EraserBoxPoint {
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (cardZoom > 1.02 && (isSpacePressed || e.button === 1 || e.altKey)) {
+      handleCardPointerDown(e as unknown as React.PointerEvent<HTMLDivElement>);
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -336,7 +445,7 @@ interface EraserBoxPoint {
       e.stopPropagation();
       try {
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      } catch {}
+      } catch { }
       draggingDividerRef.current = hoveredDivider;
       return;
     }
@@ -345,7 +454,7 @@ interface EraserBoxPoint {
     e.stopPropagation();
     try {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {}
+    } catch { }
 
     setIsErasing(true);
     setLastPoint(pt);
@@ -369,6 +478,10 @@ interface EraserBoxPoint {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isCardPanning) {
+      handleCardPointerMove(e as unknown as React.PointerEvent<HTMLDivElement>);
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -473,21 +586,12 @@ interface EraserBoxPoint {
       }
 
       setHoveredDivider(found);
-    } else if (hoveredDivider) {
-      setHoveredDivider(null);
+      if (found) return;
+    } else {
+      if (hoveredDivider) setHoveredDivider(null);
     }
 
-    // 2. Handle Eraser Preview Ring
-    if (eraserMode !== 'off') {
-      setHoverCursor({
-        x: screenX,
-        y: screenY,
-        size: eraserBrushSize,
-        visible: true,
-      });
-    }
-
-    // 3. Handle Eyedropper Live Loupe Hover Sampling
+    // 2. Handle Eyedropper Live Loupe Hover Sampling
     if (isEyedropperActive && onHoverColor) {
       const normX = Math.max(0, Math.min(1, screenX / (rect.width || 1)));
       const normY = Math.max(0, Math.min(1, screenY / (rect.height || 1)));
@@ -506,62 +610,76 @@ interface EraserBoxPoint {
           y: e.clientY,
         });
       }
+      return;
     }
 
-    if (!isErasing) return;
-    e.stopPropagation();
+    if (eraserMode === 'off') return;
 
     if (eraserMode === 'brush') {
-      if (!lastPoint) return;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const canvasRadius = (eraserBrushSize / 2) * scaleX;
-        eraseBrushStrokeOnCanvas(ctx, lastPoint.x, lastPoint.y, pt.x, pt.y, canvasRadius);
-        setLastPoint(pt);
+      setHoverCursor({
+        x: screenX,
+        y: screenY,
+        size: eraserBrushSize,
+        visible: true,
+      });
+
+      if (isErasing && lastPoint) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const canvasRadius = (eraserBrushSize / 2) * scaleX;
+          eraseBrushStrokeOnCanvas(ctx, lastPoint.x, lastPoint.y, pt.x, pt.y, canvasRadius);
+          setLastPoint(pt);
+        }
       }
     } else if (eraserMode === 'box') {
-      setBoxCurrent({
-        screenX,
-        screenY,
-        canvasX: pt.x,
-        canvasY: pt.y,
-      });
+      if (isErasing) {
+        setBoxCurrent({
+          screenX,
+          screenY,
+          canvasX: pt.x,
+          canvasY: pt.y,
+        });
+      }
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isCardPanning) {
+      handleCardPointerUp(e as unknown as React.PointerEvent<HTMLDivElement>);
+    }
+    const canvas = canvasRef.current;
     if (draggingDividerRef.current) {
       try {
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {}
+      } catch { }
       draggingDividerRef.current = null;
+      setHoveredDivider(null);
+      return;
     }
 
-    if (!isErasing) return;
-    e.stopPropagation();
-    setIsErasing(false);
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    if (eraserMode === 'box' && boxStart && boxCurrent && ctx) {
-      const x = Math.min(boxStart.canvasX, boxCurrent.canvasX);
-      const y = Math.min(boxStart.canvasY, boxCurrent.canvasY);
-      const w = Math.abs(boxCurrent.canvasX - boxStart.canvasX);
-      const h = Math.abs(boxCurrent.canvasY - boxStart.canvasY);
-      if (w > 2 && h > 2) {
-        eraseBoxSelectionOnCanvas(ctx, x, y, w, h);
+    if (eraserMode === 'box' && isErasing && boxStart && boxCurrent && canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const x = Math.min(boxStart.canvasX, boxCurrent.canvasX);
+        const y = Math.min(boxStart.canvasY, boxCurrent.canvasY);
+        const w = Math.abs(boxCurrent.canvasX - boxStart.canvasX);
+        const h = Math.abs(boxCurrent.canvasY - boxStart.canvasY);
+        if (w > 2 && h > 2) {
+          eraseBoxSelectionOnCanvas(ctx, x, y, w, h);
+        }
       }
-      setBoxStart(null);
-      setBoxCurrent(null);
     }
 
-    setLastPoint(null);
-
-    if (onUpdateItemImage) {
+    if (isErasing && canvas && onUpdateItemImage) {
       const newDataUrl = canvas.toDataURL('image/png');
       onUpdateItemImage(item.id, newDataUrl);
+    }
+
+    if (isErasing) {
+      setIsErasing(false);
+      setLastPoint(null);
+      setBoxStart(null);
+      setBoxCurrent(null);
     }
   };
 
@@ -582,38 +700,46 @@ interface EraserBoxPoint {
     isEyedropperActive
       ? 'crosshair'
       : eraserMode !== 'off'
-      ? 'crosshair'
-      : isDirectBBoxCropActive
-      ? 'crosshair'
-      : hoveredDivider
-      ? hoveredDivider.type === 'col'
-        ? 'col-resize'
-        : 'row-resize'
-      : 'pointer';
+        ? 'crosshair'
+        : isDirectBBoxCropActive
+          ? 'crosshair'
+          : cardZoom > 1.02 && isSpacePressed
+            ? isCardPanning
+              ? 'grabbing'
+              : 'grab'
+            : hoveredDivider
+              ? hoveredDivider.type === 'col'
+                ? 'col-resize'
+                : 'row-resize'
+              : 'pointer';
 
   return (
     <div
+      ref={cardContainerRef}
       onClick={(e) => {
-        if (eraserMode === 'off' && !hoveredDivider) {
+        if (eraserMode === 'off' && !hoveredDivider && !isCardPanning) {
           onClick && onClick(e, item);
         }
       }}
       onMouseMove={onMouseMove}
+      onPointerDown={handleCardPointerDown}
+      onPointerMove={handleCardPointerMove}
+      onPointerUp={handleCardPointerUp}
       style={{
         borderRadius: 8,
         border: isActive
           ? '2px solid #38bdf8'
           : isSep
-          ? '1.5px solid rgba(74,222,128,0.4)'
-          : '1.5px solid rgba(255,255,255,0.12)',
+            ? '1.5px solid rgba(74,222,128,0.4)'
+            : '1.5px solid rgba(255,255,255,0.12)',
         background:
           isSep || previewDisplayMode === 'transparent'
             ? checkerTheme === 'light'
               ? 'repeating-conic-gradient(#e2e8f0 0% 25%, #ffffff 0% 50%) 50% / 12px 12px'
               : 'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 12px 12px'
             : checkerTheme === 'light'
-            ? 'rgba(245, 245, 250, 0.9)'
-            : 'rgba(15, 23, 42, 0.7)',
+              ? 'rgba(245, 245, 250, 0.9)'
+              : 'rgba(15, 23, 42, 0.7)',
         padding: 6,
         cursor: cardCursor,
         display: 'flex',
@@ -678,12 +804,44 @@ interface EraserBoxPoint {
         {isSep ? '✨ Đã tách' : (item.customColDividers || item.customRowDividers) ? '🎯 Lưới riêng' : '🖼️ Sprite Sheet'}
       </div>
 
+      {/* Zoom Reset Badge */}
+      {cardZoom > 1.02 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setCardZoom(1.0);
+            setCardPanOffset({ x: 0, y: 0 });
+          }}
+          style={{
+            position: 'absolute',
+            bottom: 26,
+            right: 8,
+            zIndex: 15,
+            padding: '2px 7px',
+            fontSize: 9,
+            fontWeight: 700,
+            borderRadius: 4,
+            background: 'rgba(2, 132, 199, 0.95)',
+            color: '#ffffff',
+            border: '1px solid rgba(255,255,255,0.4)',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+          }}
+          title="Nhấp để reset về cỡ Fit 100%"
+        >
+          🔍 {Math.round(cardZoom * 100)}% (Fit)
+        </button>
+      )}
+
       {/* Canvas Wrapper with natural responsive aspect ratio fitting the card */}
       <div
         style={{
           width: '100%',
           flex: 1,
-          minHeight: 140,
+          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -702,6 +860,12 @@ interface EraserBoxPoint {
             maxHeight: '100%',
             width: '100%',
             height: '100%',
+            transform:
+              cardZoom > 1.0
+                ? `translate(${cardPanOffset.x}px, ${cardPanOffset.y}px) scale(${cardZoom})`
+                : 'none',
+            transformOrigin: 'center center',
+            transition: isCardPanning ? 'none' : 'transform 0.08s ease-out',
             cursor: cardCursor,
           }}
         >

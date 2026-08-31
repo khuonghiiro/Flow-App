@@ -5,6 +5,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { SlicerUploadedImageItem } from './useSlicerMultiImageGallery';
 import { GridCategoryDefinition } from '../../../../core/assets/GridSliceRegistry';
 import { parsePartFilename, ParsedPartFilenameInfo } from '../../../../core/assets/Asset2DRegistry';
+import { loadSafeImage } from '../utils/slicerImageLoaderHelper';
 
 export interface UseSlicerImageSyncProps {
   imageList: SlicerUploadedImageItem[];
@@ -33,6 +34,7 @@ export interface UseSlicerImageSyncProps {
 }
 
 export function useSlicerImageSync({
+  imageList,
   setImageList,
   activeImageIdRef,
   loadedImageRef,
@@ -72,7 +74,7 @@ export function useSlicerImageSync({
   }, [showToast]);
 
   const handleUpdateItemImage = useCallback(
-    (id: string, newDataUrl: string) => {
+    async (id: string, newDataUrl: string) => {
       setImageList((prev) =>
         prev.map((item) =>
           item.id === id
@@ -86,14 +88,14 @@ export function useSlicerImageSync({
         )
       );
       if (id === activeImageIdRef.current) {
-        const nextImg = new Image();
-        nextImg.crossOrigin = 'anonymous';
-        nextImg.onload = () => {
+        try {
+          const nextImg = await loadSafeImage(newDataUrl);
           loadedImageRef.current = nextImg;
           setLoadedImage(nextImg);
           redrawCanvas();
-        };
-        nextImg.src = newDataUrl;
+        } catch (err) {
+          console.warn('Failed to update active image from dataUrl:', err);
+        }
       }
     },
     [activeImageIdRef, redrawCanvas, setImageList, loadedImageRef, setLoadedImage]
@@ -129,14 +131,13 @@ export function useSlicerImageSync({
   );
 
   const handleSelectImage = useCallback(
-    (item: SlicerUploadedImageItem) => {
+    async (item: SlicerUploadedImageItem) => {
       baseSelectImage(item);
       const targetUrl = item.url || item.originalUrl;
       if (targetUrl) {
         setUserUploadedImageUrl(targetUrl);
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
+        try {
+          const img = await loadSafeImage(targetUrl);
           loadedImageRef.current = img;
           setLoadedImage(img);
           if (item.customColDividers && item.customColDividers.length > 0) {
@@ -153,8 +154,9 @@ export function useSlicerImageSync({
             setRowDividers(item.customRowDividers);
           }
           redrawCanvas(item.isTransparentSeparated ? 'transparent' : 'original');
-        };
-        img.src = targetUrl;
+        } catch (err) {
+          console.warn('Failed to load selected image:', err);
+        }
       }
     },
     [
@@ -171,6 +173,16 @@ export function useSlicerImageSync({
     ]
   );
 
+  // Auto-sync loadedImage if imageList is populated and loadedImage is null
+  useEffect(() => {
+    if (imageList.length > 0 && !loadedImageRef.current) {
+      const targetItem = imageList.find((it) => it.id === activeImageIdRef.current) || imageList[0];
+      if (targetItem) {
+        handleSelectImage(targetItem);
+      }
+    }
+  }, [imageList, handleSelectImage]);
+
   // External Image Listeners
   const lastLoadedExternalUrlRef = useRef<string | null>(null);
   useEffect(() => {
@@ -184,15 +196,16 @@ export function useSlicerImageSync({
       setPreviewDisplayMode('original');
       if (externalCategoryId) setSelectedCatId(externalCategoryId);
 
-      const extImg = new Image();
-      extImg.crossOrigin = 'anonymous';
-      extImg.onload = () => {
-        loadedImageRef.current = extImg;
-        setLoadedImage(extImg);
-        initUniformDividers(extImg.width, extImg.height, currentCategory.cols, currentCategory.rows);
-        redrawCanvas('original');
-      };
-      extImg.src = externalImageUrl;
+      loadSafeImage(externalImageUrl)
+        .then((extImg) => {
+          loadedImageRef.current = extImg;
+          setLoadedImage(extImg);
+          initUniformDividers(extImg.width, extImg.height, currentCategory.cols, currentCategory.rows);
+          redrawCanvas('original');
+        })
+        .catch((err) => {
+          console.warn('Failed to load external image:', err);
+        });
     }
   }, [
     externalImageUrl,

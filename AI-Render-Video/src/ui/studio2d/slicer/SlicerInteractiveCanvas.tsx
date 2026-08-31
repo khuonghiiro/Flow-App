@@ -75,6 +75,68 @@ export interface SlicerInteractiveCanvasProps {
   onUpdateItemDividers?: (itemId: string, newColDividers?: number[], newRowDividers?: number[]) => void;
 }
 
+// Responsive dynamic grid layout based on loaded/checked image count
+const getMultiImageGridStyle = (count: number): React.CSSProperties => {
+  if (count <= 1) {
+    return {
+      gridTemplateColumns: '1fr',
+      gridTemplateRows: '1fr',
+    };
+  }
+  if (count === 2) {
+    return {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gridTemplateRows: '1fr',
+    };
+  }
+  if (count === 3 || count === 4) {
+    return {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+    };
+  }
+  if (count === 5 || count === 6) {
+    return {
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+    };
+  }
+  if (count === 7 || count === 8) {
+    return {
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+    };
+  }
+  if (count === 9) {
+    return {
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
+    };
+  }
+  if (count >= 10 && count <= 12) {
+    return {
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
+    };
+  }
+  if (count >= 13 && count <= 16) {
+    return {
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(4, minmax(0, 1fr))',
+    };
+  }
+  if (count >= 17 && count <= 20) {
+    return {
+      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(4, minmax(0, 1fr))',
+    };
+  }
+  return {
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gridAutoRows: 'minmax(200px, 1fr)',
+  };
+};
+
 export const SlicerInteractiveCanvas: React.FC<SlicerInteractiveCanvasProps> = ({
   imageCanvasRef,
   hasImage = false,
@@ -152,6 +214,9 @@ interface EraserBoxPoint {
   const [singleBoxCurrent, setSingleBoxCurrent] = useState<EraserBoxPoint | null>(null);
   const [singleCursorPos, setSingleCursorPos] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false });
 
+  const [fitZoom, setFitZoom] = useState<number>(1.0);
+  const canPanSingleImage = zoom > fitZoom + 0.02;
+
   const handleAutoFitToViewport = useCallback(() => {
     const canvas = imageCanvasRef.current;
     const viewport = viewportRef.current;
@@ -160,7 +225,9 @@ interface EraserBoxPoint {
     const vpH = viewport.clientHeight - 32;
     if (vpW <= 0 || vpH <= 0 || canvas.width <= 0 || canvas.height <= 0) return;
     const scale = Math.min(vpW / canvas.width, vpH / canvas.height);
-    setZoom(Math.max(0.1, Math.round(scale * 100) / 100));
+    const computedFit = Math.max(0.1, Math.round(scale * 100) / 100);
+    setFitZoom(computedFit);
+    setZoom(computedFit);
     setPanOffset({ x: 0, y: 0 });
   }, [imageCanvasRef]);
 
@@ -194,23 +261,41 @@ interface EraserBoxPoint {
     };
   }, []);
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    // Khi đang xem danh sách card ảnh (checkedImageItems > 0), cho phép cuộn chuột dọc tự nhiên trừ khi nhấn Ctrl/Cmd để zoom
-    if (checkedImageItems.length > 0 && !e.ctrlKey && !e.metaKey) {
-      return;
-    }
-    e.preventDefault();
-    const zoomFactor = 1.1;
-    if (e.deltaY < 0) {
-      setZoom((prev) => Math.min(8.0, Math.round(prev * zoomFactor * 100) / 100));
-    } else {
-      setZoom((prev) => Math.max(0.1, Math.round((prev / zoomFactor) * 100) / 100));
-    }
-  };
+  // Native non-passive Wheel listener to completely PREVENT browser page zoom when zooming single canvas
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      // Nếu có nhiều hơn 1 card ảnh và không giữ Ctrl, cho phép cuộn danh sách card
+      if (checkedImageItems.length > 1 && !e.ctrlKey && !e.metaKey) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const zoomFactor = 1.15;
+      if (e.deltaY < 0) {
+        setZoom((prev) => Math.min(8.0, Math.round(prev * zoomFactor * 100) / 100));
+      } else {
+        setZoom((prev) => {
+          const next = Math.max(0.1, Math.round((prev / zoomFactor) * 100) / 100);
+          if (next <= fitZoom + 0.02) {
+            setPanOffset({ x: 0, y: 0 });
+          }
+          return next;
+        });
+      }
+    };
+
+    el.addEventListener('wheel', handleNativeWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleNativeWheel);
+    };
+  }, [checkedImageItems.length, fitZoom]);
 
   const handleContainerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (eraserMode !== 'off') return;
-    if (isSpacePressed || e.button === 1 || e.altKey) {
+    if (checkedImageItems.length <= 1 && canPanSingleImage && (isSpacePressed || e.button === 1 || e.altKey)) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
@@ -501,7 +586,6 @@ interface EraserBoxPoint {
       {/* Main Viewport */}
       <div
         ref={viewportRef}
-        onWheel={handleWheel}
         onMouseDown={handleContainerMouseDown}
         onMouseMove={handleContainerMouseMove}
         onMouseUp={handleContainerMouseUp}
@@ -517,7 +601,7 @@ interface EraserBoxPoint {
           border: isEyedropperActive ? '1.5px solid #f59e0b' : '1px dashed rgba(255,255,255,0.1)',
           padding: 6,
           boxShadow: isEyedropperActive ? 'inset 0 0 20px rgba(245,158,11,0.15)' : 'none',
-          cursor: isSpacePressed
+          cursor: isSpacePressed && canPanSingleImage && checkedImageItems.length <= 1
             ? isPanning
               ? 'grabbing'
               : 'grab'
@@ -545,15 +629,9 @@ interface EraserBoxPoint {
               minHeight: 0,
               overflowY: 'auto',
               display: 'grid',
-              gridTemplateColumns:
-                checkedImageItems.length === 1
-                  ? '1fr'
-                  : 'repeat(auto-fill, minmax(140px, 180px))',
-              gridAutoRows: checkedImageItems.length === 1 ? '1fr' : 'minmax(200px, 320px)',
+              ...getMultiImageGridStyle(checkedImageItems.length),
               gap: 10,
               padding: 10,
-              alignContent: 'start',
-              justifyContent: 'center',
               boxSizing: 'border-box',
             }}
           >
@@ -562,6 +640,7 @@ interface EraserBoxPoint {
                 key={item.id}
                 item={item}
                 isActive={item.id === activeImageId}
+                isSingleCard={checkedImageItems.length === 1}
                 isEyedropperActive={isEyedropperActive}
                 isDirectBBoxCropActive={isDirectBBoxCropActive}
                 directBBoxPadding={directBBoxPadding}

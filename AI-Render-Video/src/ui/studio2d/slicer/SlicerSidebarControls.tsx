@@ -211,15 +211,11 @@ export const SlicerSidebarControls: React.FC<SlicerSidebarControlsProps> = ({
     >
       {/* CARD 1: NGUỒN ẢNH & KHUNG LƯỚI */}
       <SlicerSourceImageCard
-        targetCategory={targetCategory}
-        onSelectTargetCategory={onSelectTargetCategory}
         isSingleImageMode={selectedCatId === 'single_full_image'}
         singleImageAngle={singleImageAngle}
         onUpdateSingleImageAngle={onUpdateSingleImageAngle}
         singleImageSlot={singleImageSlot}
         onUpdateSingleImageSlot={onUpdateSingleImageSlot}
-        onAutoDetectAngleFromFilename={onAutoDetectAngleFromFilename}
-        onOpenJsonImportModal={onOpenJsonImportModal}
         userUploadedImageUrl={userUploadedImageUrl}
         totalLoadedCount={totalLoadedCount}
         onFileUpload={onFileUpload}

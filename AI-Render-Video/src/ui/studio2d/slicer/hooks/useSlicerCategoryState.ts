@@ -8,6 +8,7 @@ import {
   loadCachedSingleMode,
   saveCachedSingleMode,
   loadCachedGridConfig,
+  saveCachedGridConfig,
   createDynamicGridCategory,
 } from '../../../../core/assets/slicer/SlicerAngleConstants';
 
@@ -21,6 +22,7 @@ export interface UseSlicerCategoryStateProps {
   slicedCanvasesRef?: React.MutableRefObject<Map<string, HTMLCanvasElement>>;
   setSlicedResults?: (results: Map<string, string>) => void;
   setPreviewDisplayMode?: (mode: 'transparent' | 'original') => void;
+  redrawCanvas?: (mode?: 'transparent' | 'original') => void;
 }
 
 export function useSlicerCategoryState({
@@ -33,6 +35,7 @@ export function useSlicerCategoryState({
   slicedCanvasesRef,
   setSlicedResults,
   setPreviewDisplayMode,
+  redrawCanvas,
 }: UseSlicerCategoryStateProps = {}) {
   const [lastUsedGridCatId, setLastUsedGridCatId] = useState<string>(() => {
     const cachedGrid = loadCachedGridConfig();
@@ -88,9 +91,9 @@ export function useSlicerCategoryState({
           ? customCategory
           : GRID_CATEGORY_DEFINITIONS.find((c) => c.id === newCatId) || GRID_CATEGORY_DEFINITIONS[0];
       const img = loadedImage || loadedImageRef?.current;
-      if (img && initUniformDividers) {
-        const w = img.naturalWidth || img.width;
-        const h = img.naturalHeight || img.height;
+      const w = img?.naturalWidth || img?.width || 800;
+      const h = img?.naturalHeight || img?.height || 600;
+      if (initUniformDividers) {
         initUniformDividers(w, h, cat.cols, cat.rows);
       }
       if (setSelectedCell) setSelectedCell(null);
@@ -98,8 +101,9 @@ export function useSlicerCategoryState({
       if (slicedCanvasesRef?.current) slicedCanvasesRef.current.clear();
       if (setSlicedResults) setSlicedResults(new Map());
       if (setPreviewDisplayMode) setPreviewDisplayMode('original');
+      if (redrawCanvas) redrawCanvas('original');
     },
-    [loadedImage, loadedImageRef, initUniformDividers, customCategory, setSelectedCell, setHasExplicitlySliced, slicedCanvasesRef, setSlicedResults, setPreviewDisplayMode]
+    [loadedImage, loadedImageRef, initUniformDividers, customCategory, setSelectedCell, setHasExplicitlySliced, slicedCanvasesRef, setSlicedResults, setPreviewDisplayMode, redrawCanvas]
   );
 
   const handleToggleSingleImageMode = useCallback(() => {
@@ -122,11 +126,12 @@ export function useSlicerCategoryState({
       setCustomCategory(newCat);
       setLastUsedGridCatId(newCat.id);
       saveCachedSingleMode(false);
+      saveCachedGridConfig(rows, cols);
       setSelectedCatId(newCat.id);
       const img = loadedImage || loadedImageRef?.current;
-      if (img && initUniformDividers) {
-        const w = img.naturalWidth || img.width;
-        const h = img.naturalHeight || img.height;
+      const w = img?.naturalWidth || img?.width || 800;
+      const h = img?.naturalHeight || img?.height || 600;
+      if (initUniformDividers) {
         initUniformDividers(w, h, newCat.cols, newCat.rows);
       }
       if (setSelectedCell) setSelectedCell(null);
@@ -134,8 +139,9 @@ export function useSlicerCategoryState({
       if (slicedCanvasesRef?.current) slicedCanvasesRef.current.clear();
       if (setSlicedResults) setSlicedResults(new Map());
       if (setPreviewDisplayMode) setPreviewDisplayMode('original');
+      if (redrawCanvas) redrawCanvas('original');
     },
-    [loadedImage, loadedImageRef, initUniformDividers, setSelectedCell, setHasExplicitlySliced, slicedCanvasesRef, setSlicedResults, setPreviewDisplayMode]
+    [loadedImage, loadedImageRef, initUniformDividers, setSelectedCell, setHasExplicitlySliced, slicedCanvasesRef, setSlicedResults, setPreviewDisplayMode, redrawCanvas]
   );
 
   return {
