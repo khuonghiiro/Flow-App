@@ -145,7 +145,7 @@ export const SlicerSaveKitModal: React.FC<SlicerSaveKitModalProps> = ({
   const activeAngle = DEFAULT_ANGLES.find((a) => a.deg === selectedAngleDeg) || DEFAULT_ANGLES[1];
   const angleSlug = activeAngle.deg >= 0 ? activeAngle.id : '';
 
-  const targetFolderPath = `asset_2ds/nhan_vat/${finalCharSlug}/${finalPartSlug}${angleSlug ? `/${angleSlug}` : ''}`;
+  const targetFolderPath = `asset_2ds/chi_tiet_nhan_vat/${finalPartSlug}${angleSlug ? `/${angleSlug}` : ''}`;
 
   // Handle Save
   const handleSave = async () => {
@@ -172,7 +172,7 @@ export const SlicerSaveKitModal: React.FC<SlicerSaveKitModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          genre: 'nhan_vat',
+          genre: 'chi_tiet_nhan_vat',
           character: finalCharSlug,
           partCategory: finalPartSlug,
           partDisplayName: finalPartDisplayName,
@@ -277,7 +277,7 @@ export const SlicerSaveKitModal: React.FC<SlicerSaveKitModalProps> = ({
               <Save size={15} />
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
-              Lưu Linh Kiện Vào Thư Mục Kho (asset_2ds/nhan_vat)
+              Lưu Linh Kiện Vào Kho Chi Tiết (asset_2ds/chi_tiet_nhan_vat)
             </div>
             <span
               style={{

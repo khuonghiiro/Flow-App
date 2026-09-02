@@ -17,7 +17,7 @@ echo.
 
 echo [2/3] Mo trinh duyet Studio...
 start "" "http://localhost:5173/"
-echo - Da mo trinh duyet.
+echo - Da mo trinh duyet: http://localhost:5173/
 echo.
 
 echo [3/3] Dang khoi dong may chu Vite Dev Server...

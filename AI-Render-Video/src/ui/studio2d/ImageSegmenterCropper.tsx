@@ -255,7 +255,7 @@ export const ImageSegmenterCropper: React.FC<ImageSegmenterCropperProps> = ({
   // Preset selection handler
   const handleSelectPreset = (preset: StandardCropPreset) => {
     setSelectedPreset(preset);
-    if (preset.category === 'nhan_vat' && preset.slot !== 'map_layer' && preset.slot !== 'prop' && preset.slot !== 'vfx') {
+    if ((preset.category === 'chi_tiet_nhan_vat' || preset.category === 'nhan_vat') && preset.slot !== 'map_layer' && preset.slot !== 'prop' && preset.slot !== 'vfx') {
       setTargetSlot(preset.slot);
     }
     if (loadedImageRef.current) {

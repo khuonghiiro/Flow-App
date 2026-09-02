@@ -1,6 +1,6 @@
 FLOWMY ASSET FOLDERS STRUCTURE
-Generated: 2026-08-21T18:11:14.919Z
-Total Folders: 107
+Generated: 2026-09-02T13:24:53.329Z
+Total Folders: 113
 
 assets/
 ├── animations/
@@ -20,6 +20,7 @@ assets/
 ├── ban_do/
 │   ├── medieval_fantasy_book/
 │   │   └── textures/
+│   ├── presets/
 │   └── _custom_ban_do/
 ├── bau_troi/
 │   ├── binh_minh/
@@ -55,6 +56,7 @@ assets/
 │   │   └── tren_troi/
 │   ├── do_tieu_hao/
 │   ├── dung_cu/
+│   ├── hoa_co/
 │   ├── noi_that/
 │   ├── phuong_tien/
 │   ├── vu_khi/
@@ -103,12 +105,16 @@ assets/
     │   └── nu/
     ├── than_co_ban/
     │   ├── chung/
+    │   │   └── nu_meo_animation/
+    │   │       ├── source/
+    │   │       └── textures/
     │   ├── nam/
     │   └── nu/
     ├── trang_phuc/
     │   ├── chung/
     │   ├── nam/
     │   └── nu/
+    ├── _da_gan_xuong/
     └── _lap_rap/
 
 
@@ -130,6 +136,7 @@ DANH SÁCH ĐƯỜNG DẪN TƯƠNG ĐỐI:
  - assets/ban_do
  - assets/ban_do/medieval_fantasy_book
  - assets/ban_do/medieval_fantasy_book/textures
+ - assets/ban_do/presets
  - assets/ban_do/_custom_ban_do
  - assets/bau_troi
  - assets/bau_troi/binh_minh
@@ -165,6 +172,7 @@ DANH SÁCH ĐƯỜNG DẪN TƯƠNG ĐỐI:
  - assets/dao_cu/dong_vat/tren_troi
  - assets/dao_cu/do_tieu_hao
  - assets/dao_cu/dung_cu
+ - assets/dao_cu/hoa_co
  - assets/dao_cu/noi_that
  - assets/dao_cu/phuong_tien
  - assets/dao_cu/vu_khi
@@ -213,13 +221,14 @@ DANH SÁCH ĐƯỜNG DẪN TƯƠNG ĐỐI:
  - assets/nhan_vat/phu_kien/nu
  - assets/nhan_vat/than_co_ban
  - assets/nhan_vat/than_co_ban/chung
+ - assets/nhan_vat/than_co_ban/chung/nu_meo_animation
+ - assets/nhan_vat/than_co_ban/chung/nu_meo_animation/source
+ - assets/nhan_vat/than_co_ban/chung/nu_meo_animation/textures
  - assets/nhan_vat/than_co_ban/nam
  - assets/nhan_vat/than_co_ban/nu
  - assets/nhan_vat/trang_phuc
  - assets/nhan_vat/trang_phuc/chung
  - assets/nhan_vat/trang_phuc/nam
  - assets/nhan_vat/trang_phuc/nu
+ - assets/nhan_vat/_da_gan_xuong
  - assets/nhan_vat/_lap_rap
- - assets/nhan_vat/_lap_rap/chung
- - assets/nhan_vat/_lap_rap/nam
- - assets/nhan_vat/_lap_rap/nu

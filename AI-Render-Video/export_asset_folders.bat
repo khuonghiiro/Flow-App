@@ -1,11 +1,12 @@
 @echo off
-chcp 65001 >nul 2>&1
+setlocal
+cd /d "%~dp0"
 echo ====================================================
-echo  📋 FLOWMY - XUẤT DANH SÁCH TOÀN BỘ THƯ MỤC ASSETS
+echo   FLOWMY - XUAT DANH SACH THU MUC ASSETS
 echo ====================================================
 echo.
 
-node "%~dp0scripts\export_asset_folders.js"
+node "scripts\export_asset_folders.js"
 
 echo.
 pause

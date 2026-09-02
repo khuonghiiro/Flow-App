@@ -76,6 +76,7 @@ export interface VideoSlicerSidebarProps {
   onApplyChromaOnly: () => void;
   onTriggerEyedropper?: () => void;
   isEyedropperActive?: boolean;
+  onCommitChromaPreview?: () => void;
 
   // Logic 3: BBox Cropping
   isBBoxCropMode: boolean;
@@ -107,6 +108,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
   setEndTime,
   targetFps,
   setTargetFps,
+  maxFrames,
+  setMaxFrames,
   estimatedTotalFrames,
   isExtracting,
   extractProgress,
@@ -136,6 +139,7 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
   onApplyChromaOnly,
   onTriggerEyedropper,
   isEyedropperActive = false,
+  onCommitChromaPreview,
   isBBoxCropMode,
   setIsBBoxCropMode,
   isCroppingBBox = false,
@@ -559,6 +563,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
             max={100}
             value={tolerance}
             onChange={(e) => setTolerance(Number(e.target.value))}
+            onPointerUp={onCommitChromaPreview}
+            onKeyUp={onCommitChromaPreview}
             style={{ accentColor: '#10b981', width: '100%', height: 4 }}
           />
         </div>
@@ -575,6 +581,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
             max={20}
             value={feather}
             onChange={(e) => setFeather(Number(e.target.value))}
+            onPointerUp={onCommitChromaPreview}
+            onKeyUp={onCommitChromaPreview}
             style={{ accentColor: '#10b981', width: '100%', height: 4 }}
           />
         </div>
@@ -591,6 +599,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
             max={100}
             value={shadowRetention}
             onChange={(e) => setShadowRetention(Number(e.target.value))}
+            onPointerUp={onCommitChromaPreview}
+            onKeyUp={onCommitChromaPreview}
             style={{ accentColor: '#10b981', width: '100%', height: 4 }}
           />
         </div>
@@ -605,6 +615,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
               max={150}
               value={despeckleSize}
               onChange={(e) => setDespeckleSize(Number(e.target.value))}
+              onPointerUp={onCommitChromaPreview}
+              onKeyUp={onCommitChromaPreview}
               style={{ accentColor: '#10b981', width: '100%', height: 4 }}
             />
           </div>
@@ -616,6 +628,8 @@ export const VideoSlicerSidebar: React.FC<VideoSlicerSidebarProps> = ({
               max={100}
               value={defringeStrength}
               onChange={(e) => setDefringeStrength(Number(e.target.value))}
+              onPointerUp={onCommitChromaPreview}
+              onKeyUp={onCommitChromaPreview}
               style={{ accentColor: '#10b981', width: '100%', height: 4 }}
             />
           </div>

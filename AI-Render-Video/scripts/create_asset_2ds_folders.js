@@ -13,22 +13,29 @@ const __dirname = path.dirname(__filename);
 const root2dDir = path.resolve(__dirname, '../asset_2ds');
 
 const FOLDER_STRUCTURE = [
-  // Character Cutout Parts
-  'nhan_vat/dau',
-  'nhan_vat/khuon_mat',
-  'nhan_vat/mat',
-  'nhan_vat/mieng',
-  'nhan_vat/mui',
-  'nhan_vat/toc_truoc',
-  'nhan_vat/toc_sau',
-  'nhan_vat/than_co_ban',
-  'nhan_vat/canh_tay',
-  'nhan_vat/cang_tay',
-  'nhan_vat/ban_tay',
-  'nhan_vat/dui',
-  'nhan_vat/cang_chan',
-  'nhan_vat/trang_phuc',
-  'nhan_vat/vu_khi',
+  // Character Cutout Detail Parts
+  'chi_tiet_nhan_vat/dau',
+  'chi_tiet_nhan_vat/khuon_mat',
+  'chi_tiet_nhan_vat/mat',
+  'chi_tiet_nhan_vat/mat/trong_trang',
+  'chi_tiet_nhan_vat/mat/trong_den_iris',
+  'chi_tiet_nhan_vat/mat/diem_sang_mat',
+  'chi_tiet_nhan_vat/mat/mi_mat',
+  'chi_tiet_nhan_vat/mieng',
+  'chi_tiet_nhan_vat/mui',
+  'chi_tiet_nhan_vat/toc_truoc',
+  'chi_tiet_nhan_vat/toc_sau',
+  'chi_tiet_nhan_vat/than_co_ban',
+  'chi_tiet_nhan_vat/canh_tay',
+  'chi_tiet_nhan_vat/cang_tay',
+  'chi_tiet_nhan_vat/ban_tay',
+  'chi_tiet_nhan_vat/dui',
+  'chi_tiet_nhan_vat/cang_chan',
+  'chi_tiet_nhan_vat/trang_phuc',
+  'chi_tiet_nhan_vat/vu_khi',
+  'chi_tiet_nhan_vat/long_may',
+
+  // 2D Characters & Animation Sequences (Tab 1.2 & Tab 1.3)
   'nhan_vat/_lap_rap',
 
   // Parallax Maps & Backgrounds

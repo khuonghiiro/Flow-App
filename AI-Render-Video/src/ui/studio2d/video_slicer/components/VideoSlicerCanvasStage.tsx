@@ -1,20 +1,13 @@
 // =========================================================================================
 // AI NOTICE: Refer to README.md and .agents/skills/flowmy-standards/SKILL.md before editing.
-// Video Slicer Interactive Canvas Stage (Seamless Playback Without Frame Shrinking)
+// Video Slicer Interactive Canvas Stage (Multi-Mode Orchestrator)
 // =========================================================================================
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Play,
-  Layers,
-  Sparkles,
-  RefreshCw,
-} from 'lucide-react';
+import { Play, Layers, Sparkles, RefreshCw, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { VideoSliceFrame, VideoMetadata, VideoCropBBox } from '../../../../types/video_slicer';
 import { VideoSlicerTimelineRangeBar } from './VideoSlicerTimelineRangeBar';
 import { VideoSlicerFrameCard, useStartEndThumbnails } from './VideoSlicerStartEndComparator';
+import { VideoSlicerFramesCanvasStage } from './VideoSlicerFramesCanvasStage';
 
 export interface VideoSlicerCanvasStageProps {
   viewMode: 'video' | 'frames';
@@ -44,17 +37,21 @@ export interface VideoSlicerCanvasStageProps {
   onStopSearch: () => void;
 
   frames: VideoSliceFrame[];
+  setFrames: React.Dispatch<React.SetStateAction<VideoSliceFrame[]>>;
   frameOrder: number[];
   selectedFrameIndex: number | null;
   activePlaybackIndex: number;
   isAnimationPlaying: boolean;
   demoPeeledUrl: string | null;
   onionSkinMode: 'off' | 'sequential' | 'all';
+  onToggleOnionSkin: () => void;
   previewDisplayMode: 'transparent' | 'original';
   checkerTheme: 'dark' | 'light';
+  setCheckerTheme: React.Dispatch<React.SetStateAction<'dark' | 'light'>>;
   isBBoxCropMode: boolean;
   activeBBox: VideoCropBBox | null;
   onUpdateActiveBBox: (bbox: VideoCropBBox) => void;
+  onShowToast?: (text: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
@@ -82,17 +79,21 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   onTriggerSearchEnd,
   onStopSearch,
   frames,
+  setFrames,
   frameOrder,
   selectedFrameIndex,
   activePlaybackIndex,
   isAnimationPlaying,
   demoPeeledUrl,
   onionSkinMode,
+  onToggleOnionSkin,
   previewDisplayMode,
   checkerTheme,
+  setCheckerTheme,
   isBBoxCropMode,
   activeBBox,
   onUpdateActiveBBox,
+  onShowToast,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mediaContainerRef = useRef<HTMLDivElement>(null);
@@ -126,40 +127,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
   // Check if video is Vertical / Portrait (Height >= Width)
   const isPortrait = (videoMetadata?.height || 0) >= (videoMetadata?.width || 0);
 
-  // Compute fixed, rock-solid stage viewport dimensions
-  const { stageWidth, stageHeight } = useMemo(() => {
-    const vw = videoMetadata?.width || 640;
-    const vh = videoMetadata?.height || 480;
-    const aspect = vw / vh;
-    const maxH = 430;
-    const maxW = 600;
-
-    let w = maxH * aspect;
-    let h = maxH;
-    if (w > maxW) {
-      w = maxW;
-      h = maxW / aspect;
-    }
-    return {
-      stageWidth: Math.max(160, Math.round(w)),
-      stageHeight: Math.max(160, Math.round(h)),
-    };
-  }, [videoMetadata?.width, videoMetadata?.height]);
-
-  // Current active frame index (strictly maps to actual frame)
-  const currentFrameIndex = isAnimationPlaying
-    ? activePlaybackIndex
-    : selectedFrameIndex !== null
-    ? selectedFrameIndex
-    : 0;
-
-  const currentFrame = frames[currentFrameIndex] || null;
-
-  // Previous frame for onion skinning
-  const prevFrameIndex = currentFrameIndex > 0 ? currentFrameIndex - 1 : frames.length - 1;
-  const prevFrame = frames.length > 1 ? frames[prevFrameIndex] : null;
-
-  // Zoom handlers
+  // Zoom handlers for video mode
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 4.0));
   const handleZoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.25));
   const handleResetZoom = () => {
@@ -167,7 +135,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
     setPanOffset({ x: 0, y: 0 });
   };
 
-  // Mouse wheel zoom
+  // Mouse wheel zoom for video mode
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     if (e.deltaY < 0) {
@@ -273,12 +241,30 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
     };
   }, [isDraggingBBox, initialBBox, dragHandle, dragStartPos, zoom, onUpdateActiveBBox]);
 
-  // Checkerboard patterns
-  const checkerDark =
-    'linear-gradient(45deg, #182032 25%, transparent 25%), linear-gradient(-45deg, #182032 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #182032 75%), linear-gradient(-45deg, transparent 75%, #182032 75%)';
-  const checkerLight =
-    'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)';
+  // If in frames mode, render dedicated high-performance frames canvas stage
+  if (viewMode === 'frames') {
+    return (
+      <VideoSlicerFramesCanvasStage
+        frames={frames}
+        setFrames={setFrames}
+        selectedFrameIndex={selectedFrameIndex}
+        activePlaybackIndex={activePlaybackIndex}
+        isAnimationPlaying={isAnimationPlaying}
+        demoPeeledUrl={demoPeeledUrl}
+        onionSkinMode={onionSkinMode}
+        onToggleOnionSkin={onToggleOnionSkin}
+        previewDisplayMode={previewDisplayMode}
+        checkerTheme={checkerTheme}
+        setCheckerTheme={setCheckerTheme}
+        isBBoxCropMode={isBBoxCropMode}
+        activeBBox={activeBBox}
+        onUpdateActiveBBox={onUpdateActiveBBox}
+        onShowToast={onShowToast}
+      />
+    );
+  }
 
+  // Otherwise, render Live Video Stage
   return (
     <div
       ref={containerRef}
@@ -313,7 +299,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
       }}
     >
       {/* ─── FLOATING TOP COMPARISON TOOLBAR ──────────────────── */}
-      {viewMode === 'video' && videoMetadata && (
+      {videoMetadata && (
         <div
           style={{
             position: 'absolute',
@@ -387,7 +373,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
       >
         <button
           onClick={handleZoomIn}
-          title="Phóng to (Cuộn chuột lên)"
+          title="Phóng to"
           style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 4 }}
         >
           <ZoomIn size={14} />
@@ -397,7 +383,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
         </span>
         <button
           onClick={handleZoomOut}
-          title="Thu nhỏ (Cuộn chuột xuống)"
+          title="Thu nhỏ"
           style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 4 }}
         >
           <ZoomOut size={14} />
@@ -411,7 +397,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
         </button>
       </div>
 
-      {/* ─── CENTER VIEWPORT (VIDEO OR ANIMATION FRAMES) ───────── */}
+      {/* ─── CENTER VIEWPORT (LIVE VIDEO) ───────── */}
       <div
         data-stage-canvas="true"
         style={{
@@ -439,20 +425,10 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
             justifyContent: 'center',
           }}
         >
-          {/* 1. VIEW MODE = LIVE VIDEO WITH ADAPTIVE PREVIEWS */}
-          {viewMode === 'video' && videoMetadata ? (
+          {videoMetadata ? (
             isPortrait ? (
-              /* ─── 1A. VERTICAL LAYOUT: START (Left) - VIDEO (Center) - END (Right) ─── */
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 16,
-                }}
-              >
-                {/* Left Column: Start Frame Card */}
+              /* ─── 1A. VERTICAL LAYOUT ─── */
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
                 <VideoSlicerFrameCard
                   type="start"
                   timestamp={startTime}
@@ -463,7 +439,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   maxWidth={210}
                 />
 
-                {/* Center Column: Main Video Player */}
                 <div
                   ref={mediaContainerRef}
                   style={{
@@ -490,81 +465,23 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                       objectFit: 'contain',
                       borderRadius: 8,
                     }}
-                    onTimeUpdate={(e) => {
-                      onVideoTimeUpdate(e.currentTarget.currentTime);
-                    }}
+                    onTimeUpdate={(e) => onVideoTimeUpdate(e.currentTarget.currentTime)}
                   />
 
-                  {/* A/B Blink Overlay over Video */}
                   {isBlinking && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: '#000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 12,
-                        pointerEvents: 'none',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <img
-                        src={(blinkFrame === 'start' ? startThumb : endThumb) || ''}
-                        alt="Blink"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 8,
-                          left: 8,
-                          background: blinkFrame === 'start' ? '#0284c7' : '#dc2626',
-                          color: '#fff',
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          fontSize: 9.5,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {blinkFrame === 'start' ? `START: ${startTime.toFixed(2)}s` : `END: ${endTime.toFixed(2)}s`}
-                      </div>
+                    <div style={{ position: 'absolute', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 12, pointerEvents: 'none', borderRadius: 8 }}>
+                      <img src={(blinkFrame === 'start' ? startThumb : endThumb) || ''} alt="Blink" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                   )}
 
-                  {/* Center Play Overlay Icon when Paused */}
                   {!isVideoPlaying && !isBlinking && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(0, 0, 0, 0.3)',
-                        pointerEvents: 'none',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: '50%',
-                          background: 'rgba(2, 132, 199, 0.85)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 0 20px rgba(2, 132, 199, 0.6)',
-                        }}
-                      >
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.3)', pointerEvents: 'none', borderRadius: 8 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(2, 132, 199, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(2, 132, 199, 0.6)' }}>
                         <Play size={24} color="#fff" style={{ marginLeft: 3 }} />
                       </div>
                     </div>
                   )}
 
-                  {/* Interactive Percentage-Based 4-Corner BBox Overlay on Video */}
                   {shouldShowBBox && activeBBox && !isBlinking && (
                     <div
                       onClick={(e) => e.stopPropagation()}
@@ -583,21 +500,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                         boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
                       }}
                     >
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: -18,
-                          left: 0,
-                          background: '#f59e0b',
-                          color: '#000',
-                          fontSize: 8.5,
-                          fontWeight: 800,
-                          padding: '1px 5px',
-                          borderRadius: 3,
-                          pointerEvents: 'none',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <div style={{ position: 'absolute', top: -18, left: 0, background: '#f59e0b', color: '#000', fontSize: 8.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3, pointerEvents: 'none', whiteSpace: 'nowrap' }}>
                         🎯 Khung So Khớp BBox
                       </div>
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'nw')} style={{ position: 'absolute', top: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
@@ -608,7 +511,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   )}
                 </div>
 
-                {/* Right Column: End Frame Card */}
                 <VideoSlicerFrameCard
                   type="end"
                   timestamp={endTime}
@@ -620,17 +522,8 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                 />
               </div>
             ) : (
-              /* ─── 1B. HORIZONTAL LAYOUT: 2-COLUMN (Col 1: Start/End | Col 2: Video) ─── */
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 16,
-                }}
-              >
-                {/* Column 1: Stacked Start & End Cards */}
+              /* ─── 1B. HORIZONTAL LAYOUT ─── */
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <VideoSlicerFrameCard
                     type="start"
@@ -652,7 +545,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                   />
                 </div>
 
-                {/* Column 2: Main Video Player */}
                 <div
                   ref={mediaContainerRef}
                   style={{
@@ -679,81 +571,23 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                       objectFit: 'contain',
                       borderRadius: 8,
                     }}
-                    onTimeUpdate={(e) => {
-                      onVideoTimeUpdate(e.currentTarget.currentTime);
-                    }}
+                    onTimeUpdate={(e) => onVideoTimeUpdate(e.currentTarget.currentTime)}
                   />
 
-                  {/* A/B Blink Overlay */}
                   {isBlinking && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: '#000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 12,
-                        pointerEvents: 'none',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <img
-                        src={(blinkFrame === 'start' ? startThumb : endThumb) || ''}
-                        alt="Blink"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 8,
-                          left: 8,
-                          background: blinkFrame === 'start' ? '#0284c7' : '#dc2626',
-                          color: '#fff',
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          fontSize: 9.5,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {blinkFrame === 'start' ? `START: ${startTime.toFixed(2)}s` : `END: ${endTime.toFixed(2)}s`}
-                      </div>
+                    <div style={{ position: 'absolute', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 12, pointerEvents: 'none', borderRadius: 8 }}>
+                      <img src={(blinkFrame === 'start' ? startThumb : endThumb) || ''} alt="Blink" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                   )}
 
-                  {/* Center Play Icon */}
                   {!isVideoPlaying && !isBlinking && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(0, 0, 0, 0.3)',
-                        pointerEvents: 'none',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: '50%',
-                          background: 'rgba(2, 132, 199, 0.85)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 0 20px rgba(2, 132, 199, 0.6)',
-                        }}
-                      >
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.3)', pointerEvents: 'none', borderRadius: 8 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(2, 132, 199, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(2, 132, 199, 0.6)' }}>
                         <Play size={24} color="#fff" style={{ marginLeft: 3 }} />
                       </div>
                     </div>
                   )}
 
-                  {/* Interactive 4-Corner BBox Overlay */}
                   {shouldShowBBox && activeBBox && !isBlinking && (
                     <div
                       onClick={(e) => e.stopPropagation()}
@@ -772,21 +606,7 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                         boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
                       }}
                     >
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: -18,
-                          left: 0,
-                          background: '#f59e0b',
-                          color: '#000',
-                          fontSize: 8.5,
-                          fontWeight: 800,
-                          padding: '1px 5px',
-                          borderRadius: 3,
-                          pointerEvents: 'none',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <div style={{ position: 'absolute', top: -18, left: 0, background: '#f59e0b', color: '#000', fontSize: 8.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3, pointerEvents: 'none', whiteSpace: 'nowrap' }}>
                         🎯 Khung So Khớp BBox
                       </div>
                       <div onMouseDown={(e) => handleBBoxMouseDown(e, 'nw')} style={{ position: 'absolute', top: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
@@ -798,112 +618,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
                 </div>
               </div>
             )
-          ) : viewMode === 'frames' && currentFrame ? (
-            /* ─── 2. VIEW MODE = FRAMES WITH FIXED-DIMENSION JITTER-FREE VIEWPORT ─── */
-            <div
-              ref={mediaContainerRef}
-              style={{
-                position: 'relative',
-                width: stageWidth,
-                height: stageHeight,
-                backgroundImage: checkerTheme === 'light' ? checkerLight : checkerDark,
-                backgroundSize: '16px 16px',
-                backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
-                backgroundColor: checkerTheme === 'light' ? '#ffffff' : '#0d1322',
-                borderRadius: 6,
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)',
-                overflow: 'visible',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              {/* Onion Skin Frame */}
-              {onionSkinMode !== 'off' && prevFrame && (
-                <img
-                  src={
-                    previewDisplayMode === 'transparent'
-                      ? prevFrame.transparentDataUrl
-                      : prevFrame.originalDataUrl
-                  }
-                  alt="Onion Skin"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    opacity: 0.35,
-                    filter: 'hue-rotate(180deg)',
-                    pointerEvents: 'none',
-                    transform: `translate(${prevFrame.offsetX}px, ${prevFrame.offsetY}px) scale(${prevFrame.scale}) rotate(${prevFrame.rotation}deg) ${prevFrame.flipX ? 'scaleX(-1)' : ''}`,
-                  }}
-                />
-              )}
-
-              {/* Main Frame Image: strictly avoids demo preview during playback */}
-              <img
-                src={
-                  previewDisplayMode === 'transparent'
-                    ? (!isAnimationPlaying && selectedFrameIndex === currentFrameIndex && demoPeeledUrl
-                        ? demoPeeledUrl
-                        : currentFrame.transparentDataUrl)
-                    : currentFrame.originalDataUrl
-                }
-                alt={`Frame ${currentFrameIndex + 1}`}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  display: 'block',
-                  pointerEvents: 'none',
-                  transform: `translate(${currentFrame.offsetX}px, ${currentFrame.offsetY}px) scale(${currentFrame.scale}) rotate(${currentFrame.rotation}deg) ${currentFrame.flipX ? 'scaleX(-1)' : ''}`,
-                }}
-              />
-
-              {/* Percentage-Based 4-Corner BBox on Frame */}
-              {shouldShowBBox && activeBBox && (
-                <div
-                  onMouseDown={(e) => handleBBoxMouseDown(e, 'move')}
-                  style={{
-                    position: 'absolute',
-                    left: `${activeBBox.x}%`,
-                    top: `${activeBBox.y}%`,
-                    width: `${activeBBox.width}%`,
-                    height: `${activeBBox.height}%`,
-                    border: '2px dashed #f59e0b',
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    boxSizing: 'border-box',
-                    cursor: 'move',
-                    zIndex: 25,
-                    boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: -18,
-                      left: 0,
-                      background: '#f59e0b',
-                      color: '#000',
-                      fontSize: 8.5,
-                      fontWeight: 800,
-                      padding: '1px 5px',
-                      borderRadius: 3,
-                      pointerEvents: 'none',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    🎯 Khung So Khớp BBox
-                  </div>
-                  <div onMouseDown={(e) => handleBBoxMouseDown(e, 'nw')} style={{ position: 'absolute', top: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
-                  <div onMouseDown={(e) => handleBBoxMouseDown(e, 'ne')} style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nesw-resize', borderRadius: 2 }} />
-                  <div onMouseDown={(e) => handleBBoxMouseDown(e, 'se')} style={{ position: 'absolute', bottom: -6, right: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nwse-resize', borderRadius: 2 }} />
-                  <div onMouseDown={(e) => handleBBoxMouseDown(e, 'sw')} style={{ position: 'absolute', bottom: -6, left: -6, width: 12, height: 12, background: '#fbbf24', border: '2px solid #000', cursor: 'nesw-resize', borderRadius: 2 }} />
-                </div>
-              )}
-            </div>
           ) : (
             <div style={{ textAlign: 'center', color: '#64748b' }}>
               <Layers size={40} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
@@ -916,8 +630,8 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
         </div>
       </div>
 
-      {/* ─── BOTTOM 58PX TALL 3-PIN TIMELINE BAR (FOR VIDEO MODE) ─ */}
-      {viewMode === 'video' && videoMetadata && (
+      {/* ─── BOTTOM 58PX TALL 3-PIN TIMELINE BAR ──────────────── */}
+      {videoMetadata && (
         <VideoSlicerTimelineRangeBar
           videoMetadata={videoMetadata}
           videoCurrentTime={videoCurrentTime}
@@ -940,37 +654,6 @@ export const VideoSlicerCanvasStage: React.FC<VideoSlicerCanvasStageProps> = ({
           onTriggerSearchEnd={onTriggerSearchEnd}
           onStopSearch={onStopSearch}
         />
-      )}
-
-      {/* Status Badge when viewing animation frames */}
-      {viewMode === 'frames' && currentFrame && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 10,
-            left: 10,
-            background: 'rgba(15, 23, 42, 0.85)',
-            backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 6,
-            padding: '4px 10px',
-            fontSize: 10,
-            color: '#94a3b8',
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ color: '#38bdf8', fontWeight: 700 }}>
-            Frame {currentFrameIndex + 1}/{frames.length}
-          </span>
-          <span>•</span>
-          <span>{currentFrame.timestamp.toFixed(2)}s</span>
-          <span>•</span>
-          <span style={{ color: '#fbbf24' }}>Thời lượng: {currentFrame.durationMs}ms</span>
-          <span>•</span>
-          <span style={{ color: '#34d399' }}>{previewDisplayMode === 'transparent' ? 'Đã Bóc Nền' : 'Ảnh Gốc'}</span>
-        </div>
       )}
     </div>
   );

@@ -1,15 +1,17 @@
 @echo off
-chcp 65001 >nul 2>&1
+setlocal
+cd /d "%~dp0"
 echo ====================================================
-echo  🎨 FLOWMY - TỰ ĐỘNG KHỞI TẠO CÂY THƯ MỤC ASSET_2DS
+echo   FLOWMY - KHOI TAO CAY THU MUC ASSET_2DS
 echo ====================================================
 echo.
-echo  Đang tạo cây thư mục 2D chuyên dụng cho linh kiện & map...
+echo   Dang tao cay thu muc 2D chuyen dung cho chi tiet nhan vat va map...
 echo.
 
-node "%~dp0scripts\create_asset_2ds_folders.js"
+node "scripts\create_asset_2ds_folders.js"
 
 echo.
-echo  ✅ Hoàn tất! Cây thư mục asset_2ds đã sẵn sàng.
+echo   [OK] Hoan tat! Cay thu muc asset_2ds da san sang.
 echo.
 pause
+

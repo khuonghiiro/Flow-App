@@ -8,10 +8,10 @@
   },
   "categories": [
     {
-      "id": "nhan_vat",
-      "folder": "nhan_vat",
-      "label": "Nhân Vật 2D",
-      "icon": "🧍",
+      "id": "chi_tiet_nhan_vat",
+      "folder": "chi_tiet_nhan_vat",
+      "label": "Chi Tiết Nhân Vật",
+      "icon": "🧩",
       "subcategories": [
         { "id": "than_co_ban", "folder": "than_co_ban", "label": "Thân Cơ Bản", "icon": "🧍" },
         { "id": "dau", "folder": "dau", "label": "Đầu", "icon": "🗣️" },
@@ -28,6 +28,17 @@
         { "id": "cang_chan", "folder": "cang_chan", "label": "Cẳng Chân", "icon": "🦿" },
         { "id": "trang_phuc", "folder": "trang_phuc", "label": "Trang Phục", "icon": "👘" },
         { "id": "vu_khi", "folder": "vu_khi", "label": "Vũ Khí", "icon": "⚔️" },
+        { "id": "long_may", "folder": "long_may", "label": "Lông Mày", "icon": "🤨" }
+      ]
+    },
+    {
+      "id": "nhan_vat",
+      "folder": "nhan_vat",
+      "label": "Nhân Vật Hoạt Ảnh 2D",
+      "icon": "🧍",
+      "subcategories": [
+        { "id": "bach_ngoc", "folder": "bach_ngoc", "label": "Bạch Ngọc", "icon": "👤" },
+        { "id": "lyly", "folder": "lyly", "label": "Lyly", "icon": "👧" },
         { "id": "_lap_rap", "folder": "_lap_rap", "label": "Đã Lắp Ráp", "icon": "✨" }
       ]
     },

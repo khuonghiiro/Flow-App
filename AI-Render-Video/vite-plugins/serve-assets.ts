@@ -157,13 +157,8 @@ export function serveAssetsPlugin(rootDir: string): Plugin {
           const nhanVatDir = path.join(rootDir, 'asset_2ds', 'nhan_vat');
           ensureDir(nhanVatDir);
           const entries = fs.readdirSync(nhanVatDir, { withFileTypes: true });
-          const bodyParts = new Set([
-            'ban_tay', 'cang_chan', 'cang_tay', 'canh_tay', 'dau', 'dui',
-            'khuon_mat', 'long_may', 'mat', 'mieng', 'mui', 'than_co_ban',
-            'toc_sau', 'toc_truoc', 'trang_phuc', 'vu_khi', '_lap_rap',
-          ]);
           const characters = entries
-            .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !bodyParts.has(e.name))
+            .filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== '_lap_rap')
             .map((e) => e.name);
           
           // If empty, supply default character
@@ -357,13 +352,13 @@ export function serveAssetsPlugin(rootDir: string): Plugin {
         req.on('end', () => {
           try {
             const data = JSON.parse(body);
-            const genre = sanitizeName(data.genre || 'nhan_vat');
-            const character = sanitizeName(data.character || 'nhan_vat_chinh');
+            const genre = sanitizeName(data.genre || 'chi_tiet_nhan_vat');
+            const character = data.character ? sanitizeName(data.character) : '';
             const partCategory = sanitizeName(data.partCategory || 'linh_kien');
             const partDisplayName = data.partDisplayName || data.partCategory || partCategory;
             const angleSlug = data.angleSlug ? sanitizeName(data.angleSlug) : '';
 
-            // Target directory: asset_2ds/nhan_vat/[character]/[partCategory]/[angleSlug] or asset_2ds/[genre]/[partCategory]
+            // Target directory: asset_2ds/chi_tiet_nhan_vat/[partCategory]/[angleSlug] or asset_2ds/[genre]/[character]/[partCategory]
             let targetDir = path.join(rootDir, 'asset_2ds', genre);
             if (character && genre === 'nhan_vat') {
               targetDir = path.join(targetDir, character, partCategory);

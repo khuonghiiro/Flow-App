@@ -232,7 +232,7 @@ export interface Scene2DConfig {
 export interface StandardCropPreset {
   id: string;
   label: string;
-  category: 'nhan_vat' | 'ban_do' | 'dao_cu' | 'hieu_ung';
+  category: 'chi_tiet_nhan_vat' | 'nhan_vat' | 'ban_do' | 'dao_cu' | 'hieu_ung';
   slot: Character2DPartType | 'map_layer' | 'prop' | 'vfx';
   width: number;
   height: number;

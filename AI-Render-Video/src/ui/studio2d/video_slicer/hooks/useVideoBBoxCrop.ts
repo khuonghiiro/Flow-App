@@ -84,17 +84,18 @@ export function useVideoBBoxCrop({ frames, setFrames }: UseVideoBBoxCropProps) {
       }
 
       ctx.drawImage(img, 0, 0);
-      const imgData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-      const rect = detectImageBBoxRect(imgData, 10, 2);
+      const rect = detectImageBBoxRect(tempCanvas, undefined, 10, 2);
 
       if (!rect || rect.width <= 0 || rect.height <= 0) {
         trimmed.push(frame);
         continue;
       }
 
+      const box = { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+
       const [newTransUrl, newOrigUrl] = await Promise.all([
-        cropImageUrl(frame.transparentDataUrl, rect),
-        cropImageUrl(frame.originalDataUrl, rect),
+        cropImageUrl(frame.transparentDataUrl, box),
+        cropImageUrl(frame.originalDataUrl, box),
       ]);
 
       trimmed.push({
@@ -102,8 +103,8 @@ export function useVideoBBoxCrop({ frames, setFrames }: UseVideoBBoxCropProps) {
         originalDataUrl: newOrigUrl,
         transparentDataUrl: newTransUrl,
         cropRect: {
-          x: rect.x,
-          y: rect.y,
+          x: rect.left,
+          y: rect.top,
           width: rect.width,
           height: rect.height,
         },

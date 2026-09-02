@@ -238,12 +238,12 @@ export async function extractFramesFFmpegBackend(
   videoDataUrl: string,
   options: VideoExtractOptions
 ): Promise<VideoSliceFrame[]> {
-  const apiUrl = getAIMattingApiUrl();
+  const apiUrl = getAIMattingApiUrl('/api/video/extract-frames');
 
   // Convert blob URL to Base64 MP4 before transmission
   const base64Video = await blobUrlToBase64(videoDataUrl);
 
-  const res = await fetch(`${apiUrl}/api/video/extract-frames`, {
+  const res = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

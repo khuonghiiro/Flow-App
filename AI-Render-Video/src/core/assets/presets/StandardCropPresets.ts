@@ -8,7 +8,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_dau',
     label: 'Đầu & Sọ (512x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'dau',
     width: 512,
     height: 512,
@@ -19,7 +19,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_mat',
     label: 'Cặp Mắt (128x64)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'mat',
     width: 128,
     height: 64,
@@ -30,7 +30,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_mieng',
     label: 'Khẩu Hình Miệng (128x64)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'mieng',
     width: 128,
     height: 64,
@@ -41,7 +41,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_mui',
     label: 'Mũi (64x64)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'mui',
     width: 64,
     height: 64,
@@ -52,7 +52,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_toc_truoc',
     label: 'Tóc Mái / Tóc Trước (512x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'toc_truoc',
     width: 512,
     height: 512,
@@ -63,7 +63,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_toc_sau',
     label: 'Tóc Dài Phía Sau (512x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'toc_sau',
     width: 512,
     height: 512,
@@ -74,7 +74,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_than',
     label: 'Thân & Ngực Bụng (512x768)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'than_co_ban',
     width: 512,
     height: 768,
@@ -85,7 +85,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_canh_tay',
     label: 'Cánh Tay Trên (256x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'canh_tay_trai',
     width: 256,
     height: 512,
@@ -96,7 +96,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_cang_tay',
     label: 'Cẳng Tay & Bàn Tay (256x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'cang_tay_trai',
     width: 256,
     height: 512,
@@ -107,7 +107,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_cang_chan',
     label: 'Chân & Bàn Chân (256x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'cang_chan_trai',
     width: 256,
     height: 512,
@@ -118,7 +118,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_trang_phuc',
     label: 'Trang Phục / Đạo Bào (512x768)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'trang_phuc',
     width: 512,
     height: 768,
@@ -129,7 +129,7 @@ export const STANDARD_CROP_PRESETS: StandardCropPreset[] = [
   {
     id: 'crop_vu_khi',
     label: 'Vũ Khí & Đạo Cụ (512x512)',
-    category: 'nhan_vat',
+    category: 'chi_tiet_nhan_vat',
     slot: 'vu_khi',
     width: 512,
     height: 512,

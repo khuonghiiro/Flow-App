@@ -13,7 +13,7 @@
           "part_type": "trong_trang",
           "label": "Lòng Trắng Mắt",
           "icon": "⚪",
-          "folder": "nhan_vat/mat/trong_trang",
+          "folder": "chi_tiet_nhan_vat/mat/trong_trang",
           "required": true,
           "description": "Phần lòng trắng bao gồm bóng hốc mắt"
         },
@@ -21,7 +21,7 @@
           "part_type": "trong_den_iris",
           "label": "Mống Mắt (Iris)",
           "icon": "🔵",
-          "folder": "nhan_vat/mat/trong_den_iris",
+          "folder": "chi_tiet_nhan_vat/mat/trong_den_iris",
           "required": true,
           "description": "Mống mắt có thể đổi màu, xoay nhẹ khi nhìn"
         },
@@ -29,7 +29,7 @@
           "part_type": "diem_sang_mat",
           "label": "Điểm Sáng Mắt",
           "icon": "✨",
-          "folder": "nhan_vat/mat/diem_sang_mat",
+          "folder": "chi_tiet_nhan_vat/mat/diem_sang_mat",
           "required": false,
           "description": "Highlight phản chiếu ánh sáng trên mắt"
         },
@@ -37,7 +37,7 @@
           "part_type": "mi_mat",
           "label": "Mi Mắt & Chớp Mắt",
           "icon": "👁️‍🗨️",
-          "folder": "nhan_vat/mat/mi_mat",
+          "folder": "chi_tiet_nhan_vat/mat/mi_mat",
           "required": true,
           "description": "Mi mắt trên/dưới, dùng cho animation chớp mắt"
         }
@@ -54,7 +54,7 @@
           "part_type": "khuon_mat",
           "label": "Khuôn Mặt Trần",
           "icon": "🎭",
-          "folder": "nhan_vat/khuon_mat",
+          "folder": "chi_tiet_nhan_vat/khuon_mat",
           "required": true,
           "description": "Da mặt trần không có ngũ quan"
         },
@@ -62,7 +62,7 @@
           "part_type": "doi_tai",
           "label": "Đôi Tai",
           "icon": "👂",
-          "folder": "nhan_vat/khuon_mat/doi_tai",
+          "folder": "chi_tiet_nhan_vat/khuon_mat/doi_tai",
           "required": false,
           "description": "Tai trái và phải"
         },
@@ -70,7 +70,7 @@
           "part_type": "mui",
           "label": "Sống Mũi",
           "icon": "👃",
-          "folder": "nhan_vat/mui",
+          "folder": "chi_tiet_nhan_vat/mui",
           "required": true,
           "description": "Sống mũi thẳng hoặc góc 3/4"
         },
@@ -78,7 +78,7 @@
           "part_type": "long_may",
           "label": "Lông Mày",
           "icon": "🤨",
-          "folder": "nhan_vat/khuon_mat/long_may",
+          "folder": "chi_tiet_nhan_vat/khuon_mat/long_may",
           "required": true,
           "description": "Lông mày biểu cảm"
         }
@@ -95,7 +95,7 @@
           "part_type": "toc_sau",
           "label": "Tóc Sau Lưng",
           "icon": "💇‍♂️",
-          "folder": "nhan_vat/toc_sau",
+          "folder": "chi_tiet_nhan_vat/toc_sau",
           "required": false,
           "description": "Lớp tóc dài xõa phía sau (Z thấp nhất)"
         },
@@ -103,7 +103,7 @@
           "part_type": "toc_truoc",
           "label": "Tóc Mái Trước",
           "icon": "💇",
-          "folder": "nhan_vat/toc_truoc",
+          "folder": "chi_tiet_nhan_vat/toc_truoc",
           "required": true,
           "description": "Mái trước phủ trán (Z cao nhất phần đầu)"
         }
@@ -120,7 +120,7 @@
           "part_type": "than_co_ban",
           "label": "Thân Áo & Quần",
           "icon": "🧍",
-          "folder": "nhan_vat/than_co_ban",
+          "folder": "chi_tiet_nhan_vat/than_co_ban",
           "required": true,
           "description": "Phần thân mình trụ cơ bản"
         },
@@ -128,7 +128,7 @@
           "part_type": "trang_phuc",
           "label": "Trang Phục Chính",
           "icon": "👘",
-          "folder": "nhan_vat/trang_phuc",
+          "folder": "chi_tiet_nhan_vat/trang_phuc",
           "required": true,
           "description": "Áo dài, giáp, đạo bào phủ ngoài thân"
         },
@@ -136,7 +136,7 @@
           "part_type": "dai_lung",
           "label": "Đai Lưng",
           "icon": "🪢",
-          "folder": "nhan_vat/trang_phuc/dai_lung",
+          "folder": "chi_tiet_nhan_vat/trang_phuc/dai_lung",
           "required": false,
           "description": "Đai lưng thắt eo"
         },
@@ -144,7 +144,7 @@
           "part_type": "ong_ao_bap_tay",
           "label": "Ống Áo Bắp Tay",
           "icon": "💪",
-          "folder": "nhan_vat/trang_phuc/ong_ao",
+          "folder": "chi_tiet_nhan_vat/trang_phuc/ong_ao",
           "required": false,
           "description": "Phần ống tay áo từ vai xuống khuỷu"
         },
@@ -152,7 +152,7 @@
           "part_type": "ong_tay_xoe",
           "label": "Ống Tay Xòe",
           "icon": "🖐️",
-          "folder": "nhan_vat/trang_phuc/ong_tay_xoe",
+          "folder": "chi_tiet_nhan_vat/trang_phuc/ong_tay_xoe",
           "required": false,
           "description": "Phần ống tay rộng phất phới"
         },
@@ -160,7 +160,7 @@
           "part_type": "vat_ao_duoi",
           "label": "Vạt Áo Dưới",
           "icon": "👗",
-          "folder": "nhan_vat/trang_phuc/vat_ao",
+          "folder": "chi_tiet_nhan_vat/trang_phuc/vat_ao",
           "required": false,
           "description": "Tà áo bay phía dưới eo"
         },
@@ -168,7 +168,7 @@
           "part_type": "ung_giay",
           "label": "Ủng Giày",
           "icon": "👢",
-          "folder": "nhan_vat/trang_phuc/ung_giay",
+          "folder": "chi_tiet_nhan_vat/trang_phuc/ung_giay",
           "required": false,
           "description": "Giày, ủng, dép"
         },
@@ -176,7 +176,7 @@
           "part_type": "ao_choang",
           "label": "Áo Choàng",
           "icon": "🧥",
-          "folder": "nhan_vat/trang_phuc/ao_choang",
+          "folder": "chi_tiet_nhan_vat/trang_phuc/ao_choang",
           "required": false,
           "description": "Áo choàng bay phía sau lưng"
         }
@@ -193,7 +193,7 @@
           "part_type": "canh_tay_trai",
           "label": "Cánh Tay Trái",
           "icon": "💪",
-          "folder": "nhan_vat/canh_tay",
+          "folder": "chi_tiet_nhan_vat/canh_tay",
           "required": true,
           "description": "Từ vai đến khuỷu tay trái"
         },
@@ -201,7 +201,7 @@
           "part_type": "ban_tay_trai",
           "label": "Bàn Tay Trái",
           "icon": "🤚",
-          "folder": "nhan_vat/ban_tay",
+          "folder": "chi_tiet_nhan_vat/ban_tay",
           "required": true,
           "description": "Bàn tay 5 ngón trái"
         }
@@ -218,7 +218,7 @@
           "part_type": "canh_tay_phai",
           "label": "Cánh Tay Phải",
           "icon": "💪",
-          "folder": "nhan_vat/canh_tay",
+          "folder": "chi_tiet_nhan_vat/canh_tay",
           "required": true,
           "description": "Từ vai đến khuỷu tay phải"
         },
@@ -226,7 +226,7 @@
           "part_type": "ban_tay_phai",
           "label": "Bàn Tay Phải",
           "icon": "🤚",
-          "folder": "nhan_vat/ban_tay",
+          "folder": "chi_tiet_nhan_vat/ban_tay",
           "required": true,
           "description": "Bàn tay 5 ngón phải"
         }
@@ -243,7 +243,7 @@
           "part_type": "dui_trai",
           "label": "Chân Trái",
           "icon": "🦵",
-          "folder": "nhan_vat/dui",
+          "folder": "chi_tiet_nhan_vat/dui",
           "required": true,
           "description": "Từ hông đến gối trái"
         },
@@ -251,7 +251,7 @@
           "part_type": "cang_chan_trai",
           "label": "Bàn Chân Trái",
           "icon": "🦿",
-          "folder": "nhan_vat/cang_chan",
+          "folder": "chi_tiet_nhan_vat/cang_chan",
           "required": true,
           "description": "Từ gối đến bàn chân trái"
         }
@@ -268,7 +268,7 @@
           "part_type": "dui_phai",
           "label": "Chân Phải",
           "icon": "🦵",
-          "folder": "nhan_vat/dui",
+          "folder": "chi_tiet_nhan_vat/dui",
           "required": true,
           "description": "Từ hông đến gối phải"
         },
@@ -276,7 +276,7 @@
           "part_type": "cang_chan_phai",
           "label": "Bàn Chân Phải",
           "icon": "🦿",
-          "folder": "nhan_vat/cang_chan",
+          "folder": "chi_tiet_nhan_vat/cang_chan",
           "required": true,
           "description": "Từ gối đến bàn chân phải"
         }

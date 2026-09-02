@@ -28,10 +28,10 @@ export async function exportFramesToAnimatedGif(
     throw new Error('Danh sách khung hình trống, không thể xuất GIF');
   }
 
-  const apiUrl = getAIMattingApiUrl();
+  const apiUrl = getAIMattingApiUrl('/api/video/export-gif');
   const filename = customFilename || `animation_${Date.now()}.gif`;
 
-  const response = await fetch(`${apiUrl}/api/video/export-gif`, {
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

@@ -105,6 +105,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
     handleApplyChromaToAllFrames,
     isEyedropperActive,
     handleTriggerEyedropper,
+    triggerCommitPreview,
   } = useVideoChromaPeeling({
     frames,
     setFrames,
@@ -228,17 +229,19 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
    * Individual Action: Apply Chroma Peeling to Single Selected Frame
    */
   const handleApplyChromaSingle = useCallback(async () => {
-    await handleApplyChromaToSingleFrame();
+    setViewMode('frames');
     setPreviewDisplayMode('transparent');
-  }, [handleApplyChromaToSingleFrame]);
+    await handleApplyChromaToSingleFrame();
+  }, [handleApplyChromaToSingleFrame, setViewMode]);
 
   /**
    * Individual Action: Apply Chroma Peeling to ALL frames
    */
   const handleApplyChromaAll = useCallback(async () => {
-    await handleApplyChromaToAllFrames();
+    setViewMode('frames');
     setPreviewDisplayMode('transparent');
-  }, [handleApplyChromaToAllFrames]);
+    await handleApplyChromaToAllFrames();
+  }, [handleApplyChromaToAllFrames, setViewMode]);
 
   /**
    * Executes the All-in-One Sequential Pipeline (Cắt + BBox + Bóc Nền 1 chạm)
@@ -574,6 +577,7 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           onApplyChromaOnly={handleApplyChromaAll}
           onTriggerEyedropper={handleTriggerEyedropper}
           isEyedropperActive={isEyedropperActive}
+          onCommitChromaPreview={triggerCommitPreview}
           isBBoxCropMode={isBBoxCropMode}
           setIsBBoxCropMode={setIsBBoxCropMode}
           isCroppingBBox={isCroppingBBox}
@@ -610,17 +614,23 @@ export const VideoAnimationSlicerTab: React.FC<VideoAnimationSlicerTabProps> = (
           onTriggerSearchEnd={handlePerformSearchEnd}
           onStopSearch={handleStopSearch}
           frames={frames}
+          setFrames={setFrames}
           frameOrder={frameOrder}
           selectedFrameIndex={selectedFrameIndex}
           activePlaybackIndex={activePlaybackFrameIndex}
           isAnimationPlaying={isAnimationPlaying}
           demoPeeledUrl={demoPeeledUrl}
           onionSkinMode={onionSkinMode}
+          onToggleOnionSkin={() => {
+            setOnionSkinMode((prev) => (prev === 'off' ? 'sequential' : prev === 'sequential' ? 'all' : 'off'));
+          }}
           previewDisplayMode={previewDisplayMode}
           checkerTheme={checkerTheme}
+          setCheckerTheme={setCheckerTheme}
           isBBoxCropMode={isBBoxCropMode}
           activeBBox={videoCropBBox}
           onUpdateActiveBBox={setVideoCropBBox}
+          onShowToast={showToast}
         />
 
         {/* Column 3: Right Properties Panel */}
