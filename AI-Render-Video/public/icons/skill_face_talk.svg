@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#1f0714"/>
+  <!-- Dialogue speaking mouth with sound waves -->
+  <path d="M12 24C16 19 22 19 26 24" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="19" cy="30" rx="6" ry="4.5" fill="#ec4899" stroke="#f472b6" stroke-width="1.8"/>
+  <!-- Speech wave ripples -->
+  <path d="M30 20C33 22 35 26 35 30C35 34 33 38 30 40" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+  <path d="M37 16C41 19 44 24 44 30C44 36 41 41 37 44" stroke="#f472b6" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+</svg>

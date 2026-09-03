@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="fall-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#1c0f06"/>
+  <!-- Tilted falling body angle with downward shock lines -->
+  <circle cx="16" cy="18" r="4.5" fill="#f59e0b"/>
+  <path d="M18 22L28 32L36 30" stroke="url(#fall-grad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 28L30 38" stroke="url(#fall-grad)" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Impact dust ground splash -->
+  <path d="M26 40H42" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <path d="M32 38L36 34M38 41L41 37" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

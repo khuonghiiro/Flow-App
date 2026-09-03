@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="head-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#1c1305"/>
+  <!-- Head avatar with gesture movement curved arrows -->
+  <circle cx="24" cy="24" r="11" fill="url(#head-grad)"/>
+  <!-- Curved motion arrows indicating shake/nod -->
+  <path d="M10 24C10 16 16 10 24 10" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M38 24C38 32 32 38 24 38" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Arrow heads -->
+  <path d="M22 8L25 10L22 12M26 36L23 38L26 40" fill="#fbbf24"/>
+</svg>

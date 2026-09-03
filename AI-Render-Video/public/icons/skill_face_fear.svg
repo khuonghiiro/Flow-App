@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#140618"/>
+  <!-- High raised twitching eyebrows -->
+  <path d="M12 14C16 11 20 12 23 15" stroke="#ec4899" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M36 14C32 11 28 12 25 15" stroke="#ec4899" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Wide shocked eyes with pinpoint contracted pupils -->
+  <circle cx="17" cy="22" r="5" stroke="#f472b6" stroke-width="2" fill="#2d0a27"/>
+  <circle cx="17" cy="22" r="1.5" fill="#ffffff"/>
+  <circle cx="31" cy="22" r="5" stroke="#f472b6" stroke-width="2" fill="#2d0a27"/>
+  <circle cx="31" cy="22" r="1.5" fill="#ffffff"/>
+  <!-- Quivering open gasp mouth -->
+  <ellipse cx="24" cy="33" rx="4" ry="5.5" fill="#2d0a27" stroke="#f472b6" stroke-width="1.8"/>
+  <!-- Sweat bead -->
+  <path d="M38 18C37 21 39 23 40 22C41 21 40 19 38 18Z" fill="#38bdf8"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="p-act-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#1c1305" stroke="url(#p-act-grad)" stroke-width="2"/>
+  <!-- Crossed blades & energy lightning spark -->
+  <path d="M34 14L20 34H32L26 50L44 28H32L38 14H34Z" fill="url(#p-act-grad)"/>
+  <circle cx="20" cy="18" r="2" fill="#fbbf24"/>
+  <circle cx="46" cy="46" r="2" fill="#fbbf24"/>
+</svg>

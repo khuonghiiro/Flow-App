@@ -11,7 +11,7 @@ export default defineConfig({
 
   // ─── Dev Server ───────────────────────────────────────────────────
   server: {
-    port: 5173,
+    port: 7122,
     host: true,
     // Pre-transform critical files on server start so they're ready
     // before the browser requests them (biggest dev-mode speedup)
@@ -29,6 +29,12 @@ export default defineConfig({
         './src/core/weather/**/*.ts',
       ],
     },
+  },
+
+  // ─── Preview Server ────────────────────────────────────────────────
+  preview: {
+    port: 7122,
+    host: true,
   },
 
   // ─── Dependency Pre-bundling ──────────────────────────────────────

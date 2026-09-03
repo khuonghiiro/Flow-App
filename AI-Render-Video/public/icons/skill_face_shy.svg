@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#200a1b"/>
+  <!-- Shy curved eyebrows -->
+  <path d="M13 17C16 15 20 16 22 18" stroke="#ec4899" stroke-width="2" stroke-linecap="round"/>
+  <path d="M35 17C32 15 28 16 26 18" stroke="#ec4899" stroke-width="2" stroke-linecap="round"/>
+  <!-- Eyes looking downward -->
+  <path d="M14 21C17 19 21 20 22 23" stroke="#f472b6" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="18" cy="24" r="1.8" fill="#f472b6"/>
+  <circle cx="17.5" cy="23.5" r="0.8" fill="#ffffff"/>
+  <path d="M34 21C31 19 27 20 26 23" stroke="#f472b6" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="30" cy="24" r="1.8" fill="#f472b6"/>
+  <circle cx="29.5" cy="23.5" r="0.8" fill="#ffffff"/>
+  <!-- Blushing pink cheeks -->
+  <ellipse cx="14" cy="28" rx="4.5" ry="2.2" fill="#ec4899" opacity="0.8"/>
+  <ellipse cx="34" cy="28" rx="4.5" ry="2.2" fill="#ec4899" opacity="0.8"/>
+  <!-- Small shy mouth -->
+  <path d="M22 31C24 32 26 32 28 31" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+</svg>

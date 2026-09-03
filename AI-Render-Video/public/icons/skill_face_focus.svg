@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="fire-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#1b0818"/>
+  <!-- Sharp determined downward brows -->
+  <path d="M12 18L22 15" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M36 18L26 15" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Intense glowing sharp eyes -->
+  <path d="M13 22C17 19 21 21 23 23C20 24 16 24 13 22Z" fill="url(#fire-grad)"/>
+  <circle cx="18" cy="22" r="1.5" fill="#ffffff"/>
+  <path d="M35 22C31 19 27 21 25 23C28 24 32 24 35 22Z" fill="url(#fire-grad)"/>
+  <circle cx="30" cy="22" r="1.5" fill="#ffffff"/>
+  <!-- Resolute straight mouth -->
+  <path d="M20 31H28" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Determination spark -->
+  <path d="M24 8L25 11L28 12L25 13L24 16L23 13L20 12L23 11L24 8Z" fill="#fbbf24"/>
+</svg>

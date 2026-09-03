@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="st-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#140724"/>
+  <!-- Magic Staff with glowing crystal orb head -->
+  <line x1="32" y1="16" x2="14" y2="40" stroke="url(#st-grad)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Crystal orb -->
+  <circle cx="35" cy="13" r="6" fill="#c084fc" opacity="0.4"/>
+  <circle cx="35" cy="13" r="4" fill="#ffffff"/>
+  <!-- Crescent metal prongs holding orb -->
+  <path d="M29 17C29 11 39 9 41 15" stroke="#e9d5ff" stroke-width="2" stroke-linecap="round"/>
+  <!-- Magic sparkles -->
+  <circle cx="31" cy="9" r="1.2" fill="#e9d5ff"/>
+  <circle cx="41" cy="10" r="1.2" fill="#e9d5ff"/>
+</svg>

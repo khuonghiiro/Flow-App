@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="hit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#1f0909"/>
+  <!-- Impact star burst -->
+  <path d="M24 8L27 18L37 15L30 23L38 30L27 28L25 38L21 29L11 33L17 24L9 17L19 19L24 8Z" fill="url(#hit-grad)" opacity="0.9"/>
+  <!-- Central shock blast -->
+  <circle cx="24" cy="23" r="5" fill="#ffffff"/>
+  <!-- Sharp zigzag recoil crack -->
+  <path d="M14 39L20 33L18 29" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

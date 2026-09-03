@@ -8,6 +8,8 @@ interface PromptHeaderProps {
   onToggleCustomizer: () => void;
   onCopyActive: () => void;
   copied: boolean;
+  viewMode: 'skill_tree' | 'classic_list';
+  onToggleViewMode: () => void;
 }
 
 export const PromptHeader: React.FC<PromptHeaderProps> = ({
@@ -17,6 +19,8 @@ export const PromptHeader: React.FC<PromptHeaderProps> = ({
   onToggleCustomizer,
   onCopyActive,
   copied,
+  viewMode,
+  onToggleViewMode,
 }) => {
   return (
     <div
@@ -71,12 +75,38 @@ export const PromptHeader: React.FC<PromptHeaderProps> = ({
             </span>
           </div>
           <p style={{ fontSize: 11.5, color: '#cbd5e1', margin: '3px 0 0 0', opacity: 0.9 }}>
-            Tạo nhân vật • Xoay góc 360° • Đi bộ theo góc • Chạy • Ngồi (không ghế) • Nằm (không giường) • Nhảy • Vũ khí
+            Tạo nhân vật • 5 góc mannequin • Đi bộ & Chạy • Động tác chiến đấu • Ngũ quan 8s & Biểu cảm • Vũ khí
           </p>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* View Mode Toggle: Skill Tree vs Classic List */}
+        <button
+          onClick={onToggleViewMode}
+          title="Chuyển đổi giao diện Sơ đồ Cây Kỹ Năng / Danh sách"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 14px',
+            borderRadius: 8,
+            fontSize: 11.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            border: viewMode === 'skill_tree' ? '1px solid #ec4899' : '1px solid rgba(255, 255, 255, 0.15)',
+            background:
+              viewMode === 'skill_tree'
+                ? 'linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(168, 85, 247, 0.3))'
+                : 'rgba(255, 255, 255, 0.07)',
+            color: viewMode === 'skill_tree' ? '#f472b6' : '#e2e8f0',
+            boxShadow: viewMode === 'skill_tree' ? '0 0 16px rgba(236, 72, 153, 0.4)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {viewMode === 'skill_tree' ? '🌳 Cây Kỹ Năng (Tree)' : '📋 Danh Sách Cổ Điển'}
+        </button>
+
         <button
           onClick={onToggleCustomizer}
           style={{

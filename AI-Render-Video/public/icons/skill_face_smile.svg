@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#1f0714"/>
+  <!-- Happy smiling anime crescent eyes and mouth -->
+  <path d="M12 18C15 14 21 14 24 18" stroke="#f472b6" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M28 18C31 14 37 14 40 18" stroke="#f472b6" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Open smiling mouth with blush -->
+  <path d="M16 28C18 36 30 36 32 28H16Z" fill="#ec4899" stroke="#f472b6" stroke-width="2"/>
+  <!-- Cheek blush -->
+  <ellipse cx="12" cy="28" rx="3" ry="1.5" fill="#f472b6" opacity="0.6"/>
+  <ellipse cx="36" cy="28" rx="3" ry="1.5" fill="#f472b6" opacity="0.6"/>
+</svg>

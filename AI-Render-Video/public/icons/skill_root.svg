@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <radialGradient id="root-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="70%" stop-color="#0284c7" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="root-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#root-glow)"/>
+  <polygon points="32,6 56,19 56,45 32,58 8,45 8,19" fill="#0f172a" stroke="url(#root-grad)" stroke-width="2.5"/>
+  <!-- Star crystal icon -->
+  <path d="M32 14L35.5 25L47 28.5L35.5 32L32 43.5L28.5 32L17 28.5L28.5 25Z" fill="url(#root-grad)"/>
+  <circle cx="32" cy="28.5" r="3" fill="#ffffff"/>
+  <!-- Orbiting dots -->
+  <circle cx="20" cy="18" r="1.5" fill="#38bdf8"/>
+  <circle cx="44" cy="18" r="1.5" fill="#818cf8"/>
+  <circle cx="32" cy="50" r="1.5" fill="#38bdf8"/>
+</svg>

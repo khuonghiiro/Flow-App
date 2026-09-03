@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="walk-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#061a14"/>
+  <!-- Walking cycle silhouette -->
+  <circle cx="25" cy="12" r="4.5" fill="url(#walk-grad)"/>
+  <path d="M23 17L21 26L15 36M21 26L28 34L32 42M24 19L29 24L33 22M22 20L17 24L14 21" stroke="url(#walk-grad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Footsteps particles -->
+  <ellipse cx="14" cy="38" rx="2" ry="1" fill="#34d399" opacity="0.5"/>
+  <ellipse cx="32" cy="43" rx="2" ry="1" fill="#34d399" opacity="0.8"/>
+</svg>

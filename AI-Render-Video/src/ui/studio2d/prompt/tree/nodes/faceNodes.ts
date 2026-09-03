@@ -1,0 +1,106 @@
+import { SkillTreeNode } from '../types';
+
+export const FACE_NODES: SkillTreeNode[] = [
+  // ─── TIER 1: TRỤ NGŨ QUAN & BIỂU CẢM ───
+  {
+    id: 'pillar_face',
+    promptId: 'face_angle0_8s',
+    title: 'Trụ Ngũ Quan & Biểu Cảm',
+    shortLabel: 'Khuôn Mặt & Cảm Xúc',
+    subtitle: 'Ngũ quan nền xanh 8s & các loạt biểu cảm đơn 4 góc',
+    icon: '😊',
+    iconPath: '/icons/pillar_face.svg',
+    category: 'face',
+    color: '#ec4899',
+    tier: 1,
+    x: -536,
+    y: 1450,
+    parentId: 'root_master',
+    isHub: true,
+    badge: '38 PROMPTS',
+  },
+
+  // ─── 1. MASTER TIMELINE 8 GIÂY ───
+  {
+    id: 'hub_face_8s',
+    promptId: 'face_angle0_8s',
+    title: 'Master Timeline 8 Giây',
+    shortLabel: '8s Master',
+    subtitle: '1 prompt chứa 4 biểu cảm chuyển đổi theo giây',
+    icon: '⏱️',
+    iconPath: '/icons/skill_face_8s.svg',
+    category: 'face',
+    color: '#ec4899',
+    tier: 2,
+    x: -90,
+    y: 1478,
+    parentId: 'pillar_face',
+    isHub: true,
+    badge: '4 GÓC MASTER',
+  },
+  { id: 'node_face_8s_0', promptId: 'face_angle0_8s', title: 'Face 8s 0°', shortLabel: 'Face 0° 8s', icon: '⬇️', iconPath: '/icons/skill_face_8s.svg', category: 'face', color: '#ec4899', tier: 3, x: 585, y: 1430, parentId: 'hub_face_8s', badge: '0° Master', promptType: 'video' },
+  { id: 'node_face_8s_45', promptId: 'face_angle45_8s', title: 'Face 45° 8s', shortLabel: 'Face 45° 8s', icon: '↙️', iconPath: '/icons/skill_face_8s.svg', category: 'face', color: '#ec4899', tier: 3, x: 551, y: 1635, parentId: 'hub_face_8s', badge: '45° Master', promptType: 'video' },
+  { id: 'node_face_8s_90', promptId: 'face_angle90_8s', title: 'Face 90° 8s', shortLabel: 'Face 90° 8s', icon: '⬅️', iconPath: '/icons/skill_face_8s.svg', category: 'face', color: '#ec4899', tier: 3, x: 492, y: 1880, parentId: 'hub_face_8s', badge: '90° Master', promptType: 'video' },
+  { id: 'node_face_8s_135', promptId: 'face_angle135_8s', title: 'Face 8s 135°', shortLabel: 'Face 135° 8s', icon: '↘️', iconPath: '/icons/skill_face_8s.svg', category: 'face', color: '#ec4899', tier: 3, x: 518, y: 1748, parentId: 'hub_face_8s', badge: '135° Glance', promptType: 'video' },
+
+  // ─── 2. HUB TỪNG BIỂU CẢM ĐƠN LẺ ───
+  {
+    id: 'hub_face_single',
+    promptId: 'face_0_blink',
+    title: 'Biểu Cảm Đơn Lẻ (Single Loops)',
+    shortLabel: 'Từng Biểu Cảm',
+    subtitle: 'Chớp mắt, cười, thoại, tức giận, ngạc nhiên, khóc, sợ, smirk...',
+    icon: '🎭',
+    iconPath: '/icons/skill_face_smile.svg',
+    category: 'face',
+    color: '#ec4899',
+    tier: 2,
+    x: 53,
+    y: 1996,
+    parentId: 'pillar_face',
+    isHub: true,
+    badge: '34 LOOPS',
+  },
+
+  // ─── GÓC 0° (12 Biểu cảm) ───
+  { id: 'node_f0_blink', promptId: 'face_0_blink', title: 'Chớp Mắt 0°', shortLabel: '0° Chớp', icon: '👀', iconPath: '/icons/skill_face_blink.svg', category: 'face', color: '#ec4899', tier: 3, x: 792, y: 2023, parentId: 'hub_face_single', badge: '0° Blink', promptType: 'video' },
+  { id: 'node_f0_smile', promptId: 'face_0_smile', title: 'Mỉm Cười 0°', shortLabel: '0° Cười', icon: '😊', iconPath: '/icons/skill_face_smile.svg', category: 'face', color: '#ec4899', tier: 3, x: 856, y: 2125, parentId: 'hub_face_single', badge: '0° Smile', promptType: 'video' },
+  { id: 'node_f0_talk', promptId: 'face_0_talk', title: 'Nói Chuyện 0°', shortLabel: '0° Thoại', icon: '🗣️', iconPath: '/icons/skill_face_talk.svg', category: 'face', color: '#ec4899', tier: 3, x: 914, y: 2228, parentId: 'hub_face_single', badge: '0° Talk', promptType: 'video' },
+  { id: 'node_f0_surp', promptId: 'face_0_surprised', title: 'Ngạc Nhiên 0°', shortLabel: '0° Shock', icon: '😲', iconPath: '/icons/skill_face_surprised.svg', category: 'face', color: '#ec4899', tier: 3, x: 955, y: 2334, parentId: 'hub_face_single', badge: '0° Surprise', promptType: 'video' },
+  { id: 'node_f0_sad', promptId: 'face_0_sad', title: 'Buồn Bã 0°', shortLabel: '0° Buồn', icon: '😢', iconPath: '/icons/skill_face_sad.svg', category: 'face', color: '#ec4899', tier: 3, x: 1074, y: 2460, parentId: 'hub_face_single', badge: '0° Sad', promptType: 'video' },
+  { id: 'node_f0_angry', promptId: 'face_0_angry', title: 'Chiến Đấu 0°', shortLabel: '0° Giận', icon: '😠', iconPath: '/icons/skill_face_angry.svg', category: 'face', color: '#ec4899', tier: 3, x: 1078, y: 2588, parentId: 'hub_face_single', badge: '0° Angry', promptType: 'video' },
+  { id: 'node_f0_wink', promptId: 'face_0_wink', title: 'Nháy Mắt 0°', shortLabel: '0° Nháy', icon: '😉', iconPath: '/icons/skill_face_wink.svg', category: 'face', color: '#ec4899', tier: 3, x: 1075, y: 2702, parentId: 'hub_face_single', badge: '0° Wink', promptType: 'video' },
+  { id: 'node_f0_cry', promptId: 'face_0_cry', title: 'Khóc Lóc 0°', shortLabel: '0° Khóc', icon: '😭', iconPath: '/icons/skill_face_cry.svg', category: 'face', color: '#ec4899', tier: 3, x: 1079, y: 2821, parentId: 'hub_face_single', badge: '0° Cry', promptType: 'video' },
+  { id: 'node_f0_fear', promptId: 'face_0_fear', title: 'Sợ Hãi 0°', shortLabel: '0° Sợ', icon: '😨', iconPath: '/icons/skill_face_fear.svg', category: 'face', color: '#ec4899', tier: 3, x: 1074, y: 2926, parentId: 'hub_face_single', badge: '0° Fear', promptType: 'video' },
+  { id: 'node_f0_smirk', promptId: 'face_0_smirk', title: 'Smirk 0°', shortLabel: '0° Smirk', icon: '😏', iconPath: '/icons/skill_face_smirk.svg', category: 'face', color: '#ec4899', tier: 3, x: 1073, y: 3041, parentId: 'hub_face_single', badge: '0° Smirk', promptType: 'video' },
+  { id: 'node_f0_shy', promptId: 'face_0_shy', title: 'E Thẹn 0°', shortLabel: '0° Shy', icon: '😳', iconPath: '/icons/skill_face_shy.svg', category: 'face', color: '#ec4899', tier: 3, x: 1074, y: 3157, parentId: 'hub_face_single', badge: '0° Shy', promptType: 'video' },
+  { id: 'node_f0_focus', promptId: 'face_0_focus', title: 'Quyết Tâm 0°', shortLabel: '0° Focus', icon: '🔥', iconPath: '/icons/skill_face_focus.svg', category: 'face', color: '#ec4899', tier: 3, x: 1074, y: 3267, parentId: 'hub_face_single', badge: '0° Focus', promptType: 'video' },
+
+  // ─── GÓC 45° (11 Biểu cảm) ───
+  { id: 'node_f45_talk', promptId: 'face_45_talk', title: 'Nói Chuyện 45°', shortLabel: '45° Thoại', icon: '🗣️', iconPath: '/icons/skill_face_talk.svg', category: 'face', color: '#ec4899', tier: 3, x: 371, y: 2373, parentId: 'hub_face_single', badge: '45° Talk', promptType: 'video' },
+  { id: 'node_f45_sad', promptId: 'face_45_sad', title: 'Buồn Bã 45°', shortLabel: '45° Buồn', icon: '😢', iconPath: '/icons/skill_face_sad.svg', category: 'face', color: '#ec4899', tier: 3, x: -245, y: 3329, parentId: 'hub_face_single', badge: '45° Sad', promptType: 'video' },
+  { id: 'node_f45_surp', promptId: 'face_45_surprised', title: 'Ngạc Nhiên 45°', shortLabel: '45° Shock', icon: '😲', iconPath: '/icons/skill_face_surprised.svg', category: 'face', color: '#ec4899', tier: 3, x: 369, y: 2485, parentId: 'hub_face_single', badge: '45° Surprise', promptType: 'video' },
+  { id: 'node_f45_angry', promptId: 'face_45_angry', title: 'Chiến Đấu 45°', shortLabel: '45° Giận', icon: '😠', iconPath: '/icons/skill_face_angry.svg', category: 'face', color: '#ec4899', tier: 3, x: 371, y: 2605, parentId: 'hub_face_single', badge: '45° Angry', promptType: 'video' },
+  { id: 'node_f45_smile', promptId: 'face_45_smile', title: 'Mỉm Cười 45°', shortLabel: '45° Cười', icon: '😊', iconPath: '/icons/skill_face_smile.svg', category: 'face', color: '#ec4899', tier: 3, x: 346, y: 2724, parentId: 'hub_face_single', badge: '45° Smile', promptType: 'video' },
+  { id: 'node_f45_blink', promptId: 'face_45_blink', title: 'Chớp Mắt 45°', shortLabel: '45° Chớp', icon: '👀', iconPath: '/icons/skill_face_blink.svg', category: 'face', color: '#ec4899', tier: 3, x: 298, y: 2830, parentId: 'hub_face_single', badge: '45° Blink', promptType: 'video' },
+  { id: 'node_f45_wink', promptId: 'face_45_wink', title: 'Nháy Mắt 45°', shortLabel: '45° Nháy', icon: '😉', iconPath: '/icons/skill_face_wink.svg', category: 'face', color: '#ec4899', tier: 3, x: 251, y: 2930, parentId: 'hub_face_single', badge: '45° Wink', promptType: 'video' },
+  { id: 'node_f45_cry', promptId: 'face_45_cry', title: 'Khóc Lóc 45°', shortLabel: '45° Khóc', icon: '😭', iconPath: '/icons/skill_face_cry.svg', category: 'face', color: '#ec4899', tier: 3, x: 181, y: 3043, parentId: 'hub_face_single', badge: '45° Cry', promptType: 'video' },
+  { id: 'node_f45_smirk', promptId: 'face_45_smirk', title: 'Smirk 45°', shortLabel: '45° Smirk', icon: '😏', iconPath: '/icons/skill_face_smirk.svg', category: 'face', color: '#ec4899', tier: 3, x: 100, y: 3136, parentId: 'hub_face_single', badge: '45° Smirk', promptType: 'video' },
+  { id: 'node_f45_fear', promptId: 'face_45_fear', title: 'Sợ Hãi 45°', shortLabel: '45° Sợ', icon: '😨', iconPath: '/icons/skill_face_fear.svg', category: 'face', color: '#ec4899', tier: 3, x: -17, y: 3200, parentId: 'hub_face_single', badge: '45° Fear', promptType: 'video' },
+  { id: 'node_f45_shy', promptId: 'face_45_shy', title: 'E Thẹn 45°', shortLabel: '45° Shy', icon: '😳', iconPath: '/icons/skill_face_shy.svg', category: 'face', color: '#ec4899', tier: 3, x: -141, y: 3280, parentId: 'hub_face_single', badge: '45° Shy', promptType: 'video' },
+
+  // ─── GÓC 90° (7 Biểu cảm) ───
+  { id: 'node_f90_prof', promptId: 'face_90_profile', title: 'Nghiêng 90° Chớp', shortLabel: '90° Chớp', icon: '👀', iconPath: '/icons/skill_angle90.svg', category: 'face', color: '#ec4899', tier: 3, x: -811, y: 2447, parentId: 'hub_face_single', badge: '90° Side', promptType: 'video' },
+  { id: 'node_f90_talk', promptId: 'face_90_talk', title: 'Nói Chuyện 90°', shortLabel: '90° Thoại', icon: '🗣️', iconPath: '/icons/skill_face_talk.svg', category: 'face', color: '#ec4899', tier: 3, x: -814, y: 2590, parentId: 'hub_face_single', badge: '90° Talk', promptType: 'video' },
+  { id: 'node_f90_smile', promptId: 'face_90_smile', title: 'Mỉm Cười 90°', shortLabel: '90° Cười', icon: '😊', iconPath: '/icons/skill_face_smile.svg', category: 'face', color: '#ec4899', tier: 3, x: -803, y: 2706, parentId: 'hub_face_single', badge: '90° Smile', promptType: 'video' },
+  { id: 'node_f90_angry', promptId: 'face_90_angry', title: 'Giận Dữ 90°', shortLabel: '90° Giận', icon: '😠', iconPath: '/icons/skill_face_angry.svg', category: 'face', color: '#ec4899', tier: 3, x: -753, y: 2807, parentId: 'hub_face_single', badge: '90° Angry', promptType: 'video' },
+  { id: 'node_f90_surp', promptId: 'face_90_surprised', title: 'Ngạc Nhiên 90°', shortLabel: '90° Shock', icon: '😲', iconPath: '/icons/skill_face_surprised.svg', category: 'face', color: '#ec4899', tier: 3, x: -690, y: 2898, parentId: 'hub_face_single', badge: '90° Shock', promptType: 'video' },
+  { id: 'node_f90_sad', promptId: 'face_90_sad', title: 'Buồn Bã 90°', shortLabel: '90° Buồn', icon: '😢', iconPath: '/icons/skill_face_sad.svg', category: 'face', color: '#ec4899', tier: 3, x: -479, y: 3007, parentId: 'hub_face_single', badge: '90° Sad', promptType: 'video' },
+  { id: 'node_f90_cry', promptId: 'face_90_cry', title: 'Rơi Lệ 90°', shortLabel: '90° Lệ', icon: '😭', iconPath: '/icons/skill_face_cry.svg', category: 'face', color: '#ec4899', tier: 3, x: -601, y: 2952, parentId: 'hub_face_single', badge: '90° Tear', promptType: 'video' },
+
+  // ─── GÓC 135° (4 Biểu cảm) ───
+  { id: 'node_f135_glance', promptId: 'face_135_glance', title: 'Ngoái Nhìn 135°', shortLabel: '135° Ngoái', icon: '👀', iconPath: '/icons/skill_angle135.svg', category: 'face', color: '#ec4899', tier: 3, x: -789, y: 2327, parentId: 'hub_face_single', badge: '135° Glance', promptType: 'video' },
+  { id: 'node_f135_smile', promptId: 'face_135_smile', title: 'Ngoái Cười 135°', shortLabel: '135° Cười', icon: '😊', iconPath: '/icons/skill_face_smile.svg', category: 'face', color: '#ec4899', tier: 3, x: -760, y: 2209, parentId: 'hub_face_single', badge: '135° Smile', promptType: 'video' },
+  { id: 'node_f135_talk', promptId: 'face_135_talk', title: 'Ngoái Thoại 135°', shortLabel: '135° Thoại', icon: '🗣️', iconPath: '/icons/skill_face_talk.svg', category: 'face', color: '#ec4899', tier: 3, x: -670, y: 2111, parentId: 'hub_face_single', badge: '135° Talk', promptType: 'video' },
+  { id: 'node_f135_alert', promptId: 'face_135_alert', title: 'Cảnh Giác 135°', shortLabel: '135° Giác', icon: '👁️', iconPath: '/icons/skill_face_alert.svg', category: 'face', color: '#ec4899', tier: 3, x: -566, y: 2011, parentId: 'hub_face_single', badge: '135° Alert', promptType: 'video' },
+];

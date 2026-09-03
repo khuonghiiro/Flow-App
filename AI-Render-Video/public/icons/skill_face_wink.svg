@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#1f0714"/>
+  <!-- Left eye open sparkling star, right eye winking closed curve -->
+  <!-- Left eye star -->
+  <path d="M17 19L19 23L23 25L19 27L17 31L15 27L11 25L15 23Z" fill="#f472b6"/>
+  <circle cx="17" cy="25" r="1.5" fill="#ffffff"/>
+  <!-- Right wink line -->
+  <path d="M28 25C31 29 37 29 40 25" stroke="#f472b6" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Smiling mouth with tongue out or playful smile -->
+  <path d="M20 33C22 37 28 37 30 33" stroke="#f472b6" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

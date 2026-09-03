@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#1f0714"/>
+  <!-- Wide surprised round eyes and O mouth -->
+  <circle cx="17" cy="22" r="6" stroke="#f472b6" stroke-width="2.2"/>
+  <circle cx="17" cy="22" r="2.5" fill="#f472b6"/>
+  <circle cx="31" cy="22" r="6" stroke="#f472b6" stroke-width="2.2"/>
+  <circle cx="31" cy="22" r="2.5" fill="#f472b6"/>
+  <!-- High raised eyebrows -->
+  <path d="M12 13C15 11 19 11 22 13" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+  <path d="M26 13C29 11 33 11 36 13" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+  <!-- O mouth -->
+  <ellipse cx="24" cy="34" rx="4" ry="5.5" fill="#ec4899" stroke="#f472b6" stroke-width="1.8"/>
+</svg>

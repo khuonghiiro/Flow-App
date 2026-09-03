@@ -6,6 +6,9 @@ import { JUMP_PROMPTS } from './actions/jumpPrompts';
 import { IDLE_PROMPTS } from './actions/idlePrompts';
 import { ATTACK_PROMPTS } from './actions/attackPrompts';
 import { HEAD_PROMPTS } from './actions/headPrompts';
+import { FALL_PROMPTS } from './actions/fallPrompts';
+import { HIT_REACTION_PROMPTS } from './actions/hitReactionPrompts';
+import { DEFEND_PROMPTS } from './actions/defendPrompts';
 
 /**
  * Danh sách toàn bộ Prompt Động Tác (Step 3 Actions) theo chuẩn 5 góc:
@@ -19,6 +22,9 @@ export const ACTION_PROMPTS: PromptItem[] = [
   ...IDLE_PROMPTS,
   ...ATTACK_PROMPTS,
   ...HEAD_PROMPTS,
+  ...FALL_PROMPTS,
+  ...HIT_REACTION_PROMPTS,
+  ...DEFEND_PROMPTS,
 ];
 
 export {
@@ -29,4 +35,7 @@ export {
   IDLE_PROMPTS,
   ATTACK_PROMPTS,
   HEAD_PROMPTS,
+  FALL_PROMPTS,
+  HIT_REACTION_PROMPTS,
+  DEFEND_PROMPTS,
 };

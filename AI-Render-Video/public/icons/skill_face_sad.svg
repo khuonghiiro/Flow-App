@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="10" fill="#140c24"/>
+  <!-- Drooping eyebrows and tear drop -->
+  <path d="M12 18L21 21" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M36 18L27 21" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Eyes -->
+  <ellipse cx="17" cy="26" rx="4" ry="3" fill="#818cf8"/>
+  <ellipse cx="31" cy="26" rx="4" ry="3" fill="#818cf8"/>
+  <!-- Tear drop -->
+  <path d="M35 29C35 29 38 32 38 34C38 35.6 36.6 37 35 37C33.4 37 32 35.6 32 34C32 32 35 29 35 29Z" fill="#38bdf8"/>
+  <!-- Down-turned mouth -->
+  <path d="M20 37C22 35 26 35 28 37" stroke="#818cf8" stroke-width="2" stroke-linecap="round"/>
+</svg>

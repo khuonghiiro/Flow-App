@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="run-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#061a14"/>
+  <!-- Sprinting figure leaning forward with wind trails -->
+  <circle cx="28" cy="11" r="4.5" fill="url(#run-grad)"/>
+  <path d="M26 16L22 24L12 28M22 24L30 30L36 41M26 18L33 21L37 16M21 21L14 22L10 18" stroke="url(#run-grad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Speed lines -->
+  <path d="M6 18H14M4 25H12M8 35H16" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+</svg>

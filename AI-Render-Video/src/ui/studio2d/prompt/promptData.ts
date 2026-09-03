@@ -28,7 +28,7 @@ export function formatPromptWithCustomizer(
   let text = rawPrompt;
   if (!customizerValues) return text;
   text = text.replace(/#00FF00/g, customizerValues.chromaBgHex || '#00FF00');
-  if (itemId === 'character_base') {
+  if (itemId === 'character_base' || itemId?.startsWith('angle') || itemId?.startsWith('character_angle')) {
     text = text
       .replace(/\[SPECIFY: young teen \/ young adult \/ mature adult\]/g, customizerValues.age || 'young adult')
       .replace(/\[SPECIFY: male \/ female \/ non-binary\]/g, customizerValues.gender || 'female')

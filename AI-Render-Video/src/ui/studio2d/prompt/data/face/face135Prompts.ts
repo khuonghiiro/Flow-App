@@ -1,0 +1,96 @@
+import { PromptItem } from '../../types';
+
+export const FACE_135_PROMPTS: PromptItem[] = [
+  {
+    id: 'face_135_glance',
+    title: 'Face 135° - Ngoái Nhìn Chớp Mắt (Glance Over Shoulder Blink)',
+    subtitle: 'Ngũ quan nhìn từ sau lưng ngoái sang phải 135° chớp mắt tự nhiên 2-3s lặp vô tận',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '👀',
+    promptType: 'video',
+    tags: ['face', '135deg', 'back_right', 'glance', 'blink', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 135° Back-Right View (Face Only)',
+      loopType: 'Seamless Loop',
+      keyPoints: [
+        'Mắt nhìn xếch qua vai về phía sau',
+        'Góc nhìn 1/4 mặt ngoái nhìn lưng lệch phải',
+        'Nền #00FF00',
+      ],
+    },
+    infoNote: '💡 Trạng thái nghỉ cho nhân vật quay lưng nhưng ngoái đầu nhìn lại.',
+    negativePrompt: `hair, ears, head outline, neck, body, full front view, 3D CGI`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (135° BACK-RIGHT VIEW / GLANCE OVER SHOULDER) ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose edge, Mouth seen from behind-right perspective looking back over shoulder.
+MOTION: Eye glances toward camera with gentle curious blink and subtle pupil focus. Soft mouth parting. Seamless loop.`,
+  },
+  {
+    id: 'face_135_smile',
+    title: 'Face 135° - Ngoái Nhìn Mỉm Cười (Looking Back Smile)',
+    subtitle: 'Ngũ quan ngoái đầu qua vai mỉm cười trìu mến với người đi sau',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😊',
+    promptType: 'video',
+    tags: ['face', '135deg', 'back_right', 'smile', 'happy', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 135° Back-Right View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Mắt cong cười nhìn qua vai', 'Môi hé cười ấm áp'],
+    },
+    infoNote: '💡 Điểm nhấn ngọt ngào khi nhân vật dẫn đường và quay lại mỉm cười.',
+    negativePrompt: `hair, ears, head outline, neck, body, frown, crying`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (135° BACK-RIGHT VIEW) GENTLE OVER-SHOULDER SMILE ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth in 135° perspective.
+MOTION: The visible eye crinkles into a tender affectionate smile gazing back toward viewer. Corner of lips turns upward in sweet parting smile. Seamless loop.`,
+  },
+  {
+    id: 'face_135_talk',
+    title: 'Face 135° - Ngoái Đầu Trò Chuyện (Looking Back Talking)',
+    subtitle: 'Ngũ quan ngoái đầu qua vai mấp máy môi trò chuyện theo nhịp câu nói',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '🗣️',
+    promptType: 'video',
+    tags: ['face', '135deg', 'back_right', 'talk', 'dialogue', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 135° Back-Right View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Môi đóng mở nhịp nhàng nhìn qua vai', 'Mắt nhấp nháy theo ngữ điệu'],
+    },
+    infoNote: '💡 Dùng khi nhân vật vừa đi vừa ngoái đầu lại trò chuyện với người phía sau.',
+    negativePrompt: `hair, ears, head outline, neck, body, closed mouth static`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (135° BACK-RIGHT VIEW) TALKING OVER SHOULDER ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: Visible mouth articulates expressive dialogue syllables while glancing back over shoulder toward viewer. Eyelid blinks and brow accentuates speech cadence. Seamless loop.`,
+  },
+  {
+    id: 'face_135_alert',
+    title: 'Face 135° - Ngoái Nhìn Cảnh Giác (Vigilant Alert Glare)',
+    subtitle: 'Ngũ quan ngoái đầu qua vai trừng mắt sắc lẹm, cảnh giác cao độ phía sau',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '👁️',
+    promptType: 'video',
+    tags: ['face', '135deg', 'back_right', 'alert', 'vigilant', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 135° Back-Right View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Đồng tử liếc xếch sắc bén', 'Lông mày nhíu căng thẳng', 'Răng nghiến nhẹ'],
+    },
+    infoNote: '💡 Khi nhân vật phát hiện có kẻ theo dõi hoặc tiếng động khả nghi từ phía sau.',
+    negativePrompt: `hair, ears, head outline, neck, body, smile, happy`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (135° BACK-RIGHT VIEW) VIGILANT SHARP SUSPICION ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: Sharp narrowed eye darts back over shoulder, pupil scanning suspiciously. Eyebrow knits tight in high alert. Mouth tenses into guarded line. Seamless loop.`,
+  },
+];

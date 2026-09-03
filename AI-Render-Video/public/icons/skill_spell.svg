@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <radialGradient id="spell-core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7e22ce"/>
+    </radialGradient>
+  </defs>
+  <rect width="48" height="48" rx="10" fill="#140724"/>
+  <!-- Swirling elemental magic vortex -->
+  <circle cx="24" cy="24" r="10" fill="url(#spell-core)"/>
+  <!-- Magic rune rings -->
+  <circle cx="24" cy="24" r="16" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <circle cx="24" cy="24" r="19" stroke="#e9d5ff" stroke-width="1" stroke-dasharray="2 4" opacity="0.6"/>
+  <!-- Radial energy spikes -->
+  <path d="M24 4V9M24 39V44M4 24H9M39 24H44" stroke="#e9d5ff" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

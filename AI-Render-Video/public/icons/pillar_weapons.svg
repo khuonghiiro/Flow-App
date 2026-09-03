@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="p-wep-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7e22ce"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#140724" stroke="url(#p-wep-grad)" stroke-width="2"/>
+  <!-- Glowing sword with magic rune ring -->
+  <path d="M44 14L48 18L26 40L22 40L22 36L44 14Z" fill="url(#p-wep-grad)"/>
+  <path d="M22 40L16 46L14 44L20 38" stroke="#e9d5ff" stroke-width="2" stroke-linecap="round"/>
+  <path d="M19 41L21 43" stroke="#e9d5ff" stroke-width="3"/>
+  <!-- Magic sparkle stars -->
+  <path d="M38 32L40 37L45 39L40 41L38 46L36 41L31 39L36 37Z" fill="#c084fc"/>
+</svg>

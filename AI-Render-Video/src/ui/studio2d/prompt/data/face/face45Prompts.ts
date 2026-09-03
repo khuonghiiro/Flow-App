@@ -1,0 +1,246 @@
+import { PromptItem } from '../../types';
+
+export const FACE_45_PROMPTS: PromptItem[] = [
+  {
+    id: 'face_45_blink',
+    title: 'Face 45° - Chớp Mắt Góc Nghiêng (3/4 Blink)',
+    subtitle: 'Ngũ quan xoay 45° sang trái chớp mắt tự nhiên 2-3s lặp vô tận trên nền xanh #00FF00',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '👀',
+    promptType: 'video',
+    tags: ['face', '45deg', 'three_quarter', 'blink', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View (Face Only)',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Mắt trái gần to hơn mắt phải xa', 'Đổ bóng chóp mũi và cằm lệch 45°', 'Nền #00FF00'],
+    },
+    infoNote: '💡 Trạng thái nghỉ cơ bản nhất khi nhân vật xoay người góc 45°.',
+    negativePrompt: `hair, ears, head outline, neck, body, front view 0deg, 90deg, 3D CGI`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° THREE-QUARTER LEFT VIEW) NEUTRAL BLINK ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth in 45° perspective. Mắt trái gần to hơn mắt phải phía xa. Mũi lệch góc 45°.
+MOTION: Natural gentle blinking cycle in 45° angle. Smooth loop.`,
+  },
+  {
+    id: 'face_45_smile',
+    title: 'Face 45° - Mỉm Cười Góc Nghiêng (3/4 Smile)',
+    subtitle: 'Ngũ quan xoay 45° mỉm cười dịu dàng, mắt cong cười nhìn chếch sang trái',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😊',
+    promptType: 'video',
+    tags: ['face', '45deg', 'smile', 'happy', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Khóe môi nhếch lên theo phối cảnh 45°', 'Mắt long lanh'],
+    },
+    infoNote: '💡 Biểu cảm cười duyên dáng ở góc nhìn 3/4.',
+    negativePrompt: `hair, ears, head outline, neck, body, frown, crying`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) WARM HAPPY SMILE ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth + cast shadows.
+MOTION: Lips curve upward into gentle affectionate smile at 45° angle. Crescent shaped eyes sparkle warmly. Seamless loop.`,
+  },
+  {
+    id: 'face_45_talk',
+    title: 'Face 45° - Nói Chuyện & Đàm Thoại (3/4 Talking Loop)',
+    subtitle: 'Ngũ quan xoay 45° mấp máy môi trò chuyện tự nhiên với góc nhìn 3/4',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '🗣️',
+    promptType: 'video',
+    tags: ['face', '45deg', 'talk', 'dialogue', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Cử động khẩu hình A-I-U-E-O ở góc 45°', 'Lông mày nhấp nhô theo ngữ điệu'],
+    },
+    infoNote: '💡 Dùng để lồng thoại trong cảnh hai nhân vật đứng chếch góc đối thoại.',
+    negativePrompt: `hair, ears, head outline, neck, body, 3D CGI, closed mouth static`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° THREE-QUARTER LEFT VIEW) LIVELY TALKING DIALOGUE ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth in 45° perspective.
+MOTION: Mouth articulates varied natural speech shapes seen from 3/4 perspective. Natural expressive eye blinks and subtle eyebrow inflections. Seamless loop.`,
+  },
+  {
+    id: 'face_45_angry',
+    title: 'Face 45° - Chiến Đấu & Căm Phẫn (3/4 Angry Glare)',
+    subtitle: 'Ngũ quan xoay 45° nhíu mày trừng mắt sang bên, miệng nghiến răng căm hận',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😠',
+    promptType: 'video',
+    tags: ['face', '45deg', 'angry', 'fierce', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Lông mày xéo sắc lẹm', 'Khẩu hình nghiến răng nhìn sang đối thủ'],
+    },
+    infoNote: '💡 Biểu cảm chiến đấu khi nhân vật quay nghiêng nhìn kẻ địch.',
+    negativePrompt: `hair, ears, head outline, neck, body, smile, laughing`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) FIERCE COMBAT GLARE ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: Eyebrows furrow into sharp fierce V-shape in 45° angle. Sharp glare directed towards left target. Mouth gritted tightly showing clenched teeth. Seamless loop.`,
+  },
+  {
+    id: 'face_45_surprised',
+    title: 'Face 45° - Ngạc Nhiên & Há Mồm (3/4 Surprised Shock)',
+    subtitle: 'Ngũ quan xoay 45° mở to mắt há hốc mồm ngạc nhiên tột độ nhìn sang trái',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😲',
+    promptType: 'video',
+    tags: ['face', '45deg', 'surprised', 'gasp', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Mắt mở to ở góc 3/4', 'Miệng há chữ O nghiêng'],
+    },
+    infoNote: '💡 Phản ứng bất ngờ trước biến cố xảy ra ở hướng 45°.',
+    negativePrompt: `hair, ears, head outline, neck, body, calm, sleepy`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) SHOCKED SURPRISE ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: Eyes pop wide in sudden astonishment in 45° profile. Mouth drops open in gasp showing depth of oral cavity. Eyebrows lifted high. Seamless loop.`,
+  },
+  {
+    id: 'face_45_sad',
+    title: 'Face 45° - Buồn Bã & Cụp Mắt (3/4 Sad Melancholy)',
+    subtitle: 'Ngũ quan xoay 45° ánh mắt nhìn xuống buồn bã, khóe môi trĩu nặng u sầu',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😢',
+    promptType: 'video',
+    tags: ['face', '45deg', 'sad', 'sorrow', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Ánh mắt nhìn nghiêng xuống dưới', 'Nét mặt buồn cô đơn'],
+    },
+    infoNote: '💡 Rất phù hợp cho cảnh nhân vật đứng dưới mưa hoặc trầm tư suy nghĩ.',
+    negativePrompt: `hair, ears, head outline, neck, body, smile, happy`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) DEEP MELANCHOLY SORROW ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: Eyes gaze softly downward toward bottom-left with quiet sadness. Lower lip trembles slightly. Brows angled in tender remorse. Seamless loop.`,
+  },
+  {
+    id: 'face_45_wink',
+    title: 'Face 45° - Nháy Mắt Tinh Quái (3/4 Playful Wink)',
+    subtitle: 'Ngũ quan xoay 45° nháy một mắt cực kỳ duyên dáng và đáng yêu',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😉',
+    promptType: 'video',
+    tags: ['face', '45deg', 'wink', 'cute', 'flirty', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Mắt trái gần nháy chớp', 'Mắt phải mở to lấp lánh', 'Mép môi nhếch duyên'],
+    },
+    infoNote: '💡 Biểu cảm thả thính, trêu đùa đậm chất anime cute.',
+    negativePrompt: `hair, ears, head outline, neck, body, angry, crying`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) PLAYFUL CHARMING WINK ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: Foreground left eye closes in a crisp playful wink with star glimmer, background eye remains bright and wide. Mouth curls into mischievous smirk. Seamless loop.`,
+  },
+  {
+    id: 'face_45_cry',
+    title: 'Face 45° - Khóc Lóc Rơi Lệ (3/4 Weeping Tears)',
+    subtitle: 'Ngũ quan xoay 45° những giọt lệ long lanh rơi từ khóe mắt má nghiêng',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😭',
+    promptType: 'video',
+    tags: ['face', '45deg', 'cry', 'tears', 'weeping', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Dòng nước mắt chảy dọc gò má nghiêng', 'Khóe miệng mếu máo'],
+    },
+    infoNote: '💡 Cảnh khóc đau thương nhìn từ góc 3/4 đầy chiều sâu nghệ thuật.',
+    negativePrompt: `hair, ears, head outline, neck, body, smile, joyful`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° THREE-QUARTER LEFT VIEW) WEEPING TEARS ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth + translucent tear droplets.
+MOTION: Tears stream from both eyes, with the prominent foreground tear rolling down the 3/4 contour. Lips quiver in broken breath and sorrowful lament. Seamless loop.`,
+  },
+  {
+    id: 'face_45_smirk',
+    title: 'Face 45° - Cười Nhếch Mép Kiêu Kỳ (3/4 Smirk)',
+    subtitle: 'Ngũ quan xoay 45° nhếch khóe môi cười tự đắc, ánh mắt liếc nhìn đầy tự tin',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😏',
+    promptType: 'video',
+    tags: ['face', '45deg', 'smirk', 'cocky', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Khóe miệng nhếch cao', 'Đôi mắt híp sắc sảo'],
+    },
+    infoNote: '💡 Phong thái cao ngạo của kiếm khách hoặc thiếu gia tiên hiệp.',
+    negativePrompt: `hair, ears, head outline, neck, body, crying, fear`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) COOL CONFIDENT SMIRK ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth.
+MOTION: High-arched eyebrow with a sharp smirk rising on the foreground corner of the mouth. Eyes narrowed in clever calculation and self-assured wit. Seamless loop.`,
+  },
+  {
+    id: 'face_45_fear',
+    title: 'Face 45° - Kinh Sợ & Thất Thần (3/4 Fear Gasp)',
+    subtitle: 'Ngũ quan xoay 45° tái nhợt vì sợ hãi, đồng tử rung rinh giật thót',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😨',
+    promptType: 'video',
+    tags: ['face', '45deg', 'fear', 'panic', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Đồng tử co thắt', 'Hơi thở dồn dập'],
+    },
+    infoNote: '💡 Khi nhân vật bất ngờ đối diện đòn hiểm nguy hiểm ở hướng nghiêng.',
+    negativePrompt: `hair, ears, head outline, neck, body, smiling, calm`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) TERROR FEAR STRICKEN ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth + cold sweat beads.
+MOTION: Eyes contract in pure terror staring at impending strike. Mouth slightly parted in choked breath. Quivering lines under eyes. Seamless loop.`,
+  },
+  {
+    id: 'face_45_shy',
+    title: 'Face 45° - Ngượng Ngùng Liếc Nhìn (3/4 Shy Blush)',
+    subtitle: 'Ngũ quan xoay 45° đỏ ửng gò má, mắt liếc bẽn lẽn tránh ánh nhìn trực diện',
+    stepCategory: 'step4_face',
+    stepLabel: 'Bước 4: Biểu Cảm Đơn',
+    icon: '😳',
+    promptType: 'video',
+    tags: ['face', '45deg', 'shy', 'blush', 'cute', 'loop'],
+    videoGuide: {
+      duration: '2 - 3 giây',
+      fps: '24 / 30 FPS',
+      camera: 'Static Lock 45° Left View',
+      loopType: 'Seamless Loop',
+      keyPoints: ['Má hồng đậm dần', 'Mắt liếc tránh nhìn'],
+    },
+    infoNote: '💡 Khoảnh khắc ngọt ngào ngại ngùng kinh điển trong anime tình cảm.',
+    negativePrompt: `hair, ears, head outline, neck, body, angry, fierce`,
+    rawPrompt: `TASK: Image-to-video 2-3 second seamless loop FLOATING 2D FACIAL FEATURES (45° LEFT VIEW) ADORABLE BLUSHING SHYNESS ON PURE CHROMA GREEN.
+CRITICAL ISOLATION: Pure chroma green #00FF00. ONLY Eyebrows, Eyes, Nose, Mouth + cute pink blush marks across cheekbone contour.
+MOTION: Eyelids flutter quickly while eyes glance downward away from viewer. Soft rosy blush glows warmly on 45° cheek. Sweet bashful smile. Seamless loop.`,
+  },
+];

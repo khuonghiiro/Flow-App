@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="p-face-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#be185d"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#1f0714" stroke="url(#p-face-grad)" stroke-width="2"/>
+  <!-- Floating anime eyes and smiling mouth -->
+  <!-- Eyebrows -->
+  <path d="M20 20C24 18 28 20 28 20" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+  <path d="M44 20C40 18 36 20 36 20" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+  <!-- Eyes -->
+  <ellipse cx="24" cy="27" rx="4.5" ry="6" fill="#f472b6"/>
+  <circle cx="25.5" cy="25" r="2" fill="#ffffff"/>
+  <ellipse cx="40" cy="27" rx="4.5" ry="6" fill="#f472b6"/>
+  <circle cx="41.5" cy="25" r="2" fill="#ffffff"/>
+  <!-- Nose dot -->
+  <circle cx="32" cy="34" r="1.2" fill="#f472b6"/>
+  <!-- Smiling mouth -->
+  <path d="M26 40C28 44 36 44 38 40" stroke="url(#p-face-grad)" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
