@@ -76,12 +76,19 @@ class SingleFramePreviewRequest(BaseModel):
     preview_size: int = Field(512, ge=256, le=1024, description="Max width/height for fast preview")
 
 
+class DiffusionModelType(str, Enum):
+    ANIMATEDIFF = "animatediff"
+    SVD = "svd"
+
+
 class DiffusionAnimateRequest(BaseModel):
     image: str = Field(..., description="Base64 encoded source image")
-    prompt: Optional[str] = Field("blowing hair, clothes fluttering in the wind, highly detailed", description="Motion prompt")
-    negative_prompt: Optional[str] = Field("distorted, bad anatomy, blurry, flickering", description="Negative prompt")
+    model_type: DiffusionModelType = Field(DiffusionModelType.ANIMATEDIFF, description="AI Diffusion Model Architecture")
+    prompt: Optional[str] = Field("masterpiece, highly detailed, flowing black hair, silk robes fluttering in wind, cinematic lighting, 8k", description="Motion prompt")
+    negative_prompt: Optional[str] = Field("distorted, bad anatomy, blurry, flickering, static, deformed", description="Negative prompt")
     motion_bucket_id: int = Field(127, ge=1, le=255, description="SVD / AnimateDiff motion intensity")
     noise_aug_strength: float = Field(0.02, ge=0.0, le=1.0)
-    fps: int = Field(24, ge=8, le=30)
-    num_frames: int = Field(25, ge=14, le=49)
-    guidance_scale: float = Field(3.0, ge=1.0, le=10.0)
+    fps: int = Field(16, ge=8, le=30)
+    num_frames: int = Field(16, ge=12, le=32)
+    guidance_scale: float = Field(7.5, ge=1.0, le=15.0)
+

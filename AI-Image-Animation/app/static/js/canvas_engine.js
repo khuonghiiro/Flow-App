@@ -1,5 +1,5 @@
 /**
- * Real-time 60 FPS Browser Physics Preview Simulation Engine
+ * Real-time 60 FPS 2D Mesh Deformation & Physics Simulation Engine
  */
 class CanvasEngine {
   constructor(imageCanvas, previewCanvas) {
@@ -14,11 +14,15 @@ class CanvasEngine {
     
     // Physics parameters
     this.phase = 0.0;
-    this.windStrength = 1.2;
-    this.waveFrequency = 1.8;
-    this.turbulence = 0.6;
-    this.flutterScale = 1.4;
+    this.windStrength = 1.0;
+    this.waveFrequency = 1.0;
+    this.turbulence = 0.4;
+    this.flutterScale = 1.0;
     this.duration = 3.0; // seconds
+
+    // Grid mesh settings (24x24 quads = 1152 triangles for locked 60 FPS)
+    this.gridCols = 24;
+    this.gridRows = 24;
 
     // Callbacks
     this.onPhaseUpdate = null;
@@ -29,7 +33,7 @@ class CanvasEngine {
     const w = imgElement.naturalWidth || imgElement.width;
     const h = imgElement.naturalHeight || imgElement.height;
 
-    // Limit maximum canvas viewport dimension to maintain 60 FPS
+    // Limit maximum canvas viewport dimension for smooth 60 FPS
     const maxDim = 800;
     let dispW = w;
     let dispH = h;
@@ -95,28 +99,121 @@ class CanvasEngine {
     this.animationId = requestAnimationFrame(() => this.animateLoop());
   }
 
+  getFlowVector(nx, ny) {
+    const vectors = window.vectorTools ? window.vectorTools.vectors : [];
+    const pins = window.vectorTools ? window.vectorTools.pins : [];
+
+    if (!vectors || vectors.length === 0) {
+      return { fx: 0.8, fy: 0.1 };
+    }
+
+    let totalFx = 0;
+    let totalFy = 0;
+    let totalWeight = 1e-5;
+
+    for (const vec of vectors) {
+      const vx = (vec.end_x - vec.start_x) * vec.strength;
+      const vy = (vec.end_y - vec.start_y) * vec.strength;
+      const lenSq = (vec.end_x - vec.start_x) ** 2 + (vec.end_y - vec.start_y) ** 2 + 1e-5;
+      const len = Math.sqrt(lenSq);
+
+      const tProj = Math.max(0, Math.min(1, ((nx - vec.start_x) * (vec.end_x - vec.start_x) + (ny - vec.start_y) * (vec.end_y - vec.start_y)) / lenSq));
+      const closestX = vec.start_x + tProj * (vec.end_x - vec.start_x);
+      const closestY = vec.start_y + tProj * (vec.end_y - vec.start_y);
+
+      const distSq = (nx - closestX) ** 2 + (ny - closestY) ** 2;
+      const radius = Math.max(0.12, len * 0.9);
+      const spatialW = Math.exp(-distSq / (2.0 * radius * radius));
+      const progressiveGain = Math.max(0.2, Math.min(1.4, 0.3 + 0.9 * tProj));
+
+      totalFx += vx * spatialW * progressiveGain;
+      totalFy += vy * spatialW * progressiveGain;
+      totalWeight += spatialW;
+    }
+
+    let fx = totalFx / totalWeight;
+    let fy = totalFy / totalWeight;
+
+    // Apply anchor pin dampening
+    if (pins && pins.length > 0) {
+      for (const pin of pins) {
+        const d = Math.hypot(nx - pin.x, ny - pin.y);
+        const r = Math.max(0.02, pin.radius);
+        if (d < r) {
+          const infl = d / r;
+          const smooth = infl * infl * (3 - 2 * infl);
+          const factor = (1 - pin.weight) + pin.weight * smooth;
+          fx *= factor;
+          fy *= factor;
+        }
+      }
+    }
+
+    return { fx, fy };
+  }
+
+  getMaskValue(px, py, w, h) {
+    if (!window.maskPainter || !window.maskPainter.maskCtx) return 1.0;
+    try {
+      const p = window.maskPainter.maskCtx.getImageData(Math.round(px), Math.round(py), 1, 1).data;
+      // White mask (255) = 1.0, Black (0) = 0.0
+      return (p[0] / 255.0);
+    } catch (e) {
+      return 1.0;
+    }
+  }
+
   renderFrame(phase) {
     if (!this.sourceImage) return;
 
     const w = this.prevCanvas.width;
     const h = this.prevCanvas.height;
+    const ctx = this.prevCtx;
 
-    // Fast multi-harmonic dynamic warp simulation
-    this.prevCtx.clearRect(0, 0, w, h);
+    // 1. Draw static background
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(this.sourceImage, 0, 0, w, h);
 
-    // Subtle breathing/hair sway transform
-    const angle = Math.sin(phase * Math.PI * 2 * this.waveFrequency) * (0.015 * this.windStrength);
-    const scaleX = 1.0 + Math.sin(phase * Math.PI * 2 * this.waveFrequency * 1.5) * (0.008 * this.flutterScale);
-    const shiftX = Math.sin(phase * Math.PI * 2 * this.waveFrequency) * (4.0 * this.windStrength);
-    const shiftY = Math.cos(phase * Math.PI * 2 * this.waveFrequency * 0.8) * (2.0 * this.turbulence);
+    const cols = this.gridCols;
+    const rows = this.gridRows;
+    const cellW = w / cols;
+    const cellH = h / rows;
 
-    this.prevCtx.save();
-    this.prevCtx.translate(w / 2 + shiftX, h / 2 + shiftY);
-    this.prevCtx.rotate(angle);
-    this.prevCtx.scale(scaleX, 1.0);
-    this.prevCtx.drawImage(this.sourceImage, -w / 2, -h / 2, w, h);
-    this.prevCtx.restore();
+    const freqK = Math.max(1, Math.round(this.waveFrequency));
+    const phaseRad = phase * Math.PI * 2 * freqK;
+    const maxDisp = 18.0 * this.windStrength;
+
+    // Fast Grid Deformation
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const x = i * cellW;
+        const y = j * cellH;
+        const nx = (x + cellW * 0.5) / w;
+        const ny = (y + cellH * 0.5) / h;
+
+        const maskVal = this.getMaskValue(x + cellW * 0.5, y + cellH * 0.5, w, h);
+        if (maskVal < 0.05) continue; // Skip static regions for extreme speed
+
+        const { fx, fy } = this.getFlowVector(nx, ny);
+        const spatialLag = (nx * fx + ny * fy) * (Math.PI * 2.0);
+
+        const osc = Math.sin(phaseRad - spatialLag * 0.75) + 
+                    this.turbulence * (0.35 * Math.sin(phaseRad * 2.0 - spatialLag * 1.5 + 0.5));
+
+        const dx = fx * osc * maxDisp * maskVal;
+        const dy = fy * osc * maxDisp * maskVal;
+
+        // Render warped mesh cell
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, cellW + 0.5, cellH + 0.5);
+        ctx.clip();
+        ctx.drawImage(this.sourceImage, x - dx, y - dy, cellW + 1, cellH + 1, x, y, cellW + 1, cellH + 1);
+        ctx.restore();
+      }
+    }
   }
 }
 
 window.CanvasEngine = CanvasEngine;
+

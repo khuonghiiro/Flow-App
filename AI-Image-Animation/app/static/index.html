@@ -76,9 +76,10 @@
         </div>
 
         <!-- Quick Sample Shortcuts -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
-          <button class="btn btn-secondary" id="btnSampleAnime" style="font-size: 11px; padding: 6px 8px;">🌸 Mẫu Anime</button>
-          <button class="btn btn-secondary" id="btnSamplePortrait" style="font-size: 11px; padding: 6px 8px;">👤 Mẫu Chân Dung</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 4px;">
+          <button class="btn btn-secondary" id="btnSampleTienHiep" style="font-size: 11px; padding: 6px 4px;">🥋 Cổ Trang</button>
+          <button class="btn btn-secondary" id="btnSampleAnime" style="font-size: 11px; padding: 6px 4px;">🌸 Anime</button>
+          <button class="btn btn-secondary" id="btnSamplePortrait" style="font-size: 11px; padding: 6px 4px;">👤 Chân Dung</button>
         </div>
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
       </div>
@@ -86,35 +87,44 @@
       <!-- 2. AI Model & VRAM Management Section -->
       <div class="panel-section">
         <div class="panel-title">
-          <span>🧠 Quản Lý Model & VRAM</span>
+          <span>🧠 Quản Lý Model AI & VRAM</span>
         </div>
 
         <div class="model-manager-card">
-          <div class="model-header-status">
-            <span style="font-weight: 600; color: var(--text-primary);">Trạng Thái Model:</span>
-            <span class="status-badge" id="modelStatusBadge">🟢 Sẵn Sàng (Ready)</span>
+          <!-- Model Selection Dropdown -->
+          <div class="control-row">
+            <label style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">Chọn Model AI:</label>
+            <select id="selectAiModel" style="background: #0e1322; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 7px 8px; color: #fff; font-size: 11px; width: 100%; cursor: pointer;">
+              <option value="svd" selected>🎬 SVD-XT 1.1 (Giữ Chuẩn 100% Ảnh Gốc - 7.5GB)</option>
+              <option value="animatediff">🌸 AnimateDiff Text-to-Video (5.8GB)</option>
+            </select>
           </div>
 
-          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
-            RTX 3060 12GB: Tối ưu bộ nhớ đệm, tự động thu hồi VRAM sau render.
+          <div class="model-header-status">
+            <span style="font-size: 11px; color: var(--text-secondary);">Trạng Thái:</span>
+            <span class="status-badge offline" id="modelStatusBadge">⚪ Chưa Nạp VRAM</span>
+          </div>
+
+          <div id="modelInfoDesc" style="font-size: 10.5px; color: var(--text-muted); line-height: 1.4; background: rgba(0,0,0,0.25); padding: 6px 8px; border-radius: 6px;">
+            🎬 <strong>SVD-XT 1.1 (Khuyên Dùng)</strong>: Truyền trực tiếp ảnh gốc của bạn vào mạng AI, giữ nguyên 100% khuôn mặt, trang phục và tạo chuyển động tóc/áo 3D tự nhiên. VRAM: ~7.5GB.
           </div>
 
           <div class="model-actions-row">
             <button class="btn-load" id="btnLoadModel">
-              <span>🟢 Nạp Model</span>
+              <span id="btnLoadText">🟢 Nạp SVD-XT 1.1</span>
             </button>
             <button class="btn-unload" id="btnUnloadModel">
-              <span>🔴 Hủy Model</span>
+              <span>🔴 Xả VRAM</span>
             </button>
           </div>
 
           <!-- VRAM Usage Mini-Bar -->
-          <div style="margin-top: 4px;">
+          <div style="margin-top: 2px;">
             <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">
-              <span>VRAM Đang Dùng</span>
+              <span>VRAM RTX 3060</span>
               <span id="vramUsedText" style="color: var(--primary); font-family: var(--font-mono);">0.5 GB / 12 GB</span>
             </div>
-            <div class="progress-bar-track" style="height: 5px;">
+            <div class="progress-bar-track" style="height: 6px;">
               <div class="progress-bar-fill" id="vramBarFill" style="width: 5%;"></div>
             </div>
           </div>
@@ -178,8 +188,9 @@
           <p>Hỗ trợ JPG, PNG, WebP (Tối ưu cho ảnh chân dung, anime, trang phục)</p>
         </div>
         <div class="sample-buttons">
-          <button class="btn btn-secondary" id="btnSampleAnime">Ảnh Mẫu Anime</button>
-          <button class="btn btn-secondary" id="btnSamplePortrait">Ảnh Mẫu Chân Dung</button>
+          <button class="btn btn-secondary" id="btnSampleTienHiep">🥋 Mẫu Cổ Trang / Tiên Hiệp</button>
+          <button class="btn btn-secondary" id="btnSampleAnime">🌸 Ảnh Mẫu Anime</button>
+          <button class="btn btn-secondary" id="btnSamplePortrait">👤 Ảnh Mẫu Chân Dung</button>
         </div>
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
       </div>
@@ -207,33 +218,33 @@
         <div class="control-row">
           <div class="control-label">
             <span>Cường độ gió (Strength)</span>
-            <span class="control-val" id="valWindStrength">1.2x</span>
+            <span class="control-val" id="valWindStrength">1.0x</span>
           </div>
-          <input type="range" id="sliderWindStrength" min="0.0" max="4.0" step="0.1" value="1.2">
+          <input type="range" id="sliderWindStrength" min="0.0" max="4.0" step="0.1" value="1.0">
         </div>
 
         <div class="control-row">
           <div class="control-label">
             <span>Tần số sóng lượn (Frequency)</span>
-            <span class="control-val" id="valWaveFreq">1.8 Hz</span>
+            <span class="control-val" id="valWaveFreq">1.0 Hz</span>
           </div>
-          <input type="range" id="sliderWaveFreq" min="0.2" max="5.0" step="0.1" value="1.8">
+          <input type="range" id="sliderWaveFreq" min="0.2" max="5.0" step="0.1" value="1.0">
         </div>
 
         <div class="control-row">
           <div class="control-label">
             <span>Độ hỗn loạn / Nhấp nhô (Turbulence)</span>
-            <span class="control-val" id="valTurbulence">0.6</span>
+            <span class="control-val" id="valTurbulence">0.4</span>
           </div>
-          <input type="range" id="sliderTurbulence" min="0.0" max="2.0" step="0.1" value="0.6">
+          <input type="range" id="sliderTurbulence" min="0.0" max="2.0" step="0.1" value="0.4">
         </div>
 
         <div class="control-row">
           <div class="control-label">
             <span>Lọn tóc vi mô (Strand Flutter)</span>
-            <span class="control-val" id="valFlutter">1.4</span>
+            <span class="control-val" id="valFlutter">1.0</span>
           </div>
-          <input type="range" id="sliderFlutter" min="0.0" max="3.0" step="0.1" value="1.4">
+          <input type="range" id="sliderFlutter" min="0.0" max="3.0" step="0.1" value="1.0">
         </div>
       </div>
 
@@ -322,14 +333,24 @@
           <label style="font-size: 13px; font-weight: 600; color: var(--text-primary);">1. Công Nghệ Xử Lý (Engine):</label>
           <div class="btn-chip-group">
             <button class="btn-chip active" data-group="engine" data-val="flow">
-              <span class="btn-chip-title">⚡ Neural Vector Flow</span>
-              <span class="btn-chip-sub">RTX 3060 - 60 FPS tức thì</span>
+              <span class="btn-chip-title">⚡ Vector Flow</span>
+              <span class="btn-chip-sub">60 FPS tức thì</span>
             </button>
-            <button class="btn-chip" data-group="engine" data-val="diffusion">
-              <span class="btn-chip-title">🧠 AI Generative SVD</span>
-              <span class="btn-chip-sub">Khuếch tán AI Diffusion</span>
+            <button class="btn-chip" data-group="engine" data-val="svd">
+              <span class="btn-chip-title">🎬 SVD-XT AI (I2V)</span>
+              <span class="btn-chip-sub">Giữ chuẩn 100% ảnh gốc</span>
+            </button>
+            <button class="btn-chip" data-group="engine" data-val="animatediff">
+              <span class="btn-chip-title">🌸 AnimateDiff (T2V)</span>
+              <span class="btn-chip-sub">Sinh video từ Prompt</span>
             </button>
           </div>
+        </div>
+
+        <!-- AI Motion Prompt (shown when AI Engine is selected) -->
+        <div class="control-row" id="aiPromptSection" style="display: none; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 10px;">
+          <label style="font-size: 12px; font-weight: 600; color: #a5b4fc;">✨ Gợi ý chuyển động AI (Motion Prompt):</label>
+          <input type="text" id="inputAiPrompt" style="margin-top: 4px; width: 100%; background: #0e1322; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; color: #fff; font-size: 12px;" value="masterpiece, flowing black hair, silk robes fluttering in wind, cinematic lighting, highly detailed">
         </div>
 
         <!-- 2. Chế độ lặp chuyển động (Loop Mode) -->

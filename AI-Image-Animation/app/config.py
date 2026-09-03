@@ -32,7 +32,7 @@ TARGET_GPU_VRAM_GB = 12.0
 MAX_VRAM_ALLOCATION_RATIO = 0.85  # Safe margin for 12GB
 ENABLE_FP16 = True
 ENABLE_XFORMERS = True
-ENABLE_CPU_OFFLOAD = True
+ENABLE_CPU_OFFLOAD = False  # Keep in full GPU VRAM for RTX 3060 12GB (15x faster)
 ENABLE_VAE_SLICING = True
 
 # Task & Processing Defaults

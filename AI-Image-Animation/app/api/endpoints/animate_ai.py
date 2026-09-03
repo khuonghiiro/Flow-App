@@ -5,13 +5,11 @@ from app.schemas.request_models import DiffusionAnimateRequest, ExportFormat
 from app.schemas.response_models import AnimateResponse
 from app.utils.file_manager import generate_unique_id, get_output_path
 from app.utils.image_processing import decode_base64_image
-from app.core.ai_motion_model import AIMotionModel
+from app.core.ai_motion_model import ai_model_instance
 from app.core.video_exporter import VideoExporter
 from app.api.deps import task_manager
 
 router = APIRouter(prefix="/animate", tags=["Animation Engines"])
-
-ai_model = AIMotionModel()
 
 
 def _compute_diffusion_sync(task_id: str, req: DiffusionAnimateRequest):
@@ -19,7 +17,7 @@ def _compute_diffusion_sync(task_id: str, req: DiffusionAnimateRequest):
     Synchronous worker for AI diffusion generative motion.
     """
     raw_image = decode_base64_image(req.image)
-    frames = ai_model.generate(raw_image, req)
+    frames = ai_model_instance.generate(raw_image, req)
     
     out_path, rel_url = get_output_path(task_id, "mp4")
     VideoExporter.export(frames, out_path, ExportFormat.MP4, fps=req.fps)

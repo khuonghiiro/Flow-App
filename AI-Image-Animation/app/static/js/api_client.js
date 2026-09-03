@@ -84,9 +84,12 @@ class ApiClient {
     }
   }
 
-  async loadModel() {
-    const res = await fetch(`${this.baseUrl}/api/model/load`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to load model into VRAM");
+  async loadModel(modelType = "animatediff") {
+    const res = await fetch(`${this.baseUrl}/api/model/load?model_type=${encodeURIComponent(modelType)}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.message || "Failed to load model into VRAM");
+    }
     return await res.json();
   }
 

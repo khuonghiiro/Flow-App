@@ -1,29 +1,28 @@
 ---
 name: flowmy-standards
-description: Enforces file length limits (max 1000 lines), method limits (max 80 lines), modularity grouping, and thread-safety rules when editing or creating code in FlowMy.
+description: Enforces file length limits (max 800-1000 lines), method limits (max 50-80 lines), modular UI tab extraction, and clean architecture when editing or creating code in FlowMy and AI Studio.
 ---
 
-# FlowMy Coding & Modularity Skill
+# FlowMy & AI Studio Coding Standards
 
-When modifying, extending, or creating code in the FlowMy workspace, follow this step-by-step skill:
+When modifying, extending, or creating code in FlowMy workspaces (across all languages: Python, JavaScript, TypeScript, CSS, HTML, C#, XAML), you MUST follow these mandatory standards:
 
-## Step 1: Pre-Edit Inspection
-1. Check line count of target file.
-2. If file has > 1,000 lines:
-   - Plan to split into partial classes `[ClassName].[Feature].cs` or extract dedicated services.
-3. If creating a new feature:
-   - Identify whether it belongs to `FlowMy.Core` (Models, Interfaces, Helpers) or `FlowMy.Wpf-UI` (Views, ViewModels, Controls, Services).
+## 1. File Size Limits (Hard Rule)
+- **Target Size**: 150 – 500 lines per file.
+- **Maximum Threshold**: Never exceed **800 – 1,000 lines** in any file.
+- **Pre-Edit Inspection**: Always check line count before adding new code to a file.
+- **Decomposition**: If a file is approaching 800–1000 lines, you MUST extract sub-components, helper modules, custom hooks, or services into dedicated sub-folders.
+- **UI Tabs & Views**: For complex modals or tabbed interfaces, NEVER stuff all tabs into one file. Extract each tab / panel into its own sub-component.
 
-## Step 2: Implementation Standards
-1. **Method Length**: Keep methods under 50–80 lines. Split complex sequences into small private helpers.
-2. **Logic Grouping**: Keep cohesive logic together (e.g. `WebNode.Extraction.cs` for scraping, `WebNode.NetworkInterceptor.cs` for CefSharp handlers).
-3. **XAML UI & Theming**:
-   - Limit `.xaml` files to **800 – 1,000 lines**.
-   - Always use `{DynamicResource TokenKey}` from `FlowMy.Docs/wpf-docs/THEME_TOKEN_REFERENCE.md`.
-   - **Button Padding**: When Button has explicit `Width`/`Height`, ALWAYS set `Padding="0"`.
-   - Put new custom styles in `FlowMy.Wpf-UI/Themes/Control_News/`.
-4. **Thread Safety**: Never call `Dispatcher.Invoke` from background threads. Use cached view models or `IScopedOutputSync`.
+## 2. Method Size Limit
+- Keep methods and functions under **50 – 80 lines**.
+- Decompose complex procedures into private sub-methods and pure utility functions.
 
-## Step 3: Verification
-1. Run incremental build: `dotnet build FlowMy.sln --no-restore`
-2. Ensure 0 compilation errors.
+## 3. Universal Modularity Across Languages
+- **Python**: Decompose into `config.py`, `schemas/`, `api/endpoints/`, `core/`, `utils/`.
+- **CSS**: Decompose into `theme.css`, `layout.css`, `canvas.css`, `controls.css`, `modal.css`.
+- **JS/TS**: Decompose into `api_client.js`, `canvas_engine.js`, `mask_painter.js`, `vector_tools.js`, `ui_controller.js`, `export_manager.js`, `app.js`.
+- **C# / WPF**: Split large partial classes and UserControls.
+
+## 4. Verification
+- Always ensure 0 compilation / syntax errors.

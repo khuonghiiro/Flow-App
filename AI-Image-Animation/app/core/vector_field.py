@@ -37,24 +37,32 @@ class VectorFieldGenerator:
             for vec in vectors:
                 vx = (vec.end_x - vec.start_x) * vec.strength
                 vy = (vec.end_y - vec.start_y) * vec.strength
+                vec_len_sq = (vec.end_x - vec.start_x) ** 2 + (vec.end_y - vec.start_y) ** 2 + 1e-6
+                vec_len = np.sqrt(vec_len_sq)
                 
-                # Center of the vector segment
-                mid_x = (vec.start_x + vec.end_x) * 0.5
-                mid_y = (vec.start_y + vec.end_y) * 0.5
+                # Projection of each grid point onto vector line segment [0, 1]
+                t_proj = ((grid_x - vec.start_x) * (vec.end_x - vec.start_x) + 
+                          (grid_y - vec.start_y) * (vec.end_y - vec.start_y)) / vec_len_sq
+                t_clamped = np.clip(t_proj, 0.0, 1.0)
                 
-                # Vector length determines influence radius
-                vec_len = np.hypot(vec.end_x - vec.start_x, vec.end_y - vec.start_y)
-                radius = max(0.15, vec_len * 1.5)
+                # Closest point on line segment
+                closest_x = vec.start_x + t_clamped * (vec.end_x - vec.start_x)
+                closest_y = vec.start_y + t_clamped * (vec.end_y - vec.start_y)
                 
-                # Distance squared from vector midpoint
-                dist_sq = (grid_x - mid_x) ** 2 + (grid_y - mid_y) ** 2
+                # Perpendicular distance squared to vector segment
+                dist_sq = (grid_x - closest_x) ** 2 + (grid_y - closest_y) ** 2
+                radius = max(0.12, vec_len * 0.9)
                 
-                # Gaussian falloff kernel
-                weight = np.exp(-dist_sq / (2.0 * (radius ** 2)))
+                # Directional Gaussian falloff
+                spatial_weight = np.exp(-dist_sq / (2.0 * (radius ** 2)))
                 
+                # Progressive tip amplification (roots sway less, tips sway more)
+                progressive_gain = np.clip(0.3 + 0.9 * t_clamped, 0.2, 1.4)
+                
+                weight = spatial_weight * progressive_gain
                 flow_x += vx * weight
                 flow_y += vy * weight
-                total_weight += weight
+                total_weight += spatial_weight
                 
             flow_x /= total_weight
             flow_y /= total_weight

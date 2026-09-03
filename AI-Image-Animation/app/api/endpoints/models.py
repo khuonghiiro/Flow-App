@@ -1,10 +1,8 @@
-from fastapi import APIRouter
-from app.core.ai_motion_model import AIMotionModel
+from fastapi import APIRouter, Query
+from app.core.ai_motion_model import ai_model_instance
 from app.core.gpu_manager import gpu_manager
 
 router = APIRouter(prefix="/model", tags=["Model Management"])
-
-ai_model_instance = AIMotionModel()
 
 
 @router.get("/status", summary="Get AI Model & VRAM Status")
@@ -16,15 +14,15 @@ async def get_model_status():
 
 
 @router.post("/load", summary="Load AI Model into GPU VRAM")
-async def load_model_to_vram():
+async def load_model_to_vram(model_type: str = Query("animatediff", description="Model engine: animatediff or svd")):
     """
     Explicitly triggers loading model weights into RTX 3060 12GB VRAM.
     """
     try:
-        ai_model_instance.load_pipeline()
+        ai_model_instance.load_pipeline(model_type)
         return {
             "success": True,
-            "message": "AI Model loaded into VRAM successfully",
+            "message": f"AI Model ({model_type}) loaded into VRAM successfully",
             "status": ai_model_instance.get_status()
         }
     except Exception as e:

@@ -163,11 +163,14 @@ _NCrunch*
 # ==============================================================================
 **/__pycache__/
 **/*.py[cod]
+*$py.class
 **/venv/
 **/.venv/
 **/env/
 **/.pytest_cache/
 **/.cache/
+**/.u2net/
+**/.torch/
 
 # AI Model Checkpoint Weights (Exclude multi-GB binaries from git)
 **/models/**
@@ -183,13 +186,32 @@ _NCrunch*
 **/*.pth
 **/*.safetensors
 **/*.onnx
+**/*.engine
+**/*.trt
+**/*.bin
+**/*.mar
 
-# Pipeline Temporary Workspaces & Render Outputs
+# Pipeline Temporary Workspaces, Scratch & Render Outputs
 **/temp_workspace/
 **/outputs/
 **/face_scaffolds/
+**/scratch/
+**/temp/
+**/tmp/
+**/uploads/
 **/*.tmp
 **/*.part
+**/*.log
+**/*.log.*
+
+# Backups & Duplicates
+**/* - Copy*
+**/*-Copy*
+**/*.bak
+**/*.backup
+**/*.old
+**/*.orig
+**/*.rej
 
 # ==============================================================================
 # Node.js & Web Bundles
@@ -200,4 +222,10 @@ _NCrunch*
 **/build/
 **/.next/
 **/.turbo/
-**/.parcel-cache/
+**/.parcel-cache/
+**/.eslintcache
+**/.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

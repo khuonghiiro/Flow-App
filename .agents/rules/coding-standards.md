@@ -4,17 +4,18 @@
 
 Before editing existing code or generating new code, AI must adhere to the following rules:
 
-1. **File Size Limit (Hard Rule)**:
-   - Target size: 200 – 600 lines per file.
-   - If a file exceeds **1,000 – 1,500 lines**, you **MUST** split it into partial classes (`[Class].[Feature].cs`), dedicated services, or helpers.
-   - Never write monolithic files containing thousands of lines.
+1. **File Size Limit (Universal Hard Rule across ALL Languages)**:
+   - Target size: **150 – 500 lines per file**.
+   - If a file reaches **800 – 1,000 lines**, you **MUST** split it into smaller modular files by function/responsibility (CSS, JS/TS, HTML, Python, C#, etc.).
+   - **Never write monolithic files containing thousands of lines.**
 
-2. **Method Size Limit**:
-   - Keep methods under **50 – 80 lines**.
-   - Decompose multi-step procedures into descriptive private sub-methods.
+2. **Method & Function Size Limit**:
+   - Keep methods and functions under **50 – 80 lines**.
+   - Decompose multi-step procedures into descriptive sub-methods and utility functions.
 
-3. **Logic Grouping**:
-   - Group related functionality into cohesive sub-files or specialized services.
+3. **Logic & Architecture Grouping**:
+   - Separate concerns strictly: Models / Schemas, Controllers / API Routes, Core Engines, Utilities, and UI Presentation.
+   - Frontend files must separate HTML, modular CSS (`theme.css`, `layout.css`, `controls.css`), and modular JS (`api_client.js`, `canvas_engine.js`, etc.).
 
 4. **Thread Safety in WPF**:
    - Background threads (Task.Run, CefSharp interceptors, timers) **MUST NEVER** call blocking `Dispatcher.Invoke(...)`.
@@ -26,14 +27,7 @@ Before editing existing code or generating new code, AI must adhere to the follo
    - **Button Padding**: When a `<Button>` specifies explicit `Width` and/or `Height`, **ALWAYS set `Padding="0"`** to prevent icon/text misalignment.
    - Place new custom styles in `FlowMy.Wpf-UI/Themes/Control_News/`.
 
-6. **Header Comment**:
-   Include the standardized header comment at line 1 of new or refactored files:
-   ```csharp
-   // =========================================================================================
-   // AI NOTICE: Refer to README.md and FlowMy.Docs/AI_CODING_STANDARDS.md before editing code.
-   // =========================================================================================
-   ```
-
 For detailed documentation, read:
+👉 `.agents/rules/code-modularity-limits.md`
 👉 `FlowMy.Docs/AI_CODING_STANDARDS.md`
 👉 `FlowMy.Docs/wpf-docs/THEME_TOKEN_REFERENCE.md`

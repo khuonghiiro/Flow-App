@@ -36,42 +36,85 @@ document.addEventListener("DOMContentLoaded", async () => {
   uiController.populatePresets(presets, (p) => canvasEngine.setPhysics(p));
 
   // Model & VRAM Manager UI Bindings
+  const selectAiModel = document.getElementById("selectAiModel");
+  const modelInfoDesc = document.getElementById("modelInfoDesc");
   const btnLoadModel = document.getElementById("btnLoadModel");
+  const btnLoadText = document.getElementById("btnLoadText");
   const btnUnloadModel = document.getElementById("btnUnloadModel");
   const modelStatusBadge = document.getElementById("modelStatusBadge");
   const vramUsedText = document.getElementById("vramUsedText");
   const vramBarFill = document.getElementById("vramBarFill");
 
+  if (selectAiModel) {
+    selectAiModel.onchange = (e) => {
+      const val = e.target.value;
+      if (val === "animatediff") {
+        if (modelInfoDesc) modelInfoDesc.innerHTML = "🌸 <strong>AnimateDiff</strong>: Tự sinh lọn tóc & nếp gấp lụa 3D giữ nguyên 100% nét vẽ cổ trang / anime. VRAM: ~5.8GB.";
+        if (btnLoadText) btnLoadText.innerText = "🟢 Nạp AnimateDiff";
+      } else {
+        if (modelInfoDesc) modelInfoDesc.innerHTML = "🎬 <strong>SVD-XT 1.1</strong>: Nhận diện chiều sâu 3D, ánh sáng thực tế & camera parallax. VRAM: ~7.5GB.";
+        if (btnLoadText) btnLoadText.innerText = "🟢 Nạp SVD-XT";
+      }
+    };
+  }
+
   async function updateVRAMDisplay() {
-    const health = await window.apiClient.getHealth();
-    if (health) {
-      const gpuText = document.getElementById("gpuStatusText");
-      if (gpuText) {
-        gpuText.innerText = `${health.device_name} (${health.free_vram_gb}GB Free)`;
+    try {
+      const [health, modelStat] = await Promise.all([
+        window.apiClient.getHealth(),
+        window.apiClient.getModelStatus()
+      ]);
+
+      if (health) {
+        const gpuText = document.getElementById("gpuStatusText");
+        if (gpuText) {
+          gpuText.innerText = `${health.device_name} (${health.free_vram_gb}GB Free)`;
+        }
+        if (vramUsedText) {
+          vramUsedText.innerText = `${health.used_vram_gb} GB / ${health.total_vram_gb || 12} GB`;
+        }
+        if (vramBarFill) {
+          const total = health.total_vram_gb || 12;
+          const pct = Math.min(100, Math.round((health.used_vram_gb / total) * 100));
+          vramBarFill.style.width = `${Math.max(5, pct)}%`;
+        }
       }
-      if (vramUsedText) {
-        vramUsedText.innerText = `${health.used_vram_gb} GB / ${health.total_vram_gb || 12} GB`;
+
+      if (modelStat) {
+        if (modelStat.is_loaded) {
+          modelStatusBadge.className = "status-badge";
+          modelStatusBadge.innerText = `🟢 Đang Nạp: ${modelStat.model_type.toUpperCase()}`;
+          if (selectAiModel) selectAiModel.value = modelStat.model_type;
+        } else {
+          modelStatusBadge.className = "status-badge offline";
+          modelStatusBadge.innerText = "⚪ Chưa Nạp VRAM";
+        }
       }
-      if (vramBarFill) {
-        const total = health.total_vram_gb || 12;
-        const pct = Math.min(100, Math.round((health.used_vram_gb / total) * 100));
-        vramBarFill.style.width = `${Math.max(5, pct)}%`;
-      }
+    } catch (e) {
+      console.warn("VRAM status check failed:", e);
     }
   }
 
   if (btnLoadModel) {
     btnLoadModel.onclick = async () => {
+      const selectedType = selectAiModel ? selectAiModel.value : "animatediff";
       modelStatusBadge.className = "status-badge loading";
-      modelStatusBadge.innerText = "⏳ Đang Nạp VRAM...";
+      modelStatusBadge.innerText = `⏳ Đang Nạp ${selectedType.toUpperCase()}...`;
       try {
-        const res = await window.apiClient.loadModel();
-        modelStatusBadge.className = "status-badge";
-        modelStatusBadge.innerText = "🟢 Đã Nạp VRAM";
+        const res = await window.apiClient.loadModel(selectedType);
+        if (res.success) {
+          modelStatusBadge.className = "status-badge";
+          modelStatusBadge.innerText = `🟢 Đã Nạp: ${selectedType.toUpperCase()}`;
+        } else {
+          modelStatusBadge.className = "status-badge offline";
+          modelStatusBadge.innerText = "⚠️ Lỗi Nạp";
+          alert(`Lỗi nạp model: ${res.message}`);
+        }
         await updateVRAMDisplay();
       } catch (e) {
         modelStatusBadge.className = "status-badge offline";
         modelStatusBadge.innerText = "⚠️ Lỗi Nạp";
+        alert(`Lỗi nạp model: ${e.message}`);
       }
     };
   }
@@ -196,12 +239,68 @@ document.addEventListener("DOMContentLoaded", async () => {
   fileInput.onchange = (e) => handleImageFile(e.target.files[0]);
 
   // Sample Images Buttons
+  document.querySelectorAll("#btnSampleTienHiep").forEach(btn => {
+    btn.onclick = (e) => { e.stopPropagation(); loadTienHiepSample(); };
+  });
   document.querySelectorAll("#btnSampleAnime").forEach(btn => {
     btn.onclick = (e) => { e.stopPropagation(); loadDemoSample("anime"); };
   });
   document.querySelectorAll("#btnSamplePortrait").forEach(btn => {
     btn.onclick = (e) => { e.stopPropagation(); loadDemoSample("portrait"); };
   });
+
+  function loadTienHiepSample() {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      loadImageSource(img, "nhan_vat_tien_hiep.png");
+      const w = imageCanvas.width;
+      const h = imageCanvas.height;
+
+      // Draw automated soft mask on hair & robe
+      maskPainter.clear();
+      const mctx = maskPainter.maskCtx;
+      mctx.fillStyle = "#ffffff";
+
+      // Hair mask (top right down to mid back)
+      mctx.beginPath();
+      mctx.ellipse(w * 0.65, h * 0.28, w * 0.22, h * 0.20, 15 * Math.PI / 180, 0, Math.PI * 2);
+      mctx.fill();
+
+      // Lower sleeve & robe trail
+      mctx.beginPath();
+      mctx.ellipse(w * 0.68, h * 0.62, w * 0.25, h * 0.20, 20 * Math.PI / 180, 0, Math.PI * 2);
+      mctx.fill();
+
+      mctx.beginPath();
+      mctx.ellipse(w * 0.62, h * 0.80, w * 0.22, h * 0.15, 10 * Math.PI / 180, 0, Math.PI * 2);
+      mctx.fill();
+
+      // Set natural physics vectors
+      vectorTools.clearVectors();
+      vectorTools.clearPins();
+
+      // 1. Hair sway
+      vectorTools.vectors.push({ start_x: 0.48, start_y: 0.18, end_x: 0.78, end_y: 0.32, strength: 1.1 });
+      vectorTools.vectors.push({ start_x: 0.55, start_y: 0.30, end_x: 0.82, end_y: 0.45, strength: 1.2 });
+      // 2. Sleeve flutter
+      vectorTools.vectors.push({ start_x: 0.50, start_y: 0.52, end_x: 0.86, end_y: 0.62, strength: 1.0 });
+      // 3. Robe bottom
+      vectorTools.vectors.push({ start_x: 0.45, start_y: 0.72, end_x: 0.84, end_y: 0.86, strength: 0.9 });
+
+      // Anchor pins to protect face and body
+      vectorTools.pins.push({ x: 0.32, y: 0.12, radius: 0.12, weight: 1.0 }); // Face
+      vectorTools.pins.push({ x: 0.35, y: 0.25, radius: 0.14, weight: 1.0 }); // Chest
+      vectorTools.pins.push({ x: 0.34, y: 0.45, radius: 0.15, weight: 1.0 }); // Waist
+      vectorTools.pins.push({ x: 0.35, y: 0.85, radius: 0.18, weight: 1.0 }); // Feet
+
+      vectorTools.redraw();
+      canvasEngine.setPhysics({ windStrength: 1.0, waveFrequency: 1.0, turbulence: 0.35, flutterScale: 1.0 });
+      canvasEngine.play();
+      document.getElementById("playIcon").innerText = "⏸️";
+    };
+    img.src = "/samples/tien_hiep.png";
+  }
 
   function loadDemoSample(type) {
     const tempCanvas = document.createElement("canvas");

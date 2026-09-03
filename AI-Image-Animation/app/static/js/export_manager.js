@@ -51,10 +51,15 @@ class ExportManager {
 
         if (group === "engine") {
           this.selectedEngine = val;
+          const isAI = (val === "animatediff" || val === "svd");
           const loopSection = document.getElementById("groupLoopModeSection");
+          const promptSection = document.getElementById("aiPromptSection");
           if (loopSection) {
-            loopSection.style.opacity = val === "diffusion" ? "0.4" : "1.0";
-            loopSection.style.pointerEvents = val === "diffusion" ? "none" : "auto";
+            loopSection.style.opacity = isAI ? "0.4" : "1.0";
+            loopSection.style.pointerEvents = isAI ? "none" : "auto";
+          }
+          if (promptSection) {
+            promptSection.style.display = isAI ? "block" : "none";
           }
         } else if (group === "loop") {
           this.selectedLoopMode = val;
@@ -104,11 +109,17 @@ class ExportManager {
 
     try {
       let resp;
-      if (this.selectedEngine === "diffusion") {
+      if (this.selectedEngine === "animatediff" || this.selectedEngine === "svd") {
+        const inputPrompt = document.getElementById("inputAiPrompt");
+        const promptText = inputPrompt ? inputPrompt.value : "masterpiece, flowing black hair, silk robes fluttering in wind";
+        this.statusMsg.innerText = `Đang xử lý ${this.selectedEngine === 'animatediff' ? 'AnimateDiff Anime' : 'SVD'} trên GPU RTX 3060...`;
+        
         resp = await window.apiClient.submitDiffusionAnimation({
           image: payload.image,
-          fps: payload.fps,
-          num_frames: Math.min(49, Math.max(14, Math.round(payload.duration_seconds * payload.fps)))
+          model_type: this.selectedEngine,
+          prompt: promptText,
+          fps: Math.min(24, this.selectedFps),
+          num_frames: 16
         });
       } else {
         resp = await window.apiClient.submitFlowAnimation(payload);
