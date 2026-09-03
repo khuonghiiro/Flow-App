@@ -8,34 +8,42 @@ interface SkillTreeLinksLayerProps {
   activePathSet: Set<string>;
   lineStyle: 'orthogonal' | 'curved';
   isLinkDimmed: (fromNode?: SkillTreeNode, toNode?: SkillTreeNode) => boolean;
+  zoom?: number;
+  isInteracting?: boolean;
 }
 
-export const SkillTreeLinksLayer: React.FC<SkillTreeLinksLayerProps> = ({
+const SkillTreeLinksLayerBase: React.FC<SkillTreeLinksLayerProps> = ({
   links,
   nodeMap,
   activePathSet,
   lineStyle,
   isLinkDimmed,
+  zoom = 1,
+  isInteracting = false,
 }) => {
+  // Only use expensive SVG Gaussian blur filter when zoomed in close and idle
+  const useGlowFilter = !isInteracting && zoom >= 0.35;
+
   return (
     <svg
       style={{
         position: 'absolute',
-        left: -8000,
-        top: -4000,
-        width: 18000,
-        height: 12000,
+        left: 0,
+        top: 0,
+        width: 1,
+        height: 1,
         pointerEvents: 'none',
         overflow: 'visible',
       }}
-      viewBox="-8000 -4000 18000 12000"
     >
-      <defs>
-        <filter id="tree-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-      </defs>
+      {useGlowFilter && (
+        <defs>
+          <filter id="tree-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+      )}
 
       {links.map((link, idx) => {
         const from = nodeMap.get(link.fromId);
@@ -53,14 +61,16 @@ export const SkillTreeLinksLayer: React.FC<SkillTreeLinksLayerProps> = ({
 
         return (
           <g key={`${link.fromId}-${link.toId}-${idx}`}>
+            {/* Halo underglow: lightweight fake glow when filter is off, or SVG filter when on */}
             <path
               d={pathD}
               fill="none"
               stroke={isLinkInActivePath ? '#ffffff' : link.color}
-              strokeWidth={isLinkInActivePath ? 6 : link.animated ? 4 : 2.5}
-              strokeOpacity={isLinkInActivePath ? 0.7 : dimmed ? 0.08 : 0.25}
-              filter="url(#tree-glow)"
+              strokeWidth={isLinkInActivePath ? 6 : link.animated ? 4 : 3}
+              strokeOpacity={isLinkInActivePath ? 0.6 : dimmed ? 0.06 : 0.22}
+              filter={useGlowFilter ? 'url(#tree-glow)' : 'none'}
             />
+            {/* Sharp core link */}
             <path
               d={pathD}
               fill="none"
@@ -75,3 +85,5 @@ export const SkillTreeLinksLayer: React.FC<SkillTreeLinksLayerProps> = ({
     </svg>
   );
 };
+
+export const SkillTreeLinksLayer = React.memo(SkillTreeLinksLayerBase);

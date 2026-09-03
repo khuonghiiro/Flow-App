@@ -75,6 +75,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const dragStartWorldRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragInitialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   const dragBranchIdsRef = useRef<Set<string>>(new Set());
+  const rafRef = useRef<number | null>(null);
 
   // Listen for global Alt key state to provide instant visual feedback
   useEffect(() => {
@@ -173,60 +174,73 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    // 1. Moving a Node (or Node + Subtree if Alt is held)
-    if (draggingNodeId && containerRef.current) {
-      const dist = Math.hypot(
-        e.clientX - dragClientStartRef.current.x,
-        e.clientY - dragClientStartRef.current.y
-      );
-      if (dist < 4) return; // threshold to prevent click jitter
-      setDragMoved(true);
+    if (!draggingNodeId && !isDraggingCanvas) return;
 
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const worldX = (e.clientX - rect.left - pan.x) / zoom;
-      const worldY = (e.clientY - rect.top - pan.y) / zoom;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    const altKey = e.altKey;
 
-      const deltaX = Math.round(worldX - dragStartWorldRef.current.x);
-      const deltaY = Math.round(worldY - dragStartWorldRef.current.y);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      // 1. Moving a Node (or Node + Subtree if Alt is held)
+      if (draggingNodeId && containerRef.current) {
+        const dist = Math.hypot(
+          clientX - dragClientStartRef.current.x,
+          clientY - dragClientStartRef.current.y
+        );
+        if (dist < 4) return; // threshold to prevent click jitter
+        setDragMoved(true);
 
-      // Support dynamically holding Alt during drag
-      const isAltNow = e.altKey || isAltKeyPressed;
-      if (isAltNow && !isAltDragging) {
-        setIsAltDragging(true);
-        const descendants = getDescendantNodeIds(draggingNodeId, nodes, SKILL_TREE_LINKS);
-        descendants.add(draggingNodeId);
-        dragBranchIdsRef.current = descendants;
-        setDragBranchNodeIds(descendants);
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const worldX = (clientX - rect.left - pan.x) / zoom;
+        const worldY = (clientY - rect.top - pan.y) / zoom;
+
+        const deltaX = Math.round(worldX - dragStartWorldRef.current.x);
+        const deltaY = Math.round(worldY - dragStartWorldRef.current.y);
+
+        // Support dynamically holding Alt during drag
+        const isAltNow = altKey || isAltKeyPressed;
+        if (isAltNow && !isAltDragging) {
+          setIsAltDragging(true);
+          const descendants = getDescendantNodeIds(draggingNodeId, nodes, SKILL_TREE_LINKS);
+          descendants.add(draggingNodeId);
+          dragBranchIdsRef.current = descendants;
+          setDragBranchNodeIds(descendants);
+        }
+
+        const activeIds = dragBranchIdsRef.current;
+        const initialMap = dragInitialPositionsRef.current;
+
+        setNodes((prev) =>
+          prev.map((n) => {
+            if (activeIds.has(n.id)) {
+              const init = initialMap.get(n.id);
+              if (init) {
+                return { ...n, x: init.x + deltaX, y: init.y + deltaY };
+              }
+            }
+            return n;
+          })
+        );
+        return;
       }
 
-      const activeIds = dragBranchIdsRef.current;
-      const initialMap = dragInitialPositionsRef.current;
-
-      setNodes((prev) =>
-        prev.map((n) => {
-          if (activeIds.has(n.id)) {
-            const init = initialMap.get(n.id);
-            if (init) {
-              return { ...n, x: init.x + deltaX, y: init.y + deltaY };
-            }
-          }
-          return n;
-        })
-      );
-      return;
-    }
-
-    // 2. Panning the Canvas
-    if (isDraggingCanvas) {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
-    }
+      // 2. Panning the Canvas
+      if (isDraggingCanvas) {
+        setPan({
+          x: clientX - dragStart.x,
+          y: clientY - dragStart.y,
+        });
+      }
+    });
   };
 
   const handleMouseUp = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     if (draggingNodeId) {
       if (dragMoved) {
         // Save current layout to localStorage
@@ -403,16 +417,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           }}
         />
 
-        {/* ─── Transformable World Canvas ─── */}
+        {/* ─── Transformable World Canvas (Hardware-Accelerated GPU Layer) ─── */}
         <div
           style={{
             position: 'absolute',
             left: 0,
             top: 0,
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
             transformOrigin: '0 0',
-            width: 4400,
-            height: 4800,
+            width: 1,
+            height: 1,
+            overflow: 'visible',
+            willChange: isDraggingCanvas || draggingNodeId ? 'transform' : 'auto',
           }}
         >
           {/* ─── SVG Connecting Lines Layer (Dynamic Bézier or Orthogonal) ─── */}
@@ -422,6 +438,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             activePathSet={activePathSet}
             lineStyle={lineStyle}
             isLinkDimmed={isLinkDimmed}
+            zoom={zoom}
+            isInteracting={Boolean(draggingNodeId || isDraggingCanvas)}
           />
 
           {/* ─── Skill Nodes Layer ─── */}

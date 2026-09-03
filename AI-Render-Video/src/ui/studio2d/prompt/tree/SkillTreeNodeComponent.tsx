@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SkillTreeNode } from './types';
 
-interface SkillTreeNodeProps {
+export interface SkillTreeNodeProps {
   node: SkillTreeNode;
   isSelected: boolean;
   isActivePath?: boolean;
@@ -11,7 +11,7 @@ interface SkillTreeNodeProps {
   onMouseDownNode?: (node: SkillTreeNode, e: React.MouseEvent) => void;
 }
 
-export const SkillTreeNodeComponent: React.FC<SkillTreeNodeProps> = ({
+const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
   node,
   isSelected,
   isActivePath = false,
@@ -72,7 +72,7 @@ export const SkillTreeNodeComponent: React.FC<SkillTreeNodeProps> = ({
         position: 'absolute',
         left: node.x,
         top: node.y,
-        transform: `translate(-50%, -50%) ${
+        transform: `translate3d(-50%, -50%, 0) ${
           isDragging ? 'scale(1.22)' : isSelected ? 'scale(1.15)' : isHovered ? 'scale(1.08)' : 'scale(1)'
         }`,
         cursor: isEditMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
@@ -82,7 +82,8 @@ export const SkillTreeNodeComponent: React.FC<SkillTreeNodeProps> = ({
         flexDirection: 'column',
         alignItems: 'center',
         gap: 5,
-        transition: isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        willChange: isDragging ? 'transform' : 'auto',
+        transition: isDragging ? 'none' : 'transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
       {/* ─── Dragging Live Coordinates Badge ─── */}
@@ -288,9 +289,9 @@ export const SkillTreeNodeComponent: React.FC<SkillTreeNodeProps> = ({
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           textAlign: 'center',
-          backdropFilter: 'blur(4px)',
+          backdropFilter: isHovered || isSelected ? 'blur(4px)' : 'none',
           pointerEvents: 'none',
-          transition: 'all 0.2s ease',
+          transition: 'all 0.15s ease',
         }}
       >
         {node.shortLabel}
@@ -298,3 +299,17 @@ export const SkillTreeNodeComponent: React.FC<SkillTreeNodeProps> = ({
     </div>
   );
 };
+
+export const SkillTreeNodeComponent = React.memo(SkillTreeNodeBase, (prev, next) => {
+  return (
+    prev.node.id === next.node.id &&
+    prev.node.x === next.node.x &&
+    prev.node.y === next.node.y &&
+    prev.isSelected === next.isSelected &&
+    prev.isActivePath === next.isActivePath &&
+    prev.isDragging === next.isDragging &&
+    prev.isEditMode === next.isEditMode &&
+    prev.node.shortLabel === next.node.shortLabel &&
+    prev.node.color === next.node.color
+  );
+});
