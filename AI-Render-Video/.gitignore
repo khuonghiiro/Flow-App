@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 .venv/
+asset_2ds/nhan_vat/*
 env/
 venv/
 ENV/
