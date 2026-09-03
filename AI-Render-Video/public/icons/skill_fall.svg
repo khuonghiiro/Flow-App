@@ -5,7 +5,6 @@
       <stop offset="100%" stop-color="#ef4444"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#1c0f06"/>
   <!-- Tilted falling body angle with downward shock lines -->
   <circle cx="16" cy="18" r="4.5" fill="#f59e0b"/>
   <path d="M18 22L28 32L36 30" stroke="url(#fall-grad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>

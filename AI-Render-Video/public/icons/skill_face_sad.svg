@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <rect width="48" height="48" rx="10" fill="#140c24"/>
   <!-- Drooping eyebrows and tear drop -->
   <path d="M12 18L21 21" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round"/>
   <path d="M36 18L27 21" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round"/>

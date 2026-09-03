@@ -6,7 +6,6 @@
       <stop offset="100%" stop-color="#7e22ce"/>
     </radialGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#140724"/>
   <!-- Swirling elemental magic vortex -->
   <circle cx="24" cy="24" r="10" fill="url(#spell-core)"/>
   <!-- Magic rune rings -->

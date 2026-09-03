@@ -5,7 +5,7 @@
       <stop offset="100%" stop-color="#7e22ce"/>
     </linearGradient>
   </defs>
-  <rect x="6" y="6" width="52" height="52" rx="14" fill="#140724" stroke="url(#p-wep-grad)" stroke-width="2"/>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="none" stroke="url(#p-wep-grad)" stroke-width="2"/>
   <!-- Glowing sword with magic rune ring -->
   <path d="M44 14L48 18L26 40L22 40L22 36L44 14Z" fill="url(#p-wep-grad)"/>
   <path d="M22 40L16 46L14 44L20 38" stroke="#e9d5ff" stroke-width="2" stroke-linecap="round"/>

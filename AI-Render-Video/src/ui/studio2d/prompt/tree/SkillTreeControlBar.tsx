@@ -18,6 +18,8 @@ interface SkillTreeControlBarProps {
   lineStyle?: 'orthogonal' | 'curved';
   onToggleLineStyle?: () => void;
   isAltPressed?: boolean;
+  canvasTheme?: 'dark' | 'light';
+  onToggleCanvasTheme?: () => void;
 }
 
 export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
@@ -35,6 +37,8 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
   lineStyle = 'orthogonal',
   onToggleLineStyle,
   isAltPressed = false,
+  canvasTheme = 'dark',
+  onToggleCanvasTheme,
 }) => {
   const branches: (SkillBranchCategory | 'all')[] = [
     'all',
@@ -54,8 +58,8 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
         flexWrap: 'wrap',
         gap: 8,
         padding: '8px 12px',
-        background: 'rgba(10, 16, 30, 0.95)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        background: canvasTheme === 'dark' ? 'rgba(18, 25, 38, 0.94)' : 'rgba(255, 255, 255, 0.92)',
+        border: canvasTheme === 'dark' ? '1px solid rgba(148, 163, 184, 0.14)' : '1px solid rgba(0, 0, 0, 0.10)',
         borderRadius: 8,
         backdropFilter: 'blur(8px)',
       }}
@@ -182,6 +186,31 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
           }}
         >
           {lineStyle === 'orthogonal' ? '🔲 Line: Vuông Góc' : '〰️ Line: Uốn Cong'}
+        </button>
+
+        {/* Toggle Canvas Theme: Dark vs Light */}
+        <button
+          onClick={onToggleCanvasTheme}
+          title={canvasTheme === 'dark' ? 'Chuyển sang nền Canvas Sáng' : 'Chuyển sang nền Canvas Tối'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '5px 10px',
+            fontSize: 10.5,
+            fontWeight: 800,
+            borderRadius: 6,
+            cursor: 'pointer',
+            border: canvasTheme === 'light' ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
+            background: canvasTheme === 'light'
+              ? 'rgba(245, 158, 11, 0.22)'
+              : 'rgba(255, 255, 255, 0.04)',
+            color: canvasTheme === 'light' ? '#f59e0b' : '#94a3b8',
+            boxShadow: canvasTheme === 'light' ? '0 0 14px rgba(245, 158, 11, 0.35)' : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {canvasTheme === 'dark' ? '🌙 Nền Tối' : '☀️ Nền Sáng'}
         </button>
 
         {/* Copy / Export Layout Coordinates */}

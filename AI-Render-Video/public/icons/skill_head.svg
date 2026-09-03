@@ -5,7 +5,6 @@
       <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#1c1305"/>
   <!-- Head avatar with gesture movement curved arrows -->
   <circle cx="24" cy="24" r="11" fill="url(#head-grad)"/>
   <!-- Curved motion arrows indicating shake/nod -->

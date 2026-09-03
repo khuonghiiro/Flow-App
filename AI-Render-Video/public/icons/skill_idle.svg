@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
   <defs>
     <linearGradient id="idle-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f59e0b"/>
-      <stop offset="100%" stop-color="#d97706"/>
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#1c1305"/>
   <!-- Elegant standing idle figure with breathing aura -->
   <circle cx="24" cy="11" r="4.5" fill="url(#idle-grad)"/>
   <path d="M24 16V30M24 30L20 42M24 30L28 42M24 18L17 25M24 18L31 25" stroke="url(#idle-grad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

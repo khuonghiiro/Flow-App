@@ -5,7 +5,6 @@
       <stop offset="100%" stop-color="#10b981"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#061a14"/>
   <!-- Sprinting figure leaning forward with wind trails -->
   <circle cx="28" cy="11" r="4.5" fill="url(#run-grad)"/>
   <path d="M26 16L22 24L12 28M22 24L30 30L36 41M26 18L33 21L37 16M21 21L14 22L10 18" stroke="url(#run-grad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

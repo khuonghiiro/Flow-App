@@ -1,8 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <rect width="48" height="48" rx="10" fill="#0f172a"/>
-  <!-- 135 degree back right direction -->
-  <circle cx="24" cy="24" r="15" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="2 2" opacity="0.6"/>
-  <circle cx="24" cy="24" r="5" fill="#38bdf8"/>
-  <path d="M16 16L30 30M22 30H30V22" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="24" y="42" font-size="9" font-weight="900" fill="#38bdf8" text-anchor="middle" font-family="sans-serif">135° BACK</text>
+  <circle cx="24" cy="24" r="18" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3 3" opacity="0.6"/>
+  <circle cx="24" cy="24" r="6" fill="#38bdf8"/>
+  <path d="M15 15L31 31M23 31H31V23" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

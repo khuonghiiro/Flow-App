@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="char135-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <!-- 135° Rear Three-Quarter View: Turned Away -->
+  <circle cx="25" cy="12" r="7" stroke="url(#char135-grad)" stroke-width="2.5" fill="rgba(56, 189, 248, 0.15)"/>
+  <path d="M19 21C22 20 27 21 29 23C29 28 28 32 26 34C24 35 20 34.5 18 33C17 30 17 25 19 21Z" stroke="url(#char135-grad)" stroke-width="2.2" stroke-linejoin="round" fill="rgba(56, 189, 248, 0.1)"/>
+  <path d="M24 23V31" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="2 2" opacity="0.7"/>
+  <path d="M18 22L14 32M29 23L33 32" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M21 34V44M26 34V43" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M14 44C18 42 28 42 34 44" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.5"/>
+</svg>

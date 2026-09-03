@@ -10,6 +10,7 @@ interface SkillTreeLinksLayerProps {
   isLinkDimmed: (fromNode?: SkillTreeNode, toNode?: SkillTreeNode) => boolean;
   zoom?: number;
   isInteracting?: boolean;
+  canvasTheme?: 'dark' | 'light';
 }
 
 const SkillTreeLinksLayerBase: React.FC<SkillTreeLinksLayerProps> = ({
@@ -20,6 +21,7 @@ const SkillTreeLinksLayerBase: React.FC<SkillTreeLinksLayerProps> = ({
   isLinkDimmed,
   zoom = 1,
   isInteracting = false,
+  canvasTheme = 'dark',
 }) => {
   // Only use expensive SVG Gaussian blur filter when zoomed in close and idle
   const useGlowFilter = !isInteracting && zoom >= 0.35;
@@ -59,15 +61,16 @@ const SkillTreeLinksLayerBase: React.FC<SkillTreeLinksLayerProps> = ({
             ? getOrthogonalPath(from.x, from.y, to.x, to.y, 14)
             : getCurvedPath(from.x, from.y, to.x, to.y, 0.45);
 
+        const isLight = canvasTheme === 'light';
         return (
           <g key={`${link.fromId}-${link.toId}-${idx}`}>
             {/* Halo underglow: lightweight fake glow when filter is off, or SVG filter when on */}
             <path
               d={pathD}
               fill="none"
-              stroke={isLinkInActivePath ? '#ffffff' : link.color}
+              stroke={isLinkInActivePath ? (isLight ? '#0f172a' : '#ffffff') : link.color}
               strokeWidth={isLinkInActivePath ? 6 : link.animated ? 4 : 3}
-              strokeOpacity={isLinkInActivePath ? 0.6 : dimmed ? 0.06 : 0.22}
+              strokeOpacity={isLinkInActivePath ? (isLight ? 0.4 : 0.6) : dimmed ? 0.15 : 0.28}
               filter={useGlowFilter ? 'url(#tree-glow)' : 'none'}
             />
             {/* Sharp core link */}
@@ -76,7 +79,7 @@ const SkillTreeLinksLayerBase: React.FC<SkillTreeLinksLayerProps> = ({
               fill="none"
               stroke={link.color}
               strokeWidth={isLinkInActivePath ? 3 : link.animated ? 2 : 1.2}
-              strokeOpacity={isLinkInActivePath ? 1 : dimmed ? 0.15 : 0.85}
+              strokeOpacity={isLinkInActivePath ? 1 : dimmed ? 0.50 : 0.85}
               strokeDasharray={isLinkInActivePath || link.animated ? '8 4' : 'none'}
             />
           </g>

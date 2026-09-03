@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
   <defs>
     <linearGradient id="sit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f59e0b"/>
-      <stop offset="100%" stop-color="#d97706"/>
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#1c1305"/>
   <!-- Meditation / floor sitting pose without chair -->
   <circle cx="24" cy="14" r="4.5" fill="url(#sit-grad)"/>
   <path d="M24 19V29M24 29L16 35H32L24 29M24 21L17 26M24 21L31 26" stroke="url(#sit-grad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

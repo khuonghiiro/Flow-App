@@ -57,9 +57,22 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return Boolean(localStorage.getItem(STORAGE_KEY));
   });
 
+  // Canvas Theme: dark vs light
+  const [canvasTheme, setCanvasTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('studio2d_skill_tree_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  const handleToggleCanvasTheme = () => {
+    setCanvasTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('studio2d_skill_tree_theme', next);
+      return next;
+    });
+  };
+
   // Pan & Zoom state: Allow zoom down to 5% (0.05) with comfortable panoramic default
-  const [zoom, setZoom] = useState<number>(0.20);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 800, y: 120 });
+  const [zoom, setZoom] = useState<number>(0.30);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 880, y: 160 });
   const [isDraggingCanvas, setIsDraggingCanvas] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -71,8 +84,14 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const [isAltDragging, setIsAltDragging] = useState<boolean>(false);
   const [dragBranchNodeIds, setDragBranchNodeIds] = useState<Set<string>>(new Set());
 
+  const nodesRef = useRef<SkillTreeNode[]>(nodes);
+  nodesRef.current = nodes;
+  const zoomRef = useRef<number>(zoom);
+  zoomRef.current = zoom;
+  const panRef = useRef<{ x: number; y: number }>(pan);
+  panRef.current = pan;
+
   const dragClientStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const dragStartWorldRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragInitialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   const dragBranchIdsRef = useRef<Set<string>>(new Set());
   const rafRef = useRef<number | null>(null);
@@ -129,22 +148,16 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return set;
   }, [activeNode, nodeMap]);
 
-  // ─── Drag & Drop Handlers for Nodes (Supports Alt + Drag to move full subtree) ───
+  // ─── Drag & Drop Handlers for Nodes (Direct Pixel Delta, Zero Jumps) ───
   const handleNodeMouseDown = (node: SkillTreeNode, e: React.MouseEvent) => {
     if (!isEditMode || e.button !== 0) return;
     e.stopPropagation();
 
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
     dragClientStartRef.current = { x: e.clientX, y: e.clientY };
-    const worldX = (e.clientX - rect.left - pan.x) / zoom;
-    const worldY = (e.clientY - rect.top - pan.y) / zoom;
-    dragStartWorldRef.current = { x: worldX, y: worldY };
 
     // Record initial snapshot positions of all nodes in graph
     const initialMap = new Map<string, { x: number; y: number }>();
-    nodes.forEach((n) => initialMap.set(n.id, { x: n.x, y: n.y }));
+    nodesRef.current.forEach((n) => initialMap.set(n.id, { x: n.x, y: n.y }));
     dragInitialPositionsRef.current = initialMap;
 
     const isAlt = e.altKey || isAltKeyPressed;
@@ -152,7 +165,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
 
     if (isAlt) {
       // Collect all descendant child nodes recursively
-      const descendants = getDescendantNodeIds(node.id, nodes, SKILL_TREE_LINKS);
+      const descendants = getDescendantNodeIds(node.id, nodesRef.current, SKILL_TREE_LINKS);
       descendants.add(node.id);
       dragBranchIdsRef.current = descendants;
       setDragBranchNodeIds(descendants);
@@ -173,99 +186,105 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  // Window-level mouse listeners for rock-solid drag & drop with zero position jumps
+  useEffect(() => {
     if (!draggingNodeId && !isDraggingCanvas) return;
 
-    const clientX = e.clientX;
-    const clientY = e.clientY;
-    const altKey = e.altKey;
+    const onMouseMove = (e: MouseEvent) => {
+      const clientX = e.clientX;
+      const clientY = e.clientY;
 
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      // 1. Moving a Node (or Node + Subtree if Alt is held)
-      if (draggingNodeId && containerRef.current) {
-        const dist = Math.hypot(
-          clientX - dragClientStartRef.current.x,
-          clientY - dragClientStartRef.current.y
-        );
-        if (dist < 4) return; // threshold to prevent click jitter
-        setDragMoved(true);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        // 1. Moving Node(s)
+        if (draggingNodeId) {
+          const dist = Math.hypot(
+            clientX - dragClientStartRef.current.x,
+            clientY - dragClientStartRef.current.y
+          );
+          if (dist < 3) return; // prevent click jitter
+          setDragMoved(true);
 
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const worldX = (clientX - rect.left - pan.x) / zoom;
-        const worldY = (clientY - rect.top - pan.y) / zoom;
+          // Direct pixel delta scaled to world coordinates: zero offset dependency
+          const currentZoom = zoomRef.current || 1;
+          const deltaX = Math.round((clientX - dragClientStartRef.current.x) / currentZoom);
+          const deltaY = Math.round((clientY - dragClientStartRef.current.y) / currentZoom);
 
-        const deltaX = Math.round(worldX - dragStartWorldRef.current.x);
-        const deltaY = Math.round(worldY - dragStartWorldRef.current.y);
+          const isAltNow = e.altKey || isAltKeyPressed;
+          if (isAltNow && !isAltDragging) {
+            setIsAltDragging(true);
+            const descendants = getDescendantNodeIds(draggingNodeId, nodesRef.current, SKILL_TREE_LINKS);
+            descendants.add(draggingNodeId);
+            dragBranchIdsRef.current = descendants;
+            setDragBranchNodeIds(descendants);
+          }
 
-        // Support dynamically holding Alt during drag
-        const isAltNow = altKey || isAltKeyPressed;
-        if (isAltNow && !isAltDragging) {
-          setIsAltDragging(true);
-          const descendants = getDescendantNodeIds(draggingNodeId, nodes, SKILL_TREE_LINKS);
-          descendants.add(draggingNodeId);
-          dragBranchIdsRef.current = descendants;
-          setDragBranchNodeIds(descendants);
-        }
+          const activeIds = dragBranchIdsRef.current;
+          const initialMap = dragInitialPositionsRef.current;
 
-        const activeIds = dragBranchIdsRef.current;
-        const initialMap = dragInitialPositionsRef.current;
-
-        setNodes((prev) =>
-          prev.map((n) => {
-            if (activeIds.has(n.id)) {
-              const init = initialMap.get(n.id);
-              if (init) {
-                return { ...n, x: init.x + deltaX, y: init.y + deltaY };
+          setNodes((prev) => {
+            const updated = prev.map((n) => {
+              if (activeIds.has(n.id)) {
+                const init = initialMap.get(n.id);
+                if (init) {
+                  return { ...n, x: init.x + deltaX, y: init.y + deltaY };
+                }
               }
-            }
-            return n;
-          })
-        );
-        return;
-      }
-
-      // 2. Panning the Canvas
-      if (isDraggingCanvas) {
-        setPan({
-          x: clientX - dragStart.x,
-          y: clientY - dragStart.y,
-        });
-      }
-    });
-  };
-
-  const handleMouseUp = () => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    if (draggingNodeId) {
-      if (dragMoved) {
-        // Save current layout to localStorage
-        const layoutData = nodes.map((n) => ({
-          id: n.id,
-          x: Math.round(n.x),
-          y: Math.round(n.y),
-          label: n.shortLabel,
-        }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(layoutData));
-        setIsCustomized(true);
-      } else {
-        // Direct click without dragging
-        const target = nodes.find((n) => n.id === draggingNodeId);
-        if (target) {
-          handleNodeClick(target);
+              return n;
+            });
+            nodesRef.current = updated;
+            return updated;
+          });
+          return;
         }
+
+        // 2. Panning Canvas
+        if (isDraggingCanvas) {
+          setPan({
+            x: clientX - dragStart.x,
+            y: clientY - dragStart.y,
+          });
+        }
+      });
+    };
+
+    const onMouseUp = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
-      setDraggingNodeId(null);
-      setIsAltDragging(false);
-      dragBranchIdsRef.current = new Set();
-      setDragBranchNodeIds(new Set());
-    }
-    setIsDraggingCanvas(false);
-  };
+      if (draggingNodeId) {
+        if (dragMoved) {
+          const layoutData = nodesRef.current.map((n) => ({
+            id: n.id,
+            x: Math.round(n.x),
+            y: Math.round(n.y),
+            label: n.shortLabel,
+          }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(layoutData));
+          setIsCustomized(true);
+        } else {
+          // Direct click without dragging
+          const target = nodesRef.current.find((n) => n.id === draggingNodeId);
+          if (target) {
+            handleNodeClick(target);
+          }
+        }
+        setDraggingNodeId(null);
+        setIsAltDragging(false);
+        dragBranchIdsRef.current = new Set();
+        setDragBranchNodeIds(new Set());
+      }
+      setIsDraggingCanvas(false);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [draggingNodeId, isDraggingCanvas, dragStart, dragMoved, isAltKeyPressed, isAltDragging]);
 
   // Wheel Zoom Towards Mouse Cursor Coordinates
   const handleWheel = (e: React.WheelEvent) => {
@@ -292,8 +311,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const handleZoomIn = () => setZoom((z) => Math.min(2.5, +(z + 0.05).toFixed(2)));
   const handleZoomOut = () => setZoom((z) => Math.max(0.05, +(z - 0.05).toFixed(2)));
   const handleResetZoom = () => {
-    setZoom(0.20);
-    setPan({ x: 800, y: 120 });
+    setZoom(0.30);
+    setPan({ x: 880, y: 160 });
     setActiveBranch('all');
   };
 
@@ -309,11 +328,17 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     (branch: SkillBranchCategory | 'all') => {
       setActiveBranch(branch);
       if (branch === 'all') {
-        setPan({ x: 800, y: 120 });
-        setZoom(0.20);
+        setPan({ x: 880, y: 160 });
+        setZoom(0.30);
         return;
       }
-      const pillar = nodes.find((n) => n.id === `pillar_${branch}`);
+      // Look up pillar by tier & category, or by mapped IDs (pillar_locomotion for walk)
+      const pillar = nodes.find(
+        (n) =>
+          (n.tier === 1 && n.category === branch) ||
+          n.id === `pillar_${branch}` ||
+          (branch === 'walk' && (n.id === 'pillar_locomotion' || n.id === 'pillar_walk'))
+      );
       if (pillar) {
         setSelectedNodeId(pillar.id);
         if (pillar.promptId) {
@@ -354,6 +379,29 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return fromNode.category !== activeBranch && toNode.category !== activeBranch;
   };
 
+  // Adaptive dot matrix: dot spacing stays comfortably between 22px and 45px, never clumping
+  const getDottedGridStyle = () => {
+    let step = 36;
+    while (step * zoom < 22) {
+      step *= 2;
+    }
+    const screenGridSize = step * zoom;
+    // Soothing, calm neutral dot color: reduces glare and eye fatigue dramatically
+    const dotColor = canvasTheme === 'dark'
+      ? 'rgba(148, 163, 184, 0.22)'
+      : 'rgba(100, 116, 139, 0.28)';
+    const dotRadius = 1.0;
+
+    return {
+      position: 'absolute' as const,
+      inset: 0,
+      backgroundImage: `radial-gradient(circle, ${dotColor} ${dotRadius}px, transparent ${dotRadius}px)`,
+      backgroundSize: `${screenGridSize}px ${screenGridSize}px`,
+      backgroundPosition: `${pan.x}px ${pan.y}px`,
+      pointerEvents: 'none' as const,
+    };
+  };
+
   return (
     <div
       style={{
@@ -381,41 +429,33 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
         lineStyle={lineStyle}
         onToggleLineStyle={handleToggleLineStyle}
         isAltPressed={isAltKeyPressed || isAltDragging}
+        canvasTheme={canvasTheme}
+        onToggleCanvasTheme={handleToggleCanvasTheme}
       />
 
       {/* ─── Canvas Viewport ─── */}
       <div
         ref={containerRef}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
         style={{
           flex: 1,
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 10,
-          background: 'radial-gradient(ellipse at 30% 30%, #0c152c 0%, #030712 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: canvasTheme === 'dark'
+            ? 'radial-gradient(ellipse at 50% 45%, #151d2a 0%, #0f1520 60%, #0b0f17 100%)'
+            : 'radial-gradient(ellipse at 50% 45%, #f8fafc 0%, #eef2f6 60%, #e2e8f0 100%)',
+          border: canvasTheme === 'dark'
+            ? '1px solid rgba(148, 163, 184, 0.14)'
+            : '1px solid rgba(0, 0, 0, 0.10)',
           cursor: draggingNodeId ? 'grabbing' : isDraggingCanvas ? 'grabbing' : 'default',
           userSelect: 'none',
+          transition: 'background 0.25s ease',
         }}
       >
-        {/* Subtle Cyber / RPG Grid Background */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: `
-              linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px)
-            `,
-            backgroundSize: `${36 * zoom}px ${36 * zoom}px`,
-            backgroundPosition: `${pan.x}px ${pan.y}px`,
-            pointerEvents: 'none',
-          }}
-        />
+        {/* Modern Adaptive Dot Matrix Grid */}
+        <div style={getDottedGridStyle()} />
 
         {/* ─── Transformable World Canvas (Hardware-Accelerated GPU Layer) ─── */}
         <div
@@ -440,9 +480,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             isLinkDimmed={isLinkDimmed}
             zoom={zoom}
             isInteracting={Boolean(draggingNodeId || isDraggingCanvas)}
+            canvasTheme={canvasTheme}
           />
 
-          {/* ─── Skill Nodes Layer ─── */}
+          {/* ─── Skill Nodes Layer (Rendered cleanly directly in canvas coordinate space) ─── */}
           {nodes.map((node) => {
             const isSelected =
               node.id === selectedNodeId ||
@@ -453,24 +494,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             const isNodeDragging = draggingNodeId === node.id;
 
             return (
-              <div
+              <SkillTreeNodeComponent
                 key={node.id}
-                style={{
-                  opacity: dimmed ? 0.25 : 1,
-                  filter: dimmed ? 'grayscale(0.6)' : 'none',
-                  transition: isNodeDragging ? 'none' : 'opacity 0.25s ease, filter 0.25s ease',
-                }}
-              >
-                <SkillTreeNodeComponent
-                  node={node}
-                  isSelected={Boolean(isSelected)}
-                  isActivePath={Boolean(isActivePath)}
-                  isDragging={isNodeDragging || (isAltDragging && dragBranchNodeIds.has(node.id))}
-                  isEditMode={isEditMode}
-                  onSelect={handleNodeClick}
-                  onMouseDownNode={handleNodeMouseDown}
-                />
-              </div>
+                node={node}
+                isSelected={Boolean(isSelected)}
+                isActivePath={Boolean(isActivePath)}
+                isDragging={isNodeDragging || (isAltDragging && dragBranchNodeIds.has(node.id))}
+                isEditMode={isEditMode}
+                onSelect={handleNodeClick}
+                onMouseDownNode={handleNodeMouseDown}
+                canvasTheme={canvasTheme}
+                isDimmed={dimmed}
+              />
             );
           })}
         </div>

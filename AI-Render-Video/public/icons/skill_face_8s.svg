@@ -5,13 +5,9 @@
       <stop offset="100%" stop-color="#a855f7"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#1f0714"/>
   <!-- 8-second timeline stopwatch face -->
   <circle cx="24" cy="24" r="16" stroke="url(#face8s-grad)" stroke-width="2.5"/>
-  <path d="M24 13V24L30 28" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
-  <!-- 8s text badge -->
-  <rect x="17" y="32" width="14" height="10" rx="3" fill="#ec4899"/>
-  <text x="24" y="40" font-size="8" font-weight="900" fill="#ffffff" text-anchor="middle" font-family="sans-serif">8s</text>
+  <path d="M24 13V24L30 28" stroke="#f472b6" stroke-width="2.5" stroke-linecap="round"/>
   <!-- Top button -->
-  <path d="M22 6H26V8H22Z" fill="#ec4899"/>
+  <path d="M21 5H27V8H21Z" fill="#ec4899"/>
 </svg>

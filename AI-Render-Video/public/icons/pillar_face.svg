@@ -5,7 +5,7 @@
       <stop offset="100%" stop-color="#be185d"/>
     </linearGradient>
   </defs>
-  <rect x="6" y="6" width="52" height="52" rx="14" fill="#1f0714" stroke="url(#p-face-grad)" stroke-width="2"/>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="none" stroke="url(#p-face-grad)" stroke-width="2"/>
   <!-- Floating anime eyes and smiling mouth -->
   <!-- Eyebrows -->
   <path d="M20 20C24 18 28 20 28 20" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>

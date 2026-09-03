@@ -5,7 +5,6 @@
       <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#200a0a"/>
   <!-- Dynamic sword slash curve with spark -->
   <path d="M10 38C16 26 28 14 40 10" stroke="url(#atk-grad)" stroke-width="4" stroke-linecap="round"/>
   <path d="M8 40L14 34M14 40L8 34" stroke="#ffffff" stroke-width="2"/>

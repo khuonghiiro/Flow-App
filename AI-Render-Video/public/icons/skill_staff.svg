@@ -5,7 +5,6 @@
       <stop offset="100%" stop-color="#a855f7"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#140724"/>
   <!-- Magic Staff with glowing crystal orb head -->
   <line x1="32" y1="16" x2="14" y2="40" stroke="url(#st-grad)" stroke-width="3" stroke-linecap="round"/>
   <!-- Crystal orb -->

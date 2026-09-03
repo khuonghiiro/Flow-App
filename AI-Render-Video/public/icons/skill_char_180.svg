@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="char180-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <!-- 180° Full Rear View: Spine & Back of Body -->
+  <circle cx="24" cy="12" r="7" stroke="url(#char180-grad)" stroke-width="2.5" fill="rgba(56, 189, 248, 0.15)"/>
+  <path d="M22 17H26" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M18 21C20 21 22 22 24 22C26 22 28 21 30 21C31 25 31 31 29 34C27 34.5 25.5 35 24 35C22.5 35 21 34.5 19 34C17 31 17 25 18 21Z" stroke="url(#char180-grad)" stroke-width="2.2" stroke-linejoin="round" fill="rgba(56, 189, 248, 0.1)"/>
+  <path d="M24 22V34" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2"/>
+  <path d="M17 22L13 32M31 22L35 32" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M21 35V44M27 35V44" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M14 43C17 41 31 41 34 43" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.5"/>
+</svg>

@@ -5,7 +5,6 @@
       <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10" fill="#0c1926"/>
   <!-- Defensive crest shield -->
   <path d="M24 8L36 13V24C36 32 28 38 24 40C20 38 12 32 12 24V13L24 8Z" fill="#132a45" stroke="url(#shield-grad)" stroke-width="2.5" stroke-linejoin="round"/>
   <!-- Inner glowing cross / barrier crest -->

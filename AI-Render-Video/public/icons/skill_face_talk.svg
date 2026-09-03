@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <rect width="48" height="48" rx="10" fill="#1f0714"/>
   <!-- Dialogue speaking mouth with sound waves -->
   <path d="M12 24C16 19 22 19 26 24" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
   <ellipse cx="19" cy="30" rx="6" ry="4.5" fill="#ec4899" stroke="#f472b6" stroke-width="1.8"/>
