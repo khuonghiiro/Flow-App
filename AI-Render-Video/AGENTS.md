@@ -42,3 +42,12 @@ Tài liệu này được tự động nạp vào System Prompt của AI cho wor
 - **Backend (Python / FastAPI / AI Models)**:
   - Tách bạch `schemas/`, `api/endpoints/`, `core/` (AI Pipeline / GPU) và `utils/`.
   - Xử lý lỗi đầy đủ qua try-except và logging rõ ràng.
+
+---
+
+## 🎬 5. Quy Chuẩn Tạo Hoạt Ảnh 4s Loop Từ Tab 4 (Trợ Lý Prompt AI)
+- **Cơ chế Start = End Frame (Seamless Loop)**:
+  - Khi tạo video hoạt ảnh từ prompt Tab 4: Sau khi sinh ảnh gốc (`image_media_id`), **BẮT BUỘC gán `end_scene_media_id` = `image_media_id`**.
+  - Gọi API `start_end_frame_2_video` (i2v_fl) với thời lượng **4s** để tạo chu kỳ chuyển động lặp vô tận (idle loop, breath, combat stance) hoàn hảo cho Sprite 2D.
+  - Phông nền: Luôn giữ nguyên màu xanh đồng nhất `#00FF00` (Chroma Key) để nạp thẳng vào Tab 1.3 (Video Animation Slicer) tách nền tự động.
+
