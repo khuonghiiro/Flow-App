@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, User, Footprints, Flame, Sparkles } from 'lucide-react';
+import { Search, X, User, Footprints, Flame, Smile, Sparkles } from 'lucide-react';
 import { PromptItem, PromptStepCategory } from './types';
 
 interface PromptSidebarProps {
@@ -16,6 +16,7 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<PromptStepCategory | 'all'>('all');
   const [actionSubFilter, setActionSubFilter] = useState<string>('all');
+  const [faceSubFilter, setFaceSubFilter] = useState<string>('all');
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -34,6 +35,16 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
         else if (actionSubFilter === 'head') matchesSubFilter = ['head_shake', 'head_nod', 'look_aside'].includes(item.id);
       }
 
+      // Check face sub-filter if on Step 4
+      if (activeCategoryFilter === 'step4_face' && faceSubFilter !== 'all') {
+        if (faceSubFilter === 'master8s') matchesSubFilter = item.tags.includes('master_8s');
+        else if (faceSubFilter === '0deg') matchesSubFilter = item.tags.includes('0deg');
+        else if (faceSubFilter === '45deg') matchesSubFilter = item.tags.includes('45deg');
+        else if (faceSubFilter === '90deg') matchesSubFilter = item.tags.includes('90deg');
+        else if (faceSubFilter === '135deg') matchesSubFilter = item.tags.includes('135deg');
+        else if (faceSubFilter === 'single') matchesSubFilter = !item.tags.includes('master_8s');
+      }
+
       const matchesSearch =
         searchTerm.trim() === '' ||
         item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,14 +53,15 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
 
       return matchesCategory && matchesSubFilter && matchesSearch;
     });
-  }, [items, activeCategoryFilter, actionSubFilter, searchTerm]);
+  }, [items, activeCategoryFilter, actionSubFilter, faceSubFilter, searchTerm]);
 
   // Group items by stepCategory for structured sidebar view
   const categoryGroups: { id: PromptStepCategory; label: string; icon: React.ReactNode; color: string }[] = [
     { id: 'step1_character', label: 'BƯỚC 1: NHÂN VẬT & GÓC NHÌN', icon: <User size={13} />, color: '#38bdf8' },
     { id: 'step2_walk', label: 'BƯỚC 2: ĐI BỘ THEO CÁC GÓC', icon: <Footprints size={13} />, color: '#34d399' },
     { id: 'step3_actions', label: 'BƯỚC 3: ĐỘNG TÁC THEO CÁC GÓC', icon: <Flame size={13} />, color: '#f59e0b' },
-    { id: 'step4_weapons', label: 'BƯỚC 4: VŨ KHÍ & PHÉP THUẬT', icon: <Sparkles size={13} />, color: '#c084fc' },
+    { id: 'step4_face', label: 'BƯỚC 4: NGŨ QUAN & BIỂU CẢM THEO GÓC', icon: <Smile size={13} />, color: '#ec4899' },
+    { id: 'step5_weapons', label: 'BƯỚC 5: VŨ KHÍ & PHÉP THUẬT', icon: <Sparkles size={13} />, color: '#c084fc' },
   ];
 
   return (
@@ -119,19 +131,21 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: 4,
-          marginBottom: activeCategoryFilter === 'step3_actions' ? 6 : 10,
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: 3,
+          marginBottom:
+            activeCategoryFilter === 'step3_actions' || activeCategoryFilter === 'step4_face' ? 6 : 10,
         }}
       >
         <button
           onClick={() => {
             setActiveCategoryFilter('all');
             setActionSubFilter('all');
+            setFaceSubFilter('all');
           }}
           style={{
             padding: '5px 2px',
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 700,
             borderRadius: 5,
             border: activeCategoryFilter === 'all' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
@@ -147,10 +161,11 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
           onClick={() => {
             setActiveCategoryFilter('step1_character');
             setActionSubFilter('all');
+            setFaceSubFilter('all');
           }}
           style={{
             padding: '5px 2px',
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 700,
             borderRadius: 5,
             border: activeCategoryFilter === 'step1_character' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
@@ -160,16 +175,17 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
             textAlign: 'center',
           }}
         >
-          👤 Bước 1
+          👤 B1
         </button>
         <button
           onClick={() => {
             setActiveCategoryFilter('step2_walk');
             setActionSubFilter('all');
+            setFaceSubFilter('all');
           }}
           style={{
             padding: '5px 2px',
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 700,
             borderRadius: 5,
             border: activeCategoryFilter === 'step2_walk' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.08)',
@@ -179,16 +195,17 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
             textAlign: 'center',
           }}
         >
-          🚶 Bước 2
+          🚶 B2
         </button>
         <button
           onClick={() => {
             setActiveCategoryFilter('step3_actions');
             setActionSubFilter('all');
+            setFaceSubFilter('all');
           }}
           style={{
             padding: '5px 2px',
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 700,
             borderRadius: 5,
             border: activeCategoryFilter === 'step3_actions' ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)',
@@ -198,28 +215,91 @@ export const PromptSidebar: React.FC<PromptSidebarProps> = ({
             textAlign: 'center',
           }}
         >
-          ⚡ Bước 3
+          ⚡ B3
         </button>
         <button
           onClick={() => {
-            setActiveCategoryFilter('step4_weapons');
+            setActiveCategoryFilter('step4_face');
             setActionSubFilter('all');
+            setFaceSubFilter('all');
           }}
           style={{
             padding: '5px 2px',
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 700,
             borderRadius: 5,
-            border: activeCategoryFilter === 'step4_weapons' ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
-            background: activeCategoryFilter === 'step4_weapons' ? 'rgba(192, 132, 252, 0.2)' : 'rgba(255,255,255,0.03)',
-            color: activeCategoryFilter === 'step4_weapons' ? '#c084fc' : '#94a3b8',
+            border: activeCategoryFilter === 'step4_face' ? '1px solid #ec4899' : '1px solid rgba(255,255,255,0.08)',
+            background: activeCategoryFilter === 'step4_face' ? 'rgba(236, 72, 153, 0.2)' : 'rgba(255,255,255,0.03)',
+            color: activeCategoryFilter === 'step4_face' ? '#ec4899' : '#94a3b8',
             cursor: 'pointer',
             textAlign: 'center',
           }}
         >
-          ⚔️ Bước 4
+          😊 B4 Face
+        </button>
+        <button
+          onClick={() => {
+            setActiveCategoryFilter('step5_weapons');
+            setActionSubFilter('all');
+            setFaceSubFilter('all');
+          }}
+          style={{
+            padding: '5px 2px',
+            fontSize: 9,
+            fontWeight: 700,
+            borderRadius: 5,
+            border: activeCategoryFilter === 'step5_weapons' ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.08)',
+            background: activeCategoryFilter === 'step5_weapons' ? 'rgba(192, 132, 252, 0.2)' : 'rgba(255,255,255,0.03)',
+            color: activeCategoryFilter === 'step5_weapons' ? '#c084fc' : '#94a3b8',
+            cursor: 'pointer',
+            textAlign: 'center',
+          }}
+        >
+          ⚔️ B5
         </button>
       </div>
+
+      {/* ─── Step 4 Face Subcategory Chips ─── */}
+      {activeCategoryFilter === 'step4_face' && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 3,
+            marginBottom: 10,
+            background: 'rgba(0,0,0,0.3)',
+            padding: '4px 6px',
+            borderRadius: 6,
+          }}
+        >
+          {[
+            { id: 'all', label: 'Tất Cả' },
+            { id: 'master8s', label: '⏱️ 8s Master' },
+            { id: '0deg', label: '⬇️ 0° Front' },
+            { id: '45deg', label: '↙️ 45° 3/4' },
+            { id: '90deg', label: '⬅️ 90° Side' },
+            { id: '135deg', label: '↘️ 135° Glance' },
+            { id: 'single', label: '🎭 Từng Biểu Cảm' },
+          ].map((chip) => (
+            <button
+              key={chip.id}
+              onClick={() => setFaceSubFilter(chip.id)}
+              style={{
+                padding: '3px 6px',
+                fontSize: 9,
+                fontWeight: 700,
+                borderRadius: 4,
+                border: faceSubFilter === chip.id ? '1px solid #ec4899' : '1px solid transparent',
+                background: faceSubFilter === chip.id ? 'rgba(236, 72, 153, 0.25)' : 'rgba(255,255,255,0.04)',
+                color: faceSubFilter === chip.id ? '#f472b6' : '#94a3b8',
+                cursor: 'pointer',
+              }}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ─── Step 3 Action Subcategory Chips ─── */}
       {activeCategoryFilter === 'step3_actions' && (

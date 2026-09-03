@@ -1,4 +1,10 @@
-export type PromptStepCategory = 'step1_character' | 'step2_walk' | 'step3_actions' | 'step4_weapons';
+export type PromptStepCategory =
+  | 'step1_character'
+  | 'step2_walk'
+  | 'step3_actions'
+  | 'step4_face'
+  | 'step5_weapons'
+  | 'step4_weapons';
 
 export interface PromptItem {
   id: string;

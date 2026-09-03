@@ -2,6 +2,7 @@ import { PromptItem, PromptCustomizerValues } from './types';
 import { CHARACTER_PROMPTS } from './data/characterPrompts';
 import { WALK_PROMPTS } from './data/walkPrompts';
 import { ACTION_PROMPTS } from './data/actionPrompts';
+import { FACE_PROMPTS } from './data/facePrompts';
 import { WEAPON_PROMPTS } from './data/weaponPrompts';
 
 export const DEFAULT_CUSTOMIZER_VALUES: PromptCustomizerValues = {
@@ -44,5 +45,6 @@ export const PROMPT_ITEMS: PromptItem[] = [
   ...CHARACTER_PROMPTS,
   ...WALK_PROMPTS,
   ...ACTION_PROMPTS,
+  ...FACE_PROMPTS,
   ...WEAPON_PROMPTS,
 ];
