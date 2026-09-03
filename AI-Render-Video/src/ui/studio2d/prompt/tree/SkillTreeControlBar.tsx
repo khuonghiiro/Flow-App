@@ -15,6 +15,9 @@ interface SkillTreeControlBarProps {
   onToggleEditMode: () => void;
   onOpenExportModal: () => void;
   isCustomized?: boolean;
+  lineStyle?: 'orthogonal' | 'curved';
+  onToggleLineStyle?: () => void;
+  isAltPressed?: boolean;
 }
 
 export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
@@ -29,6 +32,9 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
   onToggleEditMode,
   onOpenExportModal,
   isCustomized = false,
+  lineStyle = 'orthogonal',
+  onToggleLineStyle,
+  isAltPressed = false,
 }) => {
   const branches: (SkillBranchCategory | 'all')[] = [
     'all',
@@ -116,7 +122,66 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
           }}
         >
           <Move size={12} />
-          {isEditMode ? '✏️ Kéo Thả Node: BẬT' : '🔒 Khóa Vị Trí'}
+          {isEditMode ? '✏️ Kéo Thả: BẬT' : '🔒 Khóa'}
+        </button>
+
+        {/* Alt-drag Hint Badge when Edit Mode is active */}
+        {isEditMode && (
+          <div
+            title="Nhấn giữ phím Alt và kéo chuột trái vào bất kỳ node nào để di chuyển cả cụm các node con của nó theo"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 8px',
+              fontSize: 10,
+              fontWeight: 700,
+              borderRadius: 6,
+              background: isAltPressed
+                ? 'rgba(245, 158, 11, 0.25)'
+                : 'rgba(255, 255, 255, 0.04)',
+              border: isAltPressed
+                ? '1px solid #f59e0b'
+                : '1px dashed rgba(255, 255, 255, 0.15)',
+              color: isAltPressed ? '#fbbf24' : '#94a3b8',
+              boxShadow: isAltPressed ? '0 0 12px rgba(245, 158, 11, 0.35)' : 'none',
+              transition: 'all 0.15s ease',
+              userSelect: 'none',
+            }}
+          >
+            <span>{isAltPressed ? '🔥 [Alt] Đang Kéo Cả Cụm Con' : '💡 Giữ Alt: Kéo Cả Cụm Con'}</span>
+          </div>
+        )}
+
+        {/* Toggle Line Style: Orthogonal vs Curved */}
+        <button
+          onClick={onToggleLineStyle}
+          title={
+            lineStyle === 'orthogonal'
+              ? 'Đang dùng đường nối vuông góc (Nhấp để đổi sang uốn cong Bézier)'
+              : 'Đang dùng đường nối uốn cong Bézier (Nhấp để đổi sang vuông góc)'
+          }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 11px',
+            fontSize: 10.5,
+            fontWeight: 800,
+            borderRadius: 6,
+            cursor: 'pointer',
+            border: lineStyle === 'orthogonal'
+              ? '1.5px solid #a855f7'
+              : '1px solid rgba(255, 255, 255, 0.12)',
+            background: lineStyle === 'orthogonal'
+              ? 'rgba(168, 85, 247, 0.25)'
+              : 'rgba(255, 255, 255, 0.04)',
+            color: lineStyle === 'orthogonal' ? '#c084fc' : '#94a3b8',
+            boxShadow: lineStyle === 'orthogonal' ? '0 0 14px rgba(168, 85, 247, 0.4)' : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {lineStyle === 'orthogonal' ? '🔲 Line: Vuông Góc' : '〰️ Line: Uốn Cong'}
         </button>
 
         {/* Copy / Export Layout Coordinates */}

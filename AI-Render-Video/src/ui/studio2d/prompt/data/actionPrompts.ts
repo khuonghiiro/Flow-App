@@ -9,10 +9,14 @@ import { HEAD_PROMPTS } from './actions/headPrompts';
 import { FALL_PROMPTS } from './actions/fallPrompts';
 import { HIT_REACTION_PROMPTS } from './actions/hitReactionPrompts';
 import { DEFEND_PROMPTS } from './actions/defendPrompts';
+import { HAND_PROMPTS } from './actions/handPrompts';
+import { LEG_PROMPTS } from './actions/legPrompts';
+import { COMBINED_ACTION_PROMPTS } from './actions/combinedActionPrompts';
 
 /**
- * Danh sách toàn bộ Prompt Động Tác (Step 3 Actions) theo chuẩn 5 góc:
- * 0° (Chính diện), 45° (Xoay trái), 90° (Nhìn ngang), 135° (Lưng lệch phải), 180° (Sau lưng).
+ * Danh sách toàn bộ Prompt Động Tác (Step 3 Actions):
+ * - 5 góc: Run, Sit, Lie, Jump, Idle, Attack, Head, Fall, Hit, Defend
+ * - Nhóm động tác chi tiết: Tay (Vỗ tay, sau lưng, vuốt cằm...), Chân (Đá cao, xoay, quỳ...), Kết hợp (Vái chào, cuốc đất, chẻ củi, đả tọa...)
  */
 export const ACTION_PROMPTS: PromptItem[] = [
   ...RUN_PROMPTS,
@@ -25,6 +29,9 @@ export const ACTION_PROMPTS: PromptItem[] = [
   ...FALL_PROMPTS,
   ...HIT_REACTION_PROMPTS,
   ...DEFEND_PROMPTS,
+  ...HAND_PROMPTS,
+  ...LEG_PROMPTS,
+  ...COMBINED_ACTION_PROMPTS,
 ];
 
 export {
@@ -38,4 +45,7 @@ export {
   FALL_PROMPTS,
   HIT_REACTION_PROMPTS,
   DEFEND_PROMPTS,
+  HAND_PROMPTS,
+  LEG_PROMPTS,
+  COMBINED_ACTION_PROMPTS,
 };

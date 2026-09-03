@@ -1,5 +1,17 @@
 import { SkillTreeLink } from '../types';
 
+function makeActionFamilyLinks(hubId: string, actionId: string, color: string): SkillTreeLink[] {
+  const angles = ['0', '45', '90', '135', '180'];
+  return [
+    { fromId: hubId, toId: `hub_${actionId}`, color, animated: true },
+    ...angles.map((deg) => ({
+      fromId: `hub_${actionId}`,
+      toId: `node_${actionId}_${deg}`,
+      color,
+    })),
+  ];
+}
+
 export const ALL_TREE_LINKS: SkillTreeLink[] = [
   // Links from Root Master to 5 Pillars
   { fromId: 'root_master', toId: 'pillar_character', color: '#38bdf8', animated: true },
@@ -97,9 +109,35 @@ export const ALL_TREE_LINKS: SkillTreeLink[] = [
 
   // 9. Cử động đầu
   { fromId: 'pillar_actions', toId: 'hub_head', color: '#f59e0b', animated: true },
-  { fromId: 'hub_head', toId: 'node_head_shake', color: '#f59e0b' },
-  { fromId: 'hub_head', toId: 'node_head_nod', color: '#f59e0b' },
-  { fromId: 'hub_head', toId: 'node_head_look', color: '#f59e0b' },
+  { fromId: 'hub_head', toId: 'node_head_0', color: '#f59e0b' },
+  { fromId: 'hub_head', toId: 'node_head_45', color: '#f59e0b' },
+  { fromId: 'hub_head', toId: 'node_head_90', color: '#f59e0b' },
+  { fromId: 'hub_head', toId: 'node_head_135', color: '#f59e0b' },
+  { fromId: 'hub_head', toId: 'node_head_180', color: '#f59e0b' },
+
+  // 10. Cử động tay (6 động tác, mỗi động tác 5 góc)
+  { fromId: 'pillar_actions', toId: 'hub_hands', color: '#f59e0b', animated: true },
+  ...makeActionFamilyLinks('hub_hands', 'h_clap', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_hands', 'h_back', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_hands', 'h_chin', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_hands', 'h_fist', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_hands', 'h_palm', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_hands', 'h_wave', '#f59e0b'),
+
+  // 11. Cử động chân (5 động tác, mỗi động tác 5 góc)
+  { fromId: 'pillar_actions', toId: 'hub_legs', color: '#f59e0b', animated: true },
+  ...makeActionFamilyLinks('hub_legs', 'l_kick', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_legs', 'l_round', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_legs', 'l_kneel', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_legs', 'l_seiza', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_legs', 'l_stomp', '#f59e0b'),
+
+  // 12. Động tác kết hợp (4 động tác, mỗi động tác 5 góc)
+  { fromId: 'pillar_actions', toId: 'hub_combined', color: '#f59e0b', animated: true },
+  ...makeActionFamilyLinks('hub_combined', 'c_bow', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_combined', 'c_hoe', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_combined', 'c_chop', '#f59e0b'),
+  ...makeActionFamilyLinks('hub_combined', 'c_meditate', '#f59e0b'),
 
   // Pillar 4: Ngũ Quan & Biểu Cảm
   { fromId: 'pillar_face', toId: 'hub_face_8s', color: '#ec4899', animated: true },
@@ -108,48 +146,74 @@ export const ALL_TREE_LINKS: SkillTreeLink[] = [
   { fromId: 'hub_face_8s', toId: 'node_face_8s_90', color: '#ec4899' },
   { fromId: 'hub_face_8s', toId: 'node_face_8s_135', color: '#ec4899' },
 
+  // Hub Biểu cảm đơn nối tới 4 Hub góc độ trung gian
   { fromId: 'pillar_face', toId: 'hub_face_single', color: '#ec4899', animated: true },
-  // 0° expressions
-  { fromId: 'hub_face_single', toId: 'node_f0_blink', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_smile', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_talk', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_surp', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_sad', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_angry', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_wink', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_cry', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_fear', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_smirk', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_shy', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f0_focus', color: '#ec4899' },
+  { fromId: 'hub_face_single', toId: 'hub_f_deg_0', color: '#ec4899', animated: true },
+  { fromId: 'hub_face_single', toId: 'hub_f_deg_45', color: '#ec4899', animated: true },
+  { fromId: 'hub_face_single', toId: 'hub_f_deg_90', color: '#ec4899', animated: true },
+  { fromId: 'hub_face_single', toId: 'hub_f_deg_135', color: '#ec4899', animated: true },
 
-  // 45° expressions
-  { fromId: 'hub_face_single', toId: 'node_f45_talk', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_sad', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_surp', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_angry', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_smile', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_blink', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_wink', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_cry', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_smirk', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_fear', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f45_shy', color: '#ec4899' },
+  // 0° expressions (nối từ hub_f_deg_0)
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_blink', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_smile', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_talk', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_surp', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_sad', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_angry', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_wink', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_cry', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_fear', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_smirk', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_shy', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_focus', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_funny', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_sinister', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_mysterious', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_disdain', color: '#ec4899' },
+  { fromId: 'hub_f_deg_0', toId: 'node_f0_dizzy', color: '#ec4899' },
 
-  // 90° expressions
-  { fromId: 'hub_face_single', toId: 'node_f90_prof', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f90_talk', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f90_smile', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f90_angry', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f90_surp', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f90_sad', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f90_cry', color: '#ec4899' },
+  // 45° expressions (nối từ hub_f_deg_45)
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_talk', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_sad', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_surp', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_angry', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_smile', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_blink', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_wink', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_cry', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_smirk', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_fear', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_shy', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_funny', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_sinister', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_mysterious', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_disdain', color: '#ec4899' },
+  { fromId: 'hub_f_deg_45', toId: 'node_f45_dizzy', color: '#ec4899' },
 
-  // 135° expressions
-  { fromId: 'hub_face_single', toId: 'node_f135_glance', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f135_smile', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f135_talk', color: '#ec4899' },
-  { fromId: 'hub_face_single', toId: 'node_f135_alert', color: '#ec4899' },
+  // 90° expressions (nối từ hub_f_deg_90)
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_prof', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_talk', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_smile', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_angry', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_surp', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_sad', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_cry', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_funny', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_sinister', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_mysterious', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_disdain', color: '#ec4899' },
+  { fromId: 'hub_f_deg_90', toId: 'node_f90_dizzy', color: '#ec4899' },
+
+  // 135° expressions (nối từ hub_f_deg_135)
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_glance', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_smile', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_talk', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_alert', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_funny', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_sinister', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_mysterious', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_disdain', color: '#ec4899' },
+  { fromId: 'hub_f_deg_135', toId: 'node_f135_dizzy', color: '#ec4899' },
 
   // Pillar 5: Vũ khí
   { fromId: 'pillar_weapons', toId: 'node_w_sword', color: '#c084fc' },

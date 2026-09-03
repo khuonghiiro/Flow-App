@@ -135,6 +135,7 @@ export const AIPromptGenerator2D: React.FC = () => {
               <PromptViewer
                 item={currentItem}
                 customizerValues={customizerValues}
+                onSelectPrompt={setSelectedId}
               />
             </div>
           )}
@@ -162,6 +163,7 @@ export const AIPromptGenerator2D: React.FC = () => {
           <PromptViewer
             item={currentItem}
             customizerValues={customizerValues}
+            onSelectPrompt={setSelectedId}
           />
         </div>
       )}

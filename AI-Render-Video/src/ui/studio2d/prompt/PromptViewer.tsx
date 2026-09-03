@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
 import { Copy, Check, Info, Video, ShieldAlert, Film, Sparkles } from 'lucide-react';
 import { PromptItem, PromptCustomizerValues } from './types';
-import { formatPromptWithCustomizer } from './promptData';
+import { formatPromptWithCustomizer, getSiblingAnglePrompts } from './promptData';
 
 interface PromptViewerProps {
   item: PromptItem;
   customizerValues: PromptCustomizerValues;
+  onSelectPrompt?: (id: string) => void;
 }
 
 export const PromptViewer: React.FC<PromptViewerProps> = ({
   item,
   customizerValues,
+  onSelectPrompt,
 }) => {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedNegative, setCopiedNegative] = useState(false);
 
+  const siblingAngles = getSiblingAnglePrompts(item.id);
   const processedPrompt = formatPromptWithCustomizer(item.rawPrompt, customizerValues, item.id);
 
   const handleCopyPrompt = () => {
@@ -121,6 +124,66 @@ export const PromptViewer: React.FC<PromptViewerProps> = ({
           {copiedPrompt ? '✅ Đã Copy Prompt!' : '📋 Copy Prompt'}
         </button>
       </div>
+
+      {/* ─── Angle Selector Bar (0° | 45° | 90° | 135° | 180°) ─── */}
+      {siblingAngles.length > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
+            padding: '8px 14px',
+            background: 'rgba(15, 23, 42, 0.85)',
+            borderRadius: 8,
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              letterSpacing: '0.02em',
+            }}
+          >
+            📐 Góc Camera ({siblingAngles.length} góc):
+          </span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {siblingAngles.map((ang) => {
+              const isActive = ang.isCurrent;
+              return (
+                <button
+                  key={ang.id}
+                  onClick={() => onSelectPrompt?.(ang.id)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: isActive ? 800 : 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.18s ease',
+                    border: isActive
+                      ? '1px solid #38bdf8'
+                      : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.45))'
+                      : 'rgba(30, 41, 59, 0.6)',
+                    color: isActive ? '#38bdf8' : '#cbd5e1',
+                    boxShadow: isActive ? '0 0 10px rgba(56, 189, 248, 0.4)' : 'none',
+                  }}
+                >
+                  {ang.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ─── Prompt Text Box ─── */}
       <div

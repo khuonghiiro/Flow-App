@@ -1,22 +1,39 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { SkillTreeNode, SkillBranchCategory } from './types';
 import { SKILL_TREE_NODES, SKILL_TREE_LINKS } from './skillTreeData';
 import { SkillTreeNodeComponent } from './SkillTreeNodeComponent';
 import { SkillTreeControlBar } from './SkillTreeControlBar';
 import { LayoutExportModal } from './LayoutExportModal';
+import { SkillTreeLegend } from './SkillTreeLegend';
+import { SkillTreeLinksLayer } from './SkillTreeLinksLayer';
+import { getDescendantNodeIds } from './treeHierarchyUtils';
 
 interface SkillTreeCanvasProps {
   selectedPromptId: string;
   onSelectPrompt: (promptId: string) => void;
 }
 
-const STORAGE_KEY = 'studio2d_skill_tree_custom_layout_v6';
+const STORAGE_KEY = 'studio2d_skill_tree_custom_layout_v13';
+const LINE_STYLE_STORAGE_KEY = 'studio2d_skill_tree_line_style';
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   selectedPromptId,
   onSelectPrompt,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // ─── Line Style State: 'orthogonal' (default) vs 'curved' ───
+  const [lineStyle, setLineStyle] = useState<'orthogonal' | 'curved'>(() => {
+    return (localStorage.getItem(LINE_STYLE_STORAGE_KEY) as 'orthogonal' | 'curved') || 'orthogonal';
+  });
+
+  const handleToggleLineStyle = () => {
+    setLineStyle((prev) => {
+      const next = prev === 'orthogonal' ? 'curved' : 'orthogonal';
+      localStorage.setItem(LINE_STYLE_STORAGE_KEY, next);
+      return next;
+    });
+  };
 
   // ─── Custom Layout State (Loaded from localStorage or defaults) ───
   const [nodes, setNodes] = useState<SkillTreeNode[]>(() => {
@@ -40,18 +57,44 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return Boolean(localStorage.getItem(STORAGE_KEY));
   });
 
-  // Pan & Zoom state (Optimized for user-crafted layout)
-  const [zoom, setZoom] = useState<number>(0.38);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 440, y: 40 });
+  // Pan & Zoom state: Allow zoom down to 5% (0.05) with comfortable panoramic default
+  const [zoom, setZoom] = useState<number>(0.20);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 800, y: 120 });
   const [isDraggingCanvas, setIsDraggingCanvas] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Node Dragging State
   const [isEditMode, setIsEditMode] = useState<boolean>(true);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dragMoved, setDragMoved] = useState<boolean>(false);
+  const [isAltKeyPressed, setIsAltKeyPressed] = useState<boolean>(false);
+  const [isAltDragging, setIsAltDragging] = useState<boolean>(false);
+  const [dragBranchNodeIds, setDragBranchNodeIds] = useState<Set<string>>(new Set());
+
   const dragClientStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragStartWorldRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragInitialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const dragBranchIdsRef = useRef<Set<string>>(new Set());
+
+  // Listen for global Alt key state to provide instant visual feedback
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        setIsAltKeyPressed(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        setIsAltKeyPressed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   // UI state
   const [activeBranch, setActiveBranch] = useState<SkillBranchCategory | 'all'>('all');
@@ -85,7 +128,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return set;
   }, [activeNode, nodeMap]);
 
-  // ─── Drag & Drop Handlers for Nodes ───
+  // ─── Drag & Drop Handlers for Nodes (Supports Alt + Drag to move full subtree) ───
   const handleNodeMouseDown = (node: SkillTreeNode, e: React.MouseEvent) => {
     if (!isEditMode || e.button !== 0) return;
     e.stopPropagation();
@@ -96,8 +139,28 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     dragClientStartRef.current = { x: e.clientX, y: e.clientY };
     const worldX = (e.clientX - rect.left - pan.x) / zoom;
     const worldY = (e.clientY - rect.top - pan.y) / zoom;
+    dragStartWorldRef.current = { x: worldX, y: worldY };
 
-    setDragOffset({ x: worldX - node.x, y: worldY - node.y });
+    // Record initial snapshot positions of all nodes in graph
+    const initialMap = new Map<string, { x: number; y: number }>();
+    nodes.forEach((n) => initialMap.set(n.id, { x: n.x, y: n.y }));
+    dragInitialPositionsRef.current = initialMap;
+
+    const isAlt = e.altKey || isAltKeyPressed;
+    setIsAltDragging(isAlt);
+
+    if (isAlt) {
+      // Collect all descendant child nodes recursively
+      const descendants = getDescendantNodeIds(node.id, nodes, SKILL_TREE_LINKS);
+      descendants.add(node.id);
+      dragBranchIdsRef.current = descendants;
+      setDragBranchNodeIds(descendants);
+    } else {
+      const single = new Set([node.id]);
+      dragBranchIdsRef.current = single;
+      setDragBranchNodeIds(single);
+    }
+
     setDraggingNodeId(node.id);
     setDragMoved(false);
   };
@@ -110,7 +173,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    // 1. Moving a Node
+    // 1. Moving a Node (or Node + Subtree if Alt is held)
     if (draggingNodeId && containerRef.current) {
       const dist = Math.hypot(
         e.clientX - dragClientStartRef.current.x,
@@ -124,11 +187,32 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       const worldX = (e.clientX - rect.left - pan.x) / zoom;
       const worldY = (e.clientY - rect.top - pan.y) / zoom;
 
-      const newX = Math.round(worldX - dragOffset.x);
-      const newY = Math.round(worldY - dragOffset.y);
+      const deltaX = Math.round(worldX - dragStartWorldRef.current.x);
+      const deltaY = Math.round(worldY - dragStartWorldRef.current.y);
+
+      // Support dynamically holding Alt during drag
+      const isAltNow = e.altKey || isAltKeyPressed;
+      if (isAltNow && !isAltDragging) {
+        setIsAltDragging(true);
+        const descendants = getDescendantNodeIds(draggingNodeId, nodes, SKILL_TREE_LINKS);
+        descendants.add(draggingNodeId);
+        dragBranchIdsRef.current = descendants;
+        setDragBranchNodeIds(descendants);
+      }
+
+      const activeIds = dragBranchIdsRef.current;
+      const initialMap = dragInitialPositionsRef.current;
 
       setNodes((prev) =>
-        prev.map((n) => (n.id === draggingNodeId ? { ...n, x: newX, y: newY } : n))
+        prev.map((n) => {
+          if (activeIds.has(n.id)) {
+            const init = initialMap.get(n.id);
+            if (init) {
+              return { ...n, x: init.x + deltaX, y: init.y + deltaY };
+            }
+          }
+          return n;
+        })
       );
       return;
     }
@@ -162,6 +246,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
         }
       }
       setDraggingNodeId(null);
+      setIsAltDragging(false);
+      dragBranchIdsRef.current = new Set();
+      setDragBranchNodeIds(new Set());
     }
     setIsDraggingCanvas(false);
   };
@@ -175,7 +262,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     const mouseY = e.clientY - rect.top;
 
     const zoomFactor = e.deltaY < 0 ? 1.14 : 0.88;
-    const newZoom = Math.max(0.35, Math.min(1.8, zoom * zoomFactor));
+    const newZoom = Math.max(0.05, Math.min(2.5, zoom * zoomFactor));
 
     const worldX = (mouseX - pan.x) / zoom;
     const worldY = (mouseY - pan.y) / zoom;
@@ -187,12 +274,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     setPan({ x: newPanX, y: newPanY });
   };
 
-  // Zoom helpers
-  const handleZoomIn = () => setZoom((z) => Math.min(1.8, z + 0.15));
-  const handleZoomOut = () => setZoom((z) => Math.max(0.35, z - 0.15));
+  // Zoom helpers: Allow zooming down to 5% (0.05)
+  const handleZoomIn = () => setZoom((z) => Math.min(2.5, +(z + 0.05).toFixed(2)));
+  const handleZoomOut = () => setZoom((z) => Math.max(0.05, +(z - 0.05).toFixed(2)));
   const handleResetZoom = () => {
-    setZoom(0.38);
-    setPan({ x: 440, y: 40 });
+    setZoom(0.20);
+    setPan({ x: 800, y: 120 });
     setActiveBranch('all');
   };
 
@@ -208,8 +295,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     (branch: SkillBranchCategory | 'all') => {
       setActiveBranch(branch);
       if (branch === 'all') {
-        setPan({ x: 440, y: 40 });
-        setZoom(0.38);
+        setPan({ x: 800, y: 120 });
+        setZoom(0.20);
         return;
       }
       const pillar = nodes.find((n) => n.id === `pillar_${branch}`);
@@ -277,6 +364,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
         onToggleEditMode={() => setIsEditMode((prev) => !prev)}
         onOpenExportModal={() => setIsExportModalOpen(true)}
         isCustomized={isCustomized}
+        lineStyle={lineStyle}
+        onToggleLineStyle={handleToggleLineStyle}
+        isAltPressed={isAltKeyPressed || isAltDragging}
       />
 
       {/* ─── Canvas Viewport ─── */}
@@ -325,62 +415,14 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             height: 4800,
           }}
         >
-          {/* ─── SVG Connecting Lines Layer (Dynamic Bézier) ─── */}
-          <svg
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: 4400,
-              height: 4800,
-              pointerEvents: 'none',
-              overflow: 'visible',
-            }}
-          >
-            <defs>
-              <filter id="tree-glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="4" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            {SKILL_TREE_LINKS.map((link, idx) => {
-              const from = nodeMap.get(link.fromId);
-              const to = nodeMap.get(link.toId);
-              if (!from || !to) return null;
-
-              const isLinkInActivePath = activePathSet.has(link.fromId) && activePathSet.has(link.toId);
-              const dimmed = !isLinkInActivePath && isLinkDimmed(from, to);
-
-              const dx = to.x - from.x;
-              const ctrl1X = from.x + dx * 0.45;
-              const ctrl1Y = from.y;
-              const ctrl2X = to.x - dx * 0.45;
-              const ctrl2Y = to.y;
-              const pathD = `M ${from.x} ${from.y} C ${ctrl1X} ${ctrl1Y}, ${ctrl2X} ${ctrl2Y}, ${to.x} ${to.y}`;
-
-              return (
-                <g key={`${link.fromId}-${link.toId}-${idx}`}>
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke={isLinkInActivePath ? '#ffffff' : link.color}
-                    strokeWidth={isLinkInActivePath ? 6 : link.animated ? 4 : 2.5}
-                    strokeOpacity={isLinkInActivePath ? 0.7 : dimmed ? 0.08 : 0.25}
-                    filter="url(#tree-glow)"
-                  />
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke={link.color}
-                    strokeWidth={isLinkInActivePath ? 3 : link.animated ? 2 : 1.2}
-                    strokeOpacity={isLinkInActivePath ? 1 : dimmed ? 0.15 : 0.85}
-                    strokeDasharray={isLinkInActivePath || link.animated ? '8 4' : 'none'}
-                  />
-                </g>
-              );
-            })}
-          </svg>
+          {/* ─── SVG Connecting Lines Layer (Dynamic Bézier or Orthogonal) ─── */}
+          <SkillTreeLinksLayer
+            links={SKILL_TREE_LINKS}
+            nodeMap={nodeMap}
+            activePathSet={activePathSet}
+            lineStyle={lineStyle}
+            isLinkDimmed={isLinkDimmed}
+          />
 
           {/* ─── Skill Nodes Layer ─── */}
           {nodes.map((node) => {
@@ -405,7 +447,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                   node={node}
                   isSelected={Boolean(isSelected)}
                   isActivePath={Boolean(isActivePath)}
-                  isDragging={isNodeDragging}
+                  isDragging={isNodeDragging || (isAltDragging && dragBranchNodeIds.has(node.id))}
                   isEditMode={isEditMode}
                   onSelect={handleNodeClick}
                   onMouseDownNode={handleNodeMouseDown}
@@ -416,34 +458,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
         </div>
 
         {/* ─── Interactive Helper Legend Overlay ─── */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: 12,
-            padding: '6px 14px',
-            borderRadius: 8,
-            background: 'rgba(3, 7, 18, 0.9)',
-            border: '1px solid rgba(56, 189, 248, 0.2)',
-            fontSize: 11,
-            color: '#cbd5e1',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-            pointerEvents: 'none',
-          }}
-        >
-          <span style={{ color: '#38bdf8', fontWeight: 700 }}>
-            🖐️ Giữ & Kéo thả bất kỳ node nào để chỉnh toạ độ
-          </span>
-          <span>🖱️ Kéo nền để trượt bản đồ</span>
-          <span>🔍 Cuộn chuột để Zoom</span>
-          <span style={{ color: '#34d399', fontWeight: 700 }}>
-            📋 Bấm "Xuất Toạ Độ" để copy gửi AI
-          </span>
-        </div>
+        <SkillTreeLegend
+          isEditMode={isEditMode}
+          isAltPressed={isAltKeyPressed || isAltDragging}
+        />
       </div>
 
       {/* ─── Layout Export Modal ─── */}
