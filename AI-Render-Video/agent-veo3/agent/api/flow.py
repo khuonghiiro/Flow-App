@@ -385,3 +385,9 @@ async def _bg_poll_and_notify_video(client, data: dict, req_id: str, project_id:
 
     logger.warning("BG video poll timed out for req=%s", req_id[:8])
 
+
+@router.post("/reload-extension")
+async def reload_extension():
+    """Send reload command to the connected Chrome extension."""
+    client = get_flow_client()
+    return await client.reload_extension()

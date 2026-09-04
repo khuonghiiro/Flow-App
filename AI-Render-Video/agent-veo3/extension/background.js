@@ -1,22 +1,15 @@
-/**
- * Flow Kit — Chrome Extension Background Service Worker
- *
- * Connects to local Python agent via WebSocket (agent runs WS server).
- * Captures bearer token, solves reCAPTCHA, proxies API calls through browser.
- */
-
+// Flow Kit — Chrome Extension Background Service Worker
 const AGENT_WS_URL = 'ws://127.0.0.1:9222';
-// NOTE: This is a browser-restricted public API key — safe to ship in extension bundles.
 const API_KEY = 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY';
 
 let ws = null;
 let flowKey = null;
-let callbackSecret = null;  // Auth secret for HTTP callback, received from server on WS connect
-let state = 'off'; // off | idle | running
+let callbackSecret = null;
+let state = 'off';
 let manualDisconnect = false;
 let metrics = {
   tokenCapturedAt: null,
-  requestCount: 0,   // captcha-consuming requests only (gen image/video/upscale)
+  requestCount: 0,
   successCount: 0,
   failedCount: 0,
   lastError: null,
@@ -60,16 +53,12 @@ function broadcastRequestLog() {
   chrome.runtime.sendMessage({ type: 'REQUEST_LOG_UPDATE', log: requestLog }).catch(() => {});
 }
 
-// ─── Startup ────────────────────────────────────────────────
-
 chrome.runtime.onInstalled.addListener(init);
 chrome.runtime.onStartup.addListener(init);
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'reconnect') connectToAgent();
   if (alarm.name === 'keepAlive') keepAlive();
-  if (alarm.name === 'token-refresh') {
-    await captureTokenFromFlowTab();
-  }
+  if (alarm.name === 'token-refresh') await captureTokenFromFlowTab();
 });
 
 async function init() {
@@ -106,7 +95,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
       ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
     }
   },
-  { urls: ['https://aisandbox-pa.googleapis.com/*', 'https://labs.google/*'] },
+  { urls: ['https://aisandbox-pa.googleapis.com/*', 'https://labs.google/*', 'https://flow.google.com/*'] },
   ['requestHeaders', 'extraHeaders'],
 );
 
@@ -114,7 +103,7 @@ let _openingFlowTab = false;
 
 async function captureTokenFromFlowTab() {
   const tabs = await chrome.tabs.query({
-    url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*'],
+    url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*', 'https://flow.google.com/*'],
   });
   if (!tabs.length) {
     if (_openingFlowTab) {
@@ -127,7 +116,7 @@ async function captureTokenFromFlowTab() {
       await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: false });
       await sleep(3000);
       const retryTabs = await chrome.tabs.query({
-        url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*'],
+        url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*', 'https://flow.google.com/*'],
       });
       if (!retryTabs.length) {
         console.log('[FlowAgent] Flow tab not ready yet after open');
@@ -238,6 +227,10 @@ chrome.runtime.onConnect.addListener((port) => {
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'pong' }));
         }
+      } else if (msg.type === 'reload_extension' || msg.method === 'reload_extension') {
+        console.log('[FlowAgent] Reloading extension on agent command');
+        chrome.runtime.reload();
+      }
       } else if (msg.type === 'update_request_log') {
         let updated = false;
         if (msg.id) {
@@ -363,6 +356,7 @@ async function solveCaptcha(requestId, captchaAction) {
       'https://labs.google/fx/tools/flow*',
       'https://labs.google/fx/*',
       'https://labs.google/*',
+      'https://flow.google.com/*',
     ],
   });
 
@@ -425,7 +419,7 @@ async function handleTrpcRequest(msg) {
   const { id, params } = msg;
   const { url, method = 'POST', headers = {}, body } = params;
 
-  if (!url || !url.startsWith('https://labs.google/')) {
+  if (!url || (!url.startsWith('https://labs.google/') && !url.startsWith('https://flow.google.com/'))) {
     sendToAgent({ id, error: 'INVALID_TRPC_URL' });
     return;
   }
@@ -647,7 +641,7 @@ chrome.runtime.onMessage.addListener((msg, _, reply) => {
 
   if (msg.type === 'OPEN_FLOW_TAB') {
     chrome.tabs.query({
-      url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*', 'https://labs.google/*'],
+      url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*', 'https://labs.google/*', 'https://flow.google.com/*'],
     }).then((tabs) => {
       if (tabs.length) {
         chrome.tabs.update(tabs[0].id, { active: true });
@@ -742,11 +736,8 @@ function sleep(ms) {
 
 // ─── Human-like Telemetry ──────────────────────────────────
 // Periodically send tracking events to Google's analytics endpoints
-// to mimic normal browser behavior.
-
 const _UA = navigator.userAgent;
 let _telemetrySessionId = `;${Date.now()}`;
-
 function _rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
 function _buildBatchLogPayload() {
@@ -796,10 +787,7 @@ async function sendTelemetry() {
 }
 
 function scheduleTelemetry() {
-  setTimeout(async () => {
-    await sendTelemetry();
-    scheduleTelemetry();
-  }, _rand(45, 120) * 1000);
+  setTimeout(async () => { await sendTelemetry(); scheduleTelemetry(); }, _rand(45, 120) * 1000);
 }
 
 setInterval(() => { _telemetrySessionId = `;${Date.now()}`; }, _rand(25, 35) * 60 * 1000);

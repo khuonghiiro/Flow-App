@@ -209,10 +209,11 @@ CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
 3. ROOTED REALISTIC HAIR & SECONDARY MOTION PHYSICS:
    - Hair is realistically rooted to the scalp with organic, soft secondary physics following body inertia and gentle breeze.
    - STRICTLY ZERO rigid wig swaying, ZERO detached floating wig effect, ZERO artificial bobbing. Long hair and ribbons flow naturally with soft fluid cloth physics.
-4. IDLE BREEZE & RESPIRATION DYNAMICS (FOR IDLE CYCLE):
-   - In standing still (idle), character remains calmly grounded. Visual dynamism comes ONLY from gentle ambient mountain wind fluttering robe hems, wide flowing sleeves, and natural long hair falling behind.
-   - STRICTLY ZERO hallucinated accessories: ZERO swinging jade pendants (jade medallion on belt is a fixed solid buckle), ZERO fake hair ribbons, ZERO dangling sash tassels.
-   - Subtle rhythmic chest breathing respiration. Hands rest naturally with minimal resting micro-adjustments.
+4. IDLE BREEZE DYNAMICS (FOR IDLE CYCLE — STRICT ARM IMMOBILITY LOCK & TRANQUIL ANIME BREEZE):
+   - In standing still (idle), character stands completely motionless in place like a statue.
+   - STRICT ARM & HAND IMMOBILITY LOCK: Both arms hang completely relaxed straight down along sides and DO NOT MOVE. Hands and fingers remain completely still at sides. STRICTLY FORBIDDEN TO MOVE ARMS, STRICTLY ZERO ARM RAISING, ZERO HAND MOVEMENT, ZERO TOUCHING CHEST, ZERO RAISING PALMS.
+   - TRANQUIL ANIME BREEZE (DELICATE MICRO-MOTION): The only visible movement is an extremely faint, whisper-soft anime breeze caressing the character. Silky long hair hangs naturally downward under gravity, resting peacefully with only the hair tips and fine strands drifting very softly, slowly, and subtly like a serene anime scene (STRICTLY ZERO strong wind, ZERO hair fluttering, ZERO whipping strands). Wide sleeves, outer coat hems, and fabric drape naturally under calm gravity, wafting with slow, whisper-soft, graceful silk softness and tender, gentle breathing micro-sway without stiff flapping or aggressive ripples. Any hair ornaments or fixed belt accessories sway very subtly and minimally with the cloth.
+   - Body, torso, head, and feet remain completely static and anchored to the floor plane. Strictly zero hopping, zero bouncing, zero body turning.
 5. TORSO, HEAD, UNIFORM SKIN & ZERO PROPS PRESERVATION:
    - Torso, shoulders, and head remain rock-steady and level. STRICTLY ZERO torso twisting, ZERO erratic head bobbing, ZERO body contortions or jittering.
    - The completely blank, smooth mannequin head MUST remain intact with uniform natural skin color seamlessly matching the neck and hands. STRICTLY ZERO facial expressions, ZERO mouth opening, ZERO facial distortion or morphing, ZERO shiny white mask contrast.

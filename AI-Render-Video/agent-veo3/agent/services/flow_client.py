@@ -362,9 +362,14 @@ class FlowClient:
                 last_result["_req_id"] = req_id
             return last_result
 
-        if isinstance(last_result, dict) and "_req_id" not in last_result:
-            last_result["_req_id"] = req_id
-        return last_result
+    async def reload_extension(self) -> dict:
+        """Send reload signal to connected Chrome extension."""
+        for ws in list(self._extensions.keys()):
+            try:
+                await ws.send(json.dumps({"type": "reload_extension"}))
+            except Exception:
+                pass
+        return {"status": "ok"}
 
     async def notify_request_status(
         self, req_id: str = "", media_id: str = "", status: str = "COMPLETED", output_url: str = ""
