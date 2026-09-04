@@ -209,21 +209,16 @@ COMPOSITION: One character, full body (head to feet fully visible), centered, pl
     refAngleLabel: 'Ảnh Nhân Vật Gốc',
     tags: ['angle', '45deg', 'three_quarter', 'turnaround', 'faceless', 'left', 'deep_turn'],
     infoNote: '💡 Chuẩn 45° Góc Sâu (Deep 3/4 View): Nhân vật xoay sâu đúng góc 45° (nằm chính giữa 0° và 90°), toàn bộ thân, ngực, vai và hai chân đều quay chéo 45° sang trái, không bị hiện tượng xoay nhẹ 20°-30° như trước.',
-    negativePrompt: `shallow angle, slight turn, subtle turn, weak rotation, 10 degree angle, 15 degree angle, 20 degree angle, 25 degree angle, 30 degree angle, almost front view, mostly front view, front facing chest, barely turned head, front-facing feet, feet pointing forward, forward-facing toes, full side profile 90deg, rear view, rotated to right side, facing right, twisted body, twisted spine, mixed perspective, eyes, eyebrows, mouth, nose, facial expression, drawing on face, 3D render, realistic textures, low quality`,
-    rawPrompt: `MASTER CHARACTER — 2D XIANXIA CHIBI — DEEP 45° THREE-QUARTER LEFT VIEW (PRONOUNCED 45-DEGREE ISOMETRIC PERSPECTIVE)
+    negativePrompt: `shallow angle, slight turn, subtle turn, weak rotation, 10 degree angle, 15 degree angle, 20 degree angle, 25 degree angle, 30 degree angle, almost front view, mostly front view, front facing chest, front facing torso, broad front shoulders, barely turned head, front-facing feet, feet pointing forward, forward-facing toes, full side profile 90deg, rear view, rotated to right side, facing right, twisted body, twisted spine, mixed perspective, eyes, eyebrows, mouth, nose, facial expression, drawing on face, 3D render, realistic textures, low quality`,
+    rawPrompt: `MASTER CHARACTER — 2D XIANXIA CHIBI — TRUE DEEP 45-DEGREE THREE-QUARTER ISOMETRIC VIEW
 
-CRITICAL ANGLE REQUIREMENT — DEEP 45° ROTATION (XOAY SÂU ĐÚNG CHUẨN 45 ĐỘ):
-- The angle MUST be a PRONOUNCED, DEEP 45° ISOMETRIC VIEW — EXACTLY HALFWAY BETWEEN 0° FRONT AND 90° SIDE PROFILE
-- NOT a slight head turn, NOT 20 degrees, NOT 30 degrees, NOT a shallow twist
-- The entire body plane (head, chest, waist, and hips) is rotated a full 45 degrees towards the left edge
-
-ANATOMICAL ALIGNMENT (ĐỒNG BỘ TOÀN BỘ CƠ THỂ THEO GÓC 45° SÂU):
-- HEAD & FACE: Head is turned a full 45 degrees left. Clear 3/4 contour showing faceless cheekbone and jawline pointing left (NO eyes, NO nose, NO mouth).
-- HAIR & BANGS: Left side of hair/bangs is prominently in the foreground; right side of hair is receded in depth behind the head.
-- TORSO & SHOULDERS: Chest plane is angled a full 45° to the left. Left shoulder is in the front foreground, right shoulder is distinctly set back in depth.
-- HIPS & SASH: Waist, belt, and sash knot are viewed at 45° diagonal angle.
-- LEGS, BOOTS & TOES (CHÂN & MŨI CHÂN CHÉO 45°): Both legs and boots MUST BE IN A SOLID 45° DIAGONAL STANCE pointing towards the bottom-left. Left foot is placed forward pointing 45° left; right foot is placed slightly behind pointing 45° left. (ABSOLUTELY NO feet facing camera, NO forward toes).
-- ARMS & HANDS: Left arm visible in front-left, right arm partially occluded behind torso. Empty hands.
+CAMERA PERSPECTIVE & POSE (XOAY SÂU ĐÚNG CHUẨN 45 ĐỘ — BƯỚC CHÉO BẤT ĐỐI XỨNG):
+- CAMERA PERSPECTIVE: Camera is positioned at a 45-degree isometric angle to the left of the character.
+- ASYMMETRICAL 3/4 POSE: The character is stepping forward in a deep 45-degree diagonal stance (facing 10:30 o'clock towards top-left).
+- LEFT SHOULDER & LEFT FOOT are stepped forward into the front foreground.
+- RIGHT SHOULDER & RIGHT FOOT are placed backward in depth behind the body.
+- The chest plane and torso are visibly rotated 45 degrees diagonally away from camera.
+- HEAD & FACE: Head is turned 45 degrees to the left showing three-quarter facial contour. Pure smooth blank porcelain mannequin surface (NO eyes, NO nose, NO mouth).
 
 IDENTITY LOCK — keep exactly from 0° reference:
 - Blank faceless head shape, hairstyle, hair color, skin tone
@@ -250,16 +245,17 @@ COMPOSITION: One character, full body (head to feet visible), centered, plenty o
     refAngleLabel: 'Ảnh Nhân Vật Gốc',
     tags: ['angle', '90deg', 'side', 'profile', 'turnaround', 'faceless', 'left'],
     infoNote: '💡 Góc 90° Ngang Trái: Đồng bộ TOÀN BỘ từ đầu, ngực, hông đến 2 chân và mũi chân đều nhìn ngang 90° sang CẠNH TRÁI (loại bỏ hoàn toàn tư thế chân hướng về phía trước).',
-    negativePrompt: `front view, 3/4 view, three-quarter view, front-facing feet, forward-facing shoes, feet pointing to camera, front-facing torso, front-facing chest, head facing front, facing right side, rotated to right, twisted body, twisted spine, mixed angles, eyes, eyebrows, mouth, nose, facial features, 3D render, realistic textures`,
-    rawPrompt: `MASTER CHARACTER — 2D XIANXIA CHIBI — 90° FULL LEFT SIDE PROFILE (FACING DIRECTLY TOWARDS LEFT EDGE)
+    negativePrompt: `front view, 3/4 view, three-quarter view, front-facing feet, forward-facing shoes, feet pointing to camera, front-facing torso, front-facing chest, broad front shoulders, right shoulder visible, head facing front, facing right side, rotated to right, twisted body, twisted spine, mixed angles, eyes, eyebrows, mouth, nose, facial features, 3D render, realistic textures`,
+    rawPrompt: `MASTER CHARACTER — 2D XIANXIA CHIBI — STRICT 90-DEGREE LEFT SIDE PROFILE VIEW
 
-CRITICAL ANATOMICAL ALIGNMENT (ĐỒNG BỘ TOÀN BỘ ĐẦU, TÓC, THÂN, HÔNG, CHÂN, MŨI CHÂN NHÌN NGANG 90° SANG TRÁI):
-- HEAD & PROFILE: Head is rotated 90 degrees in pure side profile facing DIRECTLY towards the LEFT EDGE of the canvas. Smooth blank faceless side silhouette (NO facial features, NO eyes/nose/mouth).
-- HAIR & ACCESSORIES: Hairstyle in full 2D side view. Front bangs contour left cheek, long back hair cascades down right/back edge.
-- TORSO & CHEST: Torso in pure 90° side profile facing left. Left shoulder and left chest line visible to viewer, right side occluded behind.
-- HIPS & WAIST: Full side profile of belt, sash knot, and robe silhouette.
-- LEGS, BOOTS & TOES (CHÂN & MŨI CHÂN): Both legs, shoes/boots, and toes MUST POINT 100% TO THE LEFT (pure side view feet). Left leg is in front, right leg partially visible behind. (ABSOLUTELY NO feet facing front, NO feet pointing at camera).
-- ARMS & HANDS: Left arm relaxed at side facing viewer, right arm hidden behind body. Empty hands.
+CAMERA PERSPECTIVE & SIDE ALIGNMENT (100% PURE PROFILE THUẦN CẠNH TRÁI):
+- CAMERA PERSPECTIVE: Camera is positioned directly at the character left flank (pure profile view).
+- The character faces 100% directly towards the LEFT edge of the frame (9 o'clock).
+- BODY SILHOUETTE: Only the LEFT side of the body is visible. Slender narrow vertical side profile.
+- The LEFT ARM hangs in front, the RIGHT ARM and right shoulder are 100% COMPLETELY HIDDEN behind the torso.
+- Chest faces left (pure side profile, NO front chest visible, NO three-quarter angle).
+- Both feet and boots point directly towards the left edge of the screen.
+- HEAD & FACE: Smooth blank porcelain mannequin head in pure side profile silhouette (NO facial features, NO eyes/nose/mouth).
 
 IDENTITY LOCK — keep exactly from 0° reference:
 - Hairstyle side view, hair color, skin tone

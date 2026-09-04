@@ -14,22 +14,22 @@ Plan này là template tái sử dụng cho AI agent. Khi muốn tạo nhân v�
 ```yaml
 # ═══ THAY ĐỔI PHẦN NÀY CHO NHÂN VẬT MỚI ═══
 character:
-  name: "Lâm Tiêu (Lin Xiao)"
-  gender: "female"
-  age: "young adult (18-20)"
-  personality: "Thanh thoát, lạnh lùng nhưng thiện lương. Kiếm khách tu tiên."
-  combat_style: "Kiếm thuật phiêu diêu + Băng giá nguyên tố"
+  name: "Dạ Hàn (Ye Han / Shadow Blade)"
+  gender: "male"
+  age: "young adult (20-22)"
+  personality: "Lạnh lùng, quyết đoán, phong trần bí ẩn. Hắc y kiếm khách."
+  combat_style: "Ám ảnh tốc độ kiếm thuật + Hắc lôi âm ảnh"
   
   # Ngoại hình
-  hair: "Long silky platinum white hair with twin front braids, glowing jade hairpin"
-  skin: "Fair porcelain skin tone"
-  outfit: "Xianxia flowing silk daoist robes with wide sleeves, floating ribbons"
-  primary_color: "Pure White & Soft Cyan Jade (#00E5FF)"
-  accent_color: "Soft Platinum & Lilac Purple"
+  hair: "Layered spiky long snowy white hair tied in a high ponytail with silver ring, sharp side bangs"
+  skin: "Fair pale porcelain skin tone"
+  outfit: "Sleek layered pitch-black Xianxia martial artist robes with silver trim, dark leather vambraces and wide belt sash"
+  primary_color: "Midnight Obsidian Black (#111111)"
+  accent_color: "Polished Silver & Dark Charcoal"
   
   # Vũ khí & Phép thuật
-  weapon: "Enchanted Flying Sword (Lam Ngoc Kiem)"
-  spell_element: "Ice & Cyan Frost Aura"
+  weapon: "Obsidian Dark Katana / Black Shadow Sword"
+  spell_element: "Dark Shadow & Silver Spark Aura"
   
   # Art style
   style: "2D Xianxia/Fantasy anime chibi style, bold clean linework, flat cel-shaded coloring"
@@ -61,32 +61,40 @@ API: IMAGE_ASPECT_RATIO_PORTRAIT
 
 ---
 
-### Tầng 2: Tạo 4 Góc Còn Lại (Ref = ảnh 0°)
+### Tầng 2: Tạo 4 Góc Còn Lại Song Song (Ref = ảnh 0°)
+
+> [!IMPORTANT]
+> **KÍCH HOẠT SONG SONG 4 SLOTS NGAY LẬP TỨC (`asyncio.gather`):**
+> - Cả 4 góc (45°, 90°, 135°, 180°) **chỉ phụ thuộc duy nhất vào ảnh gốc 0°** (`media_id_0`). Chúng hoàn toàn độc lập với nhau.
+> - **TUYỆT ĐỐI KHÔNG chạy tuần tự** (không chờ góc 45° xong rồi mới tạo 90°).
+> - Ngay khi nhận được `media_id_0`, pipeline / AI Agent kích hoạt đồng thời cả 4 task bằng `asyncio.gather(*[gen(ang) for ang in ['45', '90', '135', '180']])`.
+> - Thời gian chờ chỉ bằng thời gian của 1 ảnh (~30-60s) thay vì phải đợi 4 lần nối tiếp (~2-4 phút).
 
 ```
 Bước: image_to_image (reference = media_id_0)
-Tỉ lệ: 9:16
-Chạy song song 4 request, đợi tất cả xong
+Tỉ lệ: 9:16 (IMAGE_ASPECT_RATIO_PORTRAIT)
+Thực thi: 4 requests chạy song song đồng thời (Parallel 4 Slots)
 ```
 
-| Góc | Yêu cầu xoay | Điểm kiểm tra |
-|-----|---------------|----------------|
-| 45° | Xoay sâu 45° sang trái, vai trái gần camera | Vai trái lớn hơn vai phải, ngực chéo |
-| 90° | Side profile thuần trái, chỉ thấy nửa trái | Chỉ thấy 1 vai, 1 tay, profile mỏng |
-| 135° | Lưng-trái, camera nhìn từ phía sau bên phải | Thấy lưng, tóc phía sau, vai trái gần |
-| 180° | Sau lưng hoàn toàn, đối xứng | Toàn bộ lưng, tóc phía sau, chân xa camera |
+#### Yêu cầu & Prompt Đặc Biệt Cho Từng Góc:
+
+| Góc | Yêu cầu xoay cơ thể (Override Front Bias) | Điểm kiểm tra giải phẫu (Anatomy Alignment) |
+|-----|--------------------------------------------|---------------------------------------------|
+| **45°** | **Xoay sâu đúng chuẩn 45° (Deep 3/4 Isometric)**<br>*(Tuyệt đối cấm xoay nhẹ 15°–20° hay ngực thẳng hướng camera)* | - Mặt phẳng ngực xoay chéo 45° sang trái.<br>- **Vai trái & ngực trái** vươn ra foreground gần camera.<br>- **Vai phải** kéo lùi sâu ra phía sau thân người.<br>- Bề ngang thân hẹp hơn rõ rệt so với 0°.<br>- Hai mũi chân & ủng chĩa chéo 45° về góc dưới bên trái. |
+| **90°** | **Full Side Profile thuần 100% sang cạnh trái**<br>*(Tuyệt đối cấm thấy góc 3/4 hay ngực trước)* | - Thân người xuất hiện ở dạng lát cắt dọc mảnh mai (slender side profile).<br>- Vai trái đối diện camera; **vai phải & tay phải bị che khuất 100%**.<br>- Hai mũi chân chỉ 100% nằm ngang sang CẠNH TRÁI khung hình. |
+| **135°** | **Lưng lệch trái 135° (Back-Left 3/4)** | - Camera nhìn từ phía sau-phải. Thấy trọn vẹn lưng, tóc sau, tà áo sau.<br>- Vai trái gần camera (phía sau). |
+| **180°** | **Sau lưng hoàn toàn 180° (Symmetrical Rear View)** | - Đối xứng 100%, gáy, búi tóc, trâm, lưng đạo bào, hai gót chân quay về camera. |
 
 **Output**: `media_id_45`, `media_id_90`, `media_id_135`, `media_id_180`
 
 **Validation & Kiểm Định Ảnh** (tích hợp `image_validator.py` + AI Agent Antigravity):
 1. **Basic checks (Code tự động)**: Kích thước, tỉ lệ 9:16 portrait, % phông xanh `#00FF00` ≥ 5%, không bị trắng/đen.
-2. **Tự động lưu local**: Ảnh được tải về `output/_validation/angle_{angle}_attempt_{n}.png`.
-3. **AI Agent Antigravity Review trực tiếp**:
-   - AI Agent dùng tool `view_file` xem trực tiếp file ảnh local đã tải.
-   - So sánh trực tiếp ảnh các góc (45°, 90°, 135°, 180°) với ảnh gốc 0° (khớp trang phục, màu sắc, vũ khí, mặt trơn mannequin).
-   - Đảm bảo đúng góc xoay và tư thế Sprite 2D.
-   - Nếu phát hiện lỗi/méo mó: AI Agent tự phân tích điểm sai, tinh chỉnh prompt và retry (tối đa 5 lần) thay vì retry mù.
-4. **Chuyển tầng**: Chỉ khi AI Agent xác nhận ảnh 5 góc đạt chuẩn mới kích hoạt Tầng 3 (sinh 25 video 4s loop).
+2. **Tự động lưu local**: Cả 4 ảnh được tải đồng thời về `output/_validation/angle_{angle}_attempt_{n}.png`.
+3. **AI Agent Antigravity Review trực quan song song**:
+   - AI Agent dùng tool `view_file` xem trực tiếp bộ 4 ảnh.
+   - So sánh trực tiếp góc 45° & 90° để đảm bảo đã xoay đủ độ (loại bỏ lỗi xoay nông 15°-20°), kiểm tra tính đồng nhất trang phục/tóc với ảnh gốc 0°.
+   - Nếu góc nào bị méo/chưa đủ độ xoay: AI Agent chỉ retry riêng góc đó với prompt được tinh chỉnh lại.
+4. **Chuyển tầng**: Khi cả bộ 5 góc đã qua kiểm định đạt chuẩn, kích hoạt Tầng 3 (hàng đợi 5 slots tạo 25 video 4s loop).
 
 ---
 

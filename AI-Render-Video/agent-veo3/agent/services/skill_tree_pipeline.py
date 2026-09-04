@@ -370,7 +370,8 @@ class SkillTreePipeline:
                 m = media_list[0]
                 mid = m.get("name")
                 img_block = m.get("image", {}) if isinstance(m.get("image"), dict) else {}
-                url = img_block.get("fifeUrl") or m.get("fifeUrl")
+                gen_img = img_block.get("generatedImage", {}) if isinstance(img_block.get("generatedImage"), dict) else {}
+                url = gen_img.get("fifeUrl") or img_block.get("fifeUrl") or m.get("fifeUrl")
                 return mid, url
         return None, None
 
