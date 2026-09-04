@@ -44,9 +44,6 @@ def _extract_media_id(result: dict, req_type: str) -> str:
         media = data.get("media", [])
         if media:
             item = media[0]
-            name = item.get("name", "")
-            if name and _is_uuid(name):
-                return name
             gen = item.get("image", {}).get("generatedImage", {})
             val = gen.get("mediaId", "")
             if val and _is_uuid(val):
@@ -58,6 +55,9 @@ def _extract_media_id(result: dict, req_type: str) -> str:
                     if uuid_val:
                         logger.info("Extracted mediaId from %s: %s", url_field, uuid_val)
                         return uuid_val
+            name = item.get("name", "")
+            if name and _is_uuid(name):
+                return name
             if name:
                 logger.warning("media[0].name is not UUID format: %s", name[:30])
             return None

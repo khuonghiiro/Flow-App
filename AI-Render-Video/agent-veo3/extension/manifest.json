@@ -15,9 +15,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://labs.google/fx/tools/flow*",
-        "https://labs.google/fx/*/tools/flow*",
-        "https://labs.google/flow*"
+        "https://labs.google/*"
       ],
       "js": ["content.js"],
       "run_at": "document_start"

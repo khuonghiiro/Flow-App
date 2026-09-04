@@ -127,7 +127,7 @@ async function captureTokenFromFlowTab() {
       await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: false });
       await sleep(3000);
       const retryTabs = await chrome.tabs.query({
-        url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*', 'https://labs.google/flow*'],
+        url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*'],
       });
       if (!retryTabs.length) {
         console.log('[FlowAgent] Flow tab not ready yet after open');
@@ -171,10 +171,27 @@ function connectToAgent() {
     return;
   }
 
+let _heartbeatTimer = null;
+function startWsHeartbeat() {
+  if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+  _heartbeatTimer = setInterval(() => {
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }
+  }, 10000);
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'FLOW_KEEPALIVE') {
+    port.onDisconnect.addListener(() => {});
+  }
+});
+
   ws.onopen = () => {
     console.log('[FlowAgent] Connected to agent');
     chrome.alarms.clear('reconnect');
     setState('idle');
+    startWsHeartbeat();
 
     // Token refresh alarm — 45 min gives buffer before ~60 min expiry
     chrome.alarms.create('token-refresh', { periodInMinutes: 45 });
@@ -217,6 +234,45 @@ function connectToAgent() {
         console.log('[FlowAgent] Received callback secret');
       } else if (msg.type === 'pong') {
         // keepalive response
+      } else if (msg.type === 'ping') {
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'pong' }));
+        }
+      } else if (msg.type === 'update_request_log') {
+        let updated = false;
+        if (msg.id) {
+          const entry = requestLog.find((e) => e.id === msg.id);
+          if (entry) {
+            if (msg.status) entry.status = msg.status;
+            if (msg.outputUrl) entry.outputUrl = msg.outputUrl;
+            updated = true;
+          }
+        }
+        if (!updated && msg.mediaId) {
+          const entry = requestLog.find(
+            (e) =>
+              (e.payloadSummary && e.payloadSummary.includes(msg.mediaId)) ||
+              (e.responseSummary && e.responseSummary.includes(msg.mediaId)),
+          );
+          if (entry) {
+            if (msg.status) entry.status = msg.status;
+            if (msg.outputUrl) entry.outputUrl = msg.outputUrl;
+            updated = true;
+          }
+        }
+        if (!updated) {
+          const vidEntry = requestLog.find(
+            (e) =>
+              ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(e.type) &&
+              (!e.outputUrl || e.status !== 'COMPLETED'),
+          );
+          if (vidEntry) {
+            if (msg.status) vidEntry.status = msg.status;
+            if (msg.outputUrl) vidEntry.outputUrl = msg.outputUrl;
+            updated = true;
+          }
+        }
+        if (updated) broadcastRequestLog();
       }
     } catch (e) {
       console.error('[FlowAgent] Message error:', e);
@@ -225,6 +281,10 @@ function connectToAgent() {
 
   ws.onclose = () => {
     setState('off');
+    if (_heartbeatTimer) {
+      clearInterval(_heartbeatTimer);
+      _heartbeatTimer = null;
+    }
     chrome.alarms.clear('token-refresh');
     if (!manualDisconnect) scheduleReconnect();
   };
@@ -298,22 +358,24 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
 }
 
 async function solveCaptcha(requestId, captchaAction) {
-  const tabs = await chrome.tabs.query({
-    url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*', 'https://labs.google/flow*'],
+  let tabs = await chrome.tabs.query({
+    url: [
+      'https://labs.google/fx/tools/flow*',
+      'https://labs.google/fx/*',
+      'https://labs.google/*',
+    ],
   });
 
-  if (!tabs.length) {
+  // Prefer active tab if multiple are open
+  const targetTab = tabs.find(t => t.active) || tabs[0];
+
+  if (!targetTab) {
     // Auto-open Flow tab and wait briefly before returning error
     try {
-      await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: false });
-      await sleep(3000);
-      // Retry tab query after opening
-      const retryTabs = await chrome.tabs.query({
-        url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*'],
-      });
-      if (!retryTabs.length) return { error: 'NO_FLOW_TAB' };
+      const newTab = await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: false });
+      await sleep(4000);
       const resp = await Promise.race([
-        requestCaptchaFromTab(retryTabs[0].id, requestId, captchaAction),
+        requestCaptchaFromTab(newTab.id, requestId, captchaAction),
         new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
       ]);
       return resp;
@@ -324,7 +386,7 @@ async function solveCaptcha(requestId, captchaAction) {
 
   try {
     const resp = await Promise.race([
-      requestCaptchaFromTab(tabs[0].id, requestId, captchaAction),
+      requestCaptchaFromTab(targetTab.id, requestId, captchaAction),
       new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
     ]);
     return resp;
@@ -564,9 +626,21 @@ chrome.runtime.onMessage.addListener((msg, _, reply) => {
     return true;
   }
 
+  if (msg.type === 'CLEAR_REQUEST_LOG') {
+    requestLog = [];
+    broadcastRequestLog();
+    reply({ ok: true });
+    return true;
+  }
+
+  if (msg.type === 'RELOAD_EXTENSION') {
+    chrome.runtime.reload();
+    return;
+  }
+
   if (msg.type === 'OPEN_FLOW_TAB') {
     chrome.tabs.query({
-      url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*/tools/flow*'],
+      url: ['https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*', 'https://labs.google/*'],
     }).then((tabs) => {
       if (tabs.length) {
         chrome.tabs.update(tabs[0].id, { active: true });
@@ -607,8 +681,8 @@ chrome.runtime.onMessage.addListener((msg, _, reply) => {
 
 function handleTrpcMediaUrls(trpcUrl, bodyText) {
   try {
-    // Extract all fresh GCS signed URLs
-    const urlRegex = /https:\/\/storage\.googleapis\.com\/ai-sandbox-videofx\/(?:image|video)\/[0-9a-f-]{36}\?[^"'\s]+/g;
+    // Extract all fresh signed URLs (flow-content.google or legacy GCS)
+    const urlRegex = /https:\/\/(?:flow-content\.google|storage\.googleapis\.com\/ai-sandbox-videofx)\/(?:image|video)\/[0-9a-f-]{36}\?[^"'\s]+/g;
     const matches = bodyText.match(urlRegex) || [];
     if (!matches.length) return;
 
@@ -630,6 +704,18 @@ function handleTrpcMediaUrls(trpcUrl, bodyText) {
 
     console.log(`[FlowAgent] Captured ${entries.length} fresh media URLs from TRPC`);
     // URL refresh is silent — don't show in request log
+
+    // Update matching video/upscale entries in requestLog if done
+    for (const item of entries) {
+      if (item.mediaType === 'video') {
+        const vidEntry = requestLog.find(e => ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(e.type) && (!e.outputUrl || e.status !== 'COMPLETED'));
+        if (vidEntry) {
+          vidEntry.outputUrl = item.url;
+          vidEntry.status = 'COMPLETED';
+          broadcastRequestLog();
+        }
+      }
+    }
 
     // Forward to agent for DB update
     if (ws?.readyState === WebSocket.OPEN) {
@@ -657,11 +743,9 @@ let _telemetrySessionId = `;${Date.now()}`;
 function _rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
 function _buildBatchLogPayload() {
-  const events = [];
   const types = ['FLOW_IMAGE_LATENCY', 'FLOW_VIDEO_LATENCY'];
-  const count = _rand(1, 3);
-  for (let i = 0; i < count; i++) {
-    events.push({
+  return {
+    appEvents: Array.from({ length: _rand(1, 3) }, () => ({
       event: types[_rand(0, types.length - 1)],
       eventProperties: [
         { key: 'CURRENT_TIME_MS', doubleValue: Date.now() },
@@ -671,79 +755,46 @@ function _buildBatchLogPayload() {
       ],
       eventMetadata: { sessionId: _telemetrySessionId },
       eventTime: new Date().toISOString(),
-    });
-  }
-  return { appEvents: events };
+    })),
+  };
 }
 
 function _buildFrontendEventsPayload() {
-  const eventTypes = [
-    'FLOW_IMAGE_LATENCY', 'FLOW_VIDEO_LATENCY', 'GRID_SCROLL_DEPTH',
-    'FLOW_PROJECT_OPEN', 'FLOW_SCENE_VIEW',
-  ];
-  const count = _rand(1, 4);
-  const events = [];
-  for (let i = 0; i < count; i++) {
-    const et = eventTypes[_rand(0, eventTypes.length - 1)];
-    const params = {
-      USER_AGENT: { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: _UA },
-      IS_DESKTOP: { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: 'true' },
-    };
-    if (et.includes('LATENCY')) {
-      params.CURRENT_TIME_MS = { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: String(Date.now()) };
-      params.DURATION_MS = { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: String(_rand(100, 600)) };
-    }
-    if (et === 'GRID_SCROLL_DEPTH') {
-      params.MEDIA_GENERATION_PAYGATE_TIER = { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: 'PAYGATE_TIER_TWO' };
-    }
-    events.push({
-      eventType: et,
-      metadata: {
-        sessionId: _telemetrySessionId,
-        createTime: new Date().toISOString(),
-        additionalParams: params,
-      },
-    });
-  }
-  return { events };
+  const eventTypes = ['FLOW_IMAGE_LATENCY', 'FLOW_VIDEO_LATENCY', 'GRID_SCROLL_DEPTH', 'FLOW_PROJECT_OPEN', 'FLOW_SCENE_VIEW'];
+  return {
+    events: Array.from({ length: _rand(1, 4) }, () => {
+      const et = eventTypes[_rand(0, eventTypes.length - 1)];
+      const params = {
+        USER_AGENT: { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: _UA },
+        IS_DESKTOP: { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: 'true' },
+      };
+      if (et.includes('LATENCY')) {
+        params.CURRENT_TIME_MS = { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: String(Date.now()) };
+        params.DURATION_MS = { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: String(_rand(100, 600)) };
+      }
+      if (et === 'GRID_SCROLL_DEPTH') params.MEDIA_GENERATION_PAYGATE_TIER = { '@type': 'type.googleapis.com/google.protobuf.StringValue', value: 'PAYGATE_TIER_TWO' };
+      return { eventType: et, metadata: { sessionId: _telemetrySessionId, createTime: new Date().toISOString(), additionalParams: params } };
+    }),
+  };
 }
 
 async function sendTelemetry() {
   if (!flowKey || state === 'off') return;
-
-  const headers = {
-    'Content-Type': 'text/plain;charset=UTF-8',
-    'authorization': `Bearer ${flowKey}`,
-  };
-
-  // Telemetry is silent — don't show in request log
+  const headers = { 'Content-Type': 'text/plain;charset=UTF-8', authorization: `Bearer ${flowKey}` };
   try {
-    if (Math.random() < 0.5) {
-      await fetch(`https://aisandbox-pa.googleapis.com/v1:batchLog`, {
-        method: 'POST', headers, credentials: 'include',
-        body: JSON.stringify(_buildBatchLogPayload()),
-      });
-    } else {
-      await fetch(`https://aisandbox-pa.googleapis.com/v1/flow:batchLogFrontendEvents`, {
-        method: 'POST', headers, credentials: 'include',
-        body: JSON.stringify(_buildFrontendEventsPayload()),
-      });
-    }
+    const url = Math.random() < 0.5 ? 'https://aisandbox-pa.googleapis.com/v1:batchLog' : 'https://aisandbox-pa.googleapis.com/v1/flow:batchLogFrontendEvents';
+    const body = Math.random() < 0.5 ? _buildBatchLogPayload() : _buildFrontendEventsPayload();
+    await fetch(url, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(body) });
   } catch {}
 }
 
-// Send telemetry at random intervals (45-120s) to look organic
 function scheduleTelemetry() {
-  const delay = _rand(45, 120) * 1000;
   setTimeout(async () => {
     await sendTelemetry();
-    scheduleTelemetry(); // reschedule with new random interval
-  }, delay);
+    scheduleTelemetry();
+  }, _rand(45, 120) * 1000);
 }
 
-// Refresh session ID every ~30min like a real user
 setInterval(() => { _telemetrySessionId = `;${Date.now()}`; }, _rand(25, 35) * 60 * 1000);
-
 scheduleTelemetry();
-
 console.log('[FlowAgent] Extension loaded');

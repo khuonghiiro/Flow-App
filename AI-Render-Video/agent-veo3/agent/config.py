@@ -31,7 +31,7 @@ STALE_PROCESSING_TIMEOUT = int(os.environ.get("STALE_PROCESSING_TIMEOUT", "600")
 
 # ─── Model Keys (loaded from models.json for easy updates) ──
 _MODELS_FILE = Path(__file__).parent / "models.json"
-with open(_MODELS_FILE) as _f:
+with open(_MODELS_FILE, encoding="utf-8") as _f:
     _MODELS = json.load(_f)
 
 VIDEO_MODELS = _MODELS["video_models"]

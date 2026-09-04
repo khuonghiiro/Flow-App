@@ -42,12 +42,18 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function badgeHtml(status) {
-  if (status === 'COMPLETED' || status === 'success') {
+function badgeHtml(status, type = '', entry = null) {
+  const isAsync = ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(type);
+  if (status === 'COMPLETED' || (isAsync && entry?.outputUrl)) {
+    return '<span class="badge badge-ok">&#10003; done</span>';
+  } else if (status === 'success') {
+    if (isAsync) {
+      return '<span class="badge badge-proc">&#9203; queued</span>';
+    }
     return '<span class="badge badge-ok">&#10003; done</span>';
   } else if (status === 'FAILED' || status === 'failed' || (typeof status === 'number' && status >= 400)) {
     return '<span class="badge badge-fail">&#10007; fail</span>';
-  } else if (status === 'PROCESSING') {
+  } else if (status === 'PROCESSING' || status === 'processing') {
     return '<span class="badge badge-proc">&#9203; gen...</span>';
   } else {
     return '<span class="badge badge-proc">&#9203; sent</span>';
@@ -108,7 +114,7 @@ function renderLog(entries) {
         <span class="entry-id">${escHtml(shortId)}</span>
         <span class="entry-type">${escHtml(type)}</span>
         <span class="entry-time">${escHtml(time)}</span>
-        ${badgeHtml(status)}
+        ${badgeHtml(status, entry.type, entry)}
         ${hasDetails ? '<span class="expand-icon">&#9654;</span>' : '<span class="expand-icon" style="visibility:hidden">&#9654;</span>'}
       </div>
       ${hasDetails ? `<div class="entry-details">${urlDisplay}${payloadDisplay}${responseDisplay}${errorDisplay}</div>` : ''}
@@ -132,7 +138,27 @@ document.getElementById('btn-panel').addEventListener('click', () => {
   });
 });
 
+document.getElementById('btn-clear-log')?.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'CLEAR_REQUEST_LOG' }, () => {
+    if (chrome.runtime.lastError) return;
+    renderLog([]);
+  });
+});
+
+document.getElementById('btn-reload-ext')?.addEventListener('click', () => {
+  const btn = document.getElementById('btn-reload-ext');
+  btn.textContent = '...';
+  chrome.runtime.sendMessage({ type: 'RELOAD_EXTENSION' });
+  setTimeout(() => window.close(), 400);
+});
+
 chrome.runtime.sendMessage({ type: 'REQUEST_LOG' }, (data) => {
   if (chrome.runtime.lastError) return;
   if (data && data.log) renderLog(data.log);
+});
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'REQUEST_LOG_UPDATE' && msg.log) {
+    renderLog(msg.log);
+  }
 });

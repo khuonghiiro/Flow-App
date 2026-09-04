@@ -235,7 +235,7 @@ class FlowClient:
             self._sync_in_progress = False
 
     _UUID_RE = __import__("re").compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
-    _SAFE_URL_RE = __import__("re").compile(r'^https://(storage\.googleapis\.com|lh3\.googleusercontent\.com)/')
+    _SAFE_URL_RE = __import__("re").compile(r'^https://(flow-content\.google|storage\.googleapis\.com|lh3\.googleusercontent\.com)/')
 
     async def _refresh_media_urls(self, urls: list[dict]):
         """Update scene/character URLs in DB from fresh TRPC-captured signed URLs.
@@ -267,20 +267,14 @@ class FlowClient:
             for scene in scenes:
                 updates = {}
                 if media_type == "image":
-                    # Update whichever orientation matches
-                    if scene.get("vertical_image_media_id") == media_id:
-                        updates["vertical_image_url"] = url
-                    if scene.get("horizontal_image_media_id") == media_id:
-                        updates["horizontal_image_url"] = url
+                    for prefix in ("vertical_image", "horizontal_image"):
+                        if scene.get(f"{prefix}_media_id") == media_id:
+                            updates[f"{prefix}_url"] = url
                 elif media_type == "video":
-                    if scene.get("vertical_video_media_id") == media_id:
-                        updates["vertical_video_url"] = url
-                    if scene.get("horizontal_video_media_id") == media_id:
-                        updates["horizontal_video_url"] = url
-                    if scene.get("vertical_upscale_media_id") == media_id:
-                        updates["vertical_upscale_url"] = url
-                    if scene.get("horizontal_upscale_media_id") == media_id:
-                        updates["horizontal_upscale_url"] = url
+                    for prefix in ("vertical_video", "horizontal_video", "vertical_upscale", "horizontal_upscale"):
+                        if scene.get(f"{prefix}_media_id") == media_id:
+                            updates[f"{prefix}_url"] = url
+                            updates[f"{prefix}_status"] = "COMPLETED"
                 if updates:
                     await crud.update_scene(scene["id"], **updates)
                     updated += 1
@@ -364,9 +358,25 @@ class FlowClient:
                 )
                 continue
 
+            if isinstance(last_result, dict) and "_req_id" not in last_result:
+                last_result["_req_id"] = req_id
             return last_result
 
+        if isinstance(last_result, dict) and "_req_id" not in last_result:
+            last_result["_req_id"] = req_id
         return last_result
+
+    async def notify_request_status(
+        self, req_id: str = "", media_id: str = "", status: str = "COMPLETED", output_url: str = ""
+    ):
+        """Notify extension to update request log status for an async job."""
+        msg = {"type": "update_request_log", "id": req_id, "mediaId": media_id, "status": status, "outputUrl": output_url}
+        raw = json.dumps(msg)
+        for ws in list(self._extensions.keys()):
+            try:
+                await ws.send(raw)
+            except Exception as e:
+                logger.debug("Failed to send notify to ws: %s", e)
 
     def _build_url(self, endpoint_key: str, **kwargs) -> str:
         """Build full API URL."""
@@ -506,7 +516,9 @@ class FlowClient:
                               project_id: str, scene_id: str,
                               aspect_ratio: str = "VIDEO_ASPECT_RATIO_PORTRAIT",
                               end_image_media_id: str = None,
-                              user_paygate_tier: str = "PAYGATE_TIER_TWO") -> dict:
+                              user_paygate_tier: str = "PAYGATE_TIER_TWO",
+                              duration: Optional[float] = None,
+                              crop_coordinates: Optional[dict] = None) -> dict:
         """Generate video from start image (i2v).
 
         Two sub-types:
@@ -514,26 +526,60 @@ class FlowClient:
         - start_end_frame_2_video (i2v_fl): startImage + endImage (for scene chaining)
         """
         gen_type = "start_end_frame_2_video" if end_image_media_id else "frame_2_video"
-        model_key = VIDEO_MODELS.get(user_paygate_tier, {}).get(gen_type, {}).get(aspect_ratio)
+        type_cfg = VIDEO_MODELS.get(user_paygate_tier, {}).get(gen_type, {})
+
+        model_key = None
+        if gen_type == "start_end_frame_2_video" and duration is not None:
+            durations_cfg = type_cfg.get("durations", {})
+            dur_int = int(round(float(duration)))
+            dur_key = "4" if dur_int <= 5 else ("6" if dur_int <= 7 else "8")
+            dur_entry = durations_cfg.get(dur_key)
+            if isinstance(dur_entry, dict):
+                model_key = dur_entry.get(aspect_ratio)
+            elif isinstance(dur_entry, str):
+                model_key = dur_entry
+
+        if not model_key:
+            model_key = type_cfg.get(aspect_ratio)
 
         if not model_key:
             return {"error": f"No model for tier={user_paygate_tier} type={gen_type} ratio={aspect_ratio}"}
 
+        # Determine normalized crop coordinates
+        if crop_coordinates:
+            crop_coords = crop_coordinates
+        elif aspect_ratio == "VIDEO_ASPECT_RATIO_LANDSCAPE":
+            crop_coords = {"top": 0.3430232558139535, "left": 0, "bottom": 0.6569767441860466, "right": 1}
+        else:
+            crop_coords = {"top": 0.003875968992248007, "left": 0, "bottom": 0.9961240310077519, "right": 1}
+
         request = {
+            "outputSpec": {
+                "resolution": "VIDEO_RESOLUTION_720P",
+            },
             "aspectRatio": aspect_ratio,
             "seed": int(time.time()) % 10000,
             "textInput": {"structuredPrompt": {"parts": [{"text": prompt}]}},
             "videoModelKey": model_key,
-            "startImage": {"mediaId": start_image_media_id},
-            "metadata": {"sceneId": scene_id},
+            "startImage": {
+                "mediaId": start_image_media_id,
+                "cropCoordinates": crop_coords,
+            },
+            "metadata": {},
         }
 
         if end_image_media_id:
-            request["endImage"] = {"mediaId": end_image_media_id}
+            request["endImage"] = {
+                "mediaId": end_image_media_id,
+                "cropCoordinates": crop_coords,
+            }
 
         endpoint_key = "generate_video_start_end" if end_image_media_id else "generate_video"
         body = {
-            "mediaGenerationContext": {"batchId": f"{uuid.uuid4()}"},
+            "mediaGenerationContext": {
+                "batchId": f"{uuid.uuid4()}",
+                "audioFailurePreference": "BLOCK_SILENCED_VIDEOS",
+            },
             "clientContext": self._client_context(project_id, user_paygate_tier),
             "requests": [request],
             "useV2ModelConfig": True,
@@ -627,9 +673,38 @@ class FlowClient:
             "captchaAction": "VIDEO_GENERATION",
         }, timeout=60)
 
-    async def check_video_status(self, operations: list[dict]) -> dict:
-        """Check status of video generation operations."""
-        body = {"operations": operations}
+    async def check_video_status(
+        self,
+        operations: Optional[list[dict]] = None,
+        media: Optional[list[dict]] = None,
+    ) -> dict:
+        """Check status of video generation operations or workflow media.
+
+        Supports:
+        - Legacy schema: {"operations": [{"operation": {"name": ...}}]}
+        - Workflow / Frame-to-Frame schema: {"media": [{"name": "<mediaId>", "projectId": "<projectId>"}]}
+        """
+        if media:
+            body = {"media": media}
+        elif operations and any(
+            op.get("_workflow_mode")
+            or "projectId" in op
+            or ("name" in op and "operation" not in op)
+            for op in operations
+        ):
+            media_items = []
+            for op in operations:
+                mid = op.get("_primary_media_id") or op.get("name") or op.get("operation", {}).get("name")
+                pid = op.get("projectId") or op.get("project_id", "")
+                if mid:
+                    item = {"name": mid}
+                    if pid:
+                        item["projectId"] = pid
+                    media_items.append(item)
+            body = {"media": media_items}
+        else:
+            body = {"operations": operations or []}
+
         url = self._build_url("check_video_status")
         return await self._send("api_request", {
             "url": url,
@@ -691,21 +766,11 @@ class FlowClient:
         }
 
         url = self._build_url("upload_image")
-        result = await self._send("api_request", {
-            "url": url,
-            "method": "POST",
-            "headers": random_headers(),
-            "body": body,
-        }, timeout=60)
-
-        # Extract media.name for convenience (used as mediaId in video gen)
+        result = await self._send("api_request", {"url": url, "method": "POST", "headers": random_headers(), "body": body}, timeout=60)
         if not _is_ws_error(result):
-            data = result.get("data", {})
-            if isinstance(data, dict):
-                media = data.get("media", {})
-                if isinstance(media, dict) and media.get("name"):
-                    result["_mediaId"] = media["name"]
-
+            media = result.get("data", {}).get("media", {}) if isinstance(result.get("data"), dict) else {}
+            if isinstance(media, dict) and media.get("name"):
+                result["_mediaId"] = media["name"]
         return result
 
 

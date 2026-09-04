@@ -92,7 +92,7 @@ def _save_raw_bytes(
     return None
 
 
-def _extract_operations(result: dict) -> list[dict]:
+def _extract_operations(result: dict, project_id: str = "") -> list[dict]:
     """Extract operations list from video gen / upscale submit response.
 
     Supports two response schemas:
@@ -102,12 +102,17 @@ def _extract_operations(result: dict) -> list[dict]:
                   "media": [{"name": "...", ...}]}}
     """
     data = result.get("data", result)
+    req_id = result.get("_req_id") or (data.get("_req_id") if isinstance(data, dict) else "")
     ops = data.get("operations", [])
     if ops:
         for op in ops:
             op_name = op.get("operation", {}).get("name")
             if not op_name:
                 logger.warning("Operation missing name: %s", op)
+            if project_id and not op.get("projectId"):
+                op["projectId"] = project_id
+            if req_id and not op.get("_req_id"):
+                op["_req_id"] = req_id
         return ops
 
     # NEW schema: workflows + media → synthesize operation entries
@@ -124,17 +129,22 @@ def _extract_operations(result: dict) -> list[dict]:
         primary_media_id = meta.get("primaryMediaId", "")
         if not wf_name or not primary_media_id:
             continue
+        m_item = media_by_id.get(primary_media_id, {})
+        pid = m_item.get("projectId") or project_id
         synthesized.append({
             "operation": {
                 "name": wf_name,
                 "metadata": {"video": {"mediaId": primary_media_id}},
             },
+            "name": primary_media_id,
+            "projectId": pid,
             "status": "MEDIA_GENERATION_STATUS_PENDING",
             "_workflow_mode": True,
             "_primary_media_id": primary_media_id,
+            "_req_id": req_id,
         })
     if synthesized:
-        logger.info("Detected workflow-schema response: %d workflow(s) → synthesized", len(synthesized))
+        logger.info("Detected workflow-schema response: %d workflow(s) → synthesized (projectId=%s)", len(synthesized), project_id[:8] if project_id else "none")
     return synthesized
 
 
@@ -142,6 +152,8 @@ async def _poll_workflows(
     client: FlowClient,
     operations: list[dict],
     timeout: int,
+    scene_id: str = "",
+    orientation: str = "HORIZONTAL",
 ) -> dict:
     """Poll workflow-mode operations (Low Priority). Flow returns MP4 binary
     inline as base64 in `video.encodedVideo` — decode and save to disk, then
@@ -166,6 +178,67 @@ async def _poll_workflows(
         await asyncio.sleep(poll_interval)
         elapsed += poll_interval
 
+        # 1. Check if DB scene was already updated with URL (e.g. by TRPC intercept)
+        if scene_id:
+            from agent.db import crud
+            scene_row = await crud.get_scene(scene_id)
+            if scene_row:
+                prefix = "vertical" if orientation == "VERTICAL" else "horizontal"
+                vid_url = scene_row.get(f"{prefix}_video_url")
+                if vid_url:
+                    for op in operations:
+                        mid = op.get("_primary_media_id", "")
+                        if mid:
+                            completed[mid] = {"url": vid_url, "path": ""}
+                    if len(completed) == len(operations):
+                        logger.info("Workflow completed via TRPC intercept URL: %s", vid_url[:60])
+                        break
+
+        # 2. Check status via batchCheckAsyncVideoGenerationStatus (handles new media schema)
+        remaining_ops = [op for op in operations if op.get("_primary_media_id") not in completed]
+        if remaining_ops:
+            if scene_id:
+                from agent.db import crud
+                s_row = await crud.get_scene(scene_id)
+                if s_row and s_row.get("_project_id"):
+                    for op in remaining_ops:
+                        if not op.get("projectId"):
+                            op["projectId"] = s_row["_project_id"]
+            status_res = await client.check_video_status(remaining_ops)
+            if not _is_error(status_res):
+                sdata = status_res.get("data", status_res)
+                for m in sdata.get("media", []):
+                    mid = m.get("name", "")
+                    mstatus = (
+                        m.get("mediaMetadata", {})
+                         .get("mediaStatus", {})
+                         .get("mediaGenerationStatus", "")
+                    )
+                    if mstatus in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
+                        f_url = m.get("video", {}).get("fifeUrl") or m.get("fifeUrl") or ""
+                        db_url = ""
+                        if scene_id:
+                            from agent.db import crud
+                            s_row = await crud.get_scene(scene_id)
+                            if s_row:
+                                pfx = "vertical" if orientation == "VERTICAL" else "horizontal"
+                                db_url = s_row.get(f"{pfx}_video_url") or ""
+                        url_to_use = db_url or f_url or f"https://flow-content.google/video/{mid}"
+                        completed[mid] = {"url": url_to_use, "path": ""}
+                        if scene_id and url_to_use:
+                            from agent.db import crud
+                            pfx = "vertical" if orientation == "VERTICAL" else "horizontal"
+                            await crud.update_scene(scene_id, **{
+                                f"{pfx}_video_url": url_to_use,
+                                f"{pfx}_video_status": "COMPLETED",
+                            })
+                        logger.info("Workflow media %s SUCCESSFUL via batchCheckAsyncVideoGenerationStatus (url=%s)", mid[:8], url_to_use[:60])
+                    elif mstatus in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
+                        return {"error": f"Workflow media {mid[:8]} generation failed"}
+
+        if len(completed) == len(operations):
+            break
+
         for op in operations:
             mid = op.get("_primary_media_id", "")
             if not mid or mid in completed:
@@ -176,11 +249,34 @@ async def _poll_workflows(
                 logger.debug("Workflow media %s not ready (status=%s)", mid[:8], status)
                 continue
 
-            # Direct top-level (not wrapped in `data`)
-            payload = media_resp.get("data", media_resp) if isinstance(media_resp.get("data"), dict) and "video" in media_resp.get("data", {}) else media_resp
-            video_block = payload.get("video", {}) if isinstance(payload, dict) else {}
-            encoded = video_block.get("encodedVideo", "") if isinstance(video_block, dict) else ""
+            # Direct top-level or wrapped in `data`/`media`
+            payload = media_resp.get("data", media_resp)
+            if not isinstance(payload, dict):
+                payload = {}
+            media_arr = payload.get("media", [])
+            media_item = media_arr[0] if isinstance(media_arr, list) and media_arr and isinstance(media_arr[0], dict) else {}
+            video_block = payload.get("video", {}) or media_item.get("video", {})
+            if not isinstance(video_block, dict):
+                video_block = {}
 
+            # Check 1: Direct CDN URL (fifeUrl, servingUri, videoUri, downloadUrl)
+            fife_url = (
+                video_block.get("fifeUrl")
+                or payload.get("fifeUrl")
+                or media_item.get("fifeUrl")
+                or video_block.get("servingUri")
+                or payload.get("servingUri")
+                or video_block.get("videoUri")
+                or payload.get("videoUri")
+                or payload.get("downloadUrl")
+            )
+            if fife_url:
+                completed[mid] = {"url": fife_url, "path": ""}
+                logger.info("Workflow media %s ready via URL: %s", mid[:8], fife_url[:60])
+                continue
+
+            # Check 2: Inline Base64 encodedVideo
+            encoded = video_block.get("encodedVideo", "") or payload.get("encodedVideo", "")
             if not encoded:
                 continue
             try:
@@ -210,16 +306,23 @@ async def _poll_workflows(
                 mid = op.get("_primary_media_id", "")
                 wf_name = op.get("operation", {}).get("name", "")
                 local = completed.get(mid, {}).get("path", "")
-                # Use file:// so downstream sees a URL-shaped string
-                local_url = f"file://{_os.path.abspath(local)}" if local else ""
+                res_url = completed.get(mid, {}).get("url") or (f"file://{_os.path.abspath(local)}" if local else "")
                 synth_ops.append({
                     "operation": {
                         "name": wf_name,
-                        "metadata": {"video": {"mediaId": mid, "fifeUrl": local_url}},
+                        "metadata": {"video": {"mediaId": mid, "fifeUrl": res_url}},
                     },
                     "status": "MEDIA_GENERATION_STATUS_SUCCESSFUL",
                 })
             logger.info("All %d workflow(s) completed after %ds", len(operations), elapsed)
+            for op in operations:
+                mid = op.get("_primary_media_id", "")
+                r_id = op.get("_req_id", "")
+                res_url = completed.get(mid, {}).get("url") or (f"file://{_os.path.abspath(completed.get(mid, {}).get('path', ''))}" if completed.get(mid, {}).get("path") else "")
+                try:
+                    await client.notify_request_status(req_id=r_id, media_id=mid, status="COMPLETED", output_url=res_url)
+                except Exception:
+                    pass
             return {"data": {"operations": synth_ops}}
 
     logger.warning("Workflow polling timed out after %ds. Done=%d/%d",
@@ -231,6 +334,8 @@ async def _poll_operations(
     client: FlowClient,
     operations: list[dict],
     timeout: int = VIDEO_POLL_TIMEOUT,
+    scene_id: str = "",
+    orientation: str = "HORIZONTAL",
 ) -> dict:
     """Poll until all operations complete or timeout.
 
@@ -243,8 +348,9 @@ async def _poll_operations(
 
     # Workflow-mode polling: poll media endpoint for each primaryMediaId
     if all(op.get("_workflow_mode") for op in operations):
-        return await _poll_workflows(client, operations, timeout)
+        return await _poll_workflows(client, operations, timeout, scene_id=scene_id, orientation=orientation)
 
+    orig_req_id = operations[0].get("_req_id", "") if operations else ""
     poll_interval = VIDEO_POLL_INTERVAL
     elapsed = 0
     current_ops = operations
@@ -253,6 +359,13 @@ async def _poll_operations(
         await asyncio.sleep(poll_interval)
         elapsed += poll_interval
 
+        if scene_id:
+            from agent.db import crud
+            s_row = await crud.get_scene(scene_id)
+            if s_row and s_row.get("_project_id"):
+                for op in current_ops:
+                    if not op.get("projectId"):
+                        op["projectId"] = s_row["_project_id"]
         status_result = await client.check_video_status(current_ops)
         if _is_error(status_result):
             logger.warning("Status poll error: %s", status_result.get("error"))
@@ -260,6 +373,26 @@ async def _poll_operations(
 
         data = status_result.get("data", status_result)
         ops = data.get("operations", [])
+        if not ops and isinstance(data.get("media"), list):
+            # Normalize NEW schema (`media`) from batchCheckAsyncVideoGenerationStatus
+            ops = []
+            for m in data.get("media", []):
+                gen_status = (
+                    m.get("mediaMetadata", {})
+                     .get("mediaStatus", {})
+                     .get("mediaGenerationStatus", "")
+                )
+                m_name = m.get("name") or m.get("video", {}).get("operation", {}).get("name", "")
+                ops.append({
+                    "operation": {
+                        "name": m_name,
+                        "metadata": {"video": {"mediaId": m.get("name", "")}},
+                    },
+                    "status": gen_status,
+                    "_raw_media": m,
+                    "_req_id": orig_req_id,
+                })
+
         if not ops:
             continue
 
@@ -270,9 +403,9 @@ async def _poll_operations(
 
         for op in ops:
             status = op.get("status", "")
-            if status == "MEDIA_GENERATION_STATUS_SUCCESSFUL":
+            if status in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
                 continue
-            elif status == "MEDIA_GENERATION_STATUS_FAILED":
+            elif status in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
                 op_name = op.get('operation', {}).get('name', '?')
                 # Log full operation for debugging failure reason
                 import json as _json
@@ -287,6 +420,26 @@ async def _poll_operations(
             return {"error": error_msg}
         if all_done:
             logger.info("All %d operations completed after %ds", len(ops), elapsed)
+            for op in ops:
+                mid = (
+                    op.get("operation", {}).get("metadata", {}).get("video", {}).get("mediaId", "")
+                    or op.get("name", "")
+                    or (op.get("_raw_media", {}).get("name", "") if isinstance(op.get("_raw_media"), dict) else "")
+                )
+                r_id = op.get("_req_id", "") or orig_req_id
+                raw_m = op.get("_raw_media", {}) if isinstance(op.get("_raw_media"), dict) else {}
+                v_block = raw_m.get("video", {}) if isinstance(raw_m.get("video"), dict) else {}
+                res_url = (
+                    v_block.get("fifeUrl")
+                    or v_block.get("servingUri")
+                    or v_block.get("videoUri")
+                    or op.get("operation", {}).get("metadata", {}).get("video", {}).get("fifeUrl", "")
+                    or (f"https://flow-content.google/video/{mid}" if mid else "")
+                )
+                try:
+                    await client.notify_request_status(req_id=r_id, media_id=mid, status="COMPLETED", output_url=res_url)
+                except Exception as e:
+                    logger.debug("Failed to notify extension: %s", e)
             return {"data": data}
 
         done_count = sum(1 for o in ops if o.get("status") == "MEDIA_GENERATION_STATUS_SUCCESSFUL")
@@ -432,6 +585,12 @@ class OperationService:
         tier = project.get("user_paygate_tier", "PAYGATE_TIER_TWO") if project else "PAYGATE_TIER_TWO"
         pid = scene.get("_project_id", "0")
         end_id = scene.get(f"{prefix}_end_scene_media_id")
+        duration = scene.get("duration")
+        if duration is None and scene.get("trim_end") is not None and scene.get("trim_start") is not None:
+            try:
+                duration = float(scene["trim_end"]) - float(scene["trim_start"])
+            except (ValueError, TypeError):
+                duration = None
 
         # Chain scenes with end_image: prefer transition_prompt (describes motion between frames)
         if end_id and scene.get("transition_prompt"):
@@ -454,7 +613,7 @@ class OperationService:
         if existing_op and not looks_like_workflow_uuid:
             logger.info("Video gen already submitted (op=%s), re-polling", existing_op[:30])
             operations = [{"operation": {"name": existing_op}, "status": "MEDIA_GENERATION_STATUS_PENDING"}]
-            return await _poll_operations(self._client, operations)
+            return await _poll_operations(self._client, operations, scene_id=scene.get("id", ""), orientation=orientation)
         # else: workflow UUID — fall through and resubmit fresh
 
         submit_result = await self._client.generate_video(
@@ -465,20 +624,28 @@ class OperationService:
             aspect_ratio=aspect,
             end_image_media_id=end_id,
             user_paygate_tier=tier,
+            duration=duration,
         )
 
         if _is_error(submit_result):
             logger.error("[DEBUG] Video gen submit_result IS_ERROR: %s", str(submit_result)[:2000])
             return submit_result
 
-        operations = _extract_operations(submit_result)
+        operations = _extract_operations(submit_result, project_id=pid)
         if not operations:
             logger.error("[DEBUG] Video gen NO_OPERATIONS submit_result: %s", str(submit_result)[:2000])
             return {"error": "Video gen returned no operations"}
 
         op_name = operations[0].get("operation", {}).get("name", "")
+        primary_media_id = operations[0].get("_primary_media_id")
         if request_id:
-            await crud.update_request(request_id, request_id=op_name)
+            update_kw = {"request_id": op_name}
+            if primary_media_id:
+                update_kw["media_id"] = primary_media_id
+            await crud.update_request(request_id, **update_kw)
+
+        if primary_media_id and scene.get("id"):
+            await crud.update_scene(scene["id"], **{f"{prefix}_video_media_id": primary_media_id})
 
         status = operations[0].get("status", "")
         if status == "MEDIA_GENERATION_STATUS_SUCCESSFUL":
@@ -488,7 +655,7 @@ class OperationService:
             return {"error": "Video generation failed immediately"}
 
         logger.info("Video gen submitted, polling %d operations...", len(operations))
-        return await _poll_operations(self._client, operations)
+        return await _poll_operations(self._client, operations, scene_id=scene.get("id", ""), orientation=orientation)
 
     async def generate_scene_video_refs(self, scene: dict, orientation: str,
                                         request_id: str = "") -> dict:
@@ -583,7 +750,7 @@ class OperationService:
         if _is_error(submit_result):
             return submit_result
 
-        operations = _extract_operations(submit_result)
+        operations = _extract_operations(submit_result, project_id=pid)
         if not operations:
             return {"error": "R2V returned no operations"}
 
@@ -636,7 +803,8 @@ class OperationService:
         if _is_error(submit_result):
             return submit_result
 
-        operations = _extract_operations(submit_result)
+        pid = scene.get("_project_id", "0")
+        operations = _extract_operations(submit_result, project_id=pid)
         if not operations:
             return {"error": "Upscale returned no operations"}
 

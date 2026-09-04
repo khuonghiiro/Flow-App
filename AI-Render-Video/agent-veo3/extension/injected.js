@@ -3,66 +3,57 @@
  * Also intercepts TRPC fetch responses to capture fresh signed media URLs.
  */
 (function () {
-  if (window.__FLOWKIT_INJECTED__) {
-    console.log('[FlowKit Injected] Already loaded in main world');
+  if (window.__FLOW_INJECTED__) {
+    console.log('[FlowAgent] injected.js already initialized');
     return;
   }
-  window.__FLOWKIT_INJECTED__ = true;
+  window.__FLOW_INJECTED__ = true;
 
   const SITE_KEY = '6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV';
 
   // ─── TRPC Response Monitor ─────────────────────────────────
-  const _originalFetch = window.fetch;
-  window.fetch = async function (...args) {
-    const response = await _originalFetch.apply(this, args);
-    try {
-      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
-      if (url.includes('/fx/api/trpc/') && response.ok) {
-        const clone = response.clone();
-        clone.text().then(text => {
-          if (text.includes('storage.googleapis.com/ai-sandbox-videofx/')) {
-            window.postMessage({ type: 'TRPC_MEDIA_URLS', url, body: text }, '*');
-            window.dispatchEvent(new CustomEvent('TRPC_MEDIA_URLS', {
-              detail: { url, body: text },
-            }));
-          }
-        }).catch(() => {});
-      }
-    } catch {}
-    return response;
-  };
+  if (!window._flowOriginalFetch) {
+    window._flowOriginalFetch = window.fetch;
+    window.fetch = async function (...args) {
+      const response = await window._flowOriginalFetch.apply(this, args);
+      try {
+        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+        // Only intercept TRPC calls on labs.google that return project/flow data
+        if (url.includes('/fx/api/trpc/') && response.ok) {
+          const clone = response.clone();
+          clone.text().then(text => {
+            if (text.includes('flow-content.google') || text.includes('storage.googleapis.com/ai-sandbox-videofx/')) {
+              window.dispatchEvent(new CustomEvent('TRPC_MEDIA_URLS', {
+                detail: { url, body: text },
+              }));
+            }
+          }).catch(() => {});
+        }
+      } catch {}
+      return response;
+    };
+  }
 
-  async function handleGetCaptcha(requestId, pageAction) {
+  window.addEventListener('GET_CAPTCHA', async ({ detail }) => {
+    const { requestId, pageAction } = detail;
     try {
       await waitForGrecaptcha();
-      const token = await window.grecaptcha.enterprise.execute(SITE_KEY, {
-        action: pageAction || 'IMAGE_GENERATION',
+      const executePromise = window.grecaptcha.enterprise.execute(SITE_KEY, {
+        action: pageAction,
       });
-      console.log('[FlowKit Injected] Captcha token solved for', requestId);
-      window.postMessage({ type: 'CAPTCHA_RESULT', requestId, token }, '*');
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('GRECAPTCHA_EXECUTE_TIMEOUT')), 15000)
+      );
+      const token = await Promise.race([executePromise, timeoutPromise]);
+
       window.dispatchEvent(new CustomEvent('CAPTCHA_RESULT', {
         detail: { requestId, token },
       }));
     } catch (e) {
-      console.error('[FlowKit Injected] Captcha solve error:', e);
-      window.postMessage({ type: 'CAPTCHA_RESULT', requestId, error: e.message || 'UNKNOWN_ERROR' }, '*');
+      console.error('[FlowAgent] grecaptcha error:', e);
       window.dispatchEvent(new CustomEvent('CAPTCHA_RESULT', {
-        detail: { requestId, error: e.message || 'UNKNOWN_ERROR' },
+        detail: { requestId, error: e.message || 'CAPTCHA_EXEC_ERROR' },
       }));
-    }
-  }
-
-  // Support both CustomEvent and postMessage
-  window.addEventListener('GET_CAPTCHA', (e) => {
-    const detail = e.detail || {};
-    const requestId = detail.requestId;
-    const pageAction = detail.pageAction;
-    if (requestId) handleGetCaptcha(requestId, pageAction);
-  });
-
-  window.addEventListener('message', (e) => {
-    if (e.data && e.data.type === 'GET_CAPTCHA') {
-      handleGetCaptcha(e.data.requestId, e.data.pageAction);
     }
   });
 
@@ -77,6 +68,4 @@
       check();
     });
   }
-
-  console.log('[FlowKit Injected] Initialized successfully in main world');
 })();

@@ -130,15 +130,20 @@ function updateRequestLog(entries) {
     const status = entry.status || entry.state || 'pending';
     const error  = entry.error || '';
 
+    const isAsync = ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(entry.type);
     let badgeHtml;
-    if (status === 'COMPLETED' || status === 'success') {
+    if (status === 'COMPLETED' || (isAsync && entry.outputUrl)) {
       badgeHtml = '<span class="badge badge-ok">&#10003; done</span>';
+    } else if (status === 'success') {
+      if (isAsync) {
+        badgeHtml = '<span class="badge badge-proc">&#9203; queued</span>';
+      } else {
+        badgeHtml = '<span class="badge badge-ok">&#10003; done</span>';
+      }
     } else if (status === 'FAILED' || status === 'failed' || (typeof status === 'number' && status >= 400)) {
       badgeHtml = '<span class="badge badge-fail">&#10007; fail</span>';
-    } else if (status === 'PROCESSING') {
+    } else if (status === 'PROCESSING' || status === 'processing') {
       badgeHtml = '<span class="badge badge-proc">&#9203; gen...</span>';
-    } else if (status === 200 || status === 'processing') {
-      badgeHtml = '<span class="badge badge-proc">&#9203; sent</span>';
     } else {
       badgeHtml = '<span class="badge badge-proc">&#9203; sent</span>';
     }
@@ -285,9 +290,29 @@ document.getElementById('btn-token').addEventListener('click', () => {
   });
 });
 
+document.getElementById('btn-clear-log').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'CLEAR_REQUEST_LOG' }, () => {
+    if (chrome.runtime.lastError) return;
+    updateRequestLog([]);
+  });
+});
+
+document.getElementById('btn-reload-ext')?.addEventListener('click', () => {
+  const btn = document.getElementById('btn-reload-ext');
+  btn.textContent = 'Reloading...';
+  chrome.runtime.sendMessage({ type: 'RELOAD_EXTENSION' });
+  setTimeout(() => window.location.reload(), 600);
+});
+
 // ── Init ─────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Keep background worker alive while side panel is open
+  try {
+    const _port = chrome.runtime.connect({ name: 'FLOW_KEEPALIVE' });
+    _port.onDisconnect.addListener(() => {});
+  } catch (e) {}
+
   fetchStatus();
   fetchLog();
 });

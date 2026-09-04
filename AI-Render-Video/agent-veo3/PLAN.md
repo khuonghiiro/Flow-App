@@ -157,13 +157,14 @@ Same as above but add:
 
 | Type | Portrait (TIER_TWO) | Landscape (TIER_TWO) |
 |------|---------------------|----------------------|
-| frame→video | `veo_3_1_i2v_s_fast_portrait_ultra` | `veo_3_1_i2v_s_fast_ultra` |
-| start+end→video | `veo_3_1_i2v_s_fast_portrait_ultra_fl` | `veo_3_1_i2v_s_fast_ultra_fl` |
-| reference→video | `veo_3_0_r2v_fast_portrait_ultra` | `veo_3_0_r2v_fast_ultra` |
+| frame→video | `veo_3_1_i2v_s_fast_portrait` | `veo_3_1_i2v_s_fast` |
+| start+end→video (4s) | `veo_3_1_i2v_s_lite_4s_fl_low_priority` | `veo_3_1_i2v_s_lite_4s_fl_low_priority` |
+| start+end→video (6s) | `veo_3_1_i2v_s_lite_6s_fl_low_priority` | `veo_3_1_i2v_s_lite_6s_fl_low_priority` |
+| start+end→video (8s) | `veo_3_1_i2v_s_lite_8s_fl_low_priority` | `veo_3_1_i2v_s_lite_8s_fl_low_priority` |
+| reference→video | `veo_3_1_r2v_fast_portrait` | `veo_3_1_r2v_fast` |
 | upscale 4K | `veo_3_1_upsampler_4k` | `veo_3_1_upsampler_4k` |
 | upscale 1080p | `veo_3_1_upsampler_1080p` | `veo_3_1_upsampler_1080p` |
 
-TIER_ONE uses non-`_ultra` variants.
 
 ### reCAPTCHA Flow (from production extension)
 

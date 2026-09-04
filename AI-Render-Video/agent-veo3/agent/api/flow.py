@@ -3,6 +3,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from agent.services.flow_client import get_flow_client
+from agent.services.skill_tree_pipeline import (
+    create_pipeline,
+    get_pipeline,
+    list_pipelines,
+)
 
 router = APIRouter(prefix="/flow", tags=["flow"])
 
@@ -23,6 +28,8 @@ class GenerateVideoRequest(BaseModel):
     aspect_ratio: str = "VIDEO_ASPECT_RATIO_PORTRAIT"
     end_image_media_id: Optional[str] = None
     user_paygate_tier: str = "PAYGATE_TIER_ONE"
+    duration: Optional[float] = None
+    crop_coordinates: Optional[dict] = None
 
 
 class GenerateVideoRefsRequest(BaseModel):
@@ -141,6 +148,8 @@ async def check_status(body: CheckStatusRequest):
     return result.get("data", result)
 
 
+
+
 @router.post("/refresh-urls/{project_id}")
 async def refresh_project_urls(project_id: str):
     """Bulk refresh all media URLs for a project via per-media get_media calls."""
@@ -207,3 +216,4 @@ async def upload_image(body: UploadImageRequest):
         raise HTTPException(result.get("status", 502), result.get("error", result.get("data")))
     media_id = result.get("_mediaId")
     return {"media_id": media_id, "raw": result.get("data", result)}
+

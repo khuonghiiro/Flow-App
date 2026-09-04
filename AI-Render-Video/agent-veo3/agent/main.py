@@ -44,6 +44,17 @@ async def ws_handler(websocket):
     # Send callback secret so extension can authenticate HTTP callbacks
     await websocket.send(json.dumps({"type": "callback_secret", "secret": _CALLBACK_SECRET}))
 
+    # Ping heartbeat to keep Chrome MV3 service worker alive
+    async def _heartbeat():
+        try:
+            while True:
+                await asyncio.sleep(15)
+                await websocket.send(json.dumps({"type": "ping"}))
+        except Exception:
+            pass
+
+    heartbeat_task = asyncio.create_task(_heartbeat())
+
     try:
         async for raw in websocket:
             try:
@@ -56,6 +67,7 @@ async def ws_handler(websocket):
     except websockets.ConnectionClosed:
         pass
     finally:
+        heartbeat_task.cancel()
         client.clear_extension(websocket)
         logger.info("Extension disconnected")
 
