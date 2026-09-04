@@ -131,7 +131,7 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
             border: `1.5px solid ${nodeColor}`,
             color: '#38bdf8',
             fontSize: 10,
-            fontWeight: 800,
+            fontWeight: 600,
             whiteSpace: 'nowrap',
             boxShadow: `0 0 16px ${nodeColor}`,
             pointerEvents: 'none',
@@ -164,7 +164,7 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
             animation: 'fadeIn 0.15s ease',
           }}
         >
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: '#ffffff' }}>
             {node.title}
           </div>
           {node.subtitle && (
@@ -174,7 +174,7 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
             <span
               style={{
                 fontSize: 8.5,
-                fontWeight: 800,
+                fontWeight: 600,
                 padding: '1px 6px',
                 borderRadius: 4,
                 background: `${nodeColor}22`,
@@ -187,7 +187,7 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
             </span>
           )}
           {isLeafPromptNode && (
-            <div style={{ fontSize: 8.5, color: nodeColor, marginTop: 2, fontWeight: 700 }}>
+            <div style={{ fontSize: 8.5, color: nodeColor, marginTop: 2, fontWeight: 500 }}>
               ✦ Nhấp để nạp Prompt này vào studio
             </div>
           )}
@@ -265,7 +265,7 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
       <div
         style={{
           fontSize: isRoot ? 13.5 : isPillar ? 12.5 : isHub ? 11.5 : 11,
-          fontWeight: isRoot || isPillar ? 800 : isSelected ? 800 : 700,
+          fontWeight: isRoot || isPillar ? 600 : isSelected ? 600 : 500,
           color: isSelected ? '#ffffff' : isHovered ? nodeColor : '#f1f5f9',
           background: isSelected
             ? nodeColor
@@ -321,3 +321,4 @@ export const SkillTreeNodeComponent = React.memo(SkillTreeNodeBase, (prev, next)
     prev.node.color === next.node.color
   );
 });
+

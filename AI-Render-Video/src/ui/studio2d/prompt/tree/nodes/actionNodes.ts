@@ -20,7 +20,7 @@ const BASE_ACTION_NODES: SkillTreeNode[] = [
     y: 714,
     parentId: 'root_master',
     isHub: true,
-    badge: '43 PROMPTS',
+    badge: '43 prompts',
   },
 
   // ─── 1. ĐỨNG YÊN ───
@@ -102,3 +102,7 @@ export const ACTION_NODES: SkillTreeNode[] = [
   ...LEG_NODES,
   ...COMBINED_NODES,
 ];
+
+
+
+

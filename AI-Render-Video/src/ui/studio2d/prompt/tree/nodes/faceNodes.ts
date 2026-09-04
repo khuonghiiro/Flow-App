@@ -17,7 +17,7 @@ export const FACE_NODES: SkillTreeNode[] = [
     y: 1508,
     parentId: 'root_master',
     isHub: true,
-    badge: '38 PROMPTS',
+    badge: '38 prompts',
   },
 
   // ─── 1. MASTER TIMELINE 8 GIÂY ───
@@ -198,3 +198,6 @@ export const FACE_NODES: SkillTreeNode[] = [
   { id: 'node_f135_disdain', promptId: 'face_135_disdain', title: 'Khinh Bỉ 135°', shortLabel: 'Khinh 135°', icon: '😒', iconPath: '/icons/skill_face_sad.svg', category: 'face', color: '#ec4899', tier: 4, x: -3223, y: 2266, parentId: 'hub_f_deg_135', badge: '135°', promptType: 'video' , generationMode: 'image_to_video', aspectRatio: '1:1', refAngleImageId: 'angle135' },
   { id: 'node_f135_dizzy', promptId: 'face_135_dizzy', title: 'Choáng Váng 135°', shortLabel: 'Choáng 135°', icon: '😵', iconPath: '/icons/skill_face_fear.svg', category: 'face', color: '#ec4899', tier: 4, x: -3069, y: 2151, parentId: 'hub_f_deg_135', badge: '135°', promptType: 'video' , generationMode: 'image_to_video', aspectRatio: '1:1', refAngleImageId: 'angle135' },
 ];
+
+
+

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sparkles, Sliders, Copy, Check } from 'lucide-react';
 
 interface PromptHeaderProps {
@@ -10,6 +9,7 @@ interface PromptHeaderProps {
   copied: boolean;
   viewMode: 'skill_tree' | 'classic_list';
   onToggleViewMode: () => void;
+
 }
 
 export const PromptHeader: React.FC<PromptHeaderProps> = ({
@@ -21,6 +21,7 @@ export const PromptHeader: React.FC<PromptHeaderProps> = ({
   copied,
   viewMode,
   onToggleViewMode,
+
 }) => {
   return (
     <div
@@ -127,6 +128,8 @@ export const PromptHeader: React.FC<PromptHeaderProps> = ({
           <Sliders size={14} />
           {showCustomizer ? 'Ẩn Bộ Chỉnh Tham Số' : '⚙️ Tùy Biến Thông Số'}
         </button>
+
+
 
         <button
           onClick={onCopyActive}

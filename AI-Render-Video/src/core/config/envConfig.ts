@@ -6,6 +6,7 @@
 export interface AppEnvConfig {
   aiMattingUrl: string;
   sidecarUrl: string;
+  flowKitUrl: string;
   ffmpegPath: string;
 }
 
@@ -15,6 +16,7 @@ export interface AppEnvConfig {
 export const ENV_CONFIG: AppEnvConfig = {
   aiMattingUrl: (import.meta.env.VITE_AI_MATTING_URL as string) || 'http://127.0.0.1:5000',
   sidecarUrl: (import.meta.env.VITE_SIDECAR_URL as string) || 'http://127.0.0.1:5050',
+  flowKitUrl: (import.meta.env.VITE_FLOWKIT_URL as string) || 'http://127.0.0.1:8100',
   ffmpegPath: (import.meta.env.VITE_FFMPEG_PATH as string) || 'ffmpeg',
 };
 
@@ -32,6 +34,15 @@ export function getAIMattingApiUrl(path: string): string {
  */
 export function getSidecarApiUrl(path: string): string {
   const base = ENV_CONFIG.sidecarUrl.replace(/\/+$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}
+
+/**
+ * Returns formatted Flow Kit API endpoint URL (FastAPI Port 8100)
+ */
+export function getFlowKitApiUrl(path: string): string {
+  const base = ENV_CONFIG.flowKitUrl.replace(/\/+$/, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${base}${cleanPath}`;
 }

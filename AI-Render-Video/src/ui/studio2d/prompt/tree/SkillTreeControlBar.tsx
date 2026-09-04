@@ -66,7 +66,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
     >
       {/* ─── Branch Filter Pills ─── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
           <Sparkles size={12} color="#f59e0b" /> Nhánh:
         </span>
         {branches.map((b) => {
@@ -83,7 +83,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
               style={{
                 padding: '4px 10px',
                 fontSize: 10,
-                fontWeight: 700,
+                fontWeight: 600,
                 borderRadius: 20,
                 cursor: 'pointer',
                 border: isSelected ? `1.5px solid ${color}` : '1px solid rgba(255, 255, 255, 0.08)',
@@ -111,7 +111,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
             gap: 5,
             padding: '5px 11px',
             fontSize: 10.5,
-            fontWeight: 800,
+            fontWeight: 600,
             borderRadius: 6,
             cursor: 'pointer',
             border: isEditMode
@@ -126,7 +126,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
           }}
         >
           <Move size={12} />
-          {isEditMode ? '✏️ Kéo Thả: BẬT' : '🔒 Khóa'}
+          {isEditMode ? '✏️ Kéo thả: Bật' : '🔒 Khóa'}
         </button>
 
         {/* Alt-drag Hint Badge when Edit Mode is active */}
@@ -139,7 +139,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
               gap: 4,
               padding: '4px 8px',
               fontSize: 10,
-              fontWeight: 700,
+              fontWeight: 600,
               borderRadius: 6,
               background: isAltPressed
                 ? 'rgba(245, 158, 11, 0.25)'
@@ -153,7 +153,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
               userSelect: 'none',
             }}
           >
-            <span>{isAltPressed ? '🔥 [Alt] Đang Kéo Cả Cụm Con' : '💡 Giữ Alt: Kéo Cả Cụm Con'}</span>
+            <span>{isAltPressed ? '🔥 [Alt] Đang kéo cả cụm con' : '💡 Giữ Alt: Kéo cả cụm con'}</span>
           </div>
         )}
 
@@ -171,7 +171,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
             gap: 5,
             padding: '5px 11px',
             fontSize: 10.5,
-            fontWeight: 800,
+            fontWeight: 600,
             borderRadius: 6,
             cursor: 'pointer',
             border: lineStyle === 'orthogonal'
@@ -185,7 +185,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
             transition: 'all 0.15s ease',
           }}
         >
-          {lineStyle === 'orthogonal' ? '🔲 Line: Vuông Góc' : '〰️ Line: Uốn Cong'}
+          {lineStyle === 'orthogonal' ? '🔲 Line: Vuông góc' : '〰️ Line: Uốn cong'}
         </button>
 
         {/* Toggle Canvas Theme: Dark vs Light */}
@@ -198,7 +198,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
             gap: 4,
             padding: '5px 10px',
             fontSize: 10.5,
-            fontWeight: 800,
+            fontWeight: 600,
             borderRadius: 6,
             cursor: 'pointer',
             border: canvasTheme === 'light' ? '1.5px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
@@ -210,7 +210,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
             transition: 'all 0.15s ease',
           }}
         >
-          {canvasTheme === 'dark' ? '🌙 Nền Tối' : '☀️ Nền Sáng'}
+          {canvasTheme === 'dark' ? '🌙 Nền tối' : '☀️ Nền sáng'}
         </button>
 
         {/* Copy / Export Layout Coordinates */}
@@ -223,7 +223,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
             gap: 5,
             padding: '5px 12px',
             fontSize: 10.5,
-            fontWeight: 800,
+            fontWeight: 600,
             borderRadius: 6,
             cursor: 'pointer',
             border: isCustomized
@@ -240,7 +240,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
           }}
         >
           <FileCode size={12} />
-          {isCustomized ? '📋 Đã Sửa — Copy Toạ Độ' : '📋 Xuất Toạ Độ'}
+          {isCustomized ? '📋 Đã sửa — Copy toạ độ' : '📋 Xuất toạ độ'}
         </button>
 
         {/* Zoom Controls */}
@@ -269,7 +269,7 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
           >
             <ZoomOut size={13} />
           </button>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#e2e8f0', minWidth: 34, textAlign: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: '#e2e8f0', minWidth: 34, textAlign: 'center' }}>
             {Math.round(zoom * 100)}%
           </span>
           <button
@@ -308,3 +308,4 @@ export const SkillTreeControlBar: React.FC<SkillTreeControlBarProps> = ({
     </div>
   );
 };
+

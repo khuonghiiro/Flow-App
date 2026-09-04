@@ -17,7 +17,7 @@ export const LOCOMOTION_NODES: SkillTreeNode[] = [
     y: 608,
     parentId: 'root_master',
     isHub: true,
-    badge: '10 PROMPTS',
+    badge: '10 prompts',
   },
 
   // ─── 1. HUB ĐI BỘ ───
@@ -68,3 +68,5 @@ export const LOCOMOTION_NODES: SkillTreeNode[] = [
   { id: 'node_run_135', promptId: 'run_angle135', title: 'Chạy 135°', shortLabel: 'Chạy 135°', icon: '↘️', iconPath: '/icons/skill_run.svg', category: 'walk', color: '#34d399', tier: 3, x: -2997, y: 156, parentId: 'hub_run', badge: '135°', promptType: 'video', generationMode: 'image_to_video', aspectRatio: '9:16', refAngleImageId: 'angle135' },
   { id: 'node_run_180', promptId: 'run_angle180', title: 'Chạy 180°', shortLabel: 'Chạy 180°', icon: '⬆️', iconPath: '/icons/skill_run.svg', category: 'walk', color: '#34d399', tier: 3, x: -3151, y: 379, parentId: 'hub_run', badge: '180°', promptType: 'video', generationMode: 'image_to_video', aspectRatio: '9:16', refAngleImageId: 'angle180' },
 ];
+
+

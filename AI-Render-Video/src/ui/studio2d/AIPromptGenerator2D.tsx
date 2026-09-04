@@ -6,6 +6,7 @@ import { PromptSidebar } from './prompt/PromptSidebar';
 import { PromptViewer } from './prompt/PromptViewer';
 import { PromptCustomizerBar } from './prompt/PromptCustomizerBar';
 import { SkillTreeCanvas } from './prompt/tree/SkillTreeCanvas';
+
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const PROMPT_ALIAS_MAP: Record<string, string> = {
@@ -23,6 +24,7 @@ export const AIPromptGenerator2D: React.FC = () => {
   const [copiedQuick, setCopiedQuick] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'skill_tree' | 'classic_list'>('skill_tree');
   const [isDetailsCollapsed, setIsDetailsCollapsed] = useState<boolean>(false);
+
 
   const resolvedId = PROMPT_ALIAS_MAP[selectedId] || selectedId;
   const currentItem = PROMPT_ITEMS.find((it) => it.id === resolvedId) || PROMPT_ITEMS[0];
@@ -59,6 +61,7 @@ export const AIPromptGenerator2D: React.FC = () => {
         onToggleViewMode={() =>
           setViewMode((prev) => (prev === 'skill_tree' ? 'classic_list' : 'skill_tree'))
         }
+
       />
 
       {/* ─── Expandable Parameter Customizer ─── */}
@@ -167,6 +170,7 @@ export const AIPromptGenerator2D: React.FC = () => {
           />
         </div>
       )}
+
     </div>
   );
 };

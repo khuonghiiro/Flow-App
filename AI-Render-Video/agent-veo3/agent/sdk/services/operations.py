@@ -174,6 +174,31 @@ async def _poll_workflows(
     elapsed = 0
     completed = {}  # media_id → local_path
 
+    def _build_success_result():
+        synth_ops = []
+        for op in operations:
+            mid = op.get("_primary_media_id", "")
+            wf_name = op.get("operation", {}).get("name", "")
+            local = completed.get(mid, {}).get("path", "")
+            res_url = completed.get(mid, {}).get("url") or (f"file://{_os.path.abspath(local)}" if local else "")
+            synth_ops.append({
+                "operation": {
+                    "name": wf_name,
+                    "metadata": {"video": {"mediaId": mid, "fifeUrl": res_url}},
+                },
+                "status": "MEDIA_GENERATION_STATUS_SUCCESSFUL",
+            })
+        logger.info("All %d workflow(s) completed after %ds", len(operations), elapsed)
+        for op in operations:
+            mid = op.get("_primary_media_id", "")
+            r_id = op.get("_req_id", "")
+            res_url = completed.get(mid, {}).get("url") or (f"file://{_os.path.abspath(completed.get(mid, {}).get('path', ''))}" if completed.get(mid, {}).get("path") else "")
+            try:
+                asyncio.create_task(client.notify_request_status(req_id=r_id, media_id=mid, status="COMPLETED", output_url=res_url))
+            except Exception:
+                pass
+        return {"data": {"operations": synth_ops}}
+
     while elapsed < timeout:
         await asyncio.sleep(poll_interval)
         elapsed += poll_interval
@@ -192,7 +217,7 @@ async def _poll_workflows(
                             completed[mid] = {"url": vid_url, "path": ""}
                     if len(completed) == len(operations):
                         logger.info("Workflow completed via TRPC intercept URL: %s", vid_url[:60])
-                        break
+                        return _build_success_result()
 
         # 2. Check status via batchCheckAsyncVideoGenerationStatus (handles new media schema)
         remaining_ops = [op for op in operations if op.get("_primary_media_id") not in completed]
@@ -237,7 +262,7 @@ async def _poll_workflows(
                         return {"error": f"Workflow media {mid[:8]} generation failed"}
 
         if len(completed) == len(operations):
-            break
+            return _build_success_result()
 
         for op in operations:
             mid = op.get("_primary_media_id", "")
@@ -301,29 +326,7 @@ async def _poll_workflows(
                         mid[:8], len(binary), out_path)
 
         if len(completed) == len(operations):
-            synth_ops = []
-            for op in operations:
-                mid = op.get("_primary_media_id", "")
-                wf_name = op.get("operation", {}).get("name", "")
-                local = completed.get(mid, {}).get("path", "")
-                res_url = completed.get(mid, {}).get("url") or (f"file://{_os.path.abspath(local)}" if local else "")
-                synth_ops.append({
-                    "operation": {
-                        "name": wf_name,
-                        "metadata": {"video": {"mediaId": mid, "fifeUrl": res_url}},
-                    },
-                    "status": "MEDIA_GENERATION_STATUS_SUCCESSFUL",
-                })
-            logger.info("All %d workflow(s) completed after %ds", len(operations), elapsed)
-            for op in operations:
-                mid = op.get("_primary_media_id", "")
-                r_id = op.get("_req_id", "")
-                res_url = completed.get(mid, {}).get("url") or (f"file://{_os.path.abspath(completed.get(mid, {}).get('path', ''))}" if completed.get(mid, {}).get("path") else "")
-                try:
-                    await client.notify_request_status(req_id=r_id, media_id=mid, status="COMPLETED", output_url=res_url)
-                except Exception:
-                    pass
-            return {"data": {"operations": synth_ops}}
+            return _build_success_result()
 
     logger.warning("Workflow polling timed out after %ds. Done=%d/%d",
                    timeout, len(completed), len(operations))

@@ -1,4 +1,7 @@
 """Direct Flow API endpoints — for manual operations outside the queue."""
+import asyncio
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -9,6 +12,7 @@ from agent.services.skill_tree_pipeline import (
     list_pipelines,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/flow", tags=["flow"])
 
 
@@ -66,6 +70,12 @@ class EditImageRequest(BaseModel):
     user_paygate_tier: str = "PAYGATE_TIER_ONE"
 
 
+class StartPipelineRequest(BaseModel):
+    project_id: str = ""
+    customizer: Optional[dict] = None
+    actions: Optional[list[str]] = None
+
+
 @router.get("/status")
 async def extension_status():
     """Check if extension is connected."""
@@ -109,7 +119,12 @@ async def generate_video(body: GenerateVideoRequest):
     result = await client.generate_video(**body.model_dump(exclude_none=True))
     if result.get("error") or (isinstance(result.get("status"), int) and result["status"] >= 400):
         raise HTTPException(result.get("status", 502), result.get("error", result.get("data")))
-    return result.get("data", result)
+    # Spawn background poller to notify extension when video completes
+    req_id = result.get("_req_id", "")
+    data = result.get("data", result)
+    if req_id:
+        asyncio.create_task(_bg_poll_and_notify_video(client, data, req_id, body.project_id))
+    return data
 
 
 @router.post("/generate-video-refs")
@@ -121,7 +136,12 @@ async def generate_video_refs(body: GenerateVideoRefsRequest):
     result = await client.generate_video_from_references(**body.model_dump())
     if result.get("error") or (isinstance(result.get("status"), int) and result["status"] >= 400):
         raise HTTPException(result.get("status", 502), result.get("error", result.get("data")))
-    return result.get("data", result)
+    # Spawn background poller to notify extension when video completes
+    req_id = result.get("_req_id", "")
+    data = result.get("data", result)
+    if req_id:
+        asyncio.create_task(_bg_poll_and_notify_video(client, data, req_id, body.project_id))
+    return data
 
 
 @router.post("/upscale-video")
@@ -216,4 +236,153 @@ async def upload_image(body: UploadImageRequest):
         raise HTTPException(result.get("status", 502), result.get("error", result.get("data")))
     media_id = result.get("_mediaId")
     return {"media_id": media_id, "raw": result.get("data", result)}
+
+
+# ─── Skill Tree Pipeline Endpoints ───────────────────────────
+
+@router.post("/pipeline/start")
+async def start_pipeline(body: StartPipelineRequest):
+    """Start an end-to-end 3-stage Skill Tree pipeline."""
+    import asyncio
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+
+    project_id = body.project_id
+    if not project_id:
+        from agent.db import crud
+        projects = await crud.list_projects()
+        project_id = projects[0]["id"] if projects else ""
+
+    pipeline = create_pipeline(
+        project_id=project_id,
+        customizer_values=body.customizer,
+        action_keys=body.actions,
+    )
+    asyncio.create_task(pipeline.run())
+    return {
+        "pipeline_id": pipeline.id,
+        "status": pipeline.status,
+        "stage": pipeline.stage,
+        "project_id": project_id,
+    }
+
+
+@router.get("/pipeline/status/{pipeline_id}")
+async def get_pipeline_status_endpoint(pipeline_id: str):
+    """Get live status, angle states, and 5-slot activity of a pipeline."""
+    pipeline = get_pipeline(pipeline_id)
+    if not pipeline:
+        raise HTTPException(404, f"Pipeline '{pipeline_id}' not found")
+    return pipeline.to_dict()
+
+
+@router.post("/pipeline/cancel/{pipeline_id}")
+async def cancel_pipeline_endpoint(pipeline_id: str):
+    """Cancel a running pipeline."""
+    pipeline = get_pipeline(pipeline_id)
+    if not pipeline:
+        raise HTTPException(404, f"Pipeline '{pipeline_id}' not found")
+    pipeline.cancel()
+    return {"pipeline_id": pipeline.id, "status": "CANCELLED"}
+
+
+@router.get("/pipeline/list")
+async def list_pipelines_endpoint():
+    """List all registered pipelines in memory."""
+    return list_pipelines()
+
+
+# ─── Background Video Status Notifier ────────────────────────
+
+async def _bg_poll_and_notify_video(client, data: dict, req_id: str, project_id: str):
+    """Background: poll video status and notify extension on completion.
+
+    When video gen is called via direct API, the extension logs the request
+    as 'queued'. This poller watches until SUCCESSFUL/FAILED and sends
+    an update_request_log message so the extension UI shows 'done'/'failed'.
+    """
+    from agent.config import VIDEO_POLL_INTERVAL
+
+    # Build poll items from response data
+    poll_items = []
+    media_ids = []
+    for op in data.get("operations", []):
+        poll_items.append(op)
+        mid = op.get("operation", {}).get("metadata", {}).get("video", {}).get("mediaId", "")
+        if mid:
+            media_ids.append(mid)
+
+    for wf in data.get("workflows", []):
+        primary = wf.get("metadata", {}).get("primaryMediaId", "")
+        if primary:
+            media_ids.append(primary)
+
+    for m in data.get("media", []):
+        name = m.get("name", "")
+        if name:
+            poll_items.append({"name": name, "projectId": project_id})
+            if name not in media_ids:
+                media_ids.append(name)
+
+    if not poll_items:
+        return
+
+    max_polls = 60  # ~10 min
+    for _ in range(max_polls):
+        await asyncio.sleep(VIDEO_POLL_INTERVAL)
+        try:
+            status_res = await client.check_video_status(poll_items)
+            if status_res.get("error"):
+                continue
+            sdata = status_res.get("data", status_res)
+
+            # Check operations format
+            for op in sdata.get("operations", []):
+                st = op.get("status", "")
+                if st in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
+                    vid = op.get("operation", {}).get("metadata", {}).get("video", {})
+                    mid = vid.get("mediaId", "")
+                    url = vid.get("fifeUrl", "")
+                    await client.notify_request_status(
+                        req_id=req_id, media_id=mid,
+                        status="COMPLETED", output_url=url,
+                    )
+                    logger.info("BG notify: video %s COMPLETED (req=%s)", mid[:8], req_id[:8])
+                    return
+                elif st in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
+                    mid = op.get("operation", {}).get("metadata", {}).get("video", {}).get("mediaId", "")
+                    await client.notify_request_status(
+                        req_id=req_id, media_id=mid, status="FAILED",
+                    )
+                    logger.info("BG notify: video FAILED (req=%s)", req_id[:8])
+                    return
+
+            # Check media format
+            for m in sdata.get("media", []):
+                gen_status = (
+                    m.get("mediaMetadata", {})
+                     .get("mediaStatus", {})
+                     .get("mediaGenerationStatus", "")
+                )
+                if gen_status in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
+                    mid = m.get("name", "")
+                    url = m.get("video", {}).get("fifeUrl", "")
+                    await client.notify_request_status(
+                        req_id=req_id, media_id=mid,
+                        status="COMPLETED", output_url=url,
+                    )
+                    logger.info("BG notify: video %s COMPLETED (req=%s)", mid[:8], req_id[:8])
+                    return
+                elif gen_status in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
+                    mid = m.get("name", "")
+                    await client.notify_request_status(
+                        req_id=req_id, media_id=mid, status="FAILED",
+                    )
+                    logger.info("BG notify: video FAILED (req=%s)", req_id[:8])
+                    return
+        except Exception as e:
+            logger.debug("BG poll error: %s", e)
+
+    logger.warning("BG video poll timed out for req=%s", req_id[:8])
 
