@@ -7,6 +7,7 @@ Pipeline execution order:
            Each action has 5 sub-prompts (one per angle), using that angle's
            reference image as start+end frame for 4s seamless loop.
 """
+import re
 
 DEFAULT_CUSTOMIZER_VALUES = {
     "characterName": "Lâm Tiêu (Lin Xiao)",
@@ -99,49 +100,122 @@ ANGLE_PROMPT_TEMPLATES = {
 # Each action has 5 angle variants. The pipeline uses the angle's
 # reference image as BOTH start frame AND end frame for seamless loop.
 
-WALK_PROMPT_TEMPLATES = {
-    "0": (
-        "4-second seamless loop FRONT VIEW WALK CYCLE. "
-        "Character walks in place facing DIRECTLY at camera (0° front view). "
-        "Left foot steps forward, alternating with right foot in natural rhythm. "
-        "Arms swing opposite to legs. Torso and head stay upright and stable. "
-        "Subtle hair and robe sway with each step. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "45": (
-        "4-second seamless loop 45° THREE-QUARTER WALK CYCLE. "
-        "Character walks in place at 45° angle, body facing bottom-left. "
-        "Natural diagonal strides, arms swinging along body plane. "
-        "No body turning. Hair and clothing sway with walking cadence. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "90": (
-        "4-second seamless loop SIDE PROFILE WALK CYCLE (90°). "
-        "Character walks in place in pure left side profile. "
-        "Legs swing with clear heel-to-toe contact, arms swing naturally in profile. "
-        "Body stays strictly 90° side view. Subtle robe and hair sway. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "135": (
-        "4-second seamless loop 135° BACK-LEFT WALK CYCLE. "
-        "Character walks in place viewed from behind, angled towards left. "
-        "Back of legs stepping, ribbons and hair flowing with steps. "
-        "Body stays at 135° orientation. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "180": (
-        "4-second seamless loop REAR VIEW WALK CYCLE (180°). "
-        "Character walks in place facing directly away from camera. "
-        "Symmetrical stepping, arms swing in rear perspective. "
-        "Hair cascades with subtle rhythmic motion. Spine stays vertical. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
+MOTION_ANTI_GLITCH_LOCK = (
+    "CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK): "
+    "Hands and forearms strictly stay below chest level at all times, moving ONLY in a narrow pendulum arc parallel to hips. "
+    "STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing or acrobatic posing. "
+    "Feet remain grounded in clean stride cycle, STRICTLY ZERO hopping, ZERO bouncing up and down, ZERO airborne jumping, ZERO floating. "
+    "Torso, shoulders, and head remain rock-steady and level with ZERO torso twisting, erratic bobbing, or body contortion. "
+    "Faceless blank mannequin head remains completely smooth with ZERO facial expressions, mouth opening, or morphing."
+)
+
+ARCHETYPE_STYLES = {
+    "young_male": {
+        "label": "YOUTH/YOUNG ADULT",
+        "walk_desc": "with a confident upright posture and steady decisive cadence. Left foot steps forward alternating with right foot in natural rhythm on floor plane. Arms swing naturally in a disciplined narrow pendulum arc strictly below chest level close to hips. Torso and head stay upright and rock-steady.",
+        "run_desc": "with dynamic athletic momentum. Body has a slight forward athletic lean, elbows bent at 90 degrees pumping rhythmically close to ribs. Fast decisive strides with clean knee lifts on floor plane. Hair and robes stream back with speed.",
+    },
+    "maiden": {
+        "label": "YOUNG MAIDEN/TEEN GIRL",
+        "walk_desc": "with a graceful, delicate, light-footed, and demure cadence. Steps are petite, gentle, and light on the floor plane. Hands are held softly near waist or dress with minimal, modest subtle sway. Torso upright and poised, long hair and dress ribbons floating softly.",
+        "run_desc": "with a graceful light trot and petite brisk footsteps. Hands held lightly near waist for balance, short quick light strides low to ground. Hair and silk ribbons streaming softly with motion.",
+    },
+    "mature_woman": {
+        "label": "MATURE WOMAN/LADY",
+        "walk_desc": "with an elegant, poised, majestic, and dignified stride. Upright posture, level shoulders, composed graceful arm carriage close to sides. Hips and robes move with natural organic grace along the floor plane. Head and upper body rock-steady.",
+        "run_desc": "with a purposeful, dignified, and athletic graceful brisk run. Upright stable core, arms bent at elbows pumping smoothly along ribs. Clean rhythmic strides, elegant momentum.",
+    },
+    "child": {
+        "label": "CHILD/LITTLE KID",
+        "walk_desc": "with playful, innocent, cheerful child steps. Short quick pitter-patter footsteps on floor plane. Arms swing naturally in innocent small arcs close to body. Head held high with curious cheerful energy, fully grounded balance.",
+        "run_desc": "with an energetic scampering sprint. Quick pitter-patter footsteps low to ground, arms pumping close to body with playful cheerful momentum, body leaning slightly forward.",
+    },
+    "elderly": {
+        "label": "ELDERLY/OLD MASTER",
+        "walk_desc": "with a slow, deliberate, measured, and cautious pace. Body has a subtle weathered, slightly stooped posture of an elder artisan. Steps are short, grounded, and gentle. Arms hang relaxed close to sides or resting on a staff, minimal subtle pendulum motion strictly below waist.",
+        "run_desc": "with a hurried shuffling jog in place. Body leans forward cautiously with lower center of gravity. Short quick footsteps staying low to floor plane (low stride height, NO jumping). Arms held close to midriff for balance with minimal compact motion.",
+    },
 }
+
+
+def build_walk_templates(archetype: str) -> dict:
+    info = ARCHETYPE_STYLES.get(archetype, ARCHETYPE_STYLES["young_male"])
+    label = info["label"]
+    desc = info["walk_desc"]
+    return {
+        "0": (
+            f"4-second seamless loop 0° DIRECT FRONT VIEW WALK CYCLE ({label}). "
+            f"Character walks in place facing DIRECTLY at camera {desc} "
+            f"{MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "45": (
+            f"4-second seamless loop 45° THREE-QUARTER WALK CYCLE ({label}). "
+            f"Character walks in place at 45° angle facing bottom-left {desc} "
+            f"No body turning. {MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "90": (
+            f"4-second seamless loop 90° SIDE PROFILE WALK CYCLE ({label}). "
+            f"Character walks in place in strict left side profile (9 o'clock) {desc} "
+            f"Body stays strictly 90° side silhouette. {MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "135": (
+            f"4-second seamless loop 135° BACK-LEFT WALK CYCLE ({label}). "
+            f"Character walks in place viewed from behind at 135° angle {desc} "
+            f"Body stays at 135° orientation. {MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "180": (
+            f"4-second seamless loop 180° REAR VIEW WALK CYCLE ({label}). "
+            f"Character walks in place facing directly away from camera {desc} "
+            f"Symmetrical stepping. {MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+    }
+
+
+def build_run_templates(archetype: str) -> dict:
+    info = ARCHETYPE_STYLES.get(archetype, ARCHETYPE_STYLES["young_male"])
+    label = info["label"]
+    desc = info["run_desc"]
+    return {
+        "0": (
+            f"4-second seamless loop 0° FRONT VIEW ATHLETIC RUN CYCLE ({label}). "
+            f"Character jogs in place facing camera {desc} "
+            f"{MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "45": (
+            f"4-second seamless loop 45° THREE-QUARTER ATHLETIC RUN CYCLE ({label}). "
+            f"Character jogs in place at 45° angle towards bottom-left {desc} "
+            f"Dynamic momentum. {MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "90": (
+            f"4-second seamless loop 90° SIDE PROFILE ATHLETIC RUN CYCLE ({label}). "
+            f"Character jogs in place in pure left side profile (9 o'clock) {desc} "
+            f"Body stays strictly 90°. {MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "135": (
+            f"4-second seamless loop 135° BACK-LEFT ATHLETIC RUN CYCLE ({label}). "
+            f"Character jogs in place viewed from behind at 135° angle {desc} "
+            f"{MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+        "180": (
+            f"4-second seamless loop 180° REAR VIEW ATHLETIC RUN CYCLE ({label}). "
+            f"Character jogs in place facing away from camera {desc} "
+            f"{MOTION_ANTI_GLITCH_LOCK} "
+            "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
+        ),
+    }
+
+
+WALK_PROMPT_TEMPLATES = build_walk_templates("young_male")
+RUN_PROMPT_TEMPLATES = build_run_templates("young_male")
 
 IDLE_PROMPT_TEMPLATES = {
     "0": (
@@ -177,46 +251,6 @@ IDLE_PROMPT_TEMPLATES = {
         "4-second seamless loop IDLE BREATHING (180° rear view). "
         "Character stands still facing away, gentle breathing from behind. "
         "Hair cascades with subtle motion, robe sways. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-}
-
-RUN_PROMPT_TEMPLATES = {
-    "0": (
-        "4-second seamless loop FRONT VIEW RUN CYCLE. "
-        "Character runs in place facing camera (0° front). Fast leg strides. "
-        "Arms pump vigorously, hair and robes fly back with speed. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "45": (
-        "4-second seamless loop 45° THREE-QUARTER RUN CYCLE. "
-        "Character runs in place at 45° angle towards bottom-left. "
-        "Fast diagonal strides, arms pump along body plane. "
-        "Hair and clothing stream back with momentum. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "90": (
-        "4-second seamless loop SIDE PROFILE RUN CYCLE (90°). "
-        "Character runs in place in pure left side profile. "
-        "Fast strides with clear leg extension, arms pump in profile. "
-        "Hair streams behind, robes flutter. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "135": (
-        "4-second seamless loop 135° BACK-LEFT RUN CYCLE. "
-        "Character runs in place viewed from behind, angled left. "
-        "Fast strides away from camera, hair and ribbons stream. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
-    ),
-    "180": (
-        "4-second seamless loop REAR VIEW RUN CYCLE (180°). "
-        "Character runs in place facing away from camera. "
-        "Fast symmetrical strides, hair bounces with running rhythm. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
@@ -354,6 +388,51 @@ def format_template(template: str, customizer: dict = None) -> str:
     return text
 
 
-def get_action_templates(action_key: str) -> dict:
-    """Get prompt templates dict for an action key (walk, idle, run, etc.)."""
+def detect_motion_archetype(customizer: dict = None) -> str:
+    """Classify character archetype into: 'elderly', 'child', 'maiden', 'mature_woman', 'young_male'."""
+    if not customizer:
+        return "young_male"
+    text = " ".join([
+        str(customizer.get("age", "")),
+        str(customizer.get("gender", "")),
+        str(customizer.get("bodyType", "")),
+        str(customizer.get("characterName", "")),
+        str(customizer.get("personality", "")),
+    ]).lower()
+
+    # Strip 'years old' / 'year-old' so it doesn't falsely trigger 'old'
+    text_no_yo = re.sub(r"\byears?\s*old\b|\byear-old\b", "", text)
+
+    # 1. Elderly / Senior (50-80+, lão, ông/bà lão)
+    elderly_kw = ["elder", "senior", "lão", "bà lão", "ông lão", "thợ già", "50", "55", "60", "65", "70", "75", "80"]
+    if any(k in text_no_yo for k in elderly_kw) or re.search(r"\b(old man|old woman|elderly)\b", text):
+        return "elderly"
+
+    # 2. Child / Kid (3-12 years old, trẻ con, thiếu nhi, bé)
+    child_kw = ["toddler", "trẻ con", "thiếu nhi", "bé trai", "bé gái", "tiểu đồng", "little kid", "child", "little boy", "little girl"]
+    if any(k in text_no_yo for k in child_kw) or re.search(r"\b(child|kid)\b", text_no_yo):
+        return "child"
+    if re.search(r"\b([3-9]|1[0-2])\s*(?:years?|tuổi|t)\b", text):
+        return "child"
+
+    # 3. Female classifications (Maiden vs Mature Woman)
+    is_female = any(k in text for k in ["female", "nữ", "gái", "maiden", "woman"])
+    if is_female:
+        mature_kw = ["mature", "lady", "queen", "empress", "phụ nữ", "quý bà", "quý cô", "hoàng hậu", "nữ tướng", "mẫu thân"]
+        if any(k in text for k in mature_kw):
+            return "mature_woman"
+        if re.search(r"\b(2[5-9]|[34][0-9])\b", text):
+            return "mature_woman"
+        return "maiden"
+
+    return "young_male"
+
+
+def get_action_templates(action_key: str, customizer: dict = None) -> dict:
+    """Get prompt templates dict for an action key (walk, idle, run, etc.), tailored to archetype."""
+    archetype = detect_motion_archetype(customizer)
+    if action_key == "walk":
+        return build_walk_templates(archetype)
+    if action_key == "run":
+        return build_run_templates(archetype)
     return ACTION_TEMPLATES.get(action_key, {})

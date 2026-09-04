@@ -66,7 +66,7 @@ class SkillTreePipeline:
         }
 
         for action_key in self.action_keys:
-            templates = get_action_templates(action_key)
+            templates = get_action_templates(action_key, self.customizer)
             if not templates:
                 logger.warning("No templates for action '%s', skipping", action_key)
                 continue

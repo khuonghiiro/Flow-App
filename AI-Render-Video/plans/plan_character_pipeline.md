@@ -125,44 +125,60 @@ Output Folder: agent-veo3/output/<ten-nhan-vat-khong-dau>/videos/
 
 ---
 
-## Phần C — AI Agent Phân Tích & Điều Chỉnh Prompt
+## Phần C — AI Agent Phân Tích & Điều Chỉnh Prompt Chuyển Động
 
-> **Đây là phần quan trọng nhất.** AI agent PHẢI phân tích tính cách và kỹ năng nhân vật
-> trước khi sinh prompt action. Không dùng prompt generic.
+> [!IMPORTANT]
+> **ĐÂY LÀ PHẦN THEN CHỐT ĐỂ DẬP TẮT LỖI AI "ẢO GIÁC" CHUYỂN ĐỘNG.**  
+> Khi render video `walk` và `run`, AI diffusion thường dễ bị lỗi:
+> 1. **"Tay múa loạn xạ"**: Tự ý vung tay lên cao quá đầu, múa võ, chắp tay làm phép, vẫy chào hoặc nhảy múa mất kiểm soát.
+> 2. **"Nhân vật nhân nhót / Nhảy tưng tưng"**: Nhảy chồm lên không trung (`hopping/bouncing`), nhấc chân quá cao, thân mình vặn vẹo (`body twisting`), mặt trơn bị biến dạng vẽ thêm miệng méo xệch.
+>
+> **AI Agent BẮT BUỘC phân hóa rõ chuyển động theo độ tuổi/thể trạng** và **gắn chặt Bộ Khung Khống Chế Chuyển Động (Motion Constraints Lock)** vào mọi prompt video!
 
-### Quy trình phân tích:
+---
 
-1. **Đọc Phần A** → Trích xuất `personality`, `combat_style`, `weapon`, `spell_element`
+### 1. Bảng Phân Hóa Chuyển Động Toàn Diện Theo Độ Tuổi & Giới Tính (Universal Archetype Motion Matrix)
 
-2. **Kiểm tra từng action prompt** có phù hợp với nhân vật không:
+| Hình Tượng (Archetype) | `walk` (Đi bộ 4s Seamless Loop) | `run` (Chạy bộ 4s Seamless Loop) |
+|:---|:---|:---|
+| 🧑 **Nam Thanh Niên**<br>*(Young Male / Martial Artist: 16–30t)* | **Đĩnh đạc, dứt khoát, tự tin (`steady confident upright walk`)**:<br>• Lưng thẳng tắp, vai mở rộng, mắt nhìn thẳng.<br>• Bước chân sải đều đặn, nhịp nhàng dứt khoát tại chỗ.<br>• Hai tay buông tự nhiên, vung góc hẹp dọc theo hông (`narrow-amplitude pendulum swing strictly below chest level`).<br>• Trọng tâm cơ thể cân bằng tuyệt đối, không lắc hông. | **Nhanh nhẹn, thể thao (`dynamic athletic forward jog`)**:<br>• Cơ thể hơi đổ nhẹ về phía trước một góc nhỏ có kiểm soát (`slight athletic forward lean`).<br>• Hai khuỷu tay gập góc vuông ~90° đánh nhịp đều đặn sát mạn sườn (`elbows bent at 90° pumping close to ribs`).<br>• Bước chân dứt khoát, tần số nhanh, nhấc gối gọn gàng.<br>• Phong thái võ hiệp/chiến binh, không vung tay tán loạn. |
+| 🌸 **Thiếu Nữ**<br>*(Young Maiden / Teen Girl: 14–20t)* | **Uyển chuyển, nhẹ nhàng, e ấp (`graceful delicate light-footed walk`)**:<br>• Dáng người thanh thoát, lưng thẳng, bước chân nhỏ nhắn khép nép (`demure petite steps`).<br>• Hai tay để hờ khép nhẹ gần eo hoặc tà váy, biên độ vung tay cực khẽ (`modest subtle arm movement close to dress`).<br>• Tà áo/váy và dải tóc bay nhẹ nhàng bồng bềnh theo nhịp bước.<br>• Tuyệt đối không vung tay mạnh bạo, không lắc lư quá đà. | **Rảo bước nhỏ thoăn thoắt (`graceful light trot / petite brisk run`)**:<br>• Bước chân ngắn, nhanh nhẹn, nhí nhảnh nhưng giữ ý tứ.<br>• Hai bàn tay co nhẹ ngang eo hoặc hơi đưa nhẹ sang hai bên giữ thăng bằng (`hands held lightly near waist`).<br>• Chân nhấc nhẹ thanh thoát, tóc và dải lụa bay lượn mềm mại.<br>• Không sải chân quá rộng hay thô bạo, không vung tay loạn xạ. |
+| 💃 **Phụ Nữ Trưởng Thành**<br>*(Mature Woman / Lady: 25–45t)* | **Đoan trang, quý phái, đĩnh đạc (`elegant poised majestic stride`)**:<br>• Lưng thẳng tắp, ngực mở rộng, bước đi điềm đạm, khoan thai.<br>• Hông chuyển động nhịp nhàng tự nhiên theo giải phẫu học cơ thể (không lố lăng).<br>• Hai tay buông xuôi đoan trang hoặc đặt tay nhẹ ngang eo/vạt áo (`composed graceful hand carriage`).<br>• Tà áo dài thướt tha lay chuyển uyển chuyển theo trục cơ thể cân bằng. | **Dứt khoát, gọn gàng, khí chất (`purposeful dignified brisk run`)**:<br>• Cơ thể giữ trục ổn định, sải chân nhanh gọn gàng.<br>• Hai tay gập vừa phải đánh nhịp nhịp nhàng sát mạn sườn, không vung tay quá đà.<br>• Tà áo chuyển động uyển chuyển, giữ trọn thần thái kiêu hãnh của nữ nhân trưởng thành/nữ hiệp. |
+| 🧒 **Trẻ Con / Thiếu Nhi**<br>*(Child / Kid: 5–12t)* | **Hồn nhiên, líu ríu, tinh nghịch (`playful innocent child steps`)**:<br>• Bước chân ngắn, vô tư, nhịp điệu lí lắc trẻ thơ (`cheerful pitter-patter footwork`).<br>• Hai tay vung tự nhiên một cách ngây thơ nhưng trong tầm kiểm soát sát hông.<br>• Đầu ngẩng cao hiếu kỳ, bước chân dậm dậm đáng yêu tại chỗ.<br>• Giữ vững thăng bằng, không ngã, không co giật. | **Chạy lon ton rộn ràng (`energetic scampering child sprint`)**:<br>• Chạy thoăn thoắt, bước chân dồn dập, líu ríu vui tươi.<br>• Hai tay co sát người đánh nhịp lí lắc, người hơi chúi nhẹ về phía trước.<br>• Bàn chân tiếp đất nhanh nhẹn trên mặt phẳng sàn.<br>• Hoạt bát đáng yêu, không nhảy bổ hay trượt ngã. |
+| 👴👵 **Ông Lão / Bà Lão**<br>*(Elderly: 50–70+t)* | **Chậm rãi, trầm tĩnh, cẩn trọng (`slow deliberate measured walk`)**:<br>• Dáng hơi khom nhẹ phong sương (`subtle weathered stoop / slightly bent back`).<br>• Bước chân ngắn, tiếp đất đầm chắc, thận trọng từng bước.<br>• Hai tay thả lỏng buông xuôi sát thân người, hoặc cầm/chống chắc trượng gậy, vung biên độ cực nhỏ sát thắt lưng (`minimal subtle arm sway strictly close to waist / hands resting on staff`).<br>• Điệu bộ khoan thai, tĩnh tại, tuyệt đối không nhảy nhót. | **Rảo bước dồn dập của người già (`hurried shuffling jog`)**:<br>• Thân người gầy gò chúi nhẹ về trước, bước chân dồn dập khẩn trương (`short quick shuffling footsteps`).<br>• **Bàn chân luôn là là sát mặt đất**, trọng tâm hạ thấp vững vàng (`feet stay low to the floor plane, low stride height`).<br>• Hai tay co nhẹ giữ chặt trước bụng hoặc ghì chắc trượng gậy để giữ thăng bằng, vai hơi nhấp nhô nhẹ.<br>• Không nhấc chân cao, không nhảy bật lên không trung. |
 
-   | Nhân vật | Kiếm khách tu tiên | Võ sỹ quyền anh | Pháp sư nguyên tố |
-   |----------|-------------------|-----------------|-------------------|
-   | Attack | Vung kiếm phiêu diêu, ánh sáng kiếm | Đấm, cú hook, uppercut | Bắn phép, triệu hồi nguyên tố |
-   | Defend | Kiếm chắn trước ngực, tư thế phòng ngự | Giơ tay đỡ, né người | Khiên phép thuật, barrier |
-   | Idle | Kiếm cầm bên hông, tóc bay | Tư thế quyền anh sẵn sàng | Tay phát sáng, nguyên tố xoay |
-   | Run | Chạy kiếm giữ sau lưng, áo bay | Chạy tay nắm đấm | Chạy có vệt phép phía sau |
+---
 
-3. **Nếu prompt mặc định không khớp** → AI agent TẠO LẠI prompt mới:
-   - Giữ nguyên cấu trúc template (góc, camera, loop requirement)
-   - Thay đổi mô tả hành động cho khớp `combat_style` và `weapon`
-   - Thêm hiệu ứng phép thuật nếu có `spell_element`
+### 2. Bộ Khung Khống Chế "Chống Ảo Giác" AI (Anti-Glitch Motion Constraints)
 
-### Ví dụ điều chỉnh:
+Để triệt tiêu hoàn toàn hiện tượng tay múa loạn xạ và nhân nhót, mỗi prompt video `walk` và `run` **BẮT BUỘC** phải có khối chỉ thị sau:
 
-**Nhân vật: Kiếm khách tu tiên (Lâm Tiêu)**
+```text
+CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
+1. ARM MOTION LOCK: Hands and forearms strictly stay below chest level at all times. 
+   Arms move ONLY in a narrow pendulum arc parallel to hips. 
+   STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing, ZERO martial arts posing.
+2. GROUNDED FOOTWORK LOCK: Feet remain firmly anchored to the floor plane in a clean walk/run cycle. 
+   STRICTLY ZERO hopping, ZERO bouncing up and down, ZERO airborne jumping, ZERO floating.
+3. TORSO & HEAD STABILITY: Torso, shoulders, and head remain rock-steady and level. 
+   STRICTLY ZERO torso twisting, ZERO erratic head bobbing, ZERO body contortions or jittering.
+4. BLANK MANNEQUIN PRESERVATION: The completely blank, smooth porcelain mannequin head MUST remain intact. 
+   STRICTLY ZERO facial expressions, ZERO mouth opening, ZERO facial distortion or morphing.
 ```
-Attack 0°: Vung kiếm Lam Ngọc Kiếm theo vòng cung từ phải sang trái,
-           ánh sáng kiếm xanh lạnh lóe sáng, tóc và áo bay theo đà kiếm.
-           Frost aura bao quanh lưỡi kiếm.
-```
 
-**Nhân vật: Võ sỹ quyền anh (nếu thay Phần A)**
-```
-Attack 0°: Tung cú đấm thẳng mạnh bằng tay phải,
-           vai phải xoay theo lực đấm, chân trước trụ vững.
-           Không có vũ khí, chỉ dùng nắm đấm.
-```
+---
+
+### 3. Phân Tích Tính Cách & Phong Cách Chiến Đấu (Combat & Personality Adaptation)
+
+AI agent phân tích `personality`, `combat_style`, `weapon`, `spell_element` để tinh chỉnh động tác chiến đấu (`attack`, `defend`):
+
+| Nhân vật | Kiếm khách tu tiên trẻ | Lão thợ mộc / Lão nông đứng tuổi | Pháp sư / Phù thủy |
+|---|---|---|---|
+| **Walk** | Bước nhanh tự tin, tay hờ trên chuôi kiếm bên hông. | Bước chậm rãi trầm mặc, tay tựa cán trượng/búa, hơi khom lưng. | Bước thanh thoát, áo choàng bay nhẹ, hai tay thu trong tay áo. |
+| **Run** | Chạy lướt nhẹ như ngự kiếm, kiếm ghì sau lưng. | Rảo bước dồn dập, ghì chặt cán búa/trượng trước ngực. | Rảo bước nhanh, tà áo phù thủy tung bay theo gió. |
+| **Attack** | Vung kiếm phiêu diêu, kiếm khí lạnh lóe sáng. | Bổ mạnh búa/trượng mộc công xuống đất tóe bụi hoàng kim rồi thu thế. | Bắn phép nguyên tố từ xa, vòng tròn ma pháp xoay chuyển. |
+| **Defend** | Dựng kiếm chắn trước ngực theo thế Thái Cực. | Dựng đứng thân trượng gỗ chắn ngang ngực vững như bàn thạch. | Dựng khiên năng lượng phép thuật phát sáng. |
+| **Idle** | Đứng thẳng uy nghiêm, gió thổi tà áo và đuôi tóc bay. | Đứng chống trượng mộc, ngực phập phồng thở nhẹ sau giờ lao động. | Nổi lơ lửng hạt phép nhỏ quanh lòng bàn tay tĩnh lặng. |
 
 ---
 

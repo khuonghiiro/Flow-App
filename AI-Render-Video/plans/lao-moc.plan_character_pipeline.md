@@ -52,8 +52,17 @@ Toàn bộ ảnh được lưu tại thư mục:
 
 ## Phần C — Hành Động Tầng 3 (25 Video 4s Seamless Loop)
 
-1. **`walk` (Bước Chân Lão Nông / Lão Thợ 4s Loop)**: Bước đi dẻo dai, tay vung nhịp nhàng, tà áo nâu lay nhẹ.
-2. **`idle` (Thở Nhẹ Nghỉ Ngơi 4s Loop)**: Đứng chống trượng mộc/búa, ngực phập phồng nhẹ nhàng, dải dây thừng lay chuyển.
-3. **`run` (Rảo Bước Khẩn Trương 4s Loop)**: Thân hình gầy gò hơi chúi trước rảo bước nhanh tại chỗ.
-4. **`attack` (Vung Trượng Gõ Búa 4s Loop)**: Bổ mạnh công cụ về phía trước tóe bụi hoàng kim rồi thu về thế thủ.
-5. **`defend` (Dựng Khiên Gỗ / Chắn Trượng 4s Loop)**: Dựng đứng công cụ thế thủ vững như thạch bàn.
+> [!NOTE]
+> Áp dụng phân hóa **Lão Thợ / Người Già (50–60t)** kết hợp **Bộ Khung Khống Chế Chống Ảo Giác (Strict Anti-Glitch Lock)**: Khóa biên độ tay sát thắt lưng, cấm nhảy nhót, cấm múa tay loạn xạ.
+
+1. **`walk` (Đi Bộ Lão Thợ 4s Loop — Bước Ngắn, Chậm Rãi, Trầm Tĩnh)**:
+   - Dáng hơi khom phong sương, bước chân ngắn, đầm chắc tại chỗ.
+   - Hai tay thả lỏng buông xuôi sát hông hoặc vịn cán trượng, vung góc hẹp cực nhỏ dưới thắt lưng.
+   - Tuyệt đối cấm nhảy tưng tưng, cấm vung tay lên cao quá ngực, cấm biến dạng mặt trơn.
+2. **`run` (Rảo Bước Khẩn Trương 4s Loop — Hurried Shuffling Jog)**:
+   - Thân hình gầy gò chúi nhẹ về trước, bước chân dồn dập là là sát mặt sàn.
+   - Trọng tâm hạ thấp, hai tay co nhẹ giữ chặt trước bụng/trượng để giữ thăng bằng.
+   - Không nhấc gối quá cao, không nhảy bật lên không trung.
+3. **`idle` (Thở Nhẹ Nghỉ Ngơi 4s Loop)**: Đứng chống trượng mộc/búa, ngực phập phồng nhẹ nhàng, dải dây thừng lay chuyển tĩnh tại.
+4. **`attack` (Vung Trượng Gõ Búa 4s Loop)**: Bổ mạnh công cụ mộc công về phía trước tóe bụi hoàng kim rồi thu về thế thủ vững vàng.
+5. **`defend` (Dựng Khiên Gỗ / Chắn Trượng 4s Loop)**: Dựng đứng thân trượng gỗ chắn ngang ngực thế thủ vững như bàn thạch.

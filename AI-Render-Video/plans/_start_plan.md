@@ -1,0 +1,1 @@
+"ok @plans/plan_character_pipeline.md tạo nhân vật [mô tả nhân vật: tuổi tác, giới tính, trang phục, phong cách...]"
