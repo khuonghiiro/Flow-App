@@ -1,35 +1,48 @@
-# Plan: Tự Động Hóa Tạo Bộ Nhân Vật Từ Cây Kỹ Năng (Tab 4)
+# Plan Mẫu: Tự Động Hóa Tạo Bộ Nhân Vật Từ Cây Kỹ Năng (Tab 4)
 
-## Tổng Quan
+## Tổng Quan & Quy Chuẩn Tổ Chức
 
-Plan này là template tái sử dụng cho AI agent. Khi muốn tạo nhân vật mới, chỉ cần:
-1. Thay mô tả nhân vật ở **Phần A** (0° chính diện)
-2. AI agent tự phân tích tính cách/kỹ năng nhân vật → điều chỉnh prompt action cho phù hợp
-3. Chạy pipeline 3 tầng tự động
+Tài liệu này là **Master Template** chuẩn. Khi người dùng yêu cầu tạo nhân vật mới dựa trên template này, AI Agent tuân thủ nghiêm ngặt các quy chuẩn sau:
+
+1. **Quy tắc tạo File Plan riêng cho từng nhân vật**:
+   - Tạo file plan mới trong thư mục `plans/` với tiền tố tên nhân vật viết thường không dấu:
+     `plans/<ten-nhan-vat-khong-dau>.plan_character_pipeline.md`
+     *(Ví dụ: Nhân vật `Dạ Hàn` → tạo file `plans/da-han.plan_character_pipeline.md`)*.
+   - File plan riêng này lưu toàn bộ mô tả, bảng Media ID, danh sách file ảnh/video và tiến độ riêng của nhân vật đó để dễ dàng theo dõi, tùy biến hoặc tiếp tục xử lý sau này.
+
+2. **Quy tắc Thư Mục Output riêng cho từng nhân vật**:
+   - Toàn bộ ảnh gốc 5 góc, các candidates và video của nhân vật được lưu riêng vào folder:
+     `agent-veo3/output/<ten-nhan-vat-khong-dau>/`
+     *(Ví dụ: `agent-veo3/output/da-han/angle_0.png`, `angle_45.png`,...)*, tránh bị lẫn lộn giữa các nhân vật khác nhau.
+
+3. **Quy trình thực thi nhanh 3 tầng**:
+   - Tầng 1: Sinh ảnh gốc 0° (`media_id_0`).
+   - Tầng 2: Sinh song song 8 ảnh (2 candidates $\times$ 4 góc), AI Agent so sánh chọn Best Pick.
+   - Tầng 3: Sinh 25 video loop 4s song song qua 5 slots liên tục.
 
 ---
 
-## Phần A — Mô Tả Nhân Vật (THAY ĐỔI KHI TẠO NHÂN VẬT MỚI)
+## Phần A — Mô Tả Nhân Vật Mẫu (Copy Vào File Plan Mới Khi Tạo Nhân Vật)
 
 ```yaml
-# ═══ THAY ĐỔI PHẦN NÀY CHO NHÂN VẬT MỚI ═══
+# ═══ ĐIỀN THÔNG TIN NHÂN VẬT VÀO ĐÂY ═══
 character:
-  name: "Dạ Hàn (Ye Han / Shadow Blade)"
-  gender: "male"
-  age: "young adult (20-22)"
-  personality: "Lạnh lùng, quyết đoán, phong trần bí ẩn. Hắc y kiếm khách."
-  combat_style: "Ám ảnh tốc độ kiếm thuật + Hắc lôi âm ảnh"
+  name: "Tên Nhân Vật"
+  gender: "male / female"
+  age: "young adult (18-22)"
+  personality: "Mô tả tính cách và phong thái nhân vật"
+  combat_style: "Phong cách chiến đấu và nguyên tố phép thuật"
   
   # Ngoại hình
-  hair: "Layered spiky long snowy white hair tied in a high ponytail with silver ring, sharp side bangs"
-  skin: "Fair pale porcelain skin tone"
-  outfit: "Sleek layered pitch-black Xianxia martial artist robes with silver trim, dark leather vambraces and wide belt sash"
-  primary_color: "Midnight Obsidian Black (#111111)"
-  accent_color: "Polished Silver & Dark Charcoal"
+  hair: "Màu sắc và kiểu tóc chi tiết"
+  skin: "Tông màu da (Fair porcelain / tan / etc.)"
+  outfit: "Trang phục, đạo bào, giáp trụ, màu sắc viền áo"
+  primary_color: "Màu chủ đạo chính"
+  accent_color: "Màu điểm xuyết phụ"
   
   # Vũ khí & Phép thuật
-  weapon: "Obsidian Dark Katana / Black Shadow Sword"
-  spell_element: "Dark Shadow & Silver Spark Aura"
+  weapon: "Vũ khí đặc trưng"
+  spell_element: "Nguyên tố hào quang / luồng khí"
   
   # Art style
   style: "2D Xianxia/Fantasy anime chibi style, bold clean linework, flat cel-shaded coloring"
@@ -38,72 +51,64 @@ character:
 
 ---
 
-## Phần B — Pipeline 3 Tầng (AI Agent Tự Chạy)
+## Phần B — Pipeline 3 Tầng
 
 ### Tầng 1: Tạo Ảnh Gốc 0° (Master Root)
 
 ```
 Bước: text_to_image
-Tỉ lệ: 9:16 (Portrait)
-API: IMAGE_ASPECT_RATIO_PORTRAIT
+Tỉ lệ: 9:16 (IMAGE_ASPECT_RATIO_PORTRAIT)
 ```
 
-**Prompt 0°** = Lấy toàn bộ thông tin từ Phần A, ghép vào template:
-
+**Prompt 0°** = Lấy thông tin từ Phần A, ghép vào template:
 > MASTER CHARACTER DESIGN — {style} — 0° DIRECT FRONT VIEW
 > BLANK FACELESS HEAD (NO eyes, NO nose, NO mouth).
-> Character: {name}, {gender}, {age}.
-> Hair: {hair}. Outfit: {outfit}.
+> Character: {name}, {gender}, {age}. Hair: {hair}. Outfit: {outfit}.
 > Colors: {primary_color}. Accents: {accent_color}. Skin: {skin}.
 > Solid chroma-key green {chroma_bg}. Full body centered.
 
-**Output**: `media_id_0` → dùng làm tham chiếu cho Tầng 2.
+**Output**: `media_id_0` → tải về `output/<ten-nhan-vat>/angle_0.png`. AI Agent dùng `view_file` kiểm định đạt chuẩn mới chuyển Tầng 2.
 
 ---
 
-### Tầng 2: Tạo 4 Góc Còn Lại Song Song (Ref = ảnh 0°)
+### Tầng 2: Tạo 4 Góc Còn Lại — Kích Hoạt 8 Slots Song Song (2 Ảnh/Góc)
 
 > [!IMPORTANT]
-> **KÍCH HOẠT SONG SONG 4 SLOTS NGAY LẬP TỨC (`asyncio.gather`):**
-> - Cả 4 góc (45°, 90°, 135°, 180°) **chỉ phụ thuộc duy nhất vào ảnh gốc 0°** (`media_id_0`). Chúng hoàn toàn độc lập với nhau.
-> - **TUYỆT ĐỐI KHÔNG chạy tuần tự** (không chờ góc 45° xong rồi mới tạo 90°).
-> - Ngay khi nhận được `media_id_0`, pipeline / AI Agent kích hoạt đồng thời cả 4 task bằng `asyncio.gather(*[gen(ang) for ang in ['45', '90', '135', '180']])`.
-> - Thời gian chờ chỉ bằng thời gian của 1 ảnh (~30-60s) thay vì phải đợi 4 lần nối tiếp (~2-4 phút).
+> **CƠ CHẾ MULTI-CANDIDATE (8 REQUESTS SONG SONG CÙNG LÚC):**
+> - Thay vì tạo 1 ảnh mỗi góc rồi nếu lỗi mới tạo lại: **Lập tức bắn song song 8 requests** (mỗi góc 45°, 90°, 135°, 180° sinh **2 ảnh cùng lúc**: `candidate_1` và `candidate_2`).
+> - Cả 8 requests đều chỉ dùng `media_id_0` làm reference và chạy đồng thời qua `asyncio.gather`.
+> - Thời gian sinh cả 8 ảnh chỉ mất khoảng **30–45 giây**!
+> - **Lợi ích**: AI Agent dùng `view_file` so sánh trực quan giữa 2 ứng viên của từng góc $\rightarrow$ chọn ngay ảnh có chi tiết đẹp nhất, góc xoay giải phẫu chuẩn nhất làm **Best Pick**.
+> - Nếu cả 2 ảnh của 1 góc nào đó đều chưa chuẩn: AI Agent chỉ sinh tiếp 2 ảnh cho riêng góc đó để so sánh tiếp đến khi đạt 10/10.
 
 ```
 Bước: image_to_image (reference = media_id_0)
 Tỉ lệ: 9:16 (IMAGE_ASPECT_RATIO_PORTRAIT)
-Thực thi: 4 requests chạy song song đồng thời (Parallel 4 Slots)
+Thực thi: 8 requests chạy song song đồng thời (4 góc × 2 candidates/góc)
 ```
 
-#### Yêu cầu & Prompt Đặc Biệt Cho Từng Góc:
+#### Tiêu Chí Đánh Giá Chọn Ứng Viên Tốt Nhất (Best Pick):
 
-| Góc | Yêu cầu xoay cơ thể (Override Front Bias) | Điểm kiểm tra giải phẫu (Anatomy Alignment) |
-|-----|--------------------------------------------|---------------------------------------------|
-| **45°** | **Xoay sâu đúng chuẩn 45° (Deep 3/4 Isometric)**<br>*(Tuyệt đối cấm xoay nhẹ 15°–20° hay ngực thẳng hướng camera)* | - Mặt phẳng ngực xoay chéo 45° sang trái.<br>- **Vai trái & ngực trái** vươn ra foreground gần camera.<br>- **Vai phải** kéo lùi sâu ra phía sau thân người.<br>- Bề ngang thân hẹp hơn rõ rệt so với 0°.<br>- Hai mũi chân & ủng chĩa chéo 45° về góc dưới bên trái. |
-| **90°** | **Full Side Profile thuần 100% sang cạnh trái**<br>*(Tuyệt đối cấm thấy góc 3/4 hay ngực trước)* | - Thân người xuất hiện ở dạng lát cắt dọc mảnh mai (slender side profile).<br>- Vai trái đối diện camera; **vai phải & tay phải bị che khuất 100%**.<br>- Hai mũi chân chỉ 100% nằm ngang sang CẠNH TRÁI khung hình. |
-| **135°** | **Lưng lệch trái 135° (Back-Left 3/4)** | - Camera nhìn từ phía sau-phải. Thấy trọn vẹn lưng, tóc sau, tà áo sau.<br>- Vai trái gần camera (phía sau). |
-| **180°** | **Sau lưng hoàn toàn 180° (Symmetrical Rear View)** | - Đối xứng 100%, gáy, búi tóc, trâm, lưng đạo bào, hai gót chân quay về camera. |
+| Góc | Công thức ép góc (Override Front Bias) | Tiêu chí chọn Best Pick giữa 2 Candidates |
+|-----|---------------------------------------|--------------------------------------------|
+| **45°** | **Thế bước chéo bất đối xứng (`asymmetrical 3/4 stepping pose`)**<br>*(Camera isometric góc 45° bên trái)* | - Ứng viên nào có **vai trái & chân trái bước hẳn ra phía trước**, ngực xoay chéo 45° rõ rệt hơn thì chọn.<br>- Loại bỏ ảnh bị phẳng ngực hoặc dáng đứng trực diện. |
+| **90°** | **Camera trực diện mạn sườn trái (`pure flank profile`)**<br>*(Nhìn 100% hướng cạnh trái 9 o'clock)* | - Ứng viên nào có **lát cắt thân mỏng nhất**, vai phải và tay phải bị che khuất 100%, mũi chân chỉ hoàn toàn sang trái thì chọn. |
+| **135°** | **Lưng lệch trái 135° (Back-Left 3/4 View)** | - Ứng viên nào thấy rõ lưng áo sau, dải thắt lưng sau và độ nghiêng 3/4 sau đẹp hơn. |
+| **180°** | **Sau lưng hoàn toàn 180° đối xứng** | - Ứng viên nào có đuôi tóc, lưng áo và hai gót chân đối xứng thẳng camera nhất. |
 
-**Output**: `media_id_45`, `media_id_90`, `media_id_135`, `media_id_180`
-
-**Validation & Kiểm Định Ảnh** (tích hợp `image_validator.py` + AI Agent Antigravity):
-1. **Basic checks (Code tự động)**: Kích thước, tỉ lệ 9:16 portrait, % phông xanh `#00FF00` ≥ 5%, không bị trắng/đen.
-2. **Tự động lưu local**: Cả 4 ảnh được tải đồng thời về `output/_validation/angle_{angle}_attempt_{n}.png`.
-3. **AI Agent Antigravity Review trực quan song song**:
-   - AI Agent dùng tool `view_file` xem trực tiếp bộ 4 ảnh.
-   - So sánh trực tiếp góc 45° & 90° để đảm bảo đã xoay đủ độ (loại bỏ lỗi xoay nông 15°-20°), kiểm tra tính đồng nhất trang phục/tóc với ảnh gốc 0°.
-   - Nếu góc nào bị méo/chưa đủ độ xoay: AI Agent chỉ retry riêng góc đó với prompt được tinh chỉnh lại.
-4. **Chuyển tầng**: Khi cả bộ 5 góc đã qua kiểm định đạt chuẩn, kích hoạt Tầng 3 (hàng đợi 5 slots tạo 25 video 4s loop).
+**Output**: Bộ 4 ảnh Best Pick: `media_id_45`, `media_id_90`, `media_id_135`, `media_id_180`  
+Lưu vào: `agent-veo3/output/<ten-nhan-vat-khong-dau>/` (`angle_45.png`, `angle_90.png`, `angle_135.png`, `angle_180.png`).
 
 ---
 
-### Tầng 3: Tạo Video 4s Seamless Loop (5 Slots Song Song)
+### Tầng 3: Tạo Video 4s Seamless Loop (5 Slots Song Song Liên Tục)
 
 ```
 Bước: image_to_video (start_frame = end_frame = ảnh góc tương ứng)
 Thời lượng: 4 giây
-Sliding Window: 5 slots chạy song song liên tục
+Hàng đợi: Sliding Window 5 slots chạy song song liên tục
+Output Folder: agent-veo3/output/<ten-nhan-vat-khong-dau>/videos/
+```
 ```
 
 #### Bảng Action & Thứ Tự Ưu Tiên

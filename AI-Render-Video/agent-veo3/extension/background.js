@@ -369,6 +369,13 @@ async function solveCaptcha(requestId, captchaAction) {
   // Prefer active tab if multiple are open
   const targetTab = tabs.find(t => t.active) || tabs[0];
 
+  if (targetTab && !targetTab.active) {
+    try {
+      await chrome.tabs.update(targetTab.id, { active: true });
+      await sleep(600);
+    } catch {}
+  }
+
   if (!targetTab) {
     // Auto-open Flow tab and wait briefly before returning error
     try {

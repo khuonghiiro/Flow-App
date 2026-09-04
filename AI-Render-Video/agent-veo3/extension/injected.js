@@ -42,7 +42,7 @@
         action: pageAction,
       });
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('GRECAPTCHA_EXECUTE_TIMEOUT')), 15000)
+        setTimeout(() => reject(new Error('GRECAPTCHA_EXECUTE_TIMEOUT')), 35000)
       );
       const token = await Promise.race([executePromise, timeoutPromise]);
 

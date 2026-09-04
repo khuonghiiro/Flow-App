@@ -173,7 +173,6 @@ _NCrunch*
 **/.torch/
 
 # AI Model Checkpoint Weights (Exclude multi-GB binaries from git)
-**/models/**
 !**/models/
 !**/models/**/
 !**/models/README.md
