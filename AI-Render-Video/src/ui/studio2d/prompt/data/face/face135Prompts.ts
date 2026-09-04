@@ -9,6 +9,10 @@ export const FACE_135_PROMPTS: PromptItem[] = [
     stepLabel: 'Bước 4: Biểu Cảm Đơn',
     icon: '👀',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle135',
+    refAngleLabel: '135° Lưng Phải',
     tags: ['face', '135deg', 'back_right', 'glance', 'blink', 'loop'],
     videoGuide: {
       duration: '2 - 3 giây',
@@ -35,6 +39,10 @@ MOTION: Eye glances toward camera with gentle curious blink and subtle pupil foc
     stepLabel: 'Bước 4: Biểu Cảm Đơn',
     icon: '😊',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle135',
+    refAngleLabel: '135° Lưng Phải',
     tags: ['face', '135deg', 'back_right', 'smile', 'happy', 'loop'],
     videoGuide: {
       duration: '2 - 3 giây',
@@ -57,6 +65,10 @@ MOTION: The visible eye crinkles into a tender affectionate smile gazing back to
     stepLabel: 'Bước 4: Biểu Cảm Đơn',
     icon: '🗣️',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle135',
+    refAngleLabel: '135° Lưng Phải',
     tags: ['face', '135deg', 'back_right', 'talk', 'dialogue', 'loop'],
     videoGuide: {
       duration: '2 - 3 giây',
@@ -79,6 +91,10 @@ MOTION: Visible mouth articulates expressive dialogue syllables while glancing b
     stepLabel: 'Bước 4: Biểu Cảm Đơn',
     icon: '👁️',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle135',
+    refAngleLabel: '135° Lưng Phải',
     tags: ['face', '135deg', 'back_right', 'alert', 'vigilant', 'loop'],
     videoGuide: {
       duration: '2 - 3 giây',

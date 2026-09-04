@@ -23,6 +23,10 @@ function createHandActionGroup(
     stepLabel: 'Bước 3: Động Tác Tay',
     icon,
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '9:16',
+    refAngleImageId: `angle${a.deg}`,
+    refAngleLabel: a.label,
     tags: ['hand', baseId, `${a.deg}deg`, 'video'],
     videoGuide: {
       duration: '2 - 3 giây',
@@ -34,7 +38,8 @@ function createHandActionGroup(
     infoNote: `💡 Động tác ${titleName} chuẩn góc nhìn ${a.label}.`,
     negativePrompt: `eyes, mouth, nose, walking, distorted hands, extra fingers, 3D CGI`,
     rawPrompt: `TASK: Image-to-video 2-3 second animation: ${titleName.toUpperCase()} (${a.label.toUpperCase()}).
-Use the ${a.deg}° faceless anime reference image as LOCKED IDENTITY SOURCE. ONLY ANIMATE HANDS/ARMS.
+📎 REFERENCE IMAGE REQUIRED: Use the ${a.deg}° body angle reference image as the START FRAME.
+The AI video generator (Kling/Veo/Hailuo) MUST receive this reference image as input.
 
 CHARACTER LOCK:
 - Faceless smooth head (NO eyes/mouth/nose), locked daoist robes and hair

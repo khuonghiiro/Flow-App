@@ -28,7 +28,6 @@ share/python-wheels/
 *.egg
 
 # AI Models & Temp Data / Media
-models/
 temp_audio/
 temp/
 exports/

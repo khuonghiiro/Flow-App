@@ -386,11 +386,11 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       step *= 2;
     }
     const screenGridSize = step * zoom;
-    // Soothing, calm neutral dot color: reduces glare and eye fatigue dramatically
+    // Subtle dot grid: creates depth without distracting from nodes
     const dotColor = canvasTheme === 'dark'
-      ? 'rgba(148, 163, 184, 0.22)'
-      : 'rgba(100, 116, 139, 0.28)';
-    const dotRadius = 1.0;
+      ? 'rgba(100, 130, 180, 0.16)'
+      : 'rgba(100, 116, 139, 0.22)';
+    const dotRadius = 0.8;
 
     return {
       position: 'absolute' as const,
@@ -444,10 +444,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           overflow: 'hidden',
           borderRadius: 10,
           background: canvasTheme === 'dark'
-            ? 'radial-gradient(ellipse at 50% 45%, #151d2a 0%, #0f1520 60%, #0b0f17 100%)'
+            ? 'radial-gradient(ellipse at 50% 40%, #0f1a2e 0%, #0a1020 45%, #060b14 100%)'
             : 'radial-gradient(ellipse at 50% 45%, #f8fafc 0%, #eef2f6 60%, #e2e8f0 100%)',
           border: canvasTheme === 'dark'
-            ? '1px solid rgba(148, 163, 184, 0.14)'
+            ? '1px solid rgba(56, 130, 220, 0.12)'
             : '1px solid rgba(0, 0, 0, 0.10)',
           cursor: draggingNodeId ? 'grabbing' : isDraggingCanvas ? 'grabbing' : 'default',
           userSelect: 'none',

@@ -1,3 +1,5 @@
+import type { GenerationMode, AspectRatio } from '../types';
+
 export type SkillBranchCategory =
   | 'character'
   | 'walk'
@@ -21,6 +23,9 @@ export interface SkillTreeNode {
   parentId?: string;
   badge?: string; // e.g. "0°", "45°", "8s Master", "Video", "Chibi"
   promptType?: 'image' | 'video' | 'attachment';
+  generationMode?: GenerationMode;
+  aspectRatio?: AspectRatio;
+  refAngleImageId?: string; // ID ảnh góc cơ thể tham chiếu
   isHub?: boolean; // If true, acts as a branching nexus
 }
 

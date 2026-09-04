@@ -53,7 +53,8 @@ if %errorlevel% neq 0 (
 ) else (
     cd dashboard
     echo - Dang chay npm install trong thu muc dashboard...
-    call npm.cmd install
+    set NODE_OPTIONS=--dns-result-order=ipv4first
+    call npm.cmd install --no-audit --no-fund
     cd ..
     echo - Da cai dat xong thu vien Dashboard UI!
 )

@@ -23,6 +23,10 @@ function createLegActionGroup(
     stepLabel: 'Bước 3: Động Tác Chân',
     icon,
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '9:16',
+    refAngleImageId: `angle${a.deg}`,
+    refAngleLabel: a.label,
     tags: ['leg', baseId, `${a.deg}deg`, 'video'],
     videoGuide: {
       duration: '2 - 3 giây',

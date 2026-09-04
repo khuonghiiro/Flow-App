@@ -54,6 +54,9 @@ function createHandActionFamily(
       parentId: `hub_${actionId}`,
       badge: `${a.deg}°`,
       promptType: 'video',
+      generationMode: 'image_to_video',
+      aspectRatio: '9:16',
+      refAngleImageId: `angle${a.deg}`,
     };
   });
 

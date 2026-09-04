@@ -9,6 +9,10 @@ export const FACE_MASTER_8S_PROMPTS: PromptItem[] = [
     stepLabel: 'Bước 4: Ngũ Quan 8s',
     icon: '⏱️',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle0',
+    refAngleLabel: '0° Chính Diện',
     tags: ['face', '0deg', 'front', 'master_8s', 'timeline', 'expressions', 'composite'],
     videoGuide: {
       duration: '8.0 giây',
@@ -70,6 +74,10 @@ CONSTRAINTS:
     stepLabel: 'Bước 4: Ngũ Quan 8s',
     icon: '⏱️',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle45',
+    refAngleLabel: '45° Nghiêng Trái',
     tags: ['face', '45deg', 'isometric', 'master_8s', 'timeline', 'expressions', 'composite'],
     videoGuide: {
       duration: '8.0 giây',
@@ -126,6 +134,10 @@ CONSTRAINTS:
     stepLabel: 'Bước 4: Ngũ Quan 8s',
     icon: '⏱️',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle90',
+    refAngleLabel: '90° Nhìn Ngang',
     tags: ['face', '90deg', 'side', 'profile', 'master_8s', 'timeline', 'expressions'],
     videoGuide: {
       duration: '8.0 giây',
@@ -177,6 +189,10 @@ CONSTRAINTS:
     stepLabel: 'Bước 4: Ngũ Quan 8s',
     icon: '⏱️',
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '1:1',
+    refAngleImageId: 'angle135',
+    refAngleLabel: '135° Lưng Phải',
     tags: ['face', '135deg', 'back_right', 'glance', 'master_8s', 'timeline', 'expressions'],
     videoGuide: {
       duration: '8.0 giây',

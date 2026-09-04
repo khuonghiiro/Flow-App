@@ -55,12 +55,12 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
             objectFit: 'contain',
             pointerEvents: 'none',
             filter: isSelected
-              ? `drop-shadow(0 0 16px ${nodeColor}) drop-shadow(0 0 24px rgba(255,255,255,0.95)) brightness(1.25)`
+              ? `drop-shadow(0 0 18px ${nodeColor}) drop-shadow(0 0 30px rgba(255,255,255,0.9)) brightness(1.3)`
               : isHovered
-              ? `drop-shadow(0 0 14px ${nodeColor}) brightness(1.2)`
+              ? `drop-shadow(0 0 16px ${nodeColor}) brightness(1.25)`
               : isLight
               ? `drop-shadow(0 2px 6px rgba(0,0,0,0.3)) drop-shadow(0 0 6px ${nodeColor}cc)`
-              : `drop-shadow(0 0 8px ${nodeColor}bb) brightness(1.15)`,
+              : `drop-shadow(0 0 12px ${nodeColor}cc) drop-shadow(0 0 4px rgba(255,255,255,0.15)) brightness(1.2)`,
             transition: 'filter 0.2s ease, transform 0.2s ease',
             transform: isHovered || isSelected ? 'scale(1.12)' : 'scale(1)',
           }}
@@ -228,14 +228,14 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
           boxShadow: isLeafNode
             ? 'none'
             : isDragging
-            ? `0 0 28px #ffffff, 0 0 45px ${nodeColor}`
+            ? `0 0 32px #ffffff, 0 0 50px ${nodeColor}`
             : isSelected
-            ? `0 0 24px ${nodeColor}cc, inset 0 0 12px ${nodeColor}40`
+            ? `0 0 28px ${nodeColor}dd, 0 0 50px ${nodeColor}55, inset 0 0 14px ${nodeColor}40`
             : isRoot
-            ? `0 0 28px ${nodeColor}80, inset 0 0 16px ${nodeColor}30`
+            ? `0 0 32px ${nodeColor}90, 0 0 60px ${nodeColor}30, inset 0 0 18px ${nodeColor}35`
             : isPillar
-            ? `0 0 20px ${nodeColor}70, inset 0 0 12px ${nodeColor}25`
-            : `0 0 14px ${nodeColor}60`,
+            ? `0 0 24px ${nodeColor}80, 0 0 45px ${nodeColor}25, inset 0 0 14px ${nodeColor}28`
+            : `0 0 18px ${nodeColor}70, 0 0 35px ${nodeColor}20`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -273,9 +273,9 @@ const SkillTreeNodeBase: React.FC<SkillTreeNodeProps> = ({
             ? `${nodeColor}35`
             : isLeafNode
             ? isLight
-              ? 'rgba(15, 23, 42, 0.88)'
-              : 'rgba(15, 22, 34, 0.88)'
-            : 'rgba(17, 24, 38, 0.92)',
+              ? 'rgba(15, 23, 42, 0.92)'
+              : 'rgba(8, 14, 28, 0.94)'
+            : 'rgba(10, 16, 30, 0.95)',
           padding: isRoot ? '4px 14px' : isPillar ? '3px 11px' : '2.5px 9px',
           borderRadius: 6,
           border: isSelected

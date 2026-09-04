@@ -24,6 +24,10 @@ function createCombinedActionGroup(
     stepLabel: 'Bước 3: Động Tác Kết Hợp',
     icon,
     promptType: 'video',
+    generationMode: 'image_to_video',
+    aspectRatio: '9:16',
+    refAngleImageId: `angle${a.deg}`,
+    refAngleLabel: a.label,
     tags: ['combined', baseId, `${a.deg}deg`, 'video'],
     videoGuide: {
       duration: '2.5 - 3 giây',

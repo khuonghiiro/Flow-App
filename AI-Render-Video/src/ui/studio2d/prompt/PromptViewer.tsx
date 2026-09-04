@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Copy, Check, Info, Video, ShieldAlert, Film, Sparkles } from 'lucide-react';
-import { PromptItem, PromptCustomizerValues } from './types';
+import { Copy, Check, Info, Video, ShieldAlert, Film, Sparkles, Image, ArrowRight, Ratio } from 'lucide-react';
+import { PromptItem, PromptCustomizerValues, GenerationMode, AspectRatio } from './types';
 import { formatPromptWithCustomizer, getSiblingAnglePrompts } from './promptData';
+import { GenerationMetaBar } from './GenerationMetaBar';
 
 interface PromptViewerProps {
   item: PromptItem;
@@ -184,6 +185,9 @@ export const PromptViewer: React.FC<PromptViewerProps> = ({
           </div>
         </div>
       )}
+
+      {/* ─── Generation Mode Badge + Aspect Ratio + Reference Info ─── */}
+      <GenerationMetaBar item={item} onSelectPrompt={onSelectPrompt} />
 
       {/* ─── Prompt Text Box ─── */}
       <div

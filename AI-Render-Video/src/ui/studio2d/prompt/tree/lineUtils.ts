@@ -8,11 +8,12 @@ export function getOrthogonalPath(
   y1: number,
   x2: number,
   y2: number,
-  radius = 14
+  radius = 18
 ): string {
   const dx = x2 - x1;
   const dy = y2 - y1;
 
+  // Near-straight lines: simple connector
   if (Math.abs(dx) < 6 || Math.abs(dy) < 6) {
     return `M ${x1} ${y1} L ${x2} ${y2}`;
   }
@@ -20,12 +21,14 @@ export function getOrthogonalPath(
   const midX = x1 + dx * 0.5;
   const signX = dx > 0 ? 1 : -1;
   const signY = dy > 0 ? 1 : -1;
-  const r = Math.min(radius, Math.abs(dx) * 0.45, Math.abs(dy) * 0.45);
+  // Smoother radius capped to available space
+  const r = Math.min(radius, Math.abs(dx) * 0.4, Math.abs(dy) * 0.4);
 
   if (r <= 2) {
     return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
   }
 
+  // Orthogonal path with smooth arc corners using quadratic Bézier
   return (
     `M ${x1} ${y1} ` +
     `L ${midX - signX * r} ${y1} ` +
