@@ -183,7 +183,7 @@ async def refresh_project_urls(project_id: str):
 
 
 @router.get("/media/{media_id}")
-async def get_media(media_id: str):
+async def get_media(media_id: str, project_id: str = ""):
     """Get media metadata + fresh signed URL from Google Flow.
 
     Returns the raw response which should contain a fresh fifeUrl/servingUri.
@@ -192,14 +192,13 @@ async def get_media(media_id: str):
     client = get_flow_client()
     if not client.connected:
         raise HTTPException(503, "Extension not connected")
-    result = await client.get_media(media_id)
+    result = await client.get_media(media_id, project_id)
     if result.get("error"):
         raise HTTPException(502, result["error"])
     status = result.get("status", 200)
     if isinstance(status, int) and status >= 400:
         raise HTTPException(status, result.get("data", "Media not found"))
     return result.get("data", result)
-
 
 @router.post("/edit-image")
 async def edit_image(body: EditImageRequest):

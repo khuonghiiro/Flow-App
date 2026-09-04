@@ -732,13 +732,17 @@ class FlowClient:
         status = result.get("status", 500)
         return isinstance(status, int) and status == 200
 
-    async def get_media(self, media_id: str) -> dict:
+    async def get_media(self, media_id: str, project_id: str = "") -> dict:
         """Fetch media metadata from Google Flow.
 
         Returns the raw API response which contains a fresh signed URL
         in data.fifeUrl or data.servingUri.
         """
-        url = f"{GOOGLE_FLOW_API}/v1/media/{media_id}?key={GOOGLE_API_KEY}&clientContext.tool=PINHOLE"
+        params = f"key={GOOGLE_API_KEY}"
+        if project_id:
+            params += f"&clientContext.projectId={project_id}"
+        params += "&clientContext.tool=PINHOLE"
+        url = f"{GOOGLE_FLOW_API}/v1/media/{media_id}?{params}"
         return await self._send("api_request", {
             "url": url,
             "method": "GET",

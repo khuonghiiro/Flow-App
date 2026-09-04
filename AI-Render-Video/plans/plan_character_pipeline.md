@@ -4,21 +4,30 @@
 
 Tài liệu này là **Master Template** chuẩn. Khi người dùng yêu cầu tạo nhân vật mới dựa trên template này, AI Agent tuân thủ nghiêm ngặt các quy chuẩn sau:
 
-1. **Quy tắc tạo File Plan riêng cho từng nhân vật**:
+1. **Quy tắc tạo Project Google Flow riêng cho từng nhân vật (BẮT BUỘC)**:
+   - Mỗi nhân vật **BẮT BUỘC là 1 project riêng biệt trên Google Flow** (`labs.google/fx/tools/flow`).
+   - Trước khi sinh ảnh/video, AI Agent gọi API `POST /api/projects` với tên project là tên nhân vật (ví dụ: `name: "Vô Tâm Tiên Nhân"`).
+   - Điều này đảm bảo mỗi nhân vật có một Project Card hiển thị riêng trên Dashboard của người dùng, không bị gom chung hay mất dấu.
+
+2. **Quy tắc tạo File Plan riêng cho từng nhân vật**:
    - Tạo file plan mới trong thư mục `plans/` với tiền tố tên nhân vật viết thường không dấu:
      `plans/<ten-nhan-vat-khong-dau>.plan_character_pipeline.md`
-     *(Ví dụ: Nhân vật `Dạ Hàn` → tạo file `plans/da-han.plan_character_pipeline.md`)*.
-   - File plan riêng này lưu toàn bộ mô tả, bảng Media ID, danh sách file ảnh/video và tiến độ riêng của nhân vật đó để dễ dàng theo dõi, tùy biến hoặc tiếp tục xử lý sau này.
+     *(Ví dụ: Nhân vật `Vô Tâm Tiên Nhân` → tạo file `plans/vo-tam-tien-nhan.plan_character_pipeline.md`)*.
+   - Lưu trữ đầy đủ Project ID, link truy cập trực tiếp trên Google Flow, registry 5 góc xoay và danh sách 25 video loop 4s.
 
-2. **Quy tắc Thư Mục Output riêng cho từng nhân vật**:
-   - Toàn bộ ảnh gốc 5 góc, các candidates và video của nhân vật được lưu riêng vào folder:
-     `agent-veo3/output/<ten-nhan-vat-khong-dau>/`
-     *(Ví dụ: `agent-veo3/output/da-han/angle_0.png`, `angle_45.png`,...)*, tránh bị lẫn lộn giữa các nhân vật khác nhau.
+3. **Quy tắc Thư Mục Output & Tải Video 1080p theo Hành Động**:
+   - Thư mục gốc nhân vật: `agent-veo3/output/<ten-nhan-vat-khong-dau>/`.
+   - Các thư mục con lưu trữ video `.mp4` 1080p vật lý theo từng hành động:
+     - `di-bo/`: Lưu 5 video đi bộ (`walk_0.mp4`, `walk_45.mp4`,..., `walk_180.mp4`).
+     - `dung-yen/`: Lưu 5 video đứng yên (`idle_0.mp4`, `idle_45.mp4`,...).
+     - `chay/`: Lưu 5 video chạy (`run_0.mp4`, `run_45.mp4`,...).
+     - `danh-cong/`: Lưu 5 video tấn công (`attack_0.mp4`, `attack_45.mp4`,...).
+     - `phong-thu/`: Lưu 5 video phòng thủ (`defend_0.mp4`, `defend_45.mp4`,...).
 
-3. **Quy trình thực thi nhanh 3 tầng**:
-   - Tầng 1: Sinh ảnh gốc 0° (`media_id_0`).
-   - Tầng 2: Sinh song song 8 ảnh (2 candidates $\times$ 4 góc), AI Agent so sánh chọn Best Pick.
-   - Tầng 3: Sinh 25 video loop 4s song song qua 5 slots liên tục.
+4. **Quy trình thực thi nhanh 3 tầng**:
+   - Tầng 1: Tạo project Google Flow → Sinh ảnh gốc 0° (`media_id_0`).
+   - Tầng 2: Sinh song song 8 ảnh (2 candidates $\times$ 4 góc), AI Agent so sánh chọn Best Pick đạt 10/10.
+   - Tầng 3: Sinh 25 video loop 4s song song qua 5 slots liên tục + upscale 1080p + tải về các folder con.
 
 ---
 
@@ -31,21 +40,29 @@ character:
   gender: "male / female"
   age: "young adult (18-22)"
   personality: "Mô tả tính cách và phong thái nhân vật"
-  combat_style: "Phong cách chiến đấu và nguyên tố phép thuật"
+  combat_style: "Chưởng pháp / quyền pháp / thủ ấn phép thuật (tay không)"
   
   # Ngoại hình
-  hair: "Màu sắc và kiểu tóc chi tiết"
-  skin: "Tông màu da (Fair porcelain / tan / etc.)"
-  outfit: "Trang phục, đạo bào, giáp trụ, màu sắc viền áo"
-  primary_color: "Màu chủ đạo chính"
-  accent_color: "Màu điểm xuyết phụ"
+  hair: "Màu sắc và kiểu tóc chi tiết, cài trâm/dải lụa mềm mại"
+  skin: "Tông màu da tự nhiên (Fair peach / warm ivory / etc.) khớp hoàn hảo đồng nhất giữa da mặt, da cổ và da tay"
+  outfit: "Đạo bào, lụa là, tà áo thướt tha, giày vải đế bằng (flat cloth shoes, zero heels)"
+  primary_color: "Màu chủ đạo chính (tránh màu neon chói gắt)"
+  accent_color: "Màu điểm xuyết phụ thanh nhã"
   
-  # Vũ khí & Phép thuật
-  weapon: "Vũ khí đặc trưng"
-  spell_element: "Nguyên tố hào quang / luồng khí"
+  # Quy chuẩn đai lưng & nơ (BẮT BUỘC RÕ RÀNG)
+  waist_belt_logic:
+    male: "Đai lưng bản rộng ôm sát eo phẳng phiu (broad structured waist belt). Phía trước có khóa ngọc/khóa bạc. Phía sau lưng (135° & 180°) TUYỆT ĐỐI LÀ ĐAI PHẲNG TRƠN, CẤM VẼ NƠ THẮT (strictly continuous flat belt band behind back, ZERO bow, ZERO ribbon knot)."
+    female: "Tùy chọn ghi rõ: Hoặc có nơ hồ điệp thắt sau lưng (buông dải lụa đồng bộ 0°, 135°, 180°), hoặc đai trơn phẳng không nơ."
+  
+  # Độ rũ trang phục (Trọng lực, cấm gió giả tạo)
+  fabric_physics: "Quần áo, tà áo và tay áo rủ thẳng tự nhiên theo trọng lực (natural downward drape under gravity, calm static fabric). TUYỆT ĐỐI KHÔNG để gió thổi hất vạt áo bay cao ra đằng sau ở góc 45° và 90°."
+  
+  # Vũ khí & Đạo cụ (BẮT BUỘC KHÔNG CÓ)
+  weapon: "None (TUYỆT ĐỐI KHÔNG mang vũ khí, kiếm, đàn, trượng hay đạo cụ trên người/sau lưng để tránh AI ảo giác méo góc)"
+  spell_element: "Khí công / phong lôi / nguyên tố tự nhiên nhẹ nhàng"
   
   # Art style
-  style: "2D Xianxia/Fantasy anime chibi style, bold clean linework, flat cel-shaded coloring"
+  style: "2D Xianxia/Fantasy anime chibi style, bold clean linework, flat cel-shaded coloring, harmonious natural palette, zero neon glow"
   chroma_bg: "#00FF00"
 ```
 
@@ -62,52 +79,78 @@ Tỉ lệ: 9:16 (IMAGE_ASPECT_RATIO_PORTRAIT)
 
 **Prompt 0°** = Lấy thông tin từ Phần A, ghép vào template:
 > MASTER CHARACTER DESIGN — {style} — 0° DIRECT FRONT VIEW
-> BLANK FACELESS HEAD (NO eyes, NO nose, NO mouth).
-> Character: {name}, {gender}, {age}. Hair: {hair}. Outfit: {outfit}.
+> STRICT TRUE FRONTAL POSE (0.0 DEGREES): Character stands facing 100% DIRECTLY forward at camera. Both shoulders are perfectly horizontal and level. Chest and torso face 100% straight forward towards the viewer with perfect bilateral symmetry. Both feet planted parallel and pointing directly forward towards viewer (12 o'clock). Head completely upright, centered, ZERO head tilt, ZERO 3/4 turn.
+> NATURAL FABRIC DRAPE UNDER GRAVITY: Robes, sleeves, and hems hang straight down naturally under calm gravity. Strictly NO wind blowing, NO billowing fabric, NO flapping hems, NO flying coat tails.
+> BLANK FACELESS HEAD & UNIFORM SKIN TONE: Completely BLANK, SMOOTH, FEATURELESS face surface (NO eyes, NO nose, NO mouth). Facial skin color MUST seamlessly and uniformly match neck and hands ({skin}) with 100% consistency across all angles. Clean flat cel-shaded skin, strictly zero facial features.
+> FABRIC TEXTURE (STRICTLY FLAT MATTE, ZERO SHINE): {outfit}. STRICTLY FLAT MATTE FABRIC TEXTURE, ZERO METALLIC SHINE, ZERO SILVERY GLOSS, ZERO SPECULAR REFLECTIONS, ZERO SATIN SHEEN. Clean natural cloth drape.
+> WAIST BELT: {waist_belt_description}. For males: structured flat continuous belt band, strictly zero bow at back.
+> ZERO WEAPONS OR PROPS: Strictly NO weapons, NO sword on back or waist, NO musical instruments, NO props. Hands empty and relaxed.
+> LIGHTING & COLOR: Clean natural cel-shading. Strictly ZERO neon lighting, ZERO harsh glowing rim reflections, zero specular highlights.
+> Character: {name}, {gender}, {age}. Hair: {hair}.
 > Colors: {primary_color}. Accents: {accent_color}. Skin: {skin}.
 > Solid chroma-key green {chroma_bg}. Full body centered.
 
 **Output**: `media_id_0` → tải về `output/<ten-nhan-vat>/angle_0.png`. AI Agent dùng `view_file` kiểm định đạt chuẩn mới chuyển Tầng 2.
 
----
-
-### Tầng 2: Tạo 4 Góc Còn Lại — Kích Hoạt 8 Slots Song Song (2 Ảnh/Góc)
+### Tầng 2: Tạo 4 Góc Còn Lại — Quy Chuẩn Tham Chiếu Hai Pha (Multi-Reference Continuity)
 
 > [!IMPORTANT]
-> **CƠ CHẾ MULTI-CANDIDATE (8 REQUESTS SONG SONG CÙNG LÚC):**
-> - Thay vì tạo 1 ảnh mỗi góc rồi nếu lỗi mới tạo lại: **Lập tức bắn song song 8 requests** (mỗi góc 45°, 90°, 135°, 180° sinh **2 ảnh cùng lúc**: `candidate_1` và `candidate_2`).
-> - Cả 8 requests đều chỉ dùng `media_id_0` làm reference và chạy đồng thời qua `asyncio.gather`.
-> - Thời gian sinh cả 8 ảnh chỉ mất khoảng **30–45 giây**!
-> - **Lợi ích**: AI Agent dùng `view_file` so sánh trực quan giữa 2 ứng viên của từng góc $\rightarrow$ chọn ngay ảnh có chi tiết đẹp nhất, góc xoay giải phẫu chuẩn nhất làm **Best Pick**.
-> - Nếu cả 2 ảnh của 1 góc nào đó đều chưa chuẩn: AI Agent chỉ sinh tiếp 2 ảnh cho riêng góc đó để so sánh tiếp đến khi đạt 10/10.
+> **1. QUY CHUẨN THAM CHIẾU TUẦN TỰ (REFERENCE CONTINUITY):**
+> - **Góc 45° (Nghiêng 3/4)**: **CHỈ THAM CHIẾU DUY NHẤT ẢNH 0° (`[media_id_0]`)**. Tuyệt đối không tham chiếu ảnh 90° hay ảnh khác để tránh bị kéo lệch tỉ lệ.
+> - **Góc 180° (Sau lưng)**: **CHỈ THAM CHIẾU DUY NHẤT ẢNH 0° (`[media_id_0]`)**.
+> - **Góc 90° (Mạn sườn)**: **BẮT BUỘC THAM CHIẾU CẢ ẢNH 0° VÀ ẢNH 45° (`[media_id_0, media_id_45]`)**. Phải có ảnh 45° chuẩn trước mới sinh ảnh 90° để kế thừa góc xoay và giữ trọn chi tiết.
+> - **Góc 135° (Lưng lệch trái)**: **BẮT BUỘC THAM CHIẾU CẢ ẢNH 0° VÀ ẢNH 180° (`[media_id_0, media_id_180]`)**.
+
+> [!IMPORTANT]
+> **2. QUY CHUẨN KHÓA TỈ LỆ VÓC DÁNG & CHIỀU CAO (STATURE & SCALE LOCK):**
+> - Nhân vật ở mọi góc xoay (45°, 90°, 135°, 180°) **PHẢI GIỮ NGUYÊN 100% VÓC DÁNG CAO RÁO, TỈ LỆ CHIỀU CAO ĐẦU - CHÂN** như ảnh 0° gốc.
+> - Chiều cao từ đỉnh búi tóc đến gót ủng phải chiếm đúng **85% – 90%** chiều cao khung hình portrait.
+> - **TUYỆT ĐỐI KHÔNG để góc 45° hay 90° bị co nhỏ người (shrink / zoom-out), lùn đi hay biến thành chibi mini**.
+> - **BẢO TOÀN TRỌN VẸN CHI TIẾT TRANG PHỤC**: Giữ đầy đủ từng đường viền thêu chỉ vàng/bạc, hoa văn tường vân, cổ áo chéo và cấu trúc đai lưng từ ảnh 0°, không được để mất nét hay giản lược chi tiết.
 
 ```
-Bước: image_to_image (reference = media_id_0)
-Tỉ lệ: 9:16 (IMAGE_ASPECT_RATIO_PORTRAIT)
-Thực thi: 8 requests chạy song song đồng thời (4 góc × 2 candidates/góc)
+Pha 2A:
+  - 45° : image_to_image (CHỈ ref: [media_id_0]) -> Khóa tỉ lệ chiều cao cao ráo, bước chéo 45°
+  - 180°: image_to_image (CHỈ ref: [media_id_0]) -> Đai sau phẳng trơn cấm nơ
+  -> Chọn Best Pick: media_id_45 và media_id_180
+
+Pha 2B:
+  - 90° : image_to_image (ref: [media_id_0, media_id_45]) -> Kế thừa tỉ lệ cao và chi tiết từ 0° và 45°
+  - 135°: image_to_image (ref: [media_id_0, media_id_180]) -> Nội suy 3/4 sau lưng, đai phẳng cấm nơ
+  -> Chọn Best Pick: media_id_90 và media_id_135
 ```
 
 #### Tiêu Chí Đánh Giá Chọn Ứng Viên Tốt Nhất (Best Pick):
 
-| Góc | Công thức ép góc (Override Front Bias) | Tiêu chí chọn Best Pick giữa 2 Candidates |
-|-----|---------------------------------------|--------------------------------------------|
-| **45°** | **Thế bước chéo bất đối xứng (`asymmetrical 3/4 stepping pose`)**<br>*(Camera isometric góc 45° bên trái)* | - Ứng viên nào có **vai trái & chân trái bước hẳn ra phía trước**, ngực xoay chéo 45° rõ rệt hơn thì chọn.<br>- Loại bỏ ảnh bị phẳng ngực hoặc dáng đứng trực diện. |
-| **90°** | **Camera trực diện mạn sườn trái (`pure flank profile`)**<br>*(Nhìn 100% hướng cạnh trái 9 o'clock)* | - Ứng viên nào có **lát cắt thân mỏng nhất**, vai phải và tay phải bị che khuất 100%, mũi chân chỉ hoàn toàn sang trái thì chọn. |
-| **135°** | **Lưng lệch trái 135° (Back-Left 3/4 View)** | - Ứng viên nào thấy rõ lưng áo sau, dải thắt lưng sau và độ nghiêng 3/4 sau đẹp hơn. |
-| **180°** | **Sau lưng hoàn toàn 180° đối xứng** | - Ứng viên nào có đuôi tóc, lưng áo và hai gót chân đối xứng thẳng camera nhất. |
+| Góc | Tham Chiếu (Reference IDs) | Công thức ép góc, tỉ lệ & Tiêu chí chọn Best Pick |
+|-----|----------------------------|--------------------------------------------------|
+| **45°** | `[media_id_0]` (Duy nhất 0°) | **Khóa tỉ lệ vóc dáng cao 1:1 với 0°**, thế bước chéo bất đối xứng (`asymmetrical 3/4 stepping pose`): Thân ngực xoay 45° hướng 10h, giữ 100% hoa văn thêu từ 0°. |
+| **180°** | `[media_id_0]` (Duy nhất 0°) | **Khóa tỉ lệ cao ráo**, sau lưng 100% đối xứng, đai lưng phẳng trơn liên tục ôm eo, **TUYỆT ĐỐI CẤM NƠ THẮT SAU LƯNG**. |
+| **90°** | `[media_id_0, media_id_45]` (Cả 0° và 45°) | **Khóa tỉ lệ cao ráo**, lát cắt sườn trái 90° mỏng, vải rũ thẳng đứng theo trọng lực (cấm gió thổi vạt áo bay ra sau), giữ trọn vẹn hoa văn thêu tay áo và gấu áo. |
+| **135°** | `[media_id_0, media_id_180]` (Cả 0° và 180°) | **Khóa tỉ lệ cao ráo**, lưng lệch trái 135°, đai sau phẳng trơn không nơ khớp 100% ảnh 180°. |
 
 **Output**: Bộ 4 ảnh Best Pick: `media_id_45`, `media_id_90`, `media_id_135`, `media_id_180`  
 Lưu vào: `agent-veo3/output/<ten-nhan-vat-khong-dau>/` (`angle_45.png`, `angle_90.png`, `angle_135.png`, `angle_180.png`).
 
 ---
 
-### Tầng 3: Tạo Video 4s Seamless Loop (5 Slots Song Song Liên Tục)
+### Tầng 3: Tạo Video 4s Seamless Loop (Bám Sát Thực Tế Nhân Vật, Cấm Bịa Phụ Kiện)
+
+> [!CAUTION]
+> **QUY TẮC CẤM BỊA ĐẶT PHỤ KIỆN TRONG PROMPT VIDEO (ZERO HALLUCINATED PROPS):**
+> - Tuyệt đối **KHÔNG** đưa các từ khóa miêu tả phụ kiện không có thật trên nhân vật vào prompt video, ví dụ: `"hanging jade pendants swinging"`, `"red hair ribbons"`, `"sash tassels swaying"`, v.v.
+> - Nếu nhân vật có ngọc bội gắn cố định trên đai lưng thì ngọc bội là khối tĩnh, **KHÔNG ĐƯỢC miêu tả đung đưa theo gió** (tránh AI tưởng tượng ngọc treo lủng lẳng làm hỏng kết cấu đai).
+> - Chỉ cho phép chuyển động tự nhiên trên các bộ phận thực tế:
+>   - **Tà áo, tay áo rộng và vạt áo**: Rung rinh nhẹ nhàng theo làn gió tự nhiên (`soft ambient breeze flutters robe sleeves and coat hems`).
+>   - **Suối tóc dài sau lưng**: Chuyển động hữu cơ mềm mại (`long hair flowing with gentle secondary motion`).
+>   - **Nhịp thở**: Ngực phập phồng nhẹ nhàng đều đặn (`subtle chest respiration rhythm`).
+>   - **Đôi tay**: Buông tự nhiên bên hông với cử động ngón tay tối thiểu (`hands rest naturally with minimal subtle resting finger adjustments`).
 
 ```
 Bước: image_to_video (start_frame = end_frame = ảnh góc tương ứng)
 Thời lượng: 4 giây
 Hàng đợi: Sliding Window 5 slots chạy song song liên tục
-Output Folder: agent-veo3/output/<ten-nhan-vat-khong-dau>/videos/
+Output Folder: agent-veo3/output/<ten-nhan-vat-khong-dau>/videos/<action_key>/
 ```
 ```
 
@@ -151,19 +194,29 @@ Output Folder: agent-veo3/output/<ten-nhan-vat-khong-dau>/videos/
 
 ### 2. Bộ Khung Khống Chế "Chống Ảo Giác" AI (Anti-Glitch Motion Constraints)
 
-Để triệt tiêu hoàn toàn hiện tượng tay múa loạn xạ và nhân nhót, mỗi prompt video `walk` và `run` **BẮT BUỘC** phải có khối chỉ thị sau:
+Để triệt tiêu hoàn toàn hiện tượng tay múa loạn xạ, nhân nhót, tóc giả giật cục, và bước chân đi ngang sai trục: mỗi prompt video **BẮT BUỘC** phải gắn khối chỉ thị Motion Lock sau:
 
 ```text
 CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
-1. ARM MOTION LOCK: Hands and forearms strictly stay below chest level at all times. 
-   Arms move ONLY in a narrow pendulum arc parallel to hips. 
-   STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing, ZERO martial arts posing.
-2. GROUNDED FOOTWORK LOCK: Feet remain firmly anchored to the floor plane in a clean walk/run cycle. 
-   STRICTLY ZERO hopping, ZERO bouncing up and down, ZERO airborne jumping, ZERO floating.
-3. TORSO & HEAD STABILITY: Torso, shoulders, and head remain rock-steady and level. 
-   STRICTLY ZERO torso twisting, ZERO erratic head bobbing, ZERO body contortions or jittering.
-4. BLANK MANNEQUIN PRESERVATION: The completely blank, smooth porcelain mannequin head MUST remain intact. 
-   STRICTLY ZERO facial expressions, ZERO mouth opening, ZERO facial distortion or morphing.
+1. NATURAL UNFORCED GAIT & ARM LOCK: 
+   - Movement is natural, authentic, and dignified. Strictly ZERO exaggerated modeling, stiff artificial posturing, or forced posing.
+   - Hands and forearms strictly stay below chest level at all times, moving ONLY in a narrow organic pendulum arc parallel to hips. 
+   - STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing, ZERO acrobatic/theatrical posing.
+2. 45-DEGREE DIAGONAL STRIDE TRAJECTORY LOCK (CRITICAL FOR 45° & 135° ANGLES):
+   - At 45° (and 135°), legs, feet, and stride direction MUST step strictly along the true 45-degree diagonal axis aligned with the body orientation vector.
+   - STRICTLY FORBIDDEN to step sideways or crab-walk while the torso faces 45°. Both feet naturally track forward along the diagonal plane in anatomically correct cadence.
+   - Feet remain firmly anchored to the floor plane in a clean walk/run cycle. STRICTLY ZERO hopping, ZERO bouncing up and down, ZERO airborne jumping, ZERO floating.
+3. ROOTED REALISTIC HAIR & SECONDARY MOTION PHYSICS:
+   - Hair is realistically rooted to the scalp with organic, soft secondary physics following body inertia and gentle breeze.
+   - STRICTLY ZERO rigid wig swaying, ZERO detached floating wig effect, ZERO artificial bobbing. Long hair and ribbons flow naturally with soft fluid cloth physics.
+4. IDLE BREEZE & RESPIRATION DYNAMICS (FOR IDLE CYCLE):
+   - In standing still (idle), character remains calmly grounded. Visual dynamism comes ONLY from gentle ambient mountain wind fluttering robe hems, wide flowing sleeves, and natural long hair falling behind.
+   - STRICTLY ZERO hallucinated accessories: ZERO swinging jade pendants (jade medallion on belt is a fixed solid buckle), ZERO fake hair ribbons, ZERO dangling sash tassels.
+   - Subtle rhythmic chest breathing respiration. Hands rest naturally with minimal resting micro-adjustments.
+5. TORSO, HEAD, UNIFORM SKIN & ZERO PROPS PRESERVATION:
+   - Torso, shoulders, and head remain rock-steady and level. STRICTLY ZERO torso twisting, ZERO erratic head bobbing, ZERO body contortions or jittering.
+   - The completely blank, smooth mannequin head MUST remain intact with uniform natural skin color seamlessly matching the neck and hands. STRICTLY ZERO facial expressions, ZERO mouth opening, ZERO facial distortion or morphing, ZERO shiny white mask contrast.
+   - STRICTLY ZERO weapons, swords, instruments, or props. STRICTLY ZERO neon glow, neon reflections, or harsh glowing rim lighting.
 ```
 
 ---

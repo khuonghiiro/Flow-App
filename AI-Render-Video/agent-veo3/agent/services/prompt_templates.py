@@ -14,13 +14,13 @@ DEFAULT_CUSTOMIZER_VALUES = {
     "style": "2D Xianxia/Fantasy anime chibi style, bold clean linework, flat cel-shaded coloring",
     "gender": "female",
     "age": "young adult (18-20)",
-    "hairStyleColor": "Long silky platinum white hair with twin front braids, glowing jade hairpin",
-    "outfitDescription": "Xianxia flowing silk daoist robes with wide sleeves, floating ribbons",
-    "primaryColor": "Pure White & Soft Cyan Jade (#00E5FF)",
-    "accentColor": "Soft Platinum & Lilac Purple",
-    "skinTone": "Fair porcelain skin tone",
-    "weaponType": "Enchanted Flying Sword (Lam Ngoc Kiem)",
-    "spellElement": "Ice & Cyan Frost Aura",
+    "hairStyleColor": "Long silky platinum white hair with delicate silver lotus hairpin and silk ribbons",
+    "outfitDescription": "Xianxia flowing silk daoist robes with wide sleeves, floating ribbons, flat cloth lotus shoes with zero heels",
+    "primaryColor": "Pure White & Soft Pale Cyan",
+    "accentColor": "Soft Silver & Lilac Purple",
+    "skinTone": "Fair natural peach skin tone seamlessly matching neck and hands",
+    "weaponType": "None (empty hands, pure martial arts)",
+    "spellElement": "Soft wind aura",
     "chromaBgHex": "#00FF00",
 }
 
@@ -31,11 +31,16 @@ DEFAULT_CUSTOMIZER_VALUES = {
 ANGLE_PROMPT_TEMPLATES = {
     "0": (
         "MASTER CHARACTER DESIGN — 2D XIANXIA CHIBI — 0° DIRECT FRONT VIEW\n"
-        "CAMERA & POSE: Character MUST face DIRECTLY forward at camera (0° strict front view). "
+        "CAMERA & POSE: Character MUST face 100% DIRECTLY forward at camera (strict 0.0° front view). "
         "Head facing 100% straight forward towards viewer. NO head turn, NO head tilt, NO 3/4 angle. "
-        "Symmetrical standing pose, torso upright, shoulders level, both arms relaxed at sides, legs straight. "
-        "CRITICAL — BLANK FACELESS HEAD: Completely BLANK, SMOOTH, FEATURELESS face surface. "
-        "NO eyes, NO eyebrows, NO nose, NO mouth. Pure smooth porcelain skin. "
+        "Symmetrical standing pose, torso upright, both shoulders perfectly horizontal and level, both arms relaxed at sides, empty hands. "
+        "Both feet planted parallel and pointing directly forward towards viewer (12 o'clock). "
+        "NATURAL FABRIC DRAPE UNDER GRAVITY: Robes, sleeves, and hems hang straight down naturally under calm gravity. Strictly NO wind blowing, NO billowing fabric, NO flapping hems, NO flying coat tails. "
+        "CRITICAL — BLANK FACELESS HEAD & UNIFORM SKIN TONE: Completely BLANK, SMOOTH, FEATURELESS face surface. "
+        "NO eyes, NO eyebrows, NO nose, NO mouth. Facial skin color MUST seamlessly and uniformly match the neck, ears, and hands ({skinTone}) with 100% consistency across all angles. "
+        "Clean flat cel-shaded anime skin, strictly zero facial features. "
+        "CRITICAL — ZERO WEAPONS OR PROPS: The character carries NO weapons, NO swords on back or waist, NO musical instruments, NO props. Hands are empty and resting naturally. "
+        "FABRIC TEXTURE & LIGHTING: Strictly flat matte fabric texture, zero metallic sheen, zero silvery gloss, zero specular reflections, zero satin sheen. Clean natural cel-shading, harmonious elegant palette. Strictly ZERO neon lighting, ZERO harsh glowing rim lights. "
         "CHARACTER: Genre: {style}. Age: {age}. Gender: {gender}. "
         "HAIR: {hairStyleColor}. OUTFIT: {outfitDescription}. "
         "Colors: {primaryColor}. Accents: {accentColor}. Skin: {skinTone}. "
@@ -43,42 +48,60 @@ ANGLE_PROMPT_TEMPLATES = {
         "BACKGROUND: Solid chroma-key green {chromaBgHex}. Centered, full body visible."
     ),
     "45": (
-        "2D Xianxia anime chibi character sprite — TRUE DEEP 45-DEGREE THREE-QUARTER ISOMETRIC VIEW.\n"
-        "Use the 0° front view reference image for IDENTITY LOCK (hairstyle, hair color {hairStyleColor}, outfit {outfitDescription}, colors {primaryColor}, accents {accentColor}, skin tone {skinTone}). "
-        "CAMERA PERSPECTIVE: Camera is positioned at a 45-degree isometric angle to the left of the character. "
-        "The character is stepping forward in a deep 45-degree diagonal stance (facing 10:30 o'clock towards top-left). "
-        "ASYMMETRICAL 3/4 POSE: Left foot and left shoulder are stepped forward in the front foreground. "
-        "Right foot and right shoulder are placed backward in depth behind the body. "
-        "The chest plane and torso are visibly rotated 45 degrees diagonally away from camera. "
-        "Head is turned 45 degrees to the left showing three-quarter facial contour. "
-        "CRITICAL — BLANK FACELESS HEAD: Completely BLANK, SMOOTH, FEATURELESS face surface (NO eyes, NO eyebrows, NO nose, NO mouth). Pure smooth porcelain skin. "
+        "2D Xianxia anime chibi character sprite — TRUE THREE-QUARTER VIEW 45 DEGREES.\n"
+        "SINGLE MASTER REFERENCE: Strictly reference ONLY the 0° front-view master image.\n"
+        "CRITICAL SCALE & STATURE LOCK: Maintain the EXACT SAME TALL, SLENDER, ATHLETIC HEIGHT AND FULL-BODY PROPORTIONS as Reference 0° (~88% vertical canvas height from top of head/coronet to bottom of boots). "
+        "STRICTLY ZERO SHRINKING, ZERO ZOOM-OUT, ZERO COMPRESSION OF STATURE. Identical camera framing and tall stature.\n"
+        "POSE & CAMERA: Character body and head are turned 45 degrees towards the left (facing diagonal 10 o'clock direction). "
+        "CRITICAL: STRICTLY FORBIDDEN to face the camera. ZERO direct front view. "
+        "BODY ROTATION: The chest and torso are rotated 45 degrees away from camera. "
+        "The character's left shoulder is forward in foreground; right shoulder is pulled back in depth and recessed. "
+        "The neckline and waist sash ornament are displaced to the left diagonal side, NOT centered. "
+        "NATURAL FABRIC DRAPE UNDER GRAVITY: Robe hems and sleeves hang straight down naturally under calm gravity. Strictly NO wind blowing, NO billowing fabric, NO flapping hems, NO flying coat tails. "
+        "Left leg steps forward, right leg placed behind in asymmetrical depth. Both feet point diagonally at 45 degrees (10 o'clock). "
+        "HEAD ROTATION: Head is visibly turned 45 degrees to the left showing three-quarter facial outline and left ear contour. "
+        "CRITICAL — BLANK FACELESS HEAD & UNIFORM NATURAL SKIN: Completely BLANK, SMOOTH, FEATURELESS face surface (NO eyes, NO eyebrows, NO nose, NO mouth). "
+        "Facial skin color seamlessly matches neck and body skin tone ({skinTone}). Strictly ZERO shiny white enamel mask, ZERO face-neck color mismatch. "
+        "CRITICAL — ZERO WEAPONS OR PROPS: Character carries NO weapons, NO swords, NO props. Both hands empty. "
+        "LIGHTING: Natural clean flat cel-shading, strictly ZERO neon lighting, ZERO glowing rim bleed. "
+        "IDENTITY LOCK: Match reference character (hairstyle {hairStyleColor}, outfit {outfitDescription}, colors {primaryColor}, accents {accentColor}, skin tone {skinTone}). "
         "STYLE: Pure flat 2D anime chibi sprite illustration, clean linework, flat cel-shaded coloring. "
         "BACKGROUND: Solid chroma-key green {chromaBgHex}. Centered, full body visible."
     ),
     "90": (
         "2D Xianxia anime chibi character sprite — STRICT 90-DEGREE LEFT SIDE PROFILE VIEW.\n"
-        "Use the 0° front view reference image for IDENTITY LOCK (hairstyle, hair color {hairStyleColor}, outfit {outfitDescription}, colors {primaryColor}, accents {accentColor}, skin tone {skinTone}). "
+        "MULTI-REFERENCE INTERPOLATION: Interpolate between Reference 0° (front view) and Reference 45° (three-quarter view) for complete continuity and detail retention.\n"
+        "CRITICAL SCALE & STATURE LOCK: Maintain the EXACT SAME TALL, SLENDER, ATHLETIC HEIGHT AND FULL-BODY PROPORTIONS as References [0°, 45°] (~88% vertical canvas height). "
+        "STRICTLY ZERO SHRINKING, ZERO ZOOM-OUT, ZERO STATURE COMPRESSION. Identical camera framing and tall stature.\n"
+        "PRESERVE 100% INTRICATE DETAILS: Preserve every intricate detail from references: sleeve embroidery, coat hem patterns, waist belt structure.\n"
         "CAMERA PERSPECTIVE: Camera is positioned directly at the character left flank (pure profile view). "
         "The character faces 100% directly towards the LEFT edge of the frame (9 o'clock). "
         "BODY SILHOUETTE: Only the LEFT side of the body is visible. Slender narrow vertical side profile. "
         "The LEFT ARM hangs in front, the RIGHT ARM and right shoulder are 100% COMPLETELY HIDDEN behind the torso. "
+        "NATURAL FABRIC DRAPE UNDER GRAVITY: The robe and coat hang straight down vertically along the body under calm gravity. Strictly NO wind blowing, NO billowing fabric, NO coat tails flying backward. "
         "Chest faces left (pure side profile, NO front chest visible, NO three-quarter angle). "
         "Both feet point directly towards the left edge of the screen. "
-        "CRITICAL — BLANK FACELESS HEAD: Smooth blank porcelain mannequin head in pure side profile silhouette (NO facial features, NO eyes/nose/mouth). "
+        "CRITICAL — BLANK FACELESS HEAD & UNIFORM NATURAL SKIN: Smooth blank featureless face in pure side profile silhouette (NO eyes/nose/mouth). "
+        "Facial skin color seamlessly and uniformly matches neck ({skinTone}). Strictly ZERO shiny white mask. "
+        "CRITICAL — ZERO WEAPONS OR PROPS: NO weapons, NO swords on back or waist, NO props. Empty hands. "
+        "LIGHTING: Natural flat cel-shading, strictly ZERO neon lighting, ZERO harsh glowing rim reflections. "
         "STYLE: Pure flat 2D anime chibi illustration, bold clean linework, flat cel-shaded colors. "
         "BACKGROUND: Solid chroma-key green {chromaBgHex}. Centered, full body visible."
     ),
     "135": (
         "ROTATE CHARACTER 135° — BACK-LEFT THREE-QUARTER VIEW — 2D XIANXIA CHIBI\n"
-        "Use the 0° front reference as ABSOLUTE IDENTITY SOURCE. "
+        "Use the 0° and 180° references as ABSOLUTE IDENTITY SOURCE. "
         "CRITICAL ROTATION: Character viewed from BEHIND, angled 45° towards the LEFT. "
         "Camera is BEHIND the character, slightly to the RIGHT. "
         "The character's BACK is mostly visible, tilted to show the left-back side. "
-        "Back of hairstyle, hair ornaments, back of robes, sash ribbons visible. "
-        "LEFT shoulder is closer to camera (back-left perspective). "
-        "Both legs and boots angled away from camera towards the left. "
-        "IDENTITY LOCK: Exact same hairstyle back details, outfit design, "
-        "colors identical to reference. Skin tone {skinTone}. "
+        "Back of hairstyle, hair ornaments, back of robes visible. "
+        "WAIST BELT REAR: For male characters: strictly smooth continuous flat belt band around back with ZERO bow, ZERO ribbon knot. "
+        "LEFT shoulder is closer to camera (back-left perspective); right shoulder is angled away in depth. "
+        "NATURAL FABRIC DRAPE: Fabric hangs straight down under gravity, strictly NO wind blowing, NO billowing flaps. "
+        "Both legs and flat cloth shoes angled away from camera towards the left. "
+        "CRITICAL — ZERO WEAPONS OR PROPS: NO swords on back or waist, NO weapons, NO props. Clean back of robe. "
+        "LIGHTING & SKIN: Skin tone {skinTone} uniformly matching. Strictly ZERO neon glow or edge reflections. "
+        "IDENTITY LOCK: Exact same hairstyle back details, outfit design, colors identical to reference. "
         "STYLE: Pure flat 2D anime illustration, bold linework, flat colors. "
         "BACKGROUND: Solid chroma-key green {chromaBgHex}. Centered, full body visible."
     ),
@@ -88,9 +111,12 @@ ANGLE_PROMPT_TEMPLATES = {
         "CRITICAL ROTATION: Character faces 100% AWAY from camera (180° rear view). "
         "Full back of hairstyle and ornaments symmetrically displayed. "
         "Spine vertical, full back of robes facing camera. "
-        "Both legs straight and symmetrical, heels facing camera, feet pointing away. "
-        "IDENTITY LOCK: Exact same hair color, proportions, costume rear details. "
-        "Skin tone {skinTone}. "
+        "WAIST BELT REAR: For male characters: strictly smooth continuous flat belt band around back with ZERO bow, ZERO ribbon knot. "
+        "NATURAL FABRIC DRAPE: Hems and sleeves hang straight down under gravity, strictly NO wind blowing, NO billowing coat tails. "
+        "Both legs straight and symmetrical, heels facing camera, feet pointing away in flat cloth shoes. "
+        "CRITICAL — ZERO WEAPONS OR PROPS: NO swords on back, NO weapons, NO props. Pure clean robe back. "
+        "LIGHTING: Natural clean flat colors, strictly ZERO neon lighting. "
+        "IDENTITY LOCK: Exact same hair color, proportions, costume rear details. Skin tone {skinTone}. "
         "STYLE: Pure flat 2D anime illustration, bold linework, flat colors. "
         "BACKGROUND: Solid chroma-key green {chromaBgHex}. Centered, full body visible."
     ),
@@ -102,11 +128,15 @@ ANGLE_PROMPT_TEMPLATES = {
 
 MOTION_ANTI_GLITCH_LOCK = (
     "CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK): "
-    "Hands and forearms strictly stay below chest level at all times, moving ONLY in a narrow pendulum arc parallel to hips. "
+    "Movement is natural, authentic, and dignified with ZERO exaggerated stiff posturing or forced posing. "
+    "Hands and forearms strictly stay below chest level at all times, moving ONLY in a narrow organic pendulum arc parallel to hips. "
     "STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing or acrobatic posing. "
+    "Hair is realistically rooted to the scalp with soft organic secondary motion following body inertia and breeze; STRICTLY ZERO rigid wig swaying or detached floating hair. "
     "Feet remain grounded in clean stride cycle, STRICTLY ZERO hopping, ZERO bouncing up and down, ZERO airborne jumping, ZERO floating. "
+    "At angled perspectives (45° and 135°), legs and feet stride strictly along the true diagonal vector aligned with body orientation; STRICTLY ZERO sideways crab-walking or lateral sliding. "
     "Torso, shoulders, and head remain rock-steady and level with ZERO torso twisting, erratic bobbing, or body contortion. "
-    "Faceless blank mannequin head remains completely smooth with ZERO facial expressions, mouth opening, or morphing."
+    "Faceless blank mannequin head remains completely smooth with natural skin color seamlessly matching neck, ZERO facial expressions, mouth opening, or morphing. "
+    "STRICTLY ZERO weapons, swords, or props. STRICTLY ZERO neon glow, neon reflections, or glowing edges."
 )
 
 ARCHETYPE_STYLES = {
@@ -152,7 +182,7 @@ def build_walk_templates(archetype: str) -> dict:
         "45": (
             f"4-second seamless loop 45° THREE-QUARTER WALK CYCLE ({label}). "
             f"Character walks in place at 45° angle facing bottom-left {desc} "
-            f"No body turning. {MOTION_ANTI_GLITCH_LOCK} "
+            f"STRIDE DIRECTION LOCK: Legs, feet, and stride cycle track strictly forward along the 45-degree diagonal trajectory aligned with torso. Strictly ZERO sideways crab-walking or lateral sliding. No body turning. {MOTION_ANTI_GLITCH_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "90": (
@@ -164,7 +194,7 @@ def build_walk_templates(archetype: str) -> dict:
         "135": (
             f"4-second seamless loop 135° BACK-LEFT WALK CYCLE ({label}). "
             f"Character walks in place viewed from behind at 135° angle {desc} "
-            f"Body stays at 135° orientation. {MOTION_ANTI_GLITCH_LOCK} "
+            f"STRIDE DIRECTION LOCK: Legs and feet step strictly along the 135-degree diagonal axis aligned with body orientation. Strictly ZERO crab-walking. Body stays at 135° orientation. {MOTION_ANTI_GLITCH_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "180": (
@@ -219,77 +249,87 @@ RUN_PROMPT_TEMPLATES = build_run_templates("young_male")
 
 IDLE_PROMPT_TEMPLATES = {
     "0": (
-        "4-second seamless loop IDLE BREATHING (0° front view). "
-        "Character stands still facing camera, gentle breathing motion. "
-        "Subtle chest rise/fall, soft hair sway, clothing floats slightly. "
-        "No footstep, no arm movement. Calm, relaxed idle animation. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        "4-second seamless loop IDLE STANDING (0° front view). "
+        "Character stands calmly still facing camera. "
+        "Soft gentle ambient mountain breeze subtly flutters wide robe sleeves, outer coat hems, and long black hair falling behind naturally. "
+        "Organic subtle chest breathing rhythm. Arms rest relaxed at sides with minimal subtle resting finger micro-adjustments. "
+        "Hair realistically rooted to scalp with natural fluid secondary motion, ZERO rigid wig bounce. "
+        "Feet remain firmly planted on floor plane. Torso, shoulders, and head remain rock-steady and level. "
+        "Faceless blank mannequin head remains completely smooth with uniform skin tone seamlessly matching neck. "
+        "STRICTLY ZERO hallucinated hanging ornaments, ZERO swinging pendants, ZERO exaggerated body sway. "
+        "STRICTLY ZERO weapons, swords, or props. STRICTLY ZERO neon glow. "
+        "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
     ),
     "45": (
-        "4-second seamless loop IDLE BREATHING (45° three-quarter view). "
-        "Character stands still at 45° angle, gentle breathing. "
-        "Subtle body sway, hair and ribbons float softly. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        "4-second seamless loop IDLE STANDING (45° three-quarter view). "
+        "Character stands still at 45° angle facing diagonal 10 o'clock. "
+        "Soft gentle ambient breeze subtly sways wide sleeve hems, robe coat tails, and long hair with soft organic motion. "
+        "Calm natural respiration, arms rest naturally at sides with subtle resting micro-movement. "
+        "No body turning, feet firmly grounded in 3/4 stance. "
+        "STRICTLY ZERO hallucinated hanging ornaments, ZERO swinging pendants. "
+        "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
     ),
     "90": (
-        "4-second seamless loop IDLE BREATHING (90° side profile). "
-        "Character stands still in side profile, gentle breathing. "
-        "Chest rises/falls subtly in profile view, hair sways. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        "4-second seamless loop IDLE STANDING (90° side profile). "
+        "Character stands still in pure side silhouette (9 o'clock). "
+        "Soft ambient breeze flutters robe coat hem, sleeve edges, and long hair backward naturally and gently. "
+        "Subtle rhythmic chest rise and fall in profile view, relaxed resting arm with minimal finger micro-adjustments. "
+        "Feet planted firmly pointing 9 o'clock. STRICTLY ZERO hallucinated props or dangling tassels. "
+        "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
     ),
     "135": (
-        "4-second seamless loop IDLE BREATHING (135° back-left view). "
-        "Character stands still viewed from behind at angle, gentle breathing. "
-        "Back hair and ribbons float softly. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        "4-second seamless loop IDLE STANDING (135° back-left view). "
+        "Character stands still viewed from behind at 135° angle. "
+        "Gentle ambient breeze subtly sways long flowing back hair and robe hem under natural gravity. "
+        "Subtle calm breathing cadence, body steady. Flat continuous waist belt remains clean against back. "
+        "STRICTLY ZERO hallucinated tassels, ribbons, or hanging ornaments. "
+        "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
     ),
     "180": (
-        "4-second seamless loop IDLE BREATHING (180° rear view). "
-        "Character stands still facing away, gentle breathing from behind. "
-        "Hair cascades with subtle motion, robe sways. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        "4-second seamless loop IDLE STANDING (180° rear view). "
+        "Character stands still facing directly away from camera. "
+        "Soft breeze subtly flutters back robe fabric and silky long black hair cascading down the spine with natural organic physics. "
+        "Gentle breathing rhythm from behind. Symmetrical grounded posture, heels facing camera. "
+        "Flat continuous waist belt remains completely smooth without any ties or bows. "
+        "STRICTLY ZERO hallucinated hanging ornaments, ZERO red ribbons, ZERO dangling accessories. "
+        "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
     ),
 }
 
 ATTACK_PROMPT_TEMPLATES = {
     "0": (
-        "4-second seamless loop ATTACK COMBO (0° front view). "
-        "Character performs a repeating sword slash combo facing camera. "
-        "Weapon swings left-right-overhead in fluid sequence. "
-        "Hair and robes whip with sword momentum. "
+        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (0° front view). "
+        "Character performs an elegant empty-handed martial arts palm strike sequence facing camera. "
+        "Fluid flowing arm extensions, palm thrusts, and qigong hand movements in rhythmic cadence. "
+        "Hair and robe sleeves move gracefully with momentum. Strictly ZERO weapons. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "45": (
-        "4-second seamless loop ATTACK COMBO (45° three-quarter view). "
-        "Character performs repeating sword combo at 45° angle. "
-        "Diagonal slashes with fluid body rotation. "
+        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (45° three-quarter view). "
+        "Character performs empty-handed martial arts palm strike combo at 45° angle. "
+        "Diagonal martial palm strikes with fluid body balance. Empty hands. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "90": (
-        "4-second seamless loop ATTACK COMBO (90° side profile). "
-        "Character performs repeating horizontal slash in side profile. "
-        "Sword extends forward then pulls back in rhythm. "
+        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (90° side profile). "
+        "Character performs rhythmic horizontal palm thrust and retraction in side profile. "
+        "Empty hands, fluid martial extension. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "135": (
-        "4-second seamless loop ATTACK COMBO (135° back-left view). "
-        "Character performs repeating slash viewed from behind. "
-        "Back muscles and robes twist with each swing. "
+        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (135° back-left view). "
+        "Character performs martial arts palm strike sequence viewed from behind at 135° angle. "
+        "Shoulders and robe sleeves turn rhythmically with each strike. Empty hands. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "180": (
-        "4-second seamless loop ATTACK COMBO (180° rear view). "
-        "Character performs repeating slash facing away from camera. "
-        "Weapon arcs visible from behind, hair whips with motion. "
+        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (180° rear view). "
+        "Character performs rhythmic martial arts palm sequence facing away from camera. "
+        "Arm extensions and flowing robe sleeves visible from behind. Empty hands. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
@@ -297,37 +337,37 @@ ATTACK_PROMPT_TEMPLATES = {
 
 DEFEND_PROMPT_TEMPLATES = {
     "0": (
-        "4-second seamless loop GUARD STANCE (0° front view). "
-        "Character holds defensive pose facing camera, sword raised as shield. "
-        "Subtle breathing, slight guard-ready sway, muscles tense. "
+        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (0° front view). "
+        "Character holds an empty-handed martial defensive stance facing camera, palms raised in balanced guard posture. "
+        "Subtle breathing, grounded poise, sleeves fluttering gently. Strictly ZERO weapons. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "45": (
-        "4-second seamless loop GUARD STANCE (45° three-quarter). "
-        "Character holds defensive pose at 45° angle. "
-        "Guard-ready sway with sword angled for protection. "
+        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (45° three-quarter). "
+        "Character holds empty-handed defensive guard stance at 45° angle. "
+        "Poised martial balance, palms up in guard posture. Empty hands. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "90": (
-        "4-second seamless loop GUARD STANCE (90° side profile). "
-        "Character holds defensive pose in side profile. "
-        "Sword raised vertically, body braced in profile view. "
+        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (90° side profile). "
+        "Character holds defensive martial stance in side profile. "
+        "Arms raised in protective martial guard posture, body braced. Empty hands. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "135": (
-        "4-second seamless loop GUARD STANCE (135° back-left). "
-        "Character holds guard viewed from behind at angle. "
-        "Back tension visible, sword positioned defensively. "
+        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (135° back-left). "
+        "Character holds martial guard viewed from behind at 135° angle. "
+        "Back posture grounded, defensive ready stance. Empty hands. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
     "180": (
-        "4-second seamless loop GUARD STANCE (180° rear view). "
-        "Character holds guard facing away from camera. "
-        "Sword behind back in defensive ready position. "
+        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (180° rear view). "
+        "Character holds martial defensive stance facing away from camera. "
+        "Balanced empty-handed stance visible from behind. "
         "Seamless loop: first frame = last frame. "
         "Camera static. Solid green {chromaBgHex} background."
     ),
