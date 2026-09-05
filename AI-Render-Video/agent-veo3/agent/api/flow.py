@@ -86,6 +86,26 @@ async def extension_status():
     }
 
 
+@router.get("/extension-details")
+async def extension_details():
+    """Get detailed extension status including open tabs."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    return await client._send("get_status", {}, timeout=10)
+
+
+@router.post("/navigate-tab")
+async def navigate_tab(body: dict):
+    """Navigate a tab via extension."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    return await client._send("navigate_tab", body, timeout=15)
+
+
+
+
 @router.get("/credits")
 async def get_credits():
     """Get user credits from Google Flow."""
@@ -391,3 +411,12 @@ async def reload_extension():
     """Send reload command to the connected Chrome extension."""
     client = get_flow_client()
     return await client.reload_extension()
+
+
+@router.get("/test-captcha")
+async def test_captcha_endpoint(action: str = "IMAGE_GENERATION"):
+    """Test reCAPTCHA token generation via extension."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    return await client._send("solve_captcha", {"captchaAction": action}, timeout=35)

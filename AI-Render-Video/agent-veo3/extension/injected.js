@@ -17,9 +17,9 @@
     window.fetch = async function (...args) {
       const response = await window._flowOriginalFetch.apply(this, args);
       try {
-        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
-        // Only intercept TRPC calls on labs.google that return project/flow data
-        if (url.includes('/fx/api/trpc/') && response.ok) {
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+        // Intercept TRPC calls on flow.google.com and labs.google that return project/flow data
+        if ((url.includes('/fx/api/trpc/') || url.includes('/api/trpc/')) && response.ok) {
           const clone = response.clone();
           clone.text().then(text => {
             if (text.includes('flow-content.google') || text.includes('storage.googleapis.com/ai-sandbox-videofx/')) {
@@ -38,13 +38,35 @@
     const { requestId, pageAction } = detail;
     try {
       await waitForGrecaptcha();
-      const executePromise = window.grecaptcha.enterprise.execute(SITE_KEY, {
-        action: pageAction,
+      const token = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('GRECAPTCHA_EXECUTE_TIMEOUT')), 25000);
+        const gre = window.grecaptcha?.enterprise || window.grecaptcha;
+        if (gre?.ready) {
+          gre.ready(async () => {
+            try {
+              const tok = await gre.execute(SITE_KEY, {
+                action: pageAction,
+              });
+              clearTimeout(timer);
+              resolve(tok);
+            } catch (err) {
+              clearTimeout(timer);
+              reject(err);
+            }
+          });
+        } else if (gre?.execute) {
+          gre.execute(SITE_KEY, { action: pageAction }).then(tok => {
+            clearTimeout(timer);
+            resolve(tok);
+          }).catch(err => {
+            clearTimeout(timer);
+            reject(err);
+          });
+        } else {
+          clearTimeout(timer);
+          reject(new Error('grecaptcha execute not found'));
+        }
       });
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('GRECAPTCHA_EXECUTE_TIMEOUT')), 35000)
-      );
-      const token = await Promise.race([executePromise, timeoutPromise]);
 
       window.dispatchEvent(new CustomEvent('CAPTCHA_RESULT', {
         detail: { requestId, token },
@@ -57,12 +79,71 @@
     }
   });
 
-  function waitForGrecaptcha(timeout = 10000) {
+  function setScriptUrl(script, url) {
+    if (window.trustedTypes) {
+      try {
+        if (window.trustedTypes.defaultPolicy?.createScriptURL) {
+          script.src = window.trustedTypes.defaultPolicy.createScriptURL(url);
+          return true;
+        }
+      } catch (e) {}
+      try {
+        const p = window.trustedTypes.createPolicy('flow-recaptcha-' + Date.now(), {
+          createScriptURL: u => u,
+        });
+        script.src = p.createScriptURL(url);
+        return true;
+      } catch (e) {}
+    }
+    try {
+      script.src = url;
+      return true;
+    } catch (e) {
+      console.warn('[FlowAgent] Could not set script.src due to Trusted Types:', e.message);
+      return false;
+    }
+  }
+
+  function waitForGrecaptcha(timeout = 15000) {
     return new Promise((resolve, reject) => {
       const start = Date.now();
+      let attemptedInject = false;
+
       const check = () => {
-        if (window.grecaptcha?.enterprise?.execute) return resolve();
-        if (Date.now() - start > timeout) return reject(new Error('grecaptcha not available'));
+        const gre = window.grecaptcha?.enterprise || window.grecaptcha;
+        if (gre?.execute) {
+          if (gre.ready) {
+            gre.ready(() => resolve());
+          } else {
+            resolve();
+          }
+          return;
+        }
+
+        // Only attempt to inject script after waiting 3 seconds if not present
+        if (!attemptedInject && Date.now() - start > 3000 && !window.grecaptcha && !document.getElementById('flow-recaptcha-script')) {
+          attemptedInject = true;
+          console.log('[FlowAgent] grecaptcha not found after 3s, attempting dynamic script load...');
+          const s = document.createElement('script');
+          s.id = 'flow-recaptcha-script';
+          s.async = true;
+          if (setScriptUrl(s, `https://www.google.com/recaptcha/enterprise.js?render=${SITE_KEY}`)) {
+            (document.head || document.documentElement).appendChild(s);
+          }
+        }
+
+        if (Date.now() - start > timeout) {
+          const scripts = Array.from(document.querySelectorAll('script')).map(s => s.src).filter(Boolean);
+          const diag = {
+            url: window.location.href,
+            hasGrecaptcha: !!window.grecaptcha,
+            keys: window.grecaptcha ? Object.keys(window.grecaptcha) : [],
+            enterpriseKeys: window.grecaptcha?.enterprise ? Object.keys(window.grecaptcha.enterprise) : null,
+            recaptchaScripts: scripts.filter(s => s.includes('recaptcha')),
+            totalScripts: scripts.length,
+          };
+          return reject(new Error('grecaptcha not available: ' + JSON.stringify(diag)));
+        }
         setTimeout(check, 200);
       };
       check();

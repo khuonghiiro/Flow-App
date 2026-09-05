@@ -12,10 +12,12 @@
     _port.onDisconnect.addListener(() => {});
   } catch (e) {}
 
-  const s = document.createElement('script');
-  s.src = chrome.runtime.getURL('injected.js');
-  s.onload = () => s.remove();
-  (document.head || document.documentElement).appendChild(s);
+  try {
+    const s = document.createElement('script');
+    s.src = chrome.runtime.getURL('injected.js');
+    s.onload = () => s.remove();
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {}
 
   chrome.runtime.onMessage.addListener((msg, _, reply) => {
     if (msg.type !== 'GET_CAPTCHA') return;

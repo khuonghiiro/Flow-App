@@ -33,6 +33,7 @@ class SkillTreePipeline:
         self.project_id = project_id
         self.customizer = {**DEFAULT_CUSTOMIZER_VALUES, **(customizer_values or {})}
         self.action_keys = action_keys or ["walk"]
+        self.user_paygate_tier = (customizer_values or {}).get("user_paygate_tier", "PAYGATE_TIER_TWO")
         self.status = "IDLE"
         self.stage = "INIT"
         self.error_message: Optional[str] = None
@@ -160,7 +161,12 @@ class SkillTreePipeline:
                     prompt=prompt_0,
                     project_id=self.project_id,
                     aspect_ratio="IMAGE_ASPECT_RATIO_PORTRAIT",
+                    user_paygate_tier=self.user_paygate_tier,
                 )
+                if res.get("error"):
+                    logger.warning("Stage 1 0° API error: %s, retrying... (%d/%d)", res.get("error"), retries, max_retries)
+                    await asyncio.sleep(5)
+                    continue
                 media_id, url = self._extract_image_result(res)
                 if not media_id:
                     logger.warning("Stage 1 0° empty result, retrying... (%d/%d)", retries, max_retries)
@@ -211,8 +217,13 @@ class SkillTreePipeline:
                     prompt=prompt,
                     project_id=self.project_id,
                     aspect_ratio="IMAGE_ASPECT_RATIO_PORTRAIT",
+                    user_paygate_tier=self.user_paygate_tier,
                     character_media_ids=[ref_media_id],
                 )
+                if res.get("error"):
+                    logger.warning("Stage 2 angle %s° API error: %s, retrying... (%d/%d)", angle_key, res.get("error"), retries, max_retries)
+                    await asyncio.sleep(5)
+                    continue
                 media_id, url = self._extract_image_result(res)
                 if not media_id:
                     logger.warning("Stage 2 angle %s° empty, retrying... (%d/%d)", angle_key, retries, max_retries)
@@ -328,6 +339,7 @@ class SkillTreePipeline:
                 project_id=self.project_id,
                 scene_id=task["id"],
                 aspect_ratio="VIDEO_ASPECT_RATIO_PORTRAIT",
+                user_paygate_tier=self.user_paygate_tier,
             )
             operations = _extract_operations(submit_res, project_id=self.project_id)
             if not operations:

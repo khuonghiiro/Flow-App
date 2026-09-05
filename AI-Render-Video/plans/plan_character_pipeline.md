@@ -5,7 +5,7 @@
 Tài liệu này là **Master Template** chuẩn. Khi người dùng yêu cầu tạo nhân vật mới dựa trên template này, AI Agent tuân thủ nghiêm ngặt các quy chuẩn sau:
 
 1. **Quy tắc tạo Project Google Flow riêng cho từng nhân vật (BẮT BUỘC)**:
-   - Mỗi nhân vật **BẮT BUỘC là 1 project riêng biệt trên Google Flow** (`labs.google/fx/tools/flow`).
+   - Mỗi nhân vật **BẮT BUỘC là 1 project riêng biệt trên Google Flow** (`flow.google.com`).
    - Trước khi sinh ảnh/video, AI Agent gọi API `POST /api/projects` với tên project là tên nhân vật (ví dụ: `name: "Vô Tâm Tiên Nhân"`).
    - Điều này đảm bảo mỗi nhân vật có một Project Card hiển thị riêng trên Dashboard của người dùng, không bị gom chung hay mất dấu.
 
