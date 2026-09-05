@@ -402,43 +402,37 @@ async function solveCaptcha(requestId, captchaAction) {
   // Filter out any chrome:// or invalid tabs
   tabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
 
-  // Prefer project tab if open, then active tab
+  // Close any stray landing page tabs that lack /project/
+  const landingTabs = tabs.filter(t => (t.url === 'https://flow.google.com/' || t.url === 'https://flow.google.com') && tabs.some(o => o.url && o.url.includes('/project/')));
+  for (const lt of landingTabs) {
+    try { chrome.tabs.remove(lt.id); } catch {}
+  }
+
+  // Strictly prefer project tab
   let targetTab = tabs.find(t => t.url && t.url.includes('/project/')) || tabs.find(t => t.active) || tabs[0];
 
-  if (targetTab && !targetTab.active) {
+  if (targetTab) {
     try {
       await chrome.tabs.update(targetTab.id, { active: true });
       if (targetTab.windowId) {
         await chrome.windows.update(targetTab.windowId, { focused: true });
       }
-      await sleep(600);
+      await sleep(500);
     } catch {}
-  }
 
-  if (targetTab) {
     try {
       const resp = await Promise.race([
         requestCaptchaFromTab(targetTab.id, requestId, captchaAction),
         new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
       ]);
-      if (resp && resp.token) return resp;
+      if (resp) return resp;
     } catch (e) {
-      console.warn('[FlowAgent] Captcha failed on existing tab, trying fallback tab:', e);
+      console.warn('[FlowAgent] Captcha request error on target tab:', e);
+      return { error: e.message || 'CAPTCHA_ERROR' };
     }
   }
 
-  // Fallback: Auto-open Flow tab and wait before requesting
-  try {
-    const newTab = await chrome.tabs.create({ url: 'https://flow.google.com/', active: true });
-    await sleep(4000);
-    const resp = await Promise.race([
-      requestCaptchaFromTab(newTab.id, requestId, captchaAction),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
-    ]);
-    return resp;
-  } catch (e) {
-    return { error: e.message || 'NO_FLOW_TAB' };
-  }
+  return { error: 'NO_FLOW_PROJECT_TAB' };
 }
 
 async function handleSolveCaptcha(msg) {
