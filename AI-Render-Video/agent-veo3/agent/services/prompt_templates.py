@@ -20,7 +20,7 @@ DEFAULT_CUSTOMIZER_VALUES = {
     "accentColor": "Soft Silver & Lilac Purple",
     "skinTone": "Fair natural peach skin tone seamlessly matching neck and hands",
     "weaponType": "None (empty hands, pure martial arts)",
-    "spellElement": "Soft wind aura",
+    "spellElement": "None",
     "chromaBgHex": "#00FF00",
 }
 
@@ -133,18 +133,34 @@ ANGLE_PROMPT_TEMPLATES = {
 # Each action has 5 angle variants. The pipeline uses the angle's
 # reference image as BOTH start frame AND end frame for seamless loop.
 
+FACELESS_MANNEQUIN_LOCK = (
+    "CRITICAL FACELESS MANNEQUIN PRESERVATION: The character's face is a completely smooth, blank, featureless mannequin surface with ABSOLUTELY ZERO eyes, ZERO eyebrows, ZERO nose, ZERO mouth, ZERO lips, ZERO teeth, and ZERO facial expressions. "
+    "Facial skin surface tone seamlessly and uniformly matches neck ({skinTone}). "
+    "At 135° and 180° rear perspectives, the character faces strictly AWAY from camera, showing ONLY the back of the head, hair, and neck, with ABSOLUTELY ZERO face visible."
+)
+
+ZERO_EFFECTS_LOCK = (
+    "SOLID GREEN SCREEN: Background is 100% clean, pure, flat, solid chroma key green {chromaBgHex} screen with zero background objects, zero floating particles, zero glowing aura. Completely plain green background."
+)
+
+HAIR_STABILITY_LOCK = (
+    "CRITICAL HAIR NATURAL STABILITY LOCK: Long silky hair maintains constant length, constant volume, and constant thickness throughout the animation. "
+    "Hair strands remain naturally rooted to the scalp, swaying gently and softly following body motion under natural gravity."
+)
+
 MOTION_ANTI_GLITCH_LOCK = (
     "CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK): "
-    "Movement is natural, authentic, and dignified with ZERO exaggerated stiff posturing or forced posing. "
+    "Movement is natural, authentic, and dignified with ZERO exaggerated stiff posturing. "
     "Hands and forearms strictly stay below chest level at all times, moving ONLY in a narrow organic pendulum arc parallel to hips. "
-    "STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing or acrobatic posing. "
-    "Hair is realistically rooted to the scalp with soft organic secondary motion following body inertia and breeze; STRICTLY ZERO rigid wig swaying or detached floating hair. "
+    "STRICTLY ZERO wild arm flailing, ZERO arm waving, ZERO hand gestures, ZERO dancing. "
+    "Hair is realistically rooted to the scalp with soft organic secondary motion following body inertia and breeze. "
     "Feet remain grounded in clean stride cycle, STRICTLY ZERO hopping, ZERO bouncing up and down, ZERO airborne jumping, ZERO floating. "
     "At angled perspectives (45° and 135°), legs and feet stride strictly along the true diagonal vector aligned with body orientation; STRICTLY ZERO sideways crab-walking or lateral sliding. "
-    "Torso, shoulders, and head remain rock-steady and level with ZERO torso twisting, erratic bobbing, or body contortion. "
-    "Faceless blank mannequin head remains completely smooth with natural skin color seamlessly matching neck, ZERO facial expressions, mouth opening, or morphing. "
+    "Torso, shoulders, and head remain rock-steady and level with ZERO torso twisting or erratic bobbing. "
     "STRICTLY ZERO weapons, swords, or props. STRICTLY ZERO neon glow, neon reflections, or glowing edges."
 )
+
+GLOBAL_VIDEO_LOCK = f"{FACELESS_MANNEQUIN_LOCK} {ZERO_EFFECTS_LOCK} {HAIR_STABILITY_LOCK} {MOTION_ANTI_GLITCH_LOCK}"
 
 ARCHETYPE_STYLES = {
     "young_male": {
@@ -181,33 +197,37 @@ def build_walk_templates(archetype: str) -> dict:
     desc = info["walk_desc"]
     return {
         "0": (
-            f"4-second seamless loop 0° DIRECT FRONT VIEW WALK CYCLE ({label}). "
+            f"[walk-0°] 4-second seamless loop 0° DIRECT FRONT VIEW WALK CYCLE ({label}). "
             f"Character walks in place facing DIRECTLY at camera {desc} "
-            f"{MOTION_ANTI_GLITCH_LOCK} "
+            f"{GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "45": (
-            f"4-second seamless loop 45° THREE-QUARTER WALK CYCLE ({label}). "
+            f"[walk-45°] 4-second seamless loop 45° THREE-QUARTER WALK CYCLE ({label}). "
             f"Character walks in place at 45° angle facing bottom-left {desc} "
-            f"STRIDE DIRECTION LOCK: Legs, feet, and stride cycle track strictly forward along the 45-degree diagonal trajectory aligned with torso. Strictly ZERO sideways crab-walking or lateral sliding. No body turning. {MOTION_ANTI_GLITCH_LOCK} "
+            f"STRIDE DIRECTION LOCK: Legs, feet, and stride cycle track strictly forward along the 45-degree diagonal trajectory aligned with torso. Strictly ZERO sideways crab-walking or lateral sliding. No body turning. {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "90": (
-            f"4-second seamless loop 90° SIDE PROFILE WALK CYCLE ({label}). "
+            f"[walk-90°] 4-second seamless loop 90° SIDE PROFILE WALK CYCLE ({label}). "
             f"Character walks in place in strict left side profile (9 o'clock) {desc} "
-            f"Body stays strictly 90° side silhouette. {MOTION_ANTI_GLITCH_LOCK} "
+            f"Body stays strictly 90° side silhouette. {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "135": (
-            f"4-second seamless loop 135° BACK-LEFT WALK CYCLE ({label}). "
+            f"[walk-135°] 4-second seamless loop 135° BACK-LEFT WALK CYCLE ({label}). "
             f"Character walks in place viewed from behind at 135° angle {desc} "
-            f"STRIDE DIRECTION LOCK: Legs and feet step strictly along the 135-degree diagonal axis aligned with body orientation. Strictly ZERO crab-walking. Body stays at 135° orientation. {MOTION_ANTI_GLITCH_LOCK} "
+            f"STRIDE DIRECTION LOCK: Legs and feet step strictly along the 135-degree diagonal axis aligned with body orientation. Strictly ZERO crab-walking. Body stays at 135° orientation. {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "180": (
-            f"4-second seamless loop 180° REAR VIEW WALK CYCLE ({label}). "
-            f"Character walks in place facing directly away from camera {desc} "
-            f"Symmetrical stepping. {MOTION_ANTI_GLITCH_LOCK} "
+            f"[walk-180°] 4-second seamless loop 180° DIRECT REAR VIEW WALK CYCLE ({label}). "
+            "MANDATORY WALKING DIRECTION (FACING 100% DIRECTLY AWAY INTO SCREEN DEPTH): "
+            "Character faces strictly 180.0° directly away from camera (12 o'clock direction, into the background). "
+            "Character walks steadily in place facing AWAY into screen depth. Left heel lifts and steps forward, alternating with right heel stepping forward into depth. "
+            "STRICTLY FORBIDDEN to turn around, strictly forbidden to walk toward camera, strictly forbidden to backpedal, strictly forbidden to walk sideways. "
+            "Full back of head, back of torso, and heels visible at all times with bilateral symmetry. "
+            f"Sleeves and robe hems sway gently in place. {{waistRearMotionLock}} {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
     }
@@ -219,33 +239,37 @@ def build_run_templates(archetype: str) -> dict:
     desc = info["run_desc"]
     return {
         "0": (
-            f"4-second seamless loop 0° FRONT VIEW ATHLETIC RUN CYCLE ({label}). "
-            f"Character jogs in place facing camera {desc} "
-            f"{MOTION_ANTI_GLITCH_LOCK} "
+            f"[run-0°] 4-second seamless loop 0° DIRECT FRONT VIEW RUN CYCLE ({label}). "
+            f"Character runs in place facing DIRECTLY at camera {desc} "
+            f"{GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "45": (
-            f"4-second seamless loop 45° THREE-QUARTER ATHLETIC RUN CYCLE ({label}). "
-            f"Character jogs in place at 45° angle towards bottom-left {desc} "
-            f"Dynamic momentum. {MOTION_ANTI_GLITCH_LOCK} "
+            f"[run-45°] 4-second seamless loop 45° THREE-QUARTER RUN CYCLE ({label}). "
+            f"Character runs in place at 45° angle facing bottom-left {desc} "
+            f"RUN DIRECTION LOCK: Dynamic strides track along the 45-degree diagonal line aligned with forward momentum. Strictly NO crab-running or sliding. {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "90": (
-            f"4-second seamless loop 90° SIDE PROFILE ATHLETIC RUN CYCLE ({label}). "
-            f"Character jogs in place in pure left side profile (9 o'clock) {desc} "
-            f"Body stays strictly 90°. {MOTION_ANTI_GLITCH_LOCK} "
+            f"[run-90°] 4-second seamless loop 90° SIDE PROFILE RUN CYCLE ({label}). "
+            f"Character runs in place in strict left side profile (9 o'clock) {desc} "
+            f"Body stays strictly 90° side silhouette. {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "135": (
-            f"4-second seamless loop 135° BACK-LEFT ATHLETIC RUN CYCLE ({label}). "
-            f"Character jogs in place viewed from behind at 135° angle {desc} "
-            f"{MOTION_ANTI_GLITCH_LOCK} "
+            f"[run-135°] 4-second seamless loop 135° BACK-LEFT RUN CYCLE ({label}). "
+            f"Character runs in place viewed from behind at 135° angle {desc} "
+            f"RUN DIRECTION LOCK: Running strides track along the 135-degree diagonal axis aligned with body momentum. Body stays at 135° angle. {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
         "180": (
-            f"4-second seamless loop 180° REAR VIEW ATHLETIC RUN CYCLE ({label}). "
-            f"Character jogs in place facing away from camera {desc} "
-            f"{MOTION_ANTI_GLITCH_LOCK} "
+            f"[run-180°] 4-second seamless loop 180° DIRECT REAR VIEW RUN CYCLE ({label}). "
+            "MANDATORY RUNNING DIRECTION (FACING 100% DIRECTLY AWAY INTO SCREEN DEPTH): "
+            "Character faces strictly 180.0° directly away from camera (12 o'clock direction, into the background). "
+            "Character runs with athletic cadence in place facing AWAY into depth. Fast decisive footsteps alternating into screen depth. "
+            "STRICTLY FORBIDDEN to turn around, strictly forbidden to run toward camera, strictly forbidden to run backwards or sideways. "
+            "Full back of head, back of robes, and heels visible throughout with bilateral symmetry. "
+            f"Robes and sash stream naturally in place. {{waistRearMotionLock}} {GLOBAL_VIDEO_LOCK} "
             "Seamless loop: first frame = last frame. Camera static. Solid green {chromaBgHex} background."
         ),
     }
@@ -256,118 +280,128 @@ RUN_PROMPT_TEMPLATES = build_run_templates("young_male")
 
 IDLE_PROMPT_TEMPLATES = {
     "0": (
-        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (0° direct front view). "
-        "PRESERVE STARTING POSE 100% EXACTLY: Both arms and hands remain locked in the exact starting posture from reference image, resting naturally along the body. Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture. "
-        "SUBTLE CHEST BREATHING: The chest has a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and grounded. "
-        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky black hair has very gentle, soft micro-sway at strands. "
-        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
+        "[idle-0°] 2D Anime chibi sprite character standing completely still on solid green {chromaBgHex} background, seamless 4-second loop (0° direct front view). "
+        "STATIONARY POSTURE LOCK: Character stands completely still in a calm, poised standing posture. Head, shoulders, chest, torso, and grounded feet remain 100% frozen and rock-steady. "
+        "IMMOBILE ARMS AND HANDS: Both arms hang naturally straight down at sides. Arms, forearms, wrists, hands, and fingers are 100% FROZEN, RIGID, AND MOTIONLESS. Strictly ZERO arm swaying, ZERO hand lifting, ZERO finger movement. "
+        "GENTLE ROBE FABRIC MICRO-SWAY: Only the soft fabric of the wide hanging sleeve ends and lower robe hems has an extremely subtle, delicate micro-sway under calm natural gravity. Long hair strands have a very subtle, soft micro-sway. "
+        "STRICTLY ZERO BREATH EFFECTS OR ARTIFACTS: Strictly ZERO breath vapor, ZERO smoke, ZERO mist, ZERO steam, ZERO exhalation arcs, ZERO light halos, ZERO glowing aura. "
+        "CRITICAL BLANK FACELESS HEAD: Completely smooth blank featureless face, ZERO eyes, ZERO eyebrows, ZERO nose, ZERO mouth. Facial skin seamlessly matches neck ({skinTone}). "
+        "Clean flat solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "45": (
-        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (45° three-quarter view). "
-        "PRESERVE STARTING POSE 100% EXACTLY: Both arms and hands remain locked in the exact starting 45° posture from reference image, resting naturally along the body silhouette. Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero turning, zero stepping. "
-        "SUBTLE CHEST BREATHING: The chest has a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and anchored at 45° angle. "
-        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair has very gentle, soft micro-sway at strands. "
-        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
+        "[idle-45°] 2D Anime chibi sprite character standing completely still on solid green {chromaBgHex} background, seamless 4-second loop (45° three-quarter view). "
+        "STATIONARY POSTURE LOCK: Character stays anchored in exact 45° three-quarter perspective. Head, shoulders, chest, torso, hips, and grounded feet remain 100% frozen and rock-steady with zero body rotation or shifting. "
+        "IMMOBILE ARMS AND HANDS: Both arms remain naturally resting straight along the body silhouette. Arms, forearms, wrists, hands, and fingers are 100% FROZEN, RIGID, AND MOTIONLESS. Strictly ZERO arm swaying, ZERO hand twitching, ZERO gesturing. "
+        "GENTLE ROBE FABRIC MICRO-SWAY: Only the soft fabric of the wide hanging sleeve ends and lower robe hems has an extremely subtle, delicate micro-sway under calm natural gravity. Long hair strands have a very subtle, soft micro-sway. "
+        "STRICTLY ZERO BREATH EFFECTS OR ARTIFACTS: Strictly ZERO breath vapor, ZERO smoke, ZERO mist, ZERO steam, ZERO exhalation arcs, ZERO light halos, ZERO glowing aura. "
+        "CRITICAL BLANK FACELESS HEAD: Completely smooth blank featureless face, ZERO eyes, ZERO eyebrows, ZERO nose, ZERO mouth. Facial skin seamlessly matches neck ({skinTone}). "
+        "Clean flat solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "90": (
-        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (90° side profile). "
-        "PRESERVE STARTING POSE 100% EXACTLY: Arm, hands, and profile silhouette remain locked in the exact starting 90° pure profile from reference image. Hands, fingers, wrist, and elbow are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero body shifting, zero stepping. "
-        "SUBTLE CHEST BREATHING: The chest and torso have a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and anchored in pure side profile facing left (9 o'clock). "
-        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeve hems and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair has very gentle, soft micro-sway along the back silhouette. "
-        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects or ornaments in front or behind profile. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
+        "[idle-90°] 2D Anime chibi sprite character standing completely still on solid green {chromaBgHex} background, seamless 4-second loop (90° pure side profile). "
+        "STATIONARY POSTURE LOCK: Character stays anchored strictly in pure left side profile (facing 9 o'clock). Head, neck, torso, spine, and grounded feet remain 100% frozen and rock-steady. "
+        "IMMOBILE ARM AND HAND: The visible arm hangs straight down along the side of the body. Arm, forearm, wrist, hand, and fingers are 100% FROZEN, RIGID, AND MOTIONLESS. Strictly ZERO arm swaying, ZERO hand waving, ZERO finger twitching. Hand does not move at all. "
+        "GENTLE ROBE FABRIC MICRO-SWAY: Instead of the arm moving, ONLY the soft fabric of the wide hanging sleeve drapery and lower robe hem has an extremely subtle, delicate micro-sway under calm natural gravity. Long hair strands have a gentle, soft micro-sway. "
+        "STRICTLY ZERO BREATH EFFECTS OR ARTIFACTS: Strictly ZERO breath vapor, ZERO smoke, ZERO mist, ZERO steam, ZERO exhalation arcs, ZERO light halos, ZERO glowing aura. "
+        "CRITICAL BLANK FACELESS PROFILE: Pure side profile with smooth blank featureless head, ZERO eyes, ZERO eyebrows, ZERO mouth. Facial skin seamlessly matches neck ({skinTone}). "
+        "Clean flat solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "135": (
-        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (135° back-left view). "
-        "PRESERVE STARTING POSE 100% EXACTLY: Arms, hands, shoulders, and rear-angled posture remain locked in the exact starting 135° pose from reference image (torso facing 8 o'clock, left foot turned in profile). Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero body turning, zero stepping. "
-        "SUBTLE BREATHING: Upper back and shoulders have a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and anchored at 135° orientation. "
-        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide back sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair cascading down the back has very gentle, soft micro-sway at strands. "
+        "[idle-135°] 2D Anime chibi sprite character standing completely still on solid green {chromaBgHex} background, seamless 4-second loop (135° back-left view). "
+        "STATIONARY POSTURE LOCK: Character stays anchored in exact 135° back-left orientation (facing diagonally away to 8 o'clock). Upper back, shoulders, torso, and grounded feet remain 100% frozen and rock-steady with zero body rotation. "
+        "IMMOBILE ARMS AND HANDS: Both arms hang naturally along the sides. Arms, wrists, hands, and fingers are 100% FROZEN, RIGID, AND MOTIONLESS. Strictly ZERO arm swaying, ZERO hand movement. "
+        "GENTLE ROBE FABRIC MICRO-SWAY: Only the soft fabric of the wide hanging sleeves and lower robe hems has an extremely subtle, delicate micro-sway under calm natural gravity. Long hair strands have a gentle, soft micro-sway. "
         "{waistRearMotionLock} "
-        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects, floating jewelry, or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
+        "STRICTLY ZERO BREATH EFFECTS OR ARTIFACTS: Strictly ZERO breath vapor, ZERO smoke, ZERO mist, ZERO steam, ZERO exhalation arcs, ZERO light halos, ZERO glowing aura. "
+        "HEAD AND SILHOUETTE PRESERVATION: Preserve the exact head silhouette and posture from reference image without adding facial features or background elements. "
+        "Clean flat solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "180": (
-        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (180° direct rear view). "
-        "PRESERVE STARTING POSE 100% EXACTLY: Both arms and hands remain locked in the exact starting symmetrical rear posture from reference image, hanging straight down along the sides. Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero body turning, zero stepping. "
-        "SUBTLE BREATHING: Upper back and shoulders have a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and heels stay completely still and grounded in direct rear view. "
-        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair cascading down the back has very gentle, soft micro-sway at strands. "
+        "[idle-180°] 2D Anime chibi sprite character standing completely still on solid green {chromaBgHex} background, seamless 4-second loop (180° direct rear view). "
+        "STATIONARY POSTURE LOCK: Character stands completely still facing 100% directly away from camera with bilateral symmetry. Back of head, shoulders, spine, and grounded heels remain 100% frozen and rock-steady. "
+        "IMMOBILE ARMS AND HANDS: Both arms hang straight down symmetrically at the sides. Arms, wrists, hands, and fingers are 100% FROZEN, RIGID, AND MOTIONLESS. Strictly ZERO arm swaying, ZERO hand movement. "
+        "GENTLE ROBE FABRIC MICRO-SWAY: Only the soft fabric of the wide hanging sleeves and lower robe hems has an extremely subtle, delicate micro-sway under calm natural gravity. Long hair strands have a gentle, soft micro-sway. "
         "{waistRearMotionLock} "
-        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects, floating jewelry, or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
+        "STRICTLY ZERO BREATH EFFECTS OR ARTIFACTS: Strictly ZERO breath vapor, ZERO smoke, ZERO mist, ZERO steam, ZERO exhalation arcs, ZERO light halos, ZERO glowing aura. "
+        "CRITICAL REAR VIEW ZERO FACE: Character faces 100% directly away from camera showing only back of head and hair, with strictly ZERO face, ZERO eyes, ZERO mouth visible. "
+        "Clean flat solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
 }
 
 ATTACK_PROMPT_TEMPLATES = {
     "0": (
-        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (0° front view). "
+        "[attack-0°] 4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (0° front view). "
         "Character performs an elegant empty-handed martial arts palm strike sequence facing camera. "
         "Fluid flowing arm extensions, palm thrusts, and qigong hand movements in rhythmic cadence. "
         "Hair and robe sleeves move gracefully with momentum. Strictly ZERO weapons. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "45": (
-        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (45° three-quarter view). "
+        "[attack-45°] 4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (45° three-quarter view). "
         "Character performs empty-handed martial arts palm strike combo at 45° angle. "
         "Diagonal martial palm strikes with fluid body balance. Empty hands. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "90": (
-        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (90° side profile). "
+        "[attack-90°] 4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (90° side profile). "
         "Character performs rhythmic horizontal palm thrust and retraction in side profile. "
         "Empty hands, fluid martial extension. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "135": (
-        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (135° back-left view). "
+        "[attack-135°] 4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (135° back-left view). "
         "Character performs martial arts palm strike sequence viewed from behind at 135° angle. "
         "Shoulders and robe sleeves turn rhythmically with each strike. Empty hands. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "180": (
-        "4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (180° rear view). "
+        "[attack-180°] 4-second seamless loop MARTIAL ARTS PALM STRIKE COMBO (180° rear view). "
         "Character performs rhythmic martial arts palm sequence facing away from camera. "
         "Arm extensions and flowing robe sleeves visible from behind. Empty hands. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
 }
 
 DEFEND_PROMPT_TEMPLATES = {
     "0": (
-        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (0° front view). "
+        "[defend-0°] 4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (0° front view). "
         "Character holds an empty-handed martial defensive stance facing camera, palms raised in balanced guard posture. "
-        "Subtle breathing, grounded poise, sleeves fluttering gently. Strictly ZERO weapons. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        "Grounded composed poise, sleeves fluttering gently. Strictly ZERO weapons. "
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "45": (
-        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (45° three-quarter). "
+        "[defend-45°] 4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (45° three-quarter). "
         "Character holds empty-handed defensive guard stance at 45° angle. "
         "Poised martial balance, palms up in guard posture. Empty hands. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "90": (
-        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (90° side profile). "
+        "[defend-90°] 4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (90° side profile). "
         "Character holds defensive martial stance in side profile. "
         "Arms raised in protective martial guard posture, body braced. Empty hands. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "135": (
-        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (135° back-left). "
+        "[defend-135°] 4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (135° back-left). "
         "Character holds martial guard viewed from behind at 135° angle. "
         "Back posture grounded, defensive ready stance. Empty hands. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
     "180": (
-        "4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (180° rear view). "
+        "[defend-180°] 4-second seamless loop MARTIAL DEFENSIVE GUARD STANCE (180° rear view). "
         "Character holds martial defensive stance facing away from camera. "
         "Balanced empty-handed stance visible from behind. "
-        "Seamless loop: first frame = last frame. "
-        "Camera static. Solid green {chromaBgHex} background."
+        f"{GLOBAL_VIDEO_LOCK} "
+        "Seamless loop: first frame = last frame identically. Camera static. Solid green {chromaBgHex} background."
     ),
 }
 
@@ -420,7 +454,7 @@ def format_template(template: str, customizer: dict = None) -> str:
     c = {**DEFAULT_CUSTOMIZER_VALUES, **(customizer or {})}
     if "waistRearMotionLock" not in c:
         if c.get("gender") == "female":
-            c["waistRearMotionLock"] = "Rear waist butterfly bow and cascading ribbons drift subtly with the gentle breeze."
+            c["waistRearMotionLock"] = "Rear waist delicate silk ribbon sash draping calmly downward without flapping under natural gravity."
         else:
             c["waistRearMotionLock"] = "Flat continuous waist belt remains completely smooth without any ties or bows."
     text = template

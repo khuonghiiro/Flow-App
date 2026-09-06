@@ -31,14 +31,126 @@
   "actions": {
     "dung-yen": {
       "angle_0": {
-        "media_id": "81eac10f-773a-4e0c-8088-a5f54e51bc85",
+        "media_id": "a605fef8-8cfc-4ebf-8701-4ba120e66d7e",
         "file": "dung-yen/idle_0.mp4",
-        "file_1_6s": "dung-yen/idle_0_1.6s.mp4",
-        "file_4s_raw": "dung-yen/idle_0_4s.mp4",
+        "duration": 4.0,
+        "resolution": "720x1280",
+        "size_bytes": 1028077,
+        "status": "COMPLETED"
+      },
+      "angle_45": {
+        "media_id": "f354384a-563f-4808-a06f-d61a624efd9a",
+        "file": "dung-yen/idle_45.mp4",
+        "duration": 4.0,
+        "resolution": "720x1280",
+        "size_bytes": 944215,
+        "status": "COMPLETED"
+      },
+      "angle_135": {
+        "media_id": "666d1700-ff30-456e-aeb6-e0bb6b4560f7",
+        "file": "dung-yen/idle_135.mp4",
+        "duration": 4.0,
+        "resolution": "720x1280",
+        "size_bytes": 803131,
+        "status": "COMPLETED"
+      },
+      "angle_180": {
+        "media_id": "dea10d52-8055-47c6-a5b9-7db305e4f2ab",
+        "file": "dung-yen/idle_180.mp4",
+        "duration": 4.0,
+        "resolution": "720x1280",
+        "size_bytes": 1135639,
+        "status": "COMPLETED"
+      },
+      "angle_90": {
+        "media_id": "8819674d-10ed-4371-ae0a-74ff2fe9524e",
+        "file": "dung-yen/idle_90.mp4",
+        "duration": 4.0,
+        "resolution": "720x1280",
+        "size_bytes": 927797,
+        "status": "COMPLETED"
+      }
+    },
+    "di-bo": {
+      "angle_45": {
+        "media_id": "d6db6716-34e9-4a06-9220-2adaa01a0c6c",
+        "file": "di-bo/walk_45.mp4",
+        "file_1_6s": "di-bo/walk_45_1.6s.mp4",
+        "file_4s_raw": "di-bo/walk_45_4s.mp4",
         "duration": 2.0,
         "duration_short": 1.6,
         "resolution": "720x1280",
-        "size_bytes": 858771,
+        "size_bytes": 1405764,
+        "status": "COMPLETED"
+      },
+      "angle_135": {
+        "media_id": "a798bd89-94ea-4f7f-a831-b6597c28838e",
+        "file": "di-bo/walk_135.mp4",
+        "file_1_6s": "di-bo/walk_135_1.6s.mp4",
+        "file_4s_raw": "di-bo/walk_135_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 1389496,
+        "status": "COMPLETED"
+      }
+    },
+    "chay": {
+      "angle_45": {
+        "media_id": "ed5a260b-f956-4bcc-a4fa-6f7b013cb42d",
+        "file": "chay/run_45.mp4",
+        "file_1_6s": "chay/run_45_1.6s.mp4",
+        "file_4s_raw": "chay/run_45_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 2276958,
+        "status": "COMPLETED"
+      },
+      "angle_135": {
+        "media_id": "d4dcfeef-d95c-4323-8c9c-67a07b8302f2",
+        "file": "chay/run_135.mp4",
+        "file_1_6s": "chay/run_135_1.6s.mp4",
+        "file_4s_raw": "chay/run_135_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 2080550,
+        "status": "COMPLETED"
+      }
+    },
+    "danh-cong": {
+      "angle_0": {
+        "media_id": "0450cd90-a8c2-420d-8ff8-ed512270751e",
+        "file": "danh-cong/attack_0.mp4",
+        "file_1_6s": "danh-cong/attack_0_1.6s.mp4",
+        "file_4s_raw": "danh-cong/attack_0_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 1851104,
+        "status": "COMPLETED"
+      },
+      "angle_90": {
+        "media_id": "8fdb09b7-df23-41b9-bba4-ea31b014aad4",
+        "file": "danh-cong/attack_90.mp4",
+        "file_1_6s": "danh-cong/attack_90_1.6s.mp4",
+        "file_4s_raw": "danh-cong/attack_90_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 1463287,
+        "status": "COMPLETED"
+      },
+      "angle_180": {
+        "media_id": "6fa3cf32-97c7-4359-961a-26dd8480fafd",
+        "file": "danh-cong/attack_180.mp4",
+        "file_1_6s": "danh-cong/attack_180_1.6s.mp4",
+        "file_4s_raw": "danh-cong/attack_180_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 1511214,
         "status": "COMPLETED"
       }
     }

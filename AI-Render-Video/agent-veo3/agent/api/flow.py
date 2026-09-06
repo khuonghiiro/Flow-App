@@ -383,6 +383,17 @@ async def get_media(media_id: str, project_id: str = "", tool: str = "PINHOLE"):
     return result.get("data", result)
 
 
+@router.get("/media-redirect-url/{media_id}")
+async def get_media_redirect_url(media_id: str):
+    """Get signed Cloud CDN download URL for any media (image or video) via Flow's authenticated redirect."""
+    from agent.services.omni_flash import _fetch_media_url
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    res = await _fetch_media_url(client, media_id)
+    return res
+
+
 @router.post("/edit-image")
 async def edit_image(body: EditImageRequest):
     """Edit an existing image using IMAGE_INPUT_TYPE_BASE_IMAGE (bypasses queue)."""

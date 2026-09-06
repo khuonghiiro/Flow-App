@@ -3,6 +3,15 @@
  * Displays live connection status, metrics, and request log.
  */
 
+const reloadOnce = new URLSearchParams(window.location.search).get('reload_once');
+if (reloadOnce) {
+  const lastReload = sessionStorage.getItem('last_reload_once');
+  if (lastReload !== reloadOnce) {
+    sessionStorage.setItem('last_reload_once', reloadOnce);
+    try { chrome.runtime.sendMessage({ type: 'RELOAD_EXTENSION' }); } catch (e) {}
+  }
+}
+
 // ── Type label map ───────────────────────────────────────────
 
 const TYPE_LABELS = {

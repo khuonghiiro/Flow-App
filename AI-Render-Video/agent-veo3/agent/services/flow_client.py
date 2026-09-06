@@ -229,6 +229,10 @@ class FlowClient:
             if media_type not in ("image", "video"):
                 continue
 
+            if not hasattr(self, "_recent_media_urls"):
+                self._recent_media_urls = {}
+            self._recent_media_urls[media_id] = url
+
             # Try matching against scenes (check both orientations)
             scenes = await crud.list_scenes_by_media_id(media_id)
             for scene in scenes:

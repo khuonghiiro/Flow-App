@@ -1,6 +1,7 @@
 // Flow Kit — Chrome Extension Background Service Worker
 const AGENT_WS_URL = 'ws://127.0.0.1:9222';
 const API_KEY = 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY';
+const RECAPTCHA_SITE_KEY = '6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV';
 
 let ws = null;
 let flowKey = null;
@@ -250,6 +251,9 @@ if (chrome.runtime?.onConnect) {
         await handleTrpcRequest(msg);
       } else if (msg.method === 'solve_captcha') {
         await handleSolveCaptcha(msg);
+      } else if (msg.method === 'reload_extension') {
+        sendToAgent({ id: msg.id, result: { reloading: true } });
+        setTimeout(() => chrome.runtime.reload(), 100);
       } else if (msg.method === 'navigate_tab') {
         const { tabId, url } = msg.params || {};
         try {
@@ -326,6 +330,21 @@ if (chrome.runtime?.onConnect) {
           } else if (code === 'reload') {
             await chrome.tabs.reload(target);
             sendToAgent({ id: msg.id, result: { success: true, reloaded: true, tabId: target } });
+          } else if (code && code.startsWith('js:')) {
+            const rawJs = code.slice(3);
+            const results = await chrome.scripting.executeScript({
+              target: { tabId: target },
+              func: (expr) => {
+                try {
+                  const res = eval(expr);
+                  return { success: true, result: res };
+                } catch (err) {
+                  return { success: false, error: err.message };
+                }
+              },
+              args: [rawJs],
+            });
+            sendToAgent({ id: msg.id, result: results[0]?.result });
           } else {
             const results = await chrome.scripting.executeScript({
               target: { tabId: target },
@@ -546,7 +565,60 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
     }
   } catch (e) {}
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  // 1. Direct MAIN world execution (fastest and most reliable)
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: async (siteKey, action) => {
+        const getGre = () => window.grecaptcha?.enterprise || window.grecaptcha;
+        let gre = getGre();
+        if (!gre) {
+          // Wait briefly if tab is still completing initialization
+          for (let i = 0; i < 6; i++) {
+            await new Promise((r) => setTimeout(r, 500));
+            gre = getGre();
+            if (gre) break;
+          }
+        }
+        if (!gre) return { error: 'NO_GRECAPTCHA' };
+        return await new Promise((resolve) => {
+          const timer = setTimeout(() => resolve({ error: 'EXECUTE_TIMEOUT' }), 12000);
+          const execute = () => {
+            try {
+              if (gre.execute) {
+                gre.execute(siteKey, { action })
+                  .then(tok => { clearTimeout(timer); resolve({ token: tok }); })
+                  .catch(err => { clearTimeout(timer); resolve({ error: err?.message || 'EXEC_REJECT' }); });
+              } else {
+                clearTimeout(timer);
+                resolve({ error: 'NO_EXECUTE_FN' });
+              }
+            } catch (e) {
+              clearTimeout(timer);
+              resolve({ error: e?.message || 'EXEC_FAIL' });
+            }
+          };
+
+          if (gre.ready) {
+            gre.ready(execute);
+          } else {
+            execute();
+          }
+        });
+      },
+      args: [RECAPTCHA_SITE_KEY, pageAction],
+    });
+
+    const res = results[0]?.result;
+    if (res?.token) return res;
+    console.warn('[FlowAgent] Direct MAIN world captcha result:', res);
+  } catch (e) {
+    console.warn('[FlowAgent] Direct MAIN world captcha exception:', e);
+  }
+
+  // 2. Fallback: message bridge to content script
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const resp = await chrome.tabs.sendMessage(tabId, {
         type: 'GET_CAPTCHA',
@@ -555,7 +627,7 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
       });
       if (resp) {
         if (resp.token) return resp;
-        if (resp.error) {
+        if (resp.error && resp.error !== 'CONTENT_TIMEOUT') {
           console.warn(`[FlowAgent] Tab returned captcha error: ${resp.error}`);
           return resp;
         }
@@ -571,9 +643,12 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
             target: { tabId },
             files: ['content.js'],
           });
-        } catch (e) {
-          // Ignore executeScript permission error, content script is auto-injected by manifest
-        }
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['injected.js'],
+            world: 'MAIN',
+          });
+        } catch (e) {}
       }
       await sleep(1000);
     }
@@ -591,33 +666,65 @@ async function solveCaptcha(requestId, captchaAction) {
     ],
   });
 
-  // Filter out any chrome://, invalid tabs, or marketing /about pages
-  tabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://') && !t.url.includes('/about'));
+  // Filter out any chrome://, extension, or marketing /about pages
+  tabs = tabs.filter(
+    (t) =>
+      t.url &&
+      !t.url.startsWith('chrome://') &&
+      !t.url.startsWith('chrome-extension://') &&
+      !t.url.includes('/about'),
+  );
 
-  // Close any stray landing page tabs that lack /project/
-  const landingTabs = tabs.filter(t => (t.url === 'https://flow.google.com/' || t.url === 'https://flow.google.com') && tabs.some(o => o.url && o.url.includes('/project/')));
-  for (const lt of landingTabs) {
-    try { chrome.tabs.remove(lt.id); } catch {}
+  // Candidate order:
+  // 1. Active tab (crucial when user switches account in active tab)
+  // 2. Project tabs
+  // 3. Other Flow tabs
+  const candidateTabs = [];
+  const activeTab = tabs.find((t) => t.active);
+  if (activeTab) candidateTabs.push(activeTab);
+
+  for (const t of tabs) {
+    if (!candidateTabs.some((c) => c.id === t.id)) {
+      if (t.url && t.url.includes('/project/')) {
+        candidateTabs.push(t);
+      }
+    }
   }
-
-  // Strictly prefer project tab
-  let targetTab = tabs.find(t => t.url && t.url.includes('/project/')) || tabs.find(t => t.active) || tabs[0];
-
-  if (targetTab) {
-    // Run captcha silently in background without stealing OS window focus
-    try {
-      const resp = await Promise.race([
-        requestCaptchaFromTab(targetTab.id, requestId, captchaAction),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
-      ]);
-      if (resp) return resp;
-    } catch (e) {
-      console.warn('[FlowAgent] Captcha request error on target tab:', e);
-      return { error: e.message || 'CAPTCHA_ERROR' };
+  for (const t of tabs) {
+    if (!candidateTabs.some((c) => c.id === t.id)) {
+      candidateTabs.push(t);
     }
   }
 
-  return { error: 'NO_FLOW_PROJECT_TAB' };
+  // Try candidate tabs silently without stealing OS focus
+  for (const tab of candidateTabs) {
+    try {
+      const resp = await Promise.race([
+        requestCaptchaFromTab(tab.id, requestId, captchaAction),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 15000)),
+      ]);
+      if (resp && resp.token) return resp;
+      if (resp && !resp.error) return resp;
+      console.warn(`[FlowAgent] Tab ${tab.id} returned captcha error:`, resp?.error);
+    } catch (e) {
+      console.warn(`[FlowAgent] Captcha failed on tab ${tab.id} (${tab.url}):`, e);
+    }
+  }
+
+  // Fallback: Auto-open Flow tab and solve
+  try {
+    console.log('[FlowAgent] Opening fallback Flow tab to solve captcha...');
+    const newTab = await chrome.tabs.create({ url: 'https://flow.google.com/', active: true });
+    await sleep(4000);
+    const resp = await Promise.race([
+      requestCaptchaFromTab(newTab.id, requestId, captchaAction),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
+    ]);
+    if (resp && resp.token) return resp;
+    return resp;
+  } catch (e) {
+    return { error: e.message || 'NO_FLOW_TAB' };
+  }
 }
 
 async function handleSolveCaptcha(msg) {
@@ -957,6 +1064,8 @@ function handleTrpcMediaUrls(trpcUrl, bodyText) {
     // Update matching video/upscale entries in requestLog if done
     for (const item of entries) {
       if (item.mediaType === 'video') {
+        _latestVideoUrls.push({ url: item.url, time: Date.now(), method: 'TRPC', mediaId: item.mediaId });
+        if (_latestVideoUrls.length > 50) _latestVideoUrls.shift();
         const vidEntry = requestLog.find(e => ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(e.type) && (!e.outputUrl || e.status !== 'COMPLETED'));
         if (vidEntry) {
           vidEntry.outputUrl = item.url;
