@@ -252,10 +252,12 @@ CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
 2. 45-DEGREE DIAGONAL STRIDE TRAJECTORY LOCK (FOR 45° & 135°):
    - At 45° and 135°, stride direction MUST step strictly along the true 45-degree diagonal axis aligned with body orientation.
    - STRICTLY FORBIDDEN to crab-walk sideways. Feet remain anchored to floor plane. ZERO hopping, ZERO bouncing, ZERO floating.
-3. STRICT IDLE BREATHING & CALM STATIC FABRIC LOCK (CẤM GIÓ ẢO):
-   - In standing still (idle), arms hang completely relaxed straight down along sides and DO NOT MOVE.
-   - NATURAL SUBTLE BREATHING: Nhịp thở tự nhiên, khẽ nâng hạ nhẹ nhàng vùng ngực và vai (1 chu kỳ thở êm dịu xuyên suốt 4 giây).
-   - CALM STATIC FABRIC: Tà áo, vạt áo và suối tóc buông rủ tĩnh lặng tự nhiên xuôi theo trọng lực. TUYỆT ĐỐI CẤM gió giả tạo, cấm tà áo gợn sóng rung giật hay suối tóc bay lượn gây ảo giác biến dạng.
+3. STRICT POSE PRESERVATION, WHISPER BREEZE & ANTI-HALLUCINATION (ALL IDLE ANGLES):
+   - KHÓA CỐ ĐỊNH DÁNG ĐỨNG GỐC 100% (POSE FROZEN): Cả hai tay, ngón tay, cẳng tay và bàn chân giữ nguyên 100% tư thế từ ảnh mốc của góc tương ứng (buông xuôi bên hông hoặc theo dáng profile). Cố định bất động tuyệt đối (100% FROZEN AND IMMOBILE), cấm vung tay, cấm nhấc tay, cấm làm động tác hay đổi thế đứng.
+   - HÍT THỞ CƠ THỂ NHẸ NHÀNG (SUBTLE CHEST BREATHING): Lồng ngực phập phồng nhẹ nhàng êm ái tự nhiên, toàn bộ tư thế vai, đầu, thân người và bàn chân đứng yên vững chãi.
+   - GIÓ HIU HIU NHẸ NHÀNG (WHISPER-LIGHT BREEZE, ZERO STRONG WIND): Cơn gió thoảng cực nhẹ chỉ tạo dao động vi mô rất khẽ ở tà áo thụng và gấu váy lụa rủ xuôi theo trọng lực. CẤM GIÓ TO, cấm tà áo hay tay áo bay văng phấp phới như cánh chim.
+   - TRIỆT TIÊU TRANG SỨC ẢO TRÊN TÓC (ANTI-HAIR-ORNAMENT HALLUCINATION): Giữ nguyên suối tóc trơn mượt tự nhiên, CẤM TUYỆT ĐỐI AI tự sinh thêm tua rua, hạt ngọc, nơ hay trâm cài ở các sợi tóc hay ngọn tóc khi tóc đung đưa. Cấm vật thể lạ lơ lửng phía sau lưng hoặc đầu.
+   - CHU KỲ LẶP NHANH 1.3s - 2.0s (SPRITE 2D STANDARD): Nhịp chuyển động đứng yên lặp lại nhanh gọn trong chu kỳ 1.3s – 2.0s để cắt lát sprite mượt mà, không bị lê thê.
 4. UNIFORM SKIN & ZERO PROPS PRESERVATION:
    - Completely blank, smooth mannequin head MUST remain intact with uniform natural skin color matching neck and hands. STRICTLY ZERO facial expressions, ZERO mouth opening.
    - STRICTLY ZERO weapons, swords, instruments, or props. STRICTLY ZERO neon glow.

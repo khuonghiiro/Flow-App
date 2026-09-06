@@ -296,11 +296,12 @@ chrome.runtime.onConnect.addListener((port) => {
                   if (mode === 'open_video') {
                     const cards = Array.from(document.querySelectorAll('button, [role="button"], div')).filter(el => {
                       const t = el.innerText || '';
-                      return t.includes('play_circle') && (t.includes('Anime') || t.includes('standing still'));
+                      return t.includes('play_circle') && !t.includes('play_circle\n');
                     });
-                    if (cards.length) {
+                    const targetCards = cards.length ? cards : Array.from(document.querySelectorAll('button, [role="button"], div')).filter(el => (el.innerText || '').includes('play_circle'));
+                    if (targetCards.length) {
                       // Click innermost element
-                      const target = cards[cards.length - 1];
+                      const target = targetCards[targetCards.length - 1];
                       target.click();
                       return { success: true, clicked: target.innerText.slice(0, 60) };
                     }
@@ -315,10 +316,10 @@ chrome.runtime.onConnect.addListener((port) => {
                     return { success: false, error: '720p button not found' };
                   }
                   if (mode === 'click_download') {
-                    const dlBtn = Array.from(document.querySelectorAll('.mat-mdc-menu-item, [role="menuitem"]')).find(el => el.innerText.includes('Tải xuống') || el.innerText.includes('Download'));
+                    const dlBtn = Array.from(document.querySelectorAll('button, [role="button"], a, .mat-mdc-menu-item, [role="menuitem"]')).find(el => (el.innerText || '').includes('download') || (el.innerText || '').includes('Tải xuống') || (el.getAttribute('aria-label') || '').toLowerCase().includes('download'));
                     if (dlBtn) {
                       dlBtn.click();
-                      return { success: true, text: dlBtn.innerText.trim() };
+                      return { success: true, text: (dlBtn.innerText || dlBtn.getAttribute('aria-label') || '').trim() };
                     }
                     return { success: false, error: 'download button not found' };
                   }

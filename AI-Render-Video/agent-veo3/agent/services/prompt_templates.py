@@ -256,52 +256,41 @@ RUN_PROMPT_TEMPLATES = build_run_templates("young_male")
 
 IDLE_PROMPT_TEMPLATES = {
     "0": (
-        "4-second seamless loop IDLE BREATHING SPRITE (0° direct front view). "
-        "Character stands completely grounded, facing camera in a calm, dignified standing stance. "
-        "NATURAL SUBTLE BREATHING MOTION: Extremely gentle, rhythmic rise and fall of chest and shoulders simulating natural calm breathing (one smooth, relaxed breathing cycle across 4 seconds). "
-        "CALM STATIC FABRIC UNDER GRAVITY: Robe hems, sleeves, and sashes hang naturally downward under calm gravity without artificial wind. "
-        "STRICTLY FORBIDDEN: Any wind blowing, fabric fluttering, cloth warping, or unnatural ripples. Robes remain calm, settled, and stable. "
-        "STRICT ARM & HAND IMMOBILITY: Both arms hang completely relaxed straight down along sides and DO NOT MOVE. "
-        "Hands and fingers remain completely motionless at sides. STRICTLY ZERO ARM RAISING, ZERO HAND MOVEMENT, ZERO TOUCHING CHEST. "
-        "Silky hair rests naturally and calmly along shoulders. Feet remain firmly planted on the ground plane. "
-        "Faceless blank mannequin head remains completely smooth with uniform natural skin tone. "
-        "Static camera, seamless loop: first frame = last frame. Solid green {chromaBgHex} background."
+        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (0° direct front view). "
+        "PRESERVE STARTING POSE 100% EXACTLY: Both arms and hands remain locked in the exact starting posture from reference image, resting naturally along the body. Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture. "
+        "SUBTLE CHEST BREATHING: The chest has a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and grounded. "
+        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky black hair has very gentle, soft micro-sway at strands. "
+        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "45": (
-        "4-second seamless loop IDLE BREATHING SPRITE (45° three-quarter view). "
-        "Character stands completely still and grounded at 45° angle facing diagonal 10 o'clock. "
-        "NATURAL SUBTLE BREATHING MOTION: Extremely gentle, rhythmic rise and fall of chest and shoulders simulating natural calm breathing across 4 seconds. "
-        "CALM STATIC FABRIC UNDER GRAVITY: Robes and sleeves hang straight down under natural gravity. "
-        "STRICTLY FORBIDDEN: Wind blowing, fabric fluttering, or cloth warping. Robe fabric remains calm, settled, and static. "
-        "STRICT ARM & BODY IMMOBILITY: Arms hang motionless at sides. Torso, head, and feet remain rock-steady on floor plane. "
-        "Hair rests calm and settled along body. "
-        "Static camera, seamless loop: first frame = last frame. Solid green {chromaBgHex} background."
+        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (45° three-quarter view). "
+        "PRESERVE STARTING POSE 100% EXACTLY: Both arms and hands remain locked in the exact starting 45° posture from reference image, resting naturally along the body silhouette. Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero turning, zero stepping. "
+        "SUBTLE CHEST BREATHING: The chest has a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and anchored at 45° angle. "
+        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair has very gentle, soft micro-sway at strands. "
+        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "90": (
-        "4-second seamless loop IDLE BREATHING SPRITE (90° side profile). "
-        "Character stands completely grounded in pure side profile (9 o'clock). "
-        "NATURAL SUBTLE BREATHING MOTION: Subtle, peaceful expansion and relaxing of chest simulating gentle natural breathing cycle. "
-        "CALM STATIC FABRIC UNDER GRAVITY: Robes hang vertically along body silhouette under natural gravity. STRICTLY ZERO wind fluttering. "
-        "STRICT IMMOBILITY: Left arm hangs straight down motionless. Feet anchored to floor plane. Body silhouette rock-steady. "
-        "Static camera, seamless loop: first frame = last frame. Solid green {chromaBgHex} background."
+        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (90° side profile). "
+        "PRESERVE STARTING POSE 100% EXACTLY: Arm, hands, and profile silhouette remain locked in the exact starting 90° pure profile from reference image. Hands, fingers, wrist, and elbow are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero body shifting, zero stepping. "
+        "SUBTLE CHEST BREATHING: The chest and torso have a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and anchored in pure side profile facing left (9 o'clock). "
+        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeve hems and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair has very gentle, soft micro-sway along the back silhouette. "
+        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects or ornaments in front or behind profile. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "135": (
-        "4-second seamless loop IDLE BREATHING SPRITE (135° back-left view). "
-        "Character stands completely grounded viewed from behind at 135° angle. "
-        "NATURAL SUBTLE BREATHING MOTION: Subtle, natural breathing rhythm of back and shoulders across 4 seconds. "
-        "CALM STATIC FABRIC UNDER GRAVITY: Back robe fabric, sleeves, and sash hang naturally downward under calm gravity. STRICTLY ZERO wind flapping or warping. "
+        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (135° back-left view). "
+        "PRESERVE STARTING POSE 100% EXACTLY: Arms, hands, shoulders, and rear-angled posture remain locked in the exact starting 135° pose from reference image (torso facing 8 o'clock, left foot turned in profile). Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero body turning, zero stepping. "
+        "SUBTLE BREATHING: Upper back and shoulders have a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and feet stay completely still and anchored at 135° orientation. "
+        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide back sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair cascading down the back has very gentle, soft micro-sway at strands. "
         "{waistRearMotionLock} "
-        "Hair rests calm and settled along the back. Arms motionless at sides. Feet firmly planted. "
-        "Static camera, seamless loop: first frame = last frame. Solid green {chromaBgHex} background."
+        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects, floating jewelry, or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
     "180": (
-        "4-second seamless loop IDLE BREATHING SPRITE (180° rear view). "
-        "Character stands completely still facing directly away from camera in symmetrical rear stance. "
-        "NATURAL SUBTLE BREATHING MOTION: Subtle, calm breathing rhythm of upper back and shoulders across 4 seconds. "
-        "CALM STATIC FABRIC UNDER GRAVITY: Back of robes and long hair hang straight down naturally under gravity. STRICTLY ZERO wind blowing, ZERO fabric flutter. "
+        "2D Anime chibi sprite character standing still on solid green {chromaBgHex} background, seamless 4-second loop (180° direct rear view). "
+        "PRESERVE STARTING POSE 100% EXACTLY: Both arms and hands remain locked in the exact starting symmetrical rear posture from reference image, hanging straight down along the sides. Hands, fingers, wrists, and elbows are 100% FROZEN AND IMMOBILE. Zero arm movement, zero hand lifting, zero gesture, zero body turning, zero stepping. "
+        "SUBTLE BREATHING: Upper back and shoulders have a very faint, calm, subtle breathing rise and fall. Head, shoulders, body posture, torso, and heels stay completely still and grounded in direct rear view. "
+        "WHISPER-LIGHT GENTLE BREEZE (SUBTLE MICRO-MOTION ONLY, NO STRONG WIND): Extremely calm, soft, whisper-light ambient breeze causing only minimal micro-undulation. Wide sleeves and lower dress hem hang straight down under gravity, showing only subtle, delicate micro-swaying without flapping or flying outward. Long silky hair cascading down the back has very gentle, soft micro-sway at strands. "
         "{waistRearMotionLock} "
-        "Both arms motionless at sides. Heels planted firmly on ground plane. "
-        "Static camera, seamless loop: first frame = last frame. Solid green {chromaBgHex} background."
+        "STRICT ANTI-HALLUCINATION: Strictly DO NOT add any new ornaments, tassels, ribbons, beads, or jewelry to hair strands or hair tips. Hair remains plain silky hair. DO NOT generate any objects, floating jewelry, or ornaments behind back or head. Clean solid green {chromaBgHex} background. Seamless 4s loop where start frame equals end frame."
     ),
 }
 

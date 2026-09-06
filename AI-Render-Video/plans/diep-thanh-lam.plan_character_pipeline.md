@@ -51,14 +51,18 @@ character:
 
 | Góc | Media ID (Flow) | File Vật Lý | Trạng Thái | Ghi Chú |
 |---|---|---|---|---|
-| **0°** | *Đang sinh...* | `angle_0.png` | **Đang tiến hành** | Batch 3 candidates |
-| **45°** | *Chờ 0°* | `angle_45.png` | **Chờ** | Dual-Ref Mannequin Nữ 45° |
-| **90°** | *Chờ 0°* | `angle_90.png` | **Chờ** | Dual-Ref Mannequin Nữ 90° |
-| **135°** | *Chờ 180°* | `angle_135.png` | **Chờ** | Dual-Ref Mannequin Nữ 135° (Pose Guide First) |
-| **180°** | *Chờ 0°* | `angle_180.png` | **Chờ** | Dual-Ref Mannequin Nữ 180° |
+| **0°** | `973a46d8-4d96-4657-aea8-ec7861080166` | [angle_0.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_0.png) | **Hoàn Thành** | Root Identity (Candidate 0) - Chuẩn Manhwa Nữ |
+| **45°** | `941eff2c-e453-4c20-a9f4-4d35ecba78f9` | [angle_45.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_45.png) | **Hoàn Thành** | Dual-Ref Mannequin Nữ 45° (3/4 Front-Left) |
+| **90°** | `ce1c46ec-2051-4049-af53-29e338b59a42` | [angle_90.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_90.png) | **Hoàn Thành** | Dual-Ref Mannequin Nữ 90° (True Pure Side Profile) |
+| **135°** | `3ffa0744-297e-4c5f-96be-2aee38ae7d8c` | [angle_135.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_135.png) | **Hoàn Thành** | Dual-Ref Mannequin Nữ 135° (Thân xoay 8h, chân trái nghiêng 9h, nơ lệch 45°) |
+| **180°** | `636a69fb-00ea-4e42-b488-0fa7e9f6d44d` | [angle_180.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_180.png) | **Hoàn Thành** | Dual-Ref Mannequin Nữ 180° (Symmetrical Rear View) |
 
-## 5. Registry Hoạt Ảnh Động Tác (Action Videos 4s Seamless Loop)
+## 5. Registry Hoạt Ảnh Động Tác (Action Videos Seamless Loop 1.3s - 2.0s)
 
 | Động Tác | Góc | Media ID (Flow) | Video MP4 | Thông Số | Trạng Thái |
 |---|---|---|---|---|---|
-| **Đứng Yên (Idle Breathing)** | 0° | *Chờ ảnh 0°* | `dung-yen/idle_0.mp4` | 720x1280 / 1080p, 4.0s loop | **Chờ** |
+| **Đứng Yên (Loop Chuẩn 2.0s)** | 0° | `81eac10f-773a-4e0c-8088-a5f54e51bc85` | [idle_0.mp4](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0.mp4) | 720x1280, **2.00s**, 858 KB | **Hoàn Thành** (Tay buông xuôi cố định 100%, ngực thở nhẹ, gió nhẹ nhàng, không sinh trang sức ở tóc) |
+| **Đứng Yên (Loop Nhanh 1.6s)** | 0° | `81eac10f-773a-4e0c-8088-a5f54e51bc85` | [idle_0_1.6s.mp4](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0_1.6s.mp4) | 720x1280, **1.60s**, 790 KB | **Hoàn Thành** (Chu kỳ nhịp 1.6s nhanh gọn mượt mà cho Sprite 2D) |
+| **Đứng Yên (Bản gốc 4.0s)** | 0° | `81eac10f-773a-4e0c-8088-a5f54e51bc85` | [idle_0_4s.mp4](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0_4s.mp4) | 720x1280, 4.00s, 1.01 MB | **Lưu trữ gốc** |
+
+
