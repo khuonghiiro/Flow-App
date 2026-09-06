@@ -53,15 +53,35 @@ function broadcastRequestLog() {
   chrome.runtime.sendMessage({ type: 'REQUEST_LOG_UPDATE', log: requestLog }).catch(() => {});
 }
 
-chrome.runtime.onInstalled.addListener(init);
-chrome.runtime.onStartup.addListener(init);
+let initializationPromise = null;
+
+chrome.runtime.onInstalled.addListener(() => {
+  void ensureInitialized();
+});
+chrome.runtime.onStartup.addListener(() => {
+  void ensureInitialized();
+});
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  await ensureInitialized();
   if (alarm.name === 'reconnect') connectToAgent();
   if (alarm.name === 'keepAlive') keepAlive();
-  if (alarm.name === 'token-refresh') await captureTokenFromFlowTab();
+  if (alarm.name === 'token-refresh') {
+    await captureTokenFromFlowTab();
+  }
 });
 
-async function init() {
+function ensureInitialized() {
+  if (!initializationPromise) {
+    initializationPromise = initialize().catch((error) => {
+      initializationPromise = null;
+      console.error('[FlowAgent] Initialization failed', error);
+      throw error;
+    });
+  }
+  return initializationPromise;
+}
+
+async function initialize() {
   const data = await chrome.storage.local.get(['flowKey', 'metrics', 'callbackSecret']);
   if (data.flowKey) flowKey = data.flowKey;
   if (data.metrics) Object.assign(metrics, data.metrics);
@@ -69,6 +89,10 @@ async function init() {
   connectToAgent();
   chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 });
 }
+
+// MV3 workers can be suspended and restarted without onStartup firing.
+// Rehydrate the persisted Flow key on every worker start.
+void ensureInitialized();
 
 // ─── Token Capture ──────────────────────────────────────────
 
@@ -100,20 +124,22 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 );
 
 let _latestVideoUrls = [];
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    const u = details.url || '';
-    if (u.includes('.mp4') || u.includes('/video/') || u.includes('flow-content.google') || (u.includes('/asb/') && !u.includes('=s512') && !u.includes('=s32'))) {
-      console.log('[FlowAgent] Captured media URL:', u);
-      _latestVideoUrls.push({ url: u, time: Date.now(), method: details.method });
-      if (_latestVideoUrls.length > 50) _latestVideoUrls.shift();
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'video_request_captured', url: u }));
+if (chrome.webRequest?.onBeforeRequest) {
+  chrome.webRequest.onBeforeRequest.addListener(
+    (details) => {
+      const u = details.url || '';
+      if (u.includes('.mp4') || u.includes('/video/') || u.includes('flow-content.google') || (u.includes('/asb/') && !u.includes('=s512') && !u.includes('=s32'))) {
+        console.log('[FlowAgent] Captured media URL:', u);
+        _latestVideoUrls.push({ url: u, time: Date.now(), method: details.method });
+        if (_latestVideoUrls.length > 50) _latestVideoUrls.shift();
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'video_request_captured', url: u }));
+        }
       }
-    }
-  },
-  { urls: ['<all_urls>'] }
-);
+    },
+    { urls: ['<all_urls>'] }
+  );
+}
 
 let _openingFlowTab = false;
 
@@ -186,11 +212,13 @@ function startWsHeartbeat() {
   }, 10000);
 }
 
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === 'FLOW_KEEPALIVE') {
-    port.onDisconnect.addListener(() => {});
-  }
-});
+if (chrome.runtime?.onConnect) {
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === 'FLOW_KEEPALIVE') {
+      port.onDisconnect.addListener(() => {});
+    }
+  });
+}
 
   ws.onopen = () => {
     console.log('[FlowAgent] Connected to agent');
@@ -590,7 +618,7 @@ async function handleSolveCaptcha(msg) {
 
 async function handleTrpcRequest(msg) {
   const { id, params } = msg;
-  const { url, method = 'POST', headers = {}, body } = params;
+  const { url, method = 'POST', headers = {}, body, responseMode } = params;
 
   if (!url || (!url.startsWith('https://labs.google/') && !url.startsWith('https://flow.google.com/'))) {
     sendToAgent({ id, error: 'INVALID_TRPC_URL' });
@@ -606,7 +634,7 @@ async function handleTrpcRequest(msg) {
 
   const fetchHeaders = { 'Content-Type': 'application/json', ...headers };
   if (flowKey) {
-    fetchHeaders['authorization'] = `Bearer ${flowKey}`;
+    fetchHeaders['authorization'] = Bearer ;
   }
 
   try {
@@ -616,7 +644,19 @@ async function handleTrpcRequest(msg) {
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'include',
     });
-    const data = await resp.json();
+    let data;
+    if (responseMode === 'url') {
+      // fetch() has already followed the authenticated Flow redirect. Return
+      // only the final signed URL and cancel the body so large videos are not
+      // buffered in the extension or copied through the WebSocket bridge.
+      data = {
+        url: resp.url,
+        contentType: resp.headers.get('content-type'),
+      };
+      await resp.body?.cancel();
+    } else {
+      data = await resp.json();
+    }
     chrome.storage.local.set({ metrics });
     updateRequestLog(logId, { status: 'success' });
     sendToAgent({ id, status: resp.status, data });

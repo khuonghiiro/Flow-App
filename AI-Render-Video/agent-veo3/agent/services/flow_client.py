@@ -16,6 +16,15 @@ from agent.config import (
     VIDEO_MODELS, UPSCALE_MODELS, IMAGE_MODELS, VIDEO_POLL_TIMEOUT,
 )
 from agent.services.headers import random_headers
+from agent.services.flow_client_helpers import (
+    should_failover,
+    get_extension_candidates,
+    select_extension,
+    resolve_video_model_key,
+    get_crop_coordinates,
+    build_status_check_body,
+    is_ws_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +43,6 @@ class FlowClient:
         self._ws_disconnect_count = 0
         self._ws_connected_at: Optional[float] = None
         self._ws_last_disconnect_at: Optional[float] = None
-        self._recent_media_urls: dict[str, str] = {}
 
     def set_extension(self, ws):
         """Called when extension connects via WS."""
@@ -94,56 +102,14 @@ class FlowClient:
         )
 
     def _extension_candidates(self, require_token: bool):
-        """Return usable extensions in preferred routing order."""
-        now = time.time()
-        candidates = []
-        for ws, session in self._extensions.items():
-            if require_token and not session.get("flow_key"):
-                continue
-            recency = (
-                session.get("token_captured_at")
-                if require_token
-                else session.get("connected_at")
-            )
-            candidates.append({
-                "ws": ws,
-                "available": session.get("unavailable_until", 0) <= now,
-                "active": ws is self._extension_ws,
-                "recency": recency or 0,
-            })
-
-        # Prefer an available active session, then the most recently
-        # authenticated alternatives. Temporarily unavailable sessions remain
-        # last-resort candidates so a single-profile setup can still recover.
-        candidates.sort(
-            key=lambda item: (
-                item["available"],
-                item["active"] and item["available"],
-                item["recency"],
-            ),
-            reverse=True,
-        )
-        return [item["ws"] for item in candidates]
+        return get_extension_candidates(self._extensions, self._extension_ws, require_token)
 
     def _select_extension(self, require_token: bool):
-        """Choose the preferred authenticated or connected extension."""
-        candidates = self._extension_candidates(require_token)
-        return candidates[0] if candidates else None
+        return select_extension(self._extensions, self._extension_ws, require_token)
 
     @staticmethod
     def _should_failover(result: dict) -> bool:
-        """Return true for profile-local failures that another tab can solve."""
-        message = str(result.get("error") or result.get("data") or "").lower()
-        return any(marker in message for marker in (
-            "no_flow_key",
-            "no_flow_tab",
-            "no current window",
-            "extension not connected",
-            "extension disconnected",
-            "extension_switched",
-            "public_error_per_model_daily_quota_reached",
-            "public_error_user_quota_reached",
-        ))
+        return should_failover(result)
 
     def set_flow_key(self, key: str):
         self._flow_key = key
@@ -236,7 +202,7 @@ class FlowClient:
             self._sync_in_progress = False
 
     _UUID_RE = __import__("re").compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
-    _SAFE_URL_RE = __import__("re").compile(r'^https://(flow-content\.google|storage\.googleapis\.com|lh3\.googleusercontent\.com)/')
+    _SAFE_URL_RE = __import__("re").compile(r'^https://(storage\.googleapis\.com|lh3\.googleusercontent\.com)/')
 
     async def _refresh_media_urls(self, urls: list[dict]):
         """Update scene/character URLs in DB from fresh TRPC-captured signed URLs.
@@ -263,21 +229,25 @@ class FlowClient:
             if media_type not in ("image", "video"):
                 continue
 
-            self._recent_media_urls[media_id] = url
-
             # Try matching against scenes (check both orientations)
             scenes = await crud.list_scenes_by_media_id(media_id)
             for scene in scenes:
                 updates = {}
                 if media_type == "image":
-                    for prefix in ("vertical_image", "horizontal_image"):
-                        if scene.get(f"{prefix}_media_id") == media_id:
-                            updates[f"{prefix}_url"] = url
+                    # Update whichever orientation matches
+                    if scene.get("vertical_image_media_id") == media_id:
+                        updates["vertical_image_url"] = url
+                    if scene.get("horizontal_image_media_id") == media_id:
+                        updates["horizontal_image_url"] = url
                 elif media_type == "video":
-                    for prefix in ("vertical_video", "horizontal_video", "vertical_upscale", "horizontal_upscale"):
-                        if scene.get(f"{prefix}_media_id") == media_id:
-                            updates[f"{prefix}_url"] = url
-                            updates[f"{prefix}_status"] = "COMPLETED"
+                    if scene.get("vertical_video_media_id") == media_id:
+                        updates["vertical_video_url"] = url
+                    if scene.get("horizontal_video_media_id") == media_id:
+                        updates["horizontal_video_url"] = url
+                    if scene.get("vertical_upscale_media_id") == media_id:
+                        updates["vertical_upscale_url"] = url
+                    if scene.get("horizontal_upscale_media_id") == media_id:
+                        updates["horizontal_upscale_url"] = url
                 if updates:
                     await crud.update_scene(scene["id"], **updates)
                     updated += 1
@@ -364,6 +334,10 @@ class FlowClient:
             if isinstance(last_result, dict) and "_req_id" not in last_result:
                 last_result["_req_id"] = req_id
             return last_result
+
+        if isinstance(last_result, dict) and "_req_id" not in last_result:
+            last_result["_req_id"] = req_id
+        return last_result
 
     async def reload_extension(self) -> dict:
         """Send reload signal to connected Chrome extension."""
@@ -547,32 +521,11 @@ class FlowClient:
         - start_end_frame_2_video (i2v_fl): startImage + endImage (for scene chaining)
         """
         gen_type = "start_end_frame_2_video" if end_image_media_id else "frame_2_video"
-        type_cfg = VIDEO_MODELS.get(user_paygate_tier, {}).get(gen_type, {})
-
-        model_key = None
-        if gen_type == "start_end_frame_2_video" and duration is not None:
-            durations_cfg = type_cfg.get("durations", {})
-            dur_int = int(round(float(duration)))
-            dur_key = "4" if dur_int <= 5 else ("6" if dur_int <= 7 else "8")
-            dur_entry = durations_cfg.get(dur_key)
-            if isinstance(dur_entry, dict):
-                model_key = dur_entry.get(aspect_ratio)
-            elif isinstance(dur_entry, str):
-                model_key = dur_entry
-
-        if not model_key:
-            model_key = type_cfg.get(aspect_ratio)
-
+        model_key = resolve_video_model_key(VIDEO_MODELS, user_paygate_tier, gen_type, aspect_ratio, duration)
         if not model_key:
             return {"error": f"No model for tier={user_paygate_tier} type={gen_type} ratio={aspect_ratio}"}
 
-        # Determine normalized crop coordinates
-        if crop_coordinates:
-            crop_coords = crop_coordinates
-        elif aspect_ratio == "VIDEO_ASPECT_RATIO_LANDSCAPE":
-            crop_coords = {"top": 0.3430232558139535, "left": 0, "bottom": 0.6569767441860466, "right": 1}
-        else:
-            crop_coords = {"top": 0.003875968992248007, "left": 0, "bottom": 0.9961240310077519, "right": 1}
+        crop_coords = get_crop_coordinates(aspect_ratio, crop_coordinates)
 
         request = {
             "outputSpec": {
@@ -586,7 +539,7 @@ class FlowClient:
                 "mediaId": start_image_media_id,
                 "cropCoordinates": crop_coords,
             },
-            "metadata": {},
+            "metadata": {"sceneId": scene_id} if scene_id else {},
         }
 
         if end_image_media_id:
@@ -628,8 +581,7 @@ class FlowClient:
             reference_media_ids: List of character media_ids (from uploadImage)
         """
         gen_type = "reference_frame_2_video"
-        model_key = VIDEO_MODELS.get(user_paygate_tier, {}).get(gen_type, {}).get(aspect_ratio)
-
+        model_key = resolve_video_model_key(VIDEO_MODELS, user_paygate_tier, gen_type, aspect_ratio)
         if not model_key:
             return {"error": f"No model for tier={user_paygate_tier} type={gen_type} ratio={aspect_ratio}"}
 
@@ -642,11 +594,14 @@ class FlowClient:
                 {"mediaId": mid, "imageUsageType": "IMAGE_USAGE_TYPE_ASSET"}
                 for mid in reference_media_ids
             ],
-            "metadata": {},
+            "metadata": {"sceneId": scene_id} if scene_id else {},
         }
 
         body = {
-            "mediaGenerationContext": {"batchId": f"{uuid.uuid4()}"},
+            "mediaGenerationContext": {
+                "batchId": f"{uuid.uuid4()}",
+                "audioFailurePreference": "BLOCK_SILENCED_VIDEOS",
+            },
             "clientContext": self._client_context(project_id, user_paygate_tier),
             "requests": [request],
             "useV2ModelConfig": True,
@@ -705,27 +660,7 @@ class FlowClient:
         - Legacy schema: {"operations": [{"operation": {"name": ...}}]}
         - Workflow / Frame-to-Frame schema: {"media": [{"name": "<mediaId>", "projectId": "<projectId>"}]}
         """
-        if media:
-            body = {"media": media}
-        elif operations and any(
-            op.get("_workflow_mode")
-            or "projectId" in op
-            or ("name" in op and "operation" not in op)
-            for op in operations
-        ):
-            media_items = []
-            for op in operations:
-                mid = op.get("_primary_media_id") or op.get("name") or op.get("operation", {}).get("name")
-                pid = op.get("projectId") or op.get("project_id", "")
-                if mid:
-                    item = {"name": mid}
-                    if pid:
-                        item["projectId"] = pid
-                    media_items.append(item)
-            body = {"media": media_items}
-        else:
-            body = {"operations": operations or []}
-
+        body = build_status_check_body(operations, media)
         url = self._build_url("check_video_status")
         return await self._send("api_request", {
             "url": url,
@@ -792,16 +727,25 @@ class FlowClient:
         }
 
         url = self._build_url("upload_image")
-        result = await self._send("api_request", {"url": url, "method": "POST", "headers": random_headers(), "body": body}, timeout=60)
+        result = await self._send("api_request", {
+            "url": url,
+            "method": "POST",
+            "headers": random_headers(),
+            "body": body,
+        }, timeout=60)
+
+        # Extract media.name for convenience (used as mediaId in video gen)
         if not _is_ws_error(result):
-            media = result.get("data", {}).get("media", {}) if isinstance(result.get("data"), dict) else {}
-            if isinstance(media, dict) and media.get("name"):
-                result["_mediaId"] = media["name"]
+            data = result.get("data", {})
+            if isinstance(data, dict):
+                media = data.get("media", {})
+                if isinstance(media, dict) and media.get("name"):
+                    result["_mediaId"] = media["name"]
+
         return result
 
 
-def _is_ws_error(result: dict) -> bool:
-    return bool(result.get("error")) or (isinstance(result.get("status"), int) and result["status"] >= 400)
+_is_ws_error = is_ws_error
 
 
 # Singleton

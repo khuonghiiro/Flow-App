@@ -25,7 +25,6 @@ logger.error = (msg, options) => {
   originalError(msg, options)
 }
 
-
 export default defineConfig({
   customLogger: logger,
   plugins: [react(), tailwindcss()],
@@ -57,4 +56,3 @@ export default defineConfig({
   },
   build: { outDir: 'dist' }
 })
-
