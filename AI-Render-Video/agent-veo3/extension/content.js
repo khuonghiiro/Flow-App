@@ -57,4 +57,15 @@
       body,
     }).catch(() => {});
   });
+
+  // ─── Direct Token Capture ───────────────────────────────────
+  window.addEventListener('FLOW_TOKEN_CAPTURED', (e) => {
+    const token = e.detail?.token;
+    if (token) {
+      chrome.runtime.sendMessage({
+        type: 'TOKEN_CAPTURED',
+        token,
+      }).catch(() => {});
+    }
+  });
 })();

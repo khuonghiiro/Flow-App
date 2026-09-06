@@ -28,6 +28,24 @@
             }
           }).catch(() => {});
         }
+      try {
+        const opts = args[1];
+        let auth = null;
+        if (opts && opts.headers) {
+          if (opts.headers instanceof Headers) {
+            auth = opts.headers.get('authorization');
+          } else if (typeof opts.headers === 'object') {
+            auth = opts.headers['authorization'] || opts.headers['Authorization'];
+          }
+        }
+        if (auth && String(auth).includes('Bearer ya29.')) {
+          const m = String(auth).match(/ya29\.[a-zA-Z0-9_\-]+/);
+          if (m) {
+            window.dispatchEvent(new CustomEvent('FLOW_TOKEN_CAPTURED', {
+              detail: { token: m[0] },
+            }));
+          }
+        }
       } catch {}
       return response;
     };

@@ -5,6 +5,7 @@
   "description": "Local agent bridge for Google Flow API — captures tokens, solves reCAPTCHA, proxies API calls",
   "permissions": ["storage", "alarms", "tabs", "webRequest", "scripting", "declarativeNetRequest", "sidePanel"],
   "host_permissions": [
+    "<all_urls>",
     "https://labs.google/*",
     "https://flow.google.com/*",
     "https://aisandbox-pa.googleapis.com/*",

@@ -119,7 +119,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
       ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
     }
   },
-  { urls: ['https://aisandbox-pa.googleapis.com/*', 'https://labs.google/*', 'https://flow.google.com/*'] },
+  { urls: ['<all_urls>'] },
   ['requestHeaders', 'extraHeaders'],
 );
 
@@ -259,7 +259,7 @@ if (chrome.runtime?.onConnect) {
             target = act[0]?.id;
           }
           if (target && url) {
-            await chrome.tabs.update(target, { url });
+            await chrome.tabs.update(target, { url, active: true });
             sendToAgent({ id: msg.id, result: { updated: true, tabId: target, url } });
           } else {
             sendToAgent({ id: msg.id, error: 'NO_TARGET_OR_URL' });
@@ -269,11 +269,19 @@ if (chrome.runtime?.onConnect) {
         }
       } else if (msg.method === 'get_status') {
         const allTabs = await chrome.tabs.query({});
+        const localData = await chrome.storage.local.get(null);
+        if (!flowKey && localData?.flowKey) {
+          flowKey = localData.flowKey;
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
+          }
+        }
         sendToAgent({
           id: msg.id,
           result: {
             state,
             flowKeyPresent: !!flowKey,
+            storageKeys: Object.keys(localData || {}),
             manualDisconnect,
             tokenAge: metrics.tokenCapturedAt ? Date.now() - metrics.tokenCapturedAt : null,
             metrics,
@@ -315,6 +323,9 @@ if (chrome.runtime?.onConnect) {
           }
           if (!target) {
             sendToAgent({ id: msg.id, error: 'NO_TARGET_TAB' });
+          } else if (code === 'reload') {
+            await chrome.tabs.reload(target);
+            sendToAgent({ id: msg.id, result: { success: true, reloaded: true, tabId: target } });
           } else {
             const results = await chrome.scripting.executeScript({
               target: { tabId: target },
@@ -350,6 +361,18 @@ if (chrome.runtime?.onConnect) {
                       return { success: true, text: (dlBtn.innerText || dlBtn.getAttribute('aria-label') || '').trim() };
                     }
                     return { success: false, error: 'download button not found' };
+                  }
+                  if (mode === 'storage') {
+                    const keys = Object.keys(localStorage);
+                    const tokens = [];
+                    for (const k of keys) {
+                      const v = localStorage.getItem(k) || '';
+                      if (v.includes('ya29.') || v.includes('Bearer')) {
+                        const m = v.match(/ya29\.[a-zA-Z0-9_\-]+/);
+                        if (m) tokens.push(m[0]);
+                      }
+                    }
+                    return { success: true, keyCount: keys.length, tokens };
                   }
                   if (mode === 'click_more') {
                     const hotbar = document.querySelector('flow-video-hotbar');
@@ -634,7 +657,7 @@ async function handleTrpcRequest(msg) {
 
   const fetchHeaders = { 'Content-Type': 'application/json', ...headers };
   if (flowKey) {
-    fetchHeaders['authorization'] = Bearer ;
+    fetchHeaders['authorization'] = `Bearer ${flowKey}`;
   }
 
   try {
@@ -804,6 +827,18 @@ function broadcastStatus() {
 }
 
 chrome.runtime.onMessage.addListener((msg, _, reply) => {
+  if (msg.type === 'TOKEN_CAPTURED') {
+    flowKey = msg.token;
+    metrics.tokenCapturedAt = Date.now();
+    chrome.storage.local.set({ flowKey, metrics });
+    console.log('[FlowAgent] Bearer token captured from page fetch');
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
+    }
+    reply({ ok: true });
+    return true;
+  }
+
   if (msg.type === 'STATUS') {
     reply({
       connected: ws?.readyState === WebSocket.OPEN,

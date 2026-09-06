@@ -287,9 +287,10 @@ class FlowClient:
         if not self.connected:
             return {"error": "Extension not connected"}
 
-        extension_candidates = self._extension_candidates(require_token=True)
+        require_token = method not in ("get_status", "reload_extension", "get_captured_video_urls", "exec_tab", "navigate_tab", "solve_captcha")
+        extension_candidates = self._extension_candidates(require_token=require_token)
         if not extension_candidates:
-            return {"error": "NO_FLOW_KEY"}
+            return {"error": "NO_FLOW_KEY" if require_token else "Extension not connected"}
 
         last_result = {"error": "Extension not connected"}
         for index, extension_ws in enumerate(extension_candidates):
