@@ -5,7 +5,11 @@ __pycache__/
 *.db-wal
 *.db-journal
 .env
-output/
+# Output directory: ignore media files, but keep metadata for AI and project tracking
+output/**
+!output/**/
+!output/**/character_meta.json
+!output/**/mannequin_refs.json
 youtube
 agent/active_project.json
 

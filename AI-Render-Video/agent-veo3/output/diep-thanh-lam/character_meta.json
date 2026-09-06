@@ -1,0 +1,46 @@
+{
+  "character_key": "diep-thanh-lam",
+  "project_id": "7c7b4d45-2416-4902-b77a-1601a0aecff9",
+  "project_name": "Diep Thanh Lam",
+  "gender": "female",
+  "angle_0": {
+    "media_id": "973a46d8-4d96-4657-aea8-ec7861080166",
+    "file": "angle_0.png",
+    "status": "COMPLETED"
+  },
+  "angle_45": {
+    "media_id": "941eff2c-e453-4c20-a9f4-4d35ecba78f9",
+    "file": "angle_45.png",
+    "status": "COMPLETED"
+  },
+  "angle_90": {
+    "media_id": "ce1c46ec-2051-4049-af53-29e338b59a42",
+    "file": "angle_90.png",
+    "status": "COMPLETED"
+  },
+  "angle_180": {
+    "media_id": "636a69fb-00ea-4e42-b488-0fa7e9f6d44d",
+    "file": "angle_180.png",
+    "status": "COMPLETED"
+  },
+  "angle_135": {
+    "media_id": "3ffa0744-297e-4c5f-96be-2aee38ae7d8c",
+    "file": "angle_135.png",
+    "status": "COMPLETED"
+  },
+  "actions": {
+    "dung-yen": {
+      "angle_0": {
+        "media_id": "81eac10f-773a-4e0c-8088-a5f54e51bc85",
+        "file": "dung-yen/idle_0.mp4",
+        "file_1_6s": "dung-yen/idle_0_1.6s.mp4",
+        "file_4s_raw": "dung-yen/idle_0_4s.mp4",
+        "duration": 2.0,
+        "duration_short": 1.6,
+        "resolution": "720x1280",
+        "size_bytes": 858771,
+        "status": "COMPLETED"
+      }
+    }
+  }
+}
