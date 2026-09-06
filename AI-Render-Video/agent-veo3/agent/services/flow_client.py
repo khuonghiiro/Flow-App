@@ -34,6 +34,7 @@ class FlowClient:
         self._ws_disconnect_count = 0
         self._ws_connected_at: Optional[float] = None
         self._ws_last_disconnect_at: Optional[float] = None
+        self._recent_media_urls: dict[str, str] = {}
 
     def set_extension(self, ws):
         """Called when extension connects via WS."""
@@ -262,6 +263,8 @@ class FlowClient:
             if media_type not in ("image", "video"):
                 continue
 
+            self._recent_media_urls[media_id] = url
+
             # Try matching against scenes (check both orientations)
             scenes = await crud.list_scenes_by_media_id(media_id)
             for scene in scenes:
@@ -370,6 +373,19 @@ class FlowClient:
             except Exception:
                 pass
         return {"status": "ok"}
+
+    async def fetch_blob(self, url: str) -> dict:
+        """Fetch binary blob via extension (in browser context with cookies)."""
+        return await self._send("fetch_blob", {"url": url}, timeout=60)
+
+    async def exec_tab(self, code: str, tab_id: Optional[int] = None) -> dict:
+        """Execute JS in a Google Flow tab."""
+        return await self._send("exec_tab", {"code": code, "tabId": tab_id}, timeout=30)
+
+    async def get_captured_video_urls(self) -> list:
+        """Get video URLs intercepted by webRequest."""
+        res = await self._send("get_captured_video_urls", {}, timeout=10)
+        return res.get("result", [])
 
     async def notify_request_status(
         self, req_id: str = "", media_id: str = "", status: str = "COMPLETED", output_url: str = ""
@@ -737,7 +753,7 @@ class FlowClient:
         status = result.get("status", 500)
         return isinstance(status, int) and status == 200
 
-    async def get_media(self, media_id: str, project_id: str = "") -> dict:
+    async def get_media(self, media_id: str, project_id: str = "", tool: str = "PINHOLE") -> dict:
         """Fetch media metadata from Google Flow.
 
         Returns the raw API response which contains a fresh signed URL
@@ -746,7 +762,8 @@ class FlowClient:
         params = f"key={GOOGLE_API_KEY}"
         if project_id:
             params += f"&clientContext.projectId={project_id}"
-        params += "&clientContext.tool=PINHOLE"
+        if tool and tool.upper() != "NONE":
+            params += f"&clientContext.tool={tool}"
         url = f"{GOOGLE_FLOW_API}/v1/media/{media_id}?{params}"
         return await self._send("api_request", {
             "url": url,

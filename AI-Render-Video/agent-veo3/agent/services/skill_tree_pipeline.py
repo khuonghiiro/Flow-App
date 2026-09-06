@@ -20,6 +20,7 @@ from agent.services.prompt_templates import (
 )
 from agent.sdk.services.operations import _extract_operations, _poll_operations
 from agent.services.image_validator import validate_and_save
+from agent.services.mannequin_service import upload_mannequin_reference
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +202,7 @@ class SkillTreePipeline:
         return False
 
     async def _generate_single_angle(self, angle_key: str, ref_media_id: str):
-        """Generate one angle image using 0° ref with auto-retry + validation."""
+        """Generate one angle image using Dual-Ref (0° identity + mannequin angle guide) with auto-retry."""
         client = get_flow_client()
         raw_tmpl = ANGLE_PROMPT_TEMPLATES[angle_key]
         prompt = format_template(raw_tmpl, self.customizer)
@@ -209,6 +210,19 @@ class SkillTreePipeline:
         ref_url = self.angles["0"].get("url")  # 0° image URL for comparison
         retries = 0
         max_retries = 5
+
+        # Dual-Ref: Character Identity + Mannequin Pose Guide for target angle & gender
+        gender = self.customizer.get("gender", "female")
+        mannequin_mid = await upload_mannequin_reference(client, self.project_id, gender, angle_key)
+        if angle_key == "135" and mannequin_mid:
+            # Pose Guide MUST be first in character_media_ids so Google Flow prioritizes the 135° rotation and feet stance over symmetrical rear view
+            char_refs = [mannequin_mid, ref_media_id]
+            logger.info("Using Dual-Ref for %s angle %s° (Pose First): [mannequin=%s, identity=%s]", gender, angle_key, mannequin_mid[:8], ref_media_id[:8])
+        else:
+            char_refs = [ref_media_id]
+            if mannequin_mid:
+                char_refs.append(mannequin_mid)
+            logger.info("Using Dual-Ref for %s angle %s°: [identity=%s, mannequin=%s]", gender, angle_key, ref_media_id[:8], mannequin_mid[:8] if mannequin_mid else "none")
 
         while not self._cancelled and retries < max_retries:
             retries += 1
@@ -218,7 +232,7 @@ class SkillTreePipeline:
                     project_id=self.project_id,
                     aspect_ratio="IMAGE_ASPECT_RATIO_PORTRAIT",
                     user_paygate_tier=self.user_paygate_tier,
-                    character_media_ids=[ref_media_id],
+                    character_media_ids=char_refs,
                 )
                 if res.get("error"):
                     logger.warning("Stage 2 angle %s° API error: %s, retrying... (%d/%d)", angle_key, res.get("error"), retries, max_retries)

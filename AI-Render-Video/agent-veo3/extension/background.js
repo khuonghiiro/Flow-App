@@ -99,6 +99,22 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   ['requestHeaders', 'extraHeaders'],
 );
 
+let _latestVideoUrls = [];
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    const u = details.url || '';
+    if (u.includes('.mp4') || u.includes('/video/') || u.includes('flow-content.google') || (u.includes('/asb/') && !u.includes('=s512') && !u.includes('=s32'))) {
+      console.log('[FlowAgent] Captured media URL:', u);
+      _latestVideoUrls.push({ url: u, time: Date.now(), method: details.method });
+      if (_latestVideoUrls.length > 50) _latestVideoUrls.shift();
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'video_request_captured', url: u }));
+      }
+    }
+  },
+  { urls: ['<all_urls>'] }
+);
+
 let _openingFlowTab = false;
 
 async function captureTokenFromFlowTab() {
@@ -236,6 +252,130 @@ chrome.runtime.onConnect.addListener((port) => {
             tabs: allTabs.map(t => ({ id: t.id, url: t.url, active: t.active, title: t.title })),
           },
         });
+      } else if (msg.method === 'fetch_blob') {
+        const { url } = msg.params || {};
+        try {
+          const fetchHeaders = {};
+          if (flowKey) fetchHeaders['authorization'] = `Bearer ${flowKey}`;
+          const resp = await fetch(url, { headers: fetchHeaders, credentials: 'include' });
+          if (!resp.ok) {
+            sendToAgent({ id: msg.id, status: resp.status, error: `HTTP_${resp.status}` });
+          } else {
+            const buffer = await resp.arrayBuffer();
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            const chunkSize = 8192;
+            for (let i = 0; i < len; i += chunkSize) {
+              binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
+            }
+            const base64Data = btoa(binary);
+            sendToAgent({ id: msg.id, status: 200, size: len, data: base64Data });
+          }
+        } catch (e) {
+          sendToAgent({ id: msg.id, status: 500, error: e.message });
+        }
+      } else if (msg.method === 'get_captured_video_urls') {
+        sendToAgent({ id: msg.id, result: _latestVideoUrls });
+      } else if (msg.method === 'exec_tab') {
+        const { tabId, code } = msg.params || {};
+        try {
+          let target = tabId;
+          if (!target) {
+            const tabs = await chrome.tabs.query({ url: ['https://flow.google.com/*', 'https://labs.google/*'] });
+            target = tabs[0]?.id;
+          }
+          if (!target) {
+            sendToAgent({ id: msg.id, error: 'NO_TARGET_TAB' });
+          } else {
+            const results = await chrome.scripting.executeScript({
+              target: { tabId: target },
+              func: (mode) => {
+                try {
+                  const html = document.documentElement.innerHTML || '';
+                  if (mode === 'open_video') {
+                    const cards = Array.from(document.querySelectorAll('button, [role="button"], div')).filter(el => {
+                      const t = el.innerText || '';
+                      return t.includes('play_circle') && (t.includes('Anime') || t.includes('standing still'));
+                    });
+                    if (cards.length) {
+                      // Click innermost element
+                      const target = cards[cards.length - 1];
+                      target.click();
+                      return { success: true, clicked: target.innerText.slice(0, 60) };
+                    }
+                    return { success: false, reason: 'Card not found' };
+                  }
+                  if (mode === 'click_720p') {
+                    const item = Array.from(document.querySelectorAll('.mat-mdc-menu-item, [role="menuitem"]')).find(el => el.innerText.includes('720p'));
+                    if (item) {
+                      item.click();
+                      return { success: true, text: item.innerText.trim() };
+                    }
+                    return { success: false, error: '720p button not found' };
+                  }
+                  if (mode === 'click_download') {
+                    const dlBtn = Array.from(document.querySelectorAll('.mat-mdc-menu-item, [role="menuitem"]')).find(el => el.innerText.includes('Tải xuống') || el.innerText.includes('Download'));
+                    if (dlBtn) {
+                      dlBtn.click();
+                      return { success: true, text: dlBtn.innerText.trim() };
+                    }
+                    return { success: false, error: 'download button not found' };
+                  }
+                  if (mode === 'click_more') {
+                    const hotbar = document.querySelector('flow-video-hotbar');
+                    const btn = hotbar?.querySelector('button[aria-label*="Tuỳ chọn"], button[aria-label*="More"], button[aria-label*="khác"]');
+                    if (btn) {
+                      btn.click();
+                      return { success: true };
+                    }
+                    return { success: false, error: 'button not found' };
+                  }
+                  if (mode === 'inspect_menu') {
+                    const items = Array.from(document.querySelectorAll('.mat-mdc-menu-item, [role="menuitem"], .cdk-overlay-container a, .cdk-overlay-container button')).map(el => ({
+                      tag: el.tagName,
+                      text: el.innerText.trim(),
+                      href: el.href || el.getAttribute('href'),
+                      html: el.outerHTML.slice(0, 300),
+                    }));
+                    return { success: true, count: items.length, items };
+                  }
+                  if (mode === 'buttons') {
+                    const buttons = Array.from(document.querySelectorAll('button, [role="tab"], [role="button"], a')).map(b => (b.innerText || b.textContent || b.getAttribute('aria-label') || '').trim()).filter(Boolean);
+                    return { success: true, count: buttons.length, buttons: Array.from(new Set(buttons)).slice(0, 50) };
+                  }
+                  if (mode === 'asb') {
+                    const matches = html.match(/https?:\/\/[^\s"'>]*\/asb\/[^\s"'>]*/gi) || [];
+                    return { success: true, count: matches.length, asb: Array.from(new Set(matches)) };
+                  }
+                  if (mode === 'video_tags') {
+                    const vids = Array.from(document.querySelectorAll('video, [data-video-id], [data-media-id]')).map(v => ({
+                      tag: v.tagName,
+                      src: v.src || v.currentSrc,
+                      dataset: { ...v.dataset },
+                      className: v.className,
+                    }));
+                    return { success: true, vids };
+                  }
+                  return {
+                    success: true,
+                    title: document.title,
+                    location: window.location.href,
+                    htmlLen: html.length,
+                    imgCount: document.querySelectorAll('img').length,
+                    vidCount: document.querySelectorAll('video').length,
+                  };
+                } catch (e) {
+                  return { success: false, error: e.message };
+                }
+              },
+              args: [code || ''],
+            });
+            sendToAgent({ id: msg.id, result: results[0]?.result });
+          }
+        } catch (e) {
+          sendToAgent({ id: msg.id, error: e.message });
+        }
       } else if (msg.type === 'callback_secret') {
         callbackSecret = msg.secret;
         chrome.storage.local.set({ callbackSecret: msg.secret });
@@ -399,8 +539,8 @@ async function solveCaptcha(requestId, captchaAction) {
     ],
   });
 
-  // Filter out any chrome:// or invalid tabs
-  tabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
+  // Filter out any chrome://, invalid tabs, or marketing /about pages
+  tabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://') && !t.url.includes('/about'));
 
   // Close any stray landing page tabs that lack /project/
   const landingTabs = tabs.filter(t => (t.url === 'https://flow.google.com/' || t.url === 'https://flow.google.com') && tabs.some(o => o.url && o.url.includes('/project/')));
@@ -412,14 +552,7 @@ async function solveCaptcha(requestId, captchaAction) {
   let targetTab = tabs.find(t => t.url && t.url.includes('/project/')) || tabs.find(t => t.active) || tabs[0];
 
   if (targetTab) {
-    try {
-      await chrome.tabs.update(targetTab.id, { active: true });
-      if (targetTab.windowId) {
-        await chrome.windows.update(targetTab.windowId, { focused: true });
-      }
-      await sleep(500);
-    } catch {}
-
+    // Run captcha silently in background without stealing OS window focus
     try {
       const resp = await Promise.race([
         requestCaptchaFromTab(targetTab.id, requestId, captchaAction),

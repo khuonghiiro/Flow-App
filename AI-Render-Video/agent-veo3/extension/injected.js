@@ -18,11 +18,10 @@
       const response = await window._flowOriginalFetch.apply(this, args);
       try {
         const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-        // Intercept TRPC calls on flow.google.com and labs.google that return project/flow data
-        if ((url.includes('/fx/api/trpc/') || url.includes('/api/trpc/')) && response.ok) {
+        if (response.ok) {
           const clone = response.clone();
           clone.text().then(text => {
-            if (text.includes('flow-content.google') || text.includes('storage.googleapis.com/ai-sandbox-videofx/')) {
+            if (text && (text.includes('flow-content.google') || text.includes('storage.googleapis.com/ai-sandbox-videofx/'))) {
               window.dispatchEvent(new CustomEvent('TRPC_MEDIA_URLS', {
                 detail: { url, body: text },
               }));
@@ -32,6 +31,25 @@
       } catch {}
       return response;
     };
+
+    function scanDomMediaUrls() {
+      try {
+        const urls = [];
+        document.querySelectorAll('video, img, source, a').forEach(el => {
+          const s = el.src || el.currentSrc || el.href;
+          if (s && (s.includes('flow-content.google') || s.includes('storage.googleapis.com/ai-sandbox-videofx/'))) {
+            urls.push(s);
+          }
+        });
+        if (urls.length) {
+          window.dispatchEvent(new CustomEvent('TRPC_MEDIA_URLS', {
+            detail: { url: window.location.href, body: urls.join(' ') },
+          }));
+        }
+      } catch {}
+    }
+    setInterval(scanDomMediaUrls, 2000);
+    setTimeout(scanDomMediaUrls, 500);
   }
 
   window.addEventListener('GET_CAPTCHA', async ({ detail }) => {

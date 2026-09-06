@@ -203,7 +203,7 @@ async def refresh_project_urls(project_id: str):
 
 
 @router.get("/media/{media_id}")
-async def get_media(media_id: str, project_id: str = ""):
+async def get_media(media_id: str, project_id: str = "", tool: str = "PINHOLE"):
     """Get media metadata + fresh signed URL from Google Flow.
 
     Returns the raw response which should contain a fresh fifeUrl/servingUri.
@@ -212,7 +212,7 @@ async def get_media(media_id: str, project_id: str = ""):
     client = get_flow_client()
     if not client.connected:
         raise HTTPException(503, "Extension not connected")
-    result = await client.get_media(media_id, project_id)
+    result = await client.get_media(media_id, project_id, tool=tool)
     if result.get("error"):
         raise HTTPException(502, result["error"])
     status = result.get("status", 200)
@@ -420,3 +420,42 @@ async def test_captcha_endpoint(action: str = "IMAGE_GENERATION"):
     if not client.connected:
         raise HTTPException(503, "Extension not connected")
     return await client._send("solve_captcha", {"captchaAction": action}, timeout=35)
+
+
+@router.get("/media-urls")
+async def get_all_cached_media_urls():
+    client = get_flow_client()
+    return client._recent_media_urls
+
+
+@router.post("/fetch-blob")
+async def fetch_blob_endpoint(body: dict):
+    """Fetch binary blob via extension in browser context."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    url = body.get("url")
+    if not url:
+        raise HTTPException(400, "Missing url")
+    return await client.fetch_blob(url)
+
+
+@router.post("/exec-tab")
+async def exec_tab_endpoint(body: dict):
+    """Execute JS in a Google Flow tab."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    code = body.get("code")
+    if not code:
+        raise HTTPException(400, "Missing code")
+    return await client.exec_tab(code, body.get("tab_id"))
+
+
+@router.get("/captured-video-urls")
+async def get_captured_video_urls():
+    """Get video URLs captured by extension webRequest."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    return await client.get_captured_video_urls()

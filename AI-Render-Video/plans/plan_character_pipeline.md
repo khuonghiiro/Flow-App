@@ -152,18 +152,32 @@ AI Agent dùng `view_file` phóng to kiểm tra cả 3 ảnh:
 
 ---
 
-### Tầng 2: Tạo 4 Góc Còn Lại — Hệ Thống Pose Guide + Dual-Ref
+### Tầng 2: Tạo 4 Góc Còn Lại — Hệ Thống Pose Guide Mannequin Nam/Nữ + Dual-Ref
 
 > [!IMPORTANT]
-> **HỆ THỐNG POSE GUIDE (Ảnh Mẫu Hướng)**
-> Sử dụng **ảnh mannequin/hình nộm đơn giản** trên nền xanh cho mỗi góc xoay. Khi tạo nhân vật ở góc X°, truyền **2 references**: ảnh nhân vật (identity) + ảnh pose guide (hướng xoay).
+> **HỆ THỐNG POSE GUIDE MANNEQUIN NAM & NỮ (5 Góc Chuẩn 0°, 45°, 90°, 135°, 180°)**
+> Bộ ảnh hình nộm giải phẫu học tiêu chuẩn (2D anatomical mannequin doll) được thiết kế riêng biệt cho cả **Nam (Male)** và **Nữ (Female)** trên nền xanh chroma key `#00FF00`, tỷ lệ chuẩn 4.8 – 5.0 đầu (chiếm 85-88% canvas dọc).
 >
-> **Pose Guide Files** (lưu cố định tại `agent-veo3/output/pose-guides/`):
-> - `pose_guide_45.jpg` — mannequin xoay 45° (⚠️ dùng Dual-Ref T2I thay thế)
-> - `pose_guide_90.jpg` — mannequin nghiêng 90° thuần sang trái
-> - `pose_guide_135.jpg` — mannequin quay lưng nghiêng 135°
+> **Thư Mục Lưu Trữ Chính Thức** (trong thư mục `public/`):
+> - **Nam (Male Mannequin)**: `public/mannequins/male/`
+>   - `angle_0.png` — nộm nam trực diện 0°
+>   - `angle_45.png` — nộm nam ba phần tư 45° (vai trái gần, vai phải xa)
+>   - `angle_90.png` — nộm nam nghiêng thuần 90° sang trái
+>   - `angle_135.png` — nộm nam quay lưng nghiêng 135° (hướng 8h)
+>   - `angle_180.png` — nộm nam quay lưng 100% đối xứng 180°
+> - **Nữ (Female Mannequin)**: `public/mannequins/female/`
+>   - `angle_0.png` — nộm nữ trực diện 0°
+>   - `angle_45.png` — nộm nữ ba phần tư 45°
+>   - `angle_90.png` — nộm nữ nghiêng thuần 90° sang trái
+>   - `angle_135.png` — nộm nữ quay lưng nghiêng 135° (hướng 8h)
+>   - `angle_180.png` — nộm nữ quay lưng 100% đối xứng 180°
+> *(Được đồng bộ bản sao dự phòng tại `agent-veo3/output/pose-guides/`)*.
 >
-> **Lưu ý**: Pose guide 45° (mannequin trắng đơn giản) **không hiệu quả** — model copy nguyên mannequin. Dùng **Dual-Ref T2I** thay thế cho 45°.
+> **Cơ Chế Tự Động Upload & Dual-Ref Lên Google Flow**:
+> Khi tạo nhân vật Nam hoặc Nữ, AI Agent/Pipeline gọi module `agent.services.mannequin_service`:
+> 1. Tự động đọc ảnh mannequin góc tương ứng theo giới tính từ `public/mannequins/<gender>/angle_<X>.png`.
+> 2. Gọi API `POST /api/flow/upload-image` (hoặc `client.upload_image`) đưa ảnh mannequin lên đúng Project của nhân vật trên Flow $\rightarrow$ nhận `mannequin_media_id`.
+> 3. Truyền mảng 2 tham chiếu `character_media_ids: [media_id_0, mannequin_media_id]` vào request sinh ảnh để khóa chặt đồng thời **Nhận diện nhân vật (Identity)** và **Góc xoay giải phẫu (Pose/Orientation)**!
 
 #### Checklist Kiểm Duyệt Bắt Buộc (Áp Dụng Cho Mọi Góc):
 
@@ -171,35 +185,37 @@ AI Agent dùng `view_file` phóng to kiểm tra cả 3 ảnh:
 |---|---|---|
 | 1 | **Tay & Ngón Tay** | Hai tay có bị dị tật không? Ngón tay có bị thừa/thiếu/méo/dính liền? Bàn tay có bị biến dạng kỳ quái? |
 | 2 | **Chân & Bàn Chân** | Đôi chân có bị gãy/cong/biến dạng? Giày/ủng có bị méo hay thiếu? Hai chân có cân đối tự nhiên? |
-| 3 | **Hướng Xoay Đúng Góc** | Thân người (ngực, vai, hông, chân) có **THỰC SỰ** xoay đúng góc yêu cầu không? Cấm chỉ xoay đầu mà thân vẫn giữ hướng cũ! |
+| 3 | **Hướng Xoay Khớp Mannequin** | Thân người (ngực, vai, hông, chân) có **THỰC SỰ** khớp với hướng xoay của ảnh mannequin góc tương ứng không? Cấm chỉ xoay đầu mà thân vẫn giữ hướng cũ! |
 | 4 | **Quần Áo & Chi Tiết Trang Phục** | Các lớp áo, cổ áo, đai lưng, tà áo có khớp với ảnh 0° không? Có bị thiếu chi tiết, thừa chi tiết, hay bị AI tự thêm vật lạ? |
 | 5 | **Tóc & Phụ Kiện Đầu** | Búi tóc, trâm cài, quan miện có bị lỗi (cắm xuyên, mọc thêm đuôi trâm, búi tóc biến dạng)? |
-| 6 | **Tỷ Lệ Cơ Thể** | Tỷ lệ đầu-thân có chuẩn ~4.8-5.0 đầu, chiếm 85-88% canvas? Đầu có bị to quá hay thân bị bé? |
+| 6 | **Tỷ Lệ Cơ Thể Chuẩn Mannequin** | Tỷ lệ đầu-thân có chuẩn ~4.8-5.0 đầu, chiếm 85-88% canvas khớp với mannequin không? Đầu có bị to quá hay thân bị bé? |
 
-#### Chiến Thuật Tham Chiếu Theo Từng Góc:
+#### Chiến Thuật Tham Chiếu Theo Từng Góc (Dual-Ref với Mannequin):
 
-| Góc | Phương Pháp | Refs | Ghi Chú |
+| Góc | Phương Pháp | Refs Gửi Lên Google Flow | Ghi Chú |
 |---|---|---|---|
-| **0°** | `text_to_image` (T2I) | Không | Master image, tạo 3 ảnh chọn 1 |
-| **45°** | **Dual-Ref T2I Fallback** | `[media_id_0, media_id_45_t2i]` | Bước 1: Thử I2I ref 0° → Bước 2: T2I 45° (không ref) → Bước 3: I2I dual-ref |
-| **90°** | **Pose Guide** | `[media_id_0, pose_guide_90]` | Mannequin 90° hướng dẫn xoay — **hiệu quả cao** |
-| **180°** | `image_to_image` | `[media_id_0]` | Ref duy nhất 0° — AI xoay 180° tốt tự nhiên |
-| **135°** | **Pose Guide** | `[media_id_180, pose_guide_135]` | Mannequin 135° hướng dẫn xoay — **hiệu quả cao** |
+| **0°** | `text_to_image` (hoặc ref nộm 0°) | `[mannequin_0_id]` (tùy chọn) | Master image 0°, tạo 3 ảnh chọn 1 đạt chuẩn 10/10 |
+| **45°** | **Dual-Ref Pose Guide** | `[media_id_0, mannequin_45_id]` | Ref ảnh 0° (trang phục) + Mannequin 45° (góc xoay) |
+| **90°** | **Dual-Ref Pose Guide** | `[media_id_0, mannequin_90_id]` | Ref ảnh 0° (trang phục) + Mannequin 90° (profile ngang) |
+| **180°** | **Dual-Ref Pose Guide** | `[media_id_0, mannequin_180_id]` | Ref ảnh 0° (trang phục) + Mannequin 180° (mặt sau lưng) |
+| **135°** | **Dual-Ref Pose Guide** | `[mannequin_135_id, media_id_180]` | **BẮT BUỘC Mannequin 135° ĐỨNG ĐẦU** để khống chế triệt để góc xoay thân (hướng 8h) và bàn chân trái xoay ngang (profile). Ref 2 khóa trang phục/tóc sau. |
 
-#### Sơ Đồ Thực Thi:
+#### Sơ Đồ Thực Thi Chuẩn Hóa:
 
 ```
+Pha 1: Tạo Ảnh Gốc 0°
+  - Text-to-Image (prompt chuẩn + tỷ lệ 4.8-5.0 đầu) → Sinh 3 candidates → Chọn Best Pick `media_id_0`.
+  - Tự động upload bộ Mannequin Nam hoặc Nữ tương ứng lên Project Google Flow qua `mannequin_service`.
+
 Pha 2A (SONG SONG sau khi chốt 0°):
-  - 45° : Dual-Ref T2I Fallback:
-       1. T2I tạo ảnh 45° (không ref, prompt chi tiết) → media_id_45_t2i
-       2. I2I ref: [media_id_0, media_id_45_t2i] → Sinh 2 ảnh
-  - 90° : I2I ref: [media_id_0, pose_guide_90_media_id] → Sinh 2 ảnh
-  - 180°: I2I ref: [media_id_0] → Sinh 2 ảnh
-  → Checklist kiểm duyệt → chốt hoặc tạo lại
+  - 45° : I2I Dual-Ref `[media_id_0, mannequin_45_id]` → Sinh 2 candidates
+  - 90° : I2I Dual-Ref `[media_id_0, mannequin_90_id]` → Sinh 2 candidates
+  - 180°: I2I Dual-Ref `[media_id_0, mannequin_180_id]` → Sinh 2 candidates
+  → Checklist kiểm duyệt đối chiếu với Mannequin → Chốt Best Pick hoặc tạo lại
 
 Pha 2B (Sau khi 180° chốt):
-  - 135°: I2I ref: [media_id_180, pose_guide_135_media_id] → Sinh 2 ảnh
-  → Checklist kiểm duyệt → chốt hoặc tạo lại
+  - 135°: I2I Dual-Ref `[mannequin_135_id, media_id_180]` (Pose Guide đứng trước) → Sinh 2 candidates
+  → Checklist kiểm duyệt đối chiếu với Mannequin: Chân trái xoay ngang 9h, chân phải lùi sâu, thân mình xoay 45° so với mặt sau, cấm đối xứng 180° → Chốt Best Pick
 ```
 
 
@@ -236,9 +252,10 @@ CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
 2. 45-DEGREE DIAGONAL STRIDE TRAJECTORY LOCK (FOR 45° & 135°):
    - At 45° and 135°, stride direction MUST step strictly along the true 45-degree diagonal axis aligned with body orientation.
    - STRICTLY FORBIDDEN to crab-walk sideways. Feet remain anchored to floor plane. ZERO hopping, ZERO bouncing, ZERO floating.
-3. STRICT ARM & HAND IMMOBILITY LOCK FOR IDLE:
+3. STRICT IDLE BREATHING & CALM STATIC FABRIC LOCK (CẤM GIÓ ẢO):
    - In standing still (idle), arms hang completely relaxed straight down along sides and DO NOT MOVE.
-   - TRANQUIL ANIME BREEZE: Faint, whisper-soft anime breeze caresses character. Hair tips and flowing robe hems waft with tender micro-motion. Body, head, and feet remain completely static.
+   - NATURAL SUBTLE BREATHING: Nhịp thở tự nhiên, khẽ nâng hạ nhẹ nhàng vùng ngực và vai (1 chu kỳ thở êm dịu xuyên suốt 4 giây).
+   - CALM STATIC FABRIC: Tà áo, vạt áo và suối tóc buông rủ tĩnh lặng tự nhiên xuôi theo trọng lực. TUYỆT ĐỐI CẤM gió giả tạo, cấm tà áo gợn sóng rung giật hay suối tóc bay lượn gây ảo giác biến dạng.
 4. UNIFORM SKIN & ZERO PROPS PRESERVATION:
    - Completely blank, smooth mannequin head MUST remain intact with uniform natural skin color matching neck and hands. STRICTLY ZERO facial expressions, ZERO mouth opening.
    - STRICTLY ZERO weapons, swords, instruments, or props. STRICTLY ZERO neon glow.
