@@ -6,12 +6,15 @@ Tài liệu này là **Master Template** chuẩn cấp cao áp dụng cho toàn 
 
 1. **Quy tắc tạo Project Google Flow riêng cho từng nhân vật (BẮT BUỘC)**:
    - Mỗi nhân vật **BẮT BUỘC là 1 project riêng biệt trên Google Flow** (`flow.google.com`).
-   - Gọi API `POST /api/projects` với tên project là tên nhân vật (ví dụ: `name: "Bạch Vô Trần"`).
-   - Đảm bảo mỗi nhân vật có một Project Card hiển thị riêng trên Dashboard của người dùng.
+   - **TIÊU ĐỀ PROJECT PHẢI LÀ TIẾNG VIỆT CÓ DẤU 100%**: Khi gọi API `POST /api/projects`, trường `name` **BẮT BUỘC** giữ nguyên tiếng Việt có dấu đầy đủ chuẩn UTF-8 (ví dụ: `name: "Bạch Vô Trần"`, `name: "Diệp Thanh Lam"`).
+   - **TUYỆT ĐỐI CẤM** tự ý loại bỏ dấu thành không dấu (`Bach Vo Tran`, `Diep Thanh Lam`) trên Title Project của Google Flow.
+   - **Xử lý mã hóa an toàn trên Windows**: Backend FastAPI, SQLite và Google Flow đều hỗ trợ UTF-8 chuẩn. Khi viết script Python tương tác, nếu cần in log ra Windows console (tránh lỗi `charmap cp1252`), phải đặt `sys.stdout.reconfigure(encoding='utf-8')` hoặc dùng encoding an toàn; **tuyệt đối không được vì né lỗi console mà strip dấu tiếng Việt của Project title**.
+   - Đảm bảo mỗi nhân vật có một Project Card hiển thị tên tiếng Việt có dấu riêng biệt trên Dashboard của Google Flow.
 
-2. **Quy tắc tạo File Plan riêng cho từng nhân vật**:
-   - Tạo file plan mới trong thư mục `plans/` với tiền tố tên nhân vật viết thường không dấu:
-     `plans/<ten-nhan-vat-khong-dau>.plan_character_pipeline.md`
+2. **Quy tắc tạo File Plan & Thư Mục (Phân Biệt Rõ Với Project Title)**:
+   - **Tên Project Title (Google Flow)**: **CÓ DẤU ĐẦY ĐỦ** (`Bạch Vô Trần`).
+   - **Tên File Plan**: **KHÔNG DẤU VIẾT THƯỜNG**, tiền tố cách nhau bằng gạch ngang trong thư mục `plans/`:
+     `plans/<ten-nhan-vat-khong-dau>.plan_character_pipeline.md` (ví dụ: `plans/bach-vo-tran.plan_character_pipeline.md`).
    - Lưu trữ đầy đủ Project ID, link trực tiếp trên Google Flow, registry 5 góc xoay và danh sách 25 video loop 4s.
 
 3. **Quy tắc Thư Mục Output & Tải Video 1080p theo Hành Động**:
