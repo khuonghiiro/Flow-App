@@ -5,6 +5,7 @@ const API_KEY = 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY';
 let ws = null;
 let flowKey = null;
 let callbackSecret = null;
+let currentAccount = { email: null, userId: null };
 let state = 'off';
 let manualDisconnect = false;
 let metrics = {
@@ -82,10 +83,11 @@ function ensureInitialized() {
 }
 
 async function initialize() {
-  const data = await chrome.storage.local.get(['flowKey', 'metrics', 'callbackSecret']);
+  const data = await chrome.storage.local.get(['flowKey', 'metrics', 'callbackSecret', 'currentAccount']);
   if (data.flowKey) flowKey = data.flowKey;
   if (data.metrics) Object.assign(metrics, data.metrics);
   if (data.callbackSecret) callbackSecret = data.callbackSecret;
+  if (data.currentAccount) currentAccount = data.currentAccount;
   connectToAgent();
   chrome.alarms.create('keepAlive', { periodInMinutes: 0.4 });
 }
@@ -96,8 +98,76 @@ void ensureInitialized();
 
 // ─── Token Capture ──────────────────────────────────────────
 
+async function getAccountIdentity(token, tabId = null) {
+  // 1. Try Google tokeninfo endpoint (standard, no extra permissions, returns email & user_id)
+  if (token) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${encodeURIComponent(token)}`);
+      if (res.ok) {
+        const info = await res.json();
+        if (info.email || info.user_id) {
+          return { email: info.email || null, userId: info.user_id || null };
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const info = await res.json();
+        if (info.email || info.sub) {
+          return { email: info.email || null, userId: info.sub || null };
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Fallback: inspect Flow tab DOM for Google account badge / email
+  let targetTabId = tabId;
+  if (!targetTabId) {
+    try {
+      const flowTabs = await chrome.tabs.query({ url: ['https://flow.google.com/*', 'https://labs.google/*'] });
+      targetTabId = flowTabs.find((t) => t.active)?.id || flowTabs[0]?.id;
+    } catch (e) {}
+  }
+
+  if (targetTabId) {
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: targetTabId },
+        func: () => {
+          const emailRegex = /[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/;
+          const accountEls = document.querySelectorAll(
+            'a[aria-label*="@"], button[aria-label*="@"], [aria-label*="Google Account"], [aria-label*="Tài khoản Google"], [data-email]',
+          );
+          for (const el of accountEls) {
+            const label = el.getAttribute('aria-label') || el.getAttribute('data-email') || '';
+            const m = label.match(emailRegex);
+            if (m) return { email: m[0] };
+          }
+          const imgs = document.querySelectorAll('img[alt*="@"]');
+          for (const img of imgs) {
+            const m = (img.alt || '').match(emailRegex);
+            if (m) return { email: m[0] };
+          }
+          const html = document.documentElement.innerHTML.slice(0, 100000);
+          const m = html.match(/"email":"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"/);
+          if (m) return { email: m[1] };
+          return null;
+        },
+      });
+      const domResult = results[0]?.result;
+      if (domResult?.email) return domResult;
+    } catch (e) {}
+  }
+
+  return null;
+}
+
 chrome.webRequest.onBeforeSendHeaders.addListener(
-  (details) => {
+  async (details) => {
     if (!details?.requestHeaders?.length) return;
     const authHeader = details.requestHeaders.find(
       (h) => h.name?.toLowerCase() === 'authorization',
@@ -108,15 +178,55 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     const token = value.replace(/^Bearer\s+/i, '').trim();
     if (!token) return;
 
-    // Always update — even if same token string, refresh the timestamp
     flowKey = token;
     metrics.tokenCapturedAt = Date.now();
     chrome.storage.local.set({ flowKey, metrics });
-    console.log('[FlowAgent] Bearer token captured');
 
-    // Notify agent
+    // Check account identity (email / user ID) to differentiate token refresh vs actual account switch
+    let accountSwitched = false;
+    const accInfo = await getAccountIdentity(token, details.tabId);
+    if (accInfo?.email || accInfo?.userId) {
+      const prevEmail = currentAccount.email;
+      const prevUserId = currentAccount.userId;
+      const newEmail = accInfo.email;
+      const newUserId = accInfo.userId;
+
+      // Account changed ONLY when email or user_id changes to a different identity
+      if ((prevEmail && newEmail && prevEmail !== newEmail) ||
+          (prevUserId && newUserId && prevUserId !== newUserId)) {
+        accountSwitched = true;
+        console.log(`[FlowAgent] ACCOUNT SWITCH DETECTED: ${prevEmail || prevUserId} -> ${newEmail || newUserId}`);
+      }
+
+      currentAccount = {
+        email: newEmail || currentAccount.email,
+        userId: newUserId || currentAccount.userId,
+      };
+      chrome.storage.local.set({ currentAccount });
+    }
+
+    console.log('[FlowAgent] Bearer token captured. Account:', currentAccount.email || currentAccount.userId || 'unknown');
+
+    // Notify agent with active project ID and verified account identity
     if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
+      ensureActiveProjectTab().then(({ projectId }) => {
+        ws.send(JSON.stringify({
+          type: 'token_captured',
+          flowKey,
+          accountChanged: accountSwitched,
+          accountEmail: currentAccount.email,
+          accountUserId: currentAccount.userId,
+          activeProjectId: projectId,
+        }));
+      }).catch(() => {
+        ws.send(JSON.stringify({
+          type: 'token_captured',
+          flowKey,
+          accountChanged: accountSwitched,
+          accountEmail: currentAccount.email,
+          accountUserId: currentAccount.userId,
+        }));
+      });
     }
   },
   { urls: ['<all_urls>'] },
@@ -229,15 +339,42 @@ if (chrome.runtime?.onConnect) {
     // Token refresh alarm — 45 min gives buffer before ~60 min expiry
     chrome.alarms.create('token-refresh', { periodInMinutes: 45 });
 
-    // Send current state + resend token if we have one
-    ws.send(JSON.stringify({
-      type: 'extension_ready',
-      flowKeyPresent: !!flowKey,
-      tokenAge: flowKey && metrics.tokenCapturedAt ? Date.now() - metrics.tokenCapturedAt : null,
-    }));
-    if (flowKey) {
-      ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
-    }
+    // Send current state + resend token with active project and account identity
+    ensureActiveProjectTab().then(({ projectId }) => {
+      ws.send(JSON.stringify({
+        type: 'extension_ready',
+        flowKeyPresent: !!flowKey,
+        activeProjectId: projectId,
+        accountEmail: currentAccount.email,
+        accountUserId: currentAccount.userId,
+        tokenAge: flowKey && metrics.tokenCapturedAt ? Date.now() - metrics.tokenCapturedAt : null,
+      }));
+      if (flowKey) {
+        ws.send(JSON.stringify({
+          type: 'token_captured',
+          flowKey,
+          activeProjectId: projectId,
+          accountEmail: currentAccount.email,
+          accountUserId: currentAccount.userId,
+        }));
+      }
+    }).catch(() => {
+      ws.send(JSON.stringify({
+        type: 'extension_ready',
+        flowKeyPresent: !!flowKey,
+        accountEmail: currentAccount.email,
+        accountUserId: currentAccount.userId,
+        tokenAge: flowKey && metrics.tokenCapturedAt ? Date.now() - metrics.tokenCapturedAt : null,
+      }));
+      if (flowKey) {
+        ws.send(JSON.stringify({
+          type: 'token_captured',
+          flowKey,
+          accountEmail: currentAccount.email,
+          accountUserId: currentAccount.userId,
+        }));
+      }
+    });
   };
 
   ws.onmessage = async ({ data }) => {
@@ -279,11 +416,15 @@ if (chrome.runtime?.onConnect) {
             ws.send(JSON.stringify({ type: 'token_captured', flowKey }));
           }
         }
+        const activeProj = await ensureActiveProjectTab().catch(() => ({ projectId: null }));
         sendToAgent({
           id: msg.id,
           result: {
             state,
             flowKeyPresent: !!flowKey,
+            activeProjectId: activeProj?.projectId || null,
+            accountEmail: currentAccount.email,
+            accountUserId: currentAccount.userId,
             storageKeys: Object.keys(localData || {}),
             manualDisconnect,
             tokenAge: metrics.tokenCapturedAt ? Date.now() - metrics.tokenCapturedAt : null,
@@ -599,7 +740,31 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
   return { error: 'NO_CAPTCHA_LISTENER' };
 }
 
-async function solveCaptcha(requestId, captchaAction) {
+async function createFlowProject(title = 'Animation Studio') {
+  if (!flowKey) return null;
+  try {
+    const resp = await fetch('https://labs.google/fx/api/trpc/project.createProject', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${flowKey}`,
+      },
+      body: JSON.stringify({ json: { projectTitle: title, toolName: 'PINHOLE' } }),
+      credentials: 'include',
+    });
+    const data = await resp.json();
+    const pid = data?.result?.data?.json?.result?.projectId || data?.result?.data?.json?.projectId;
+    if (pid) {
+      console.log('[FlowAgent] Created new project on Flow for current account:', pid);
+      return pid;
+    }
+  } catch (e) {
+    console.error('[FlowAgent] Failed to create project:', e);
+  }
+  return null;
+}
+
+async function ensureActiveProjectTab() {
   let tabs = await chrome.tabs.query({
     url: [
       'https://flow.google.com/*',
@@ -609,17 +774,60 @@ async function solveCaptcha(requestId, captchaAction) {
     ],
   });
 
-  // Filter out any chrome://, invalid tabs, or marketing /about pages
-  tabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://') && !t.url.includes('/about'));
+  tabs = tabs.filter(
+    (t) =>
+      t.url &&
+      !t.url.startsWith('chrome://') &&
+      !t.url.startsWith('chrome-extension://') &&
+      !t.url.includes('/about'),
+  );
 
-  // Close any stray landing page tabs that lack /project/
-  const landingTabs = tabs.filter(t => (t.url === 'https://flow.google.com/' || t.url === 'https://flow.google.com') && tabs.some(o => o.url && o.url.includes('/project/')));
-  for (const lt of landingTabs) {
-    try { chrome.tabs.remove(lt.id); } catch {}
+  // 1. Check existing /project/ tabs
+  const projectTabs = tabs.filter((t) => t.url && t.url.includes('/project/'));
+  if (projectTabs.length) {
+    const landingTabs = tabs.filter(
+      (t) =>
+        (t.url === 'https://flow.google.com/' || t.url === 'https://flow.google.com') &&
+        projectTabs.some((o) => o.id !== t.id),
+    );
+    for (const lt of landingTabs) {
+      try { chrome.tabs.remove(lt.id); } catch {}
+    }
+
+    let targetTab = projectTabs.find((t) => t.active) || projectTabs[0];
+    const m = targetTab.url.match(/\/project\/([0-9a-fA-F-]{36})/);
+    return { tab: targetTab, projectId: m ? m[1] : null };
   }
 
-  // Strictly prefer project tab
-  let targetTab = tabs.find(t => t.url && t.url.includes('/project/')) || tabs.find(t => t.active) || tabs[0];
+  // 2. No /project/ tab found. Create project for current account on Flow
+  console.log('[FlowAgent] No /project/ tab found for current account. Creating new project on Flow...');
+  const newPid = await createFlowProject('Animation Studio');
+  let baseTab = tabs.find((t) => t.active) || tabs[0];
+
+  if (newPid) {
+    const projectUrl = `https://labs.google/fx/tools/flow/project/${newPid}`;
+    let targetTab = baseTab;
+    if (targetTab) {
+      await chrome.tabs.update(targetTab.id, { url: projectUrl });
+    } else {
+      targetTab = await chrome.tabs.create({ url: projectUrl, active: false });
+    }
+    await sleep(3500);
+    return { tab: targetTab, projectId: newPid };
+  }
+
+  return { tab: baseTab || null, projectId: null };
+}
+
+async function solveCaptcha(requestId, captchaAction, targetTabId = null) {
+  let targetTab = null;
+  if (targetTabId) {
+    try { targetTab = await chrome.tabs.get(targetTabId); } catch {}
+  }
+  if (!targetTab) {
+    const res = await ensureActiveProjectTab();
+    targetTab = res.tab;
+  }
 
   if (targetTab) {
     // Run captcha silently in background without stealing OS window focus
@@ -737,10 +945,21 @@ async function handleApiRequest(msg) {
   }
 
   try {
+    // Step 0: Ensure active project tab & ID of current account
+    let activeProjectId = null;
+    let targetTab = null;
+    try {
+      const projInfo = await ensureActiveProjectTab();
+      targetTab = projInfo.tab;
+      activeProjectId = projInfo.projectId;
+    } catch (e) {
+      console.warn('[FlowAgent] ensureActiveProjectTab error:', e);
+    }
+
     // Step 1: Solve captcha if needed
     let captchaToken = null;
     if (captchaAction) {
-      const captchaResult = await solveCaptcha(id, captchaAction);
+      const captchaResult = await solveCaptcha(id, captchaAction, targetTab?.id);
       captchaToken = captchaResult?.token || null;
       if (!captchaToken) {
         // Cannot proceed without captcha — API will 403
@@ -755,20 +974,48 @@ async function handleApiRequest(msg) {
       }
     }
 
-    // Step 2: Inject captcha token into body
+    // Step 2: Inject captcha token and align projectId to current account's active project
     let finalBody = body;
-    if (captchaToken && finalBody) {
+    if (finalBody) {
       finalBody = JSON.parse(JSON.stringify(finalBody)); // deep clone
-      if (finalBody.clientContext?.recaptchaContext) {
-        finalBody.clientContext.recaptchaContext.token = captchaToken;
-      }
-      if (finalBody.requests && Array.isArray(finalBody.requests)) {
-        for (const req of finalBody.requests) {
-          if (req.clientContext?.recaptchaContext) {
-            req.clientContext.recaptchaContext.token = captchaToken;
+
+      // Align projectId if different from current account's active project
+      if (activeProjectId) {
+        if (finalBody.clientContext?.projectId && finalBody.clientContext.projectId !== activeProjectId) {
+          console.log(`[FlowAgent] Aligning clientContext.projectId ${finalBody.clientContext.projectId} -> ${activeProjectId}`);
+          finalBody.clientContext.projectId = activeProjectId;
+        }
+        if (finalBody.projectId && finalBody.projectId !== activeProjectId) {
+          finalBody.projectId = activeProjectId;
+        }
+        if (finalBody.requests && Array.isArray(finalBody.requests)) {
+          for (const req of finalBody.requests) {
+            if (req.clientContext?.projectId && req.clientContext.projectId !== activeProjectId) {
+              req.clientContext.projectId = activeProjectId;
+            }
+            if (req.projectId && req.projectId !== activeProjectId) {
+              req.projectId = activeProjectId;
+            }
           }
         }
       }
+
+      if (captchaToken) {
+        if (finalBody.clientContext?.recaptchaContext) {
+          finalBody.clientContext.recaptchaContext.token = captchaToken;
+        }
+        if (finalBody.requests && Array.isArray(finalBody.requests)) {
+          for (const req of finalBody.requests) {
+            if (req.clientContext?.recaptchaContext) {
+              req.clientContext.recaptchaContext.token = captchaToken;
+            }
+          }
+        }
+      }
+    }
+
+    if (activeProjectId && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'active_project_updated', projectId: activeProjectId }));
     }
 
     // Step 3: Use flowKey for auth

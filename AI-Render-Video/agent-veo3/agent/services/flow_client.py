@@ -43,6 +43,10 @@ class FlowClient:
         self._ws_disconnect_count = 0
         self._ws_connected_at: Optional[float] = None
         self._ws_last_disconnect_at: Optional[float] = None
+        self._active_project_id: Optional[str] = None
+        self._account_switched: bool = False
+        self._account_email: Optional[str] = None
+        self._account_user_id: Optional[str] = None
 
     def set_extension(self, ws):
         """Called when extension connects via WS."""
@@ -136,24 +140,63 @@ class FlowClient:
             "connects": self._ws_connect_count,
             "disconnects": self._ws_disconnect_count,
             "uptime_s": uptime,
+            "active_project_id": self._active_project_id,
+            "account_email": self._account_email,
         }
 
     async def handle_message(self, data: dict, websocket=None):
         """Handle incoming message from extension."""
         if data.get("type") == "token_captured":
             key = data.get("flowKey")
+            account_changed = data.get("accountChanged", False)
+            account_email = data.get("accountEmail")
+            account_user_id = data.get("accountUserId")
+            active_pid = data.get("activeProjectId")
+
             source_ws = websocket or self._extension_ws
             if source_ws is not None and source_ws in self._extensions:
                 self._extensions[source_ws]["flow_key"] = key
                 self._extensions[source_ws]["token_captured_at"] = time.time()
                 self._extension_ws = source_ws
+
+            # Account switch is triggered ONLY when real account identity changes
+            if account_changed or (self._account_email and account_email and self._account_email != account_email):
+                logger.info("[FlowClient] Real account switch detected (%s -> %s)! Resetting active project to: %s",
+                            self._account_email, account_email, active_pid)
+                self._account_switched = True
+                self._active_project_id = active_pid
+            elif active_pid:
+                self._active_project_id = active_pid
+
+            if account_email:
+                self._account_email = account_email
+            if account_user_id:
+                self._account_user_id = account_user_id
+
             self._flow_key = key
-            logger.info("Flow key captured from extension")
+            logger.info("Flow key updated (account=%s, active_project=%s)",
+                        self._account_email or "unknown", self._active_project_id)
             asyncio.create_task(self._sync_tier())
             return
 
+        if data.get("type") == "active_project_updated":
+            pid = data.get("projectId")
+            if pid:
+                self._active_project_id = pid
+                logger.info("[FlowClient] Active project updated from extension: %s", pid)
+            return
+
         if data.get("type") == "extension_ready":
-            logger.info("Extension ready, flowKey=%s", "yes" if data.get("flowKeyPresent") else "no")
+            if data.get("activeProjectId"):
+                self._active_project_id = data.get("activeProjectId")
+            if data.get("accountEmail"):
+                self._account_email = data.get("accountEmail")
+            if data.get("accountUserId"):
+                self._account_user_id = data.get("accountUserId")
+            logger.info("Extension ready, flowKey=%s, account=%s, activeProjectId=%s",
+                        "yes" if data.get("flowKeyPresent") else "no",
+                        self._account_email or "unknown",
+                        self._active_project_id)
             asyncio.create_task(self._sync_tier())
             return
 
@@ -421,6 +464,9 @@ class FlowClient:
                                aspect_ratio: str = "IMAGE_ASPECT_RATIO_PORTRAIT",
                                user_paygate_tier: str = "PAYGATE_TIER_TWO",
                                character_media_ids: list[str] = None) -> dict:
+        if self._active_project_id and (not project_id or self._account_switched):
+            logger.info("[FlowClient] Using active account project %s (was %s)", self._active_project_id, project_id)
+            project_id = self._active_project_id
         """Generate image(s).
 
         If character_media_ids is provided, uses edit_image flow (batchGenerateImages
@@ -525,6 +571,9 @@ class FlowClient:
         - frame_2_video (i2v): startImage only
         - start_end_frame_2_video (i2v_fl): startImage + endImage (for scene chaining)
         """
+        if self._active_project_id and (not project_id or self._account_switched):
+            logger.info("[FlowClient] Using active account project %s (was %s)", self._active_project_id, project_id)
+            project_id = self._active_project_id
         gen_type = "start_end_frame_2_video" if end_image_media_id else "frame_2_video"
         model_key = resolve_video_model_key(VIDEO_MODELS, user_paygate_tier, gen_type, aspect_ratio, duration)
         if not model_key:
