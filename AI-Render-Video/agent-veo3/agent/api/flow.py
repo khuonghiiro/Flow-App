@@ -114,11 +114,14 @@ class StartPipelineRequest(BaseModel):
 
 @router.get("/status")
 async def extension_status():
-    """Check if extension is connected."""
+    """Check if extension is connected and active account project."""
     client = get_flow_client()
     return {
         "connected": client.connected,
         "flow_key_present": client._flow_key is not None,
+        "account_email": getattr(client, "_account_email", None),
+        "active_project_id": getattr(client, "_active_project_id", None),
+        "account_switched": getattr(client, "_account_switched", False),
     }
 
 

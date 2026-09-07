@@ -116,7 +116,31 @@ async def generate_action(character_key: str, action: str, angle: str, session: 
     with open(meta_path, "r", encoding="utf-8") as f:
         meta = json.load(f)
 
+    own_session = False
+    if session is None:
+        session = aiohttp.ClientSession()
+        own_session = True
+
     project_id = meta.get("project_id")
+
+    # Sync project_id with active account on Flow
+    try:
+        async with session.get("http://127.0.0.1:8100/api/flow/status", timeout=5) as st_resp:
+            if st_resp.status == 200:
+                st_data = await st_resp.json()
+                active_pid = st_data.get("active_project_id")
+                acc_email = st_data.get("account_email")
+                if acc_email:
+                    logger.info("[ACCOUNT] Connected account: %s", acc_email)
+                if active_pid and active_pid != project_id:
+                    logger.info("[ACCOUNT SYNC] Account switched (%s)! Active project is %s (was %s). Updating metadata.", acc_email or "unknown", active_pid, project_id)
+                    project_id = active_pid
+                    meta["project_id"] = active_pid
+                    with open(meta_path, "w", encoding="utf-8") as f:
+                        json.dump(meta, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.debug("Active project sync skipped: %s", e)
+
     angle_key = f"angle_{angle}"
     angle_data = meta.get(angle_key, {})
     media_id = angle_data.get("media_id")
@@ -173,11 +197,6 @@ async def generate_action(character_key: str, action: str, angle: str, session: 
         "user_paygate_tier": "PAYGATE_TIER_TWO",
         "duration": 4.0,
     }
-
-    own_session = False
-    if session is None:
-        session = aiohttp.ClientSession()
-        own_session = True
 
     try:
         data = None
