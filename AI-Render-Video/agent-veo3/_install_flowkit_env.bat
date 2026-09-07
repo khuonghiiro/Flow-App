@@ -51,12 +51,20 @@ if %errorlevel% neq 0 (
     color 0E
     echo [CANH BAO] Khong tim thay Node.js. Bo qua buoc cai dat Dashboard UI.
 ) else (
-    cd dashboard
-    echo - Dang chay npm install trong thu muc dashboard...
     set NODE_OPTIONS=--dns-result-order=ipv4first
-    call npm.cmd install --no-audit --no-fund
-    cd ..
-    echo - Da cai dat xong thu vien Dashboard UI!
+    if exist "..\flowkit\dashboard\package.json" (
+        cd ..\flowkit\dashboard
+        echo - Dang chay npm install trong ..\flowkit\dashboard...
+        call npm.cmd install --no-audit --no-fund
+        cd "%~dp0"
+        echo - Da cai dat xong thu vien Dashboard UI trong flowkit!
+    ) else if exist "dashboard\package.json" (
+        cd dashboard
+        echo - Dang chay npm install trong thu muc dashboard...
+        call npm.cmd install --no-audit --no-fund
+        cd "%~dp0"
+        echo - Da cai dat xong thu vien Dashboard UI!
+    )
 )
 echo.
 

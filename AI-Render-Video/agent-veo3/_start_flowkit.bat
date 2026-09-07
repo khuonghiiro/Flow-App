@@ -20,8 +20,11 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo [2/3] Khoi dong Dashboard UI (neu co)...
-if exist "dashboard\package.json" (
+echo [2/3] Khoi dong Dashboard UI (tu FlowKit core)...
+if exist "..\flowkit\dashboard\package.json" (
+    start "FlowKit Dashboard UI" cmd /k "cd /d "%~dp0..\flowkit\dashboard" && npm.cmd run dev"
+    echo - Da mo tien trinh Dashboard UI tu FlowKit core.
+) else if exist "dashboard\package.json" (
     start "FlowKit Dashboard UI" cmd /k "cd /d "%~dp0dashboard" && npm.cmd run dev"
     echo - Da mo tien trinh Dashboard UI.
 )
