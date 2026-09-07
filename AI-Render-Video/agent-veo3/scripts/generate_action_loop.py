@@ -196,52 +196,83 @@ async def generate_action(character_key: str, action: str, angle: str, session: 
             logger.error("Submission failed after retries: %s", data)
             return False
 
-        operations = []
-        for op in data.get("operations", []):
-            if op.get("name"): operations.append({"name": op["name"], "projectId": project_id})
-        for m in data.get("media", []):
-            if m.get("name"): operations.append({"name": m["name"], "projectId": project_id})
+        workflows = data.get("workflows", [])
+        operations = data.get("operations", [])
 
-        if not operations:
-            logger.error("No operations returned!")
+        if not workflows and not operations:
+            logger.error("No workflows or operations returned: %s", data)
             return False
 
         logger.info("Polling operation for %s %s°...", action, angle)
         vid_media_id = None
-        for poll in range(60):
-            await asyncio.sleep(8)
-            async with session.post(url_check, json={"operations": operations}, timeout=30) as c_resp:
-                sdata = await c_resp.json()
-            for m in sdata.get("media", []):
-                mst = m.get("mediaMetadata", {}).get("mediaStatus", {}).get("mediaGenerationStatus", "")
-                if mst in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
-                    vid_media_id = m.get("name")
+        signed_url = None
+
+        if workflows:
+            check_payload = {"workflows": workflows, "project_id": project_id}
+            for poll in range(60):
+                await asyncio.sleep(6)
+                try:
+                    async with session.post(url_check, json=check_payload, timeout=30) as c_resp:
+                        sdata = await c_resp.json()
+                except Exception as e:
+                    logger.warning("Poll error: %s", e)
+                    continue
+
+                for wf in sdata.get("workflows", []):
+                    st = wf.get("status", "")
+                    if st in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL") or wf.get("done"):
+                        vid_media_id = wf.get("primary_media_id") or wf.get("media", {}).get("media_id")
+                        signed_url = wf.get("media", {}).get("url")
+                        break
+                    if st in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
+                        logger.error("Generation failed: %s", wf)
+                        return False
+                if vid_media_id:
                     break
-                if mst in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
-                    logger.error("Generation failed: %s", m)
-                    return False
-            if vid_media_id:
-                break
+        else:
+            check_payload = {"operations": operations}
+            for poll in range(60):
+                await asyncio.sleep(6)
+                try:
+                    async with session.post(url_check, json=check_payload, timeout=30) as c_resp:
+                        sdata = await c_resp.json()
+                except Exception as e:
+                    logger.warning("Poll error: %s", e)
+                    continue
+
+                for op in sdata.get("operations", []):
+                    st = op.get("status", "")
+                    if st in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
+                        meta_vid = op.get("operation", {}).get("metadata", {}).get("video", {})
+                        vid_media_id = meta_vid.get("mediaId")
+                        signed_url = meta_vid.get("fifeUrl") or meta_vid.get("servingUri")
+                        break
+                    if st in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
+                        logger.error("Generation failed: %s", op)
+                        return False
+                if vid_media_id:
+                    break
 
         if not vid_media_id:
             logger.error("Polling timed out for %s %s°!", action, angle)
             return False
 
-        logger.info("Generation SUCCESSFUL! Media ID: %s. Fetching signed CDN URL...", vid_media_id)
-        url_redirect = f"http://127.0.0.1:8100/api/flow/media-redirect-url/{vid_media_id}"
-        signed_url = None
-        for _ in range(10):
-            try:
-                async with session.get(url_redirect, timeout=15) as r:
-                    res_data = await r.json()
-                    if res_data.get("status") == 200:
-                        u = res_data.get("data", {}).get("url", "")
-                        if u and "flow-content.google" in u:
-                            signed_url = u
-                            break
-            except Exception as e:
-                logger.debug("Redirect poll error: %s", e)
-            await asyncio.sleep(2)
+        logger.info("Generation SUCCESSFUL! Media ID: %s.", vid_media_id)
+        if not signed_url:
+            logger.info("Fetching signed CDN URL for %s...", vid_media_id)
+            url_redirect = f"http://127.0.0.1:8100/api/flow/media-redirect-url/{vid_media_id}"
+            for _ in range(10):
+                try:
+                    async with session.get(url_redirect, timeout=15) as r:
+                        res_data = await r.json()
+                        if res_data.get("status") == 200:
+                            u = res_data.get("data", {}).get("url", "")
+                            if u and "flow-content.google" in u:
+                                signed_url = u
+                                break
+                except Exception as e:
+                    logger.debug("Redirect poll error: %s", e)
+                await asyncio.sleep(2)
 
         # Fallback to captured-video-urls
         if not signed_url:

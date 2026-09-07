@@ -24,10 +24,10 @@ Tài liệu này là **Master Template** chuẩn cấp cao áp dụng cho toàn 
      - `phong-thu/`: Lưu 5 video phòng thủ (`defend_0.mp4`, `defend_45.mp4`,...).
 
 4. **Quy trình Tuyển Chọn Khắt Khe: Sinh Song Song & Đối Chiếu So Sánh Trực Quan**:
-   - **Góc 0°**: Sinh **3 ảnh song song** (batch 3 candidates). AI Agent dùng `view_file` kiểm tra kỹ. Nếu có ít nhất 1 ảnh đạt 10/10 $\rightarrow$ Chọn làm mốc `media_id_0`. Nếu cả 3 ảnh đều không đạt hoặc bị lỗi $\rightarrow$ **Tiếp tục tạo batch 3 ảnh song song mới** cho đến khi có ảnh 0° đạt chuẩn thì thôi.
-   - **Các góc còn lại (45°, 180°, 90°, 135°)**: Chỉ cần sinh **2 ảnh song song** (batch 2 candidates) dựa trên các ảnh mốc tương ứng đã chọn.
+   - **Góc 0°**: Sinh **3 ảnh song song** (batch 3 candidates gửi đồng thời). AI Agent dùng `view_file` kiểm tra kỹ. Nếu có ít nhất 1 ảnh đạt 10/10 $\rightarrow$ Chọn làm mốc `media_id_0`. Nếu cả 3 ảnh đều không đạt hoặc bị lỗi $\rightarrow$ **Tiếp tục tạo batch 3 ảnh song song mới** cho đến khi có ảnh 0° đạt chuẩn thì thôi.
+   - **Các góc còn lại (45°, 180°, 90°, 135°)**: Sinh **2 ảnh song song** (batch 2 candidates) cho mỗi góc dựa trên các ảnh mốc tương ứng đã chọn. Đặc biệt, 3 góc (45°, 90°, 180°) được gửi **song song đồng loạt cùng một lúc (6 requests đồng thời)** để tối ưu tốc độ.
    - **Quy trình đối chiếu so sánh**: AI Agent nhận ảnh xong phải lập tức so sánh đối chiếu chi tiết (đai lưng, cổ áo, trâm cài, màu sắc từng lớp trang phục) với ảnh mốc 0°. Nếu candidate nào khớp $\rightarrow$ chọn làm mốc; nếu không khớp $\rightarrow$ tạo lại batch 2 ảnh mới cho góc đó.
-   - **Tạo Video**: Chỉ khi đã đủ 5 ảnh mốc đạt chuẩn 10/10, lúc đó mới tạo video 4s loop tương ứng cho 5 góc.
+   - **Tạo Video Song Song (Parallel Batch Video Generation)**: Khi đã đủ 5 ảnh mốc đạt chuẩn 10/10, **TUYỆT ĐỐI KHÔNG TẠO VIDEO TUẦN TỰ TỪNG GÓC**, mà **BẮT BUỘC GỬI SONG SONG ĐỒNG LOẠT NHIỀU REQUEST** (concurrency 5 – 6 slots cùng lúc). Gửi đồng loạt 5 góc của 1 hành động trong vòng vài giây, để Google Cloud GPU render đồng thời, rút ngắn thời gian tạo toàn bộ 25-80 video xuống nhiều lần.
 
 ---
 
@@ -204,18 +204,24 @@ AI Agent dùng `view_file` phóng to kiểm tra cả 3 ảnh:
 
 ```
 Pha 1: Tạo Ảnh Gốc 0°
-  - Text-to-Image (prompt chuẩn + tỷ lệ 4.8-5.0 đầu) → Sinh 3 candidates → Chọn Best Pick `media_id_0`.
+  - Text-to-Image (prompt chuẩn + tỷ lệ 4.8-5.0 đầu) → Gửi đồng thời 3 candidates song song → Chọn Best Pick `media_id_0`.
   - Tự động upload bộ Mannequin Nam hoặc Nữ tương ứng lên Project Google Flow qua `mannequin_service`.
 
-Pha 2A (SONG SONG sau khi chốt 0°):
-  - 45° : I2I Dual-Ref `[media_id_0, mannequin_45_id]` → Sinh 2 candidates
-  - 90° : I2I Dual-Ref `[media_id_0, mannequin_90_id]` → Sinh 2 candidates
-  - 180°: I2I Dual-Ref `[media_id_0, mannequin_180_id]` → Sinh 2 candidates
+Pha 2A (ĐỒNG THỜI SONG SONG 3 GÓC sau khi chốt 0°):
+  - Gửi đồng thời 6 requests song song (3 góc x 2 candidates):
+    + 45° : I2I Dual-Ref `[media_id_0, mannequin_45_id]` → 2 candidates song song
+    + 90° : I2I Dual-Ref `[media_id_0, mannequin_90_id]` → 2 candidates song song
+    + 180°: I2I Dual-Ref `[media_id_0, mannequin_180_id]` → 2 candidates song song
   → Checklist kiểm duyệt đối chiếu với Mannequin → Chốt Best Pick hoặc tạo lại
 
 Pha 2B (Sau khi 180° chốt):
-  - 135°: I2I Dual-Ref `[mannequin_135_id, media_id_180]` (Pose Guide đứng trước) → Sinh 2 candidates
+  - 135°: I2I Dual-Ref `[mannequin_135_id, media_id_180]` (Pose Guide đứng trước) → Sinh 2 candidates song song
   → Checklist kiểm duyệt đối chiếu với Mannequin: Chân trái xoay ngang 9h, chân phải lùi sâu, thân mình xoay 45° so với mặt sau, cấm đối xứng 180° → Chốt Best Pick
+
+Pha 3: Sinh Hoạt Ảnh Video Song Song Hàng Loạt (Parallel Multi-Request Dispatcher):
+  - BẮT BUỘC GỬI SONG SONG ĐỒNG LOẠT (Concurrency: 5 – 6 slots cùng lúc).
+  - Không chờ tuần tự: Gửi đồng loạt 5 góc của 1 hành động (`0°, 45°, 90°, 135°, 180°`) trong 1–2 giây.
+  - Google Cloud GPU tự động xử lý render song song 5 video cùng lúc. Polling và tải video MP4 bất đồng bộ qua `asyncio.gather`.
 ```
 
 
@@ -276,13 +282,28 @@ Khi kích hoạt tiến trình tạo hoạt ảnh cho nhân vật:
    - Nếu hành động nào bị thiếu hoặc chưa đủ 5 góc $\rightarrow$ Tự động đưa vào danh sách task ưu tiên theo đúng trình tự từ Tier 1 đến Tier 4.
 4. **Tự động cập nhật hai chiều**:
    - Sinh xong video nào $\rightarrow$ Lưu ngay vào `character_meta.json` và đồng bộ cập nhật bảng trong file plan `plans/<ten-nhan-vat>.plan_character_pipeline.md`.
-5. **Lệnh thực thi nhanh**:
+
+---
+
+#### 4. Cơ Chế Gửi Nhiều Request Chạy Song Song (Parallel Multi-Request Dispatcher)
+
+Để tối đa hóa tốc độ, toàn bộ pipeline tận dụng triệt để cơ chế bất đồng bộ của Google Cloud GPU:
+1. **Nguyên tắc gửi song song (Concurrent Dispatching)**:
+   - **BẮT BUỘC GỬI HÀNG LOẠT REQUEST ĐỒNG THỜI**: Khi tạo 1 hành động (ví dụ: `walk`), script gửi liên tục 5 request cho cả 5 góc `0°, 45°, 90°, 135°, 180°` lên Google Flow trong vòng 1-2 giây (sử dụng độ trễ nhỏ stagger ~0.5s giữa các request để tránh xung đột socket).
+   - **Google Cloud GPU xử lý đa nhiệm**: Cloud GPU của Google sẽ nhận hàng đợi và render song song 5 video cùng lúc thay vì người dùng phải đợi từng video 30-60 giây.
+   - **Polling & Download bất đồng bộ**: Khi tất cả các request đã được gửi lên đám mây, các worker ngầm (`asyncio.gather`) sẽ đồng thời thăm dò trạng thái qua `/flow/media-redirect-url/{id}` và tải song song các file `.mp4` 1080p về máy.
+2. **Cấu hình độ rộng luồng (Concurrency Slots)**:
+   - Mặc định: `--concurrency 5` hoặc `--concurrency 6` (tương ứng với 5 góc xoay của một hành động).
+3. **Lệnh thực thi nhanh**:
    ```bash
-   # Kiểm tra trạng thái hiện tại (đã xong gì, thiếu gì)
+   # 1. Kiểm tra trạng thái hiện tại (đã xong gì, thiếu gì)
    python agent-veo3/scripts/generate_action_loop.py --character <ten-nhan-vat> --status
 
-   # Tự động tiếp tục tạo nốt tất cả hành động còn thiếu theo đúng thứ tự ưu tiên
-   python agent-veo3/scripts/generate_action_loop.py --character <ten-nhan-vat> --resume
+   # 2. Sinh song song toàn bộ các góc của 1 hành động cụ thể (5 góc cùng lúc)
+   python agent-veo3/scripts/generate_action_loop.py --character <ten-nhan-vat> --action walk --concurrency 5
+
+   # 3. Tự động chạy bù TẤT CẢ các hành động còn thiếu theo lô song song 5-6 luồng đồng thời
+   python agent-veo3/scripts/generate_action_loop.py --character <ten-nhan-vat> --resume --concurrency 5
    ```
 
 ---
