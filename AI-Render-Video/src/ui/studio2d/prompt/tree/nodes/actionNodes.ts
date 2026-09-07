@@ -18,7 +18,7 @@ const BASE_ACTION_NODES: SkillTreeNode[] = [
     tier: 1,
     x: -41,
     y: 714,
-    parentId: 'root_master',
+    parentId: 'pillar_character',
     isHub: true,
     badge: '43 prompts',
   },

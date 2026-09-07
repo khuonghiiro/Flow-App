@@ -13,7 +13,7 @@ interface SkillTreeCanvasProps {
   onSelectPrompt: (promptId: string) => void;
 }
 
-const STORAGE_KEY = 'studio2d_skill_tree_custom_layout_v13';
+const STORAGE_KEY = 'studio2d_skill_tree_custom_layout_v14';
 const LINE_STYLE_STORAGE_KEY = 'studio2d_skill_tree_line_style';
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({

@@ -408,12 +408,42 @@ DEFEND_PROMPT_TEMPLATES = {
 # ─── Action Registry ──────────────────────────────────────────
 # Maps action keys to their template dicts for pipeline lookup
 
+try:
+    from agent.services.action_prompts_acting import ACTING_ACTION_TEMPLATES
+except ImportError:
+    from action_prompts_acting import ACTING_ACTION_TEMPLATES
+
+# Master priority sequence for character animation pipeline (Hoạt hình diễn hoạt)
+ANIMATION_PRIORITY_SEQUENCE = [
+    # Tier 1: Core Locomotion & Baseline Pose (Bắt buộc kiểm tra chuẩn mốc đầu tiên)
+    "idle",               # Đứng yên thở nhẹ / Giữ dáng mốc
+    "walk",               # Đi bộ thư thả
+    "run",                # Chạy nhanh linh hoạt
+    # Tier 2: Acting, Etiquette & Social (Giao tiếp & Diễn xuất hoạt hình cốt lõi)
+    "wave",               # Vẫy tay chào hỏi
+    "bow",                # Hành lễ / Cúi chào tôn kính
+    "cover_mouth_laugh",  # Che miệng cười e ấp / cười vui
+    "talking",            # Nói chuyện / Diễn giải cử chỉ tay
+    "nod",                # Gật đầu đồng ý / Tán thành
+    "think",              # Đưa tay lên cằm suy nghĩ
+    # Tier 3: Emotional Reactions (Phản ứng cảm xúc hoạt cảnh)
+    "surprise",           # Giật mình / Kinh ngạc
+    "cheer",              # Reo hò / Ăn mừng chiến thắng
+    "sad",                # Buồn bã / Thở dài dejectedly
+    "angry",              # Tức giận / Dậm chân dỗi
+    # Tier 4: Combat & Impact (Chiến đấu & Tác động ngoại lực)
+    "attack",             # Đánh công / Xuất chiêu
+    "defend",             # Phòng thủ / Chắn đỡ
+    "hurt",               # Trúng đòn / Lảo đảo hồi phục
+]
+
 ACTION_TEMPLATES = {
     "walk": WALK_PROMPT_TEMPLATES,
     "idle": IDLE_PROMPT_TEMPLATES,
     "run": RUN_PROMPT_TEMPLATES,
     "attack": ATTACK_PROMPT_TEMPLATES,
     "defend": DEFEND_PROMPT_TEMPLATES,
+    **ACTING_ACTION_TEMPLATES,
 }
 
 # Pipeline stage execution order for the AI agent
@@ -439,10 +469,10 @@ PIPELINE_STAGES = [
     {
         "stage": 3,
         "key": "actions",
-        "label": "Tao video hanh dong theo 5 goc",
+        "label": "Tao video hanh dong hoat hinh theo thu tu uu tien",
         "type": "video",
         "mode": "image_to_video_loop_4s",
-        "actions": ["walk", "idle", "run", "attack", "defend"],
+        "actions": ANIMATION_PRIORITY_SEQUENCE,
         "angles": ["0", "45", "90", "135", "180"],
         "ref": "per_angle",
     },

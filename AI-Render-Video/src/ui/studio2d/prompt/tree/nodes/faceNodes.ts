@@ -15,7 +15,7 @@ export const FACE_NODES: SkillTreeNode[] = [
     tier: 1,
     x: -2692,
     y: 1508,
-    parentId: 'root_master',
+    parentId: 'pillar_character',
     isHub: true,
     badge: '38 prompts',
   },

@@ -15,7 +15,7 @@ export const WEAPON_NODES: SkillTreeNode[] = [
     tier: 1,
     x: -865,
     y: 1680,
-    parentId: 'root_master',
+    parentId: 'pillar_character',
     isHub: true,
     badge: '4 MẪU',
   },

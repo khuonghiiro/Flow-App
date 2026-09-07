@@ -13,19 +13,25 @@ function makeActionFamilyLinks(hubId: string, actionId: string, color: string): 
 }
 
 export const ALL_TREE_LINKS: SkillTreeLink[] = [
-  // Links from Root Master to 5 Pillars
-  { fromId: 'root_master', toId: 'pillar_character', color: '#38bdf8', animated: true },
-  { fromId: 'root_master', toId: 'pillar_locomotion', color: '#34d399', animated: true },
-  { fromId: 'root_master', toId: 'pillar_actions', color: '#f59e0b', animated: true },
-  { fromId: 'root_master', toId: 'pillar_face', color: '#ec4899', animated: true },
-  { fromId: 'root_master', toId: 'pillar_weapons', color: '#c084fc', animated: true },
+  // ─── GIAI ĐOẠN 1 -> 2: Từ Nhân Vật 0° Chính Diện Dẫn Xuất Ra Các Góc ───
+  { fromId: 'root_master', toId: 'node_char_0', color: '#38bdf8', animated: true },
+  { fromId: 'root_master', toId: 'node_char_45', color: '#38bdf8', animated: true },
+  { fromId: 'root_master', toId: 'node_char_90', color: '#38bdf8', animated: true },
+  { fromId: 'root_master', toId: 'node_char_180', color: '#38bdf8', animated: true },
+  { fromId: 'node_char_180', toId: 'node_char_135', color: '#38bdf8', animated: true },
 
-  // Pillar 1: Character (5 góc)
-  { fromId: 'pillar_character', toId: 'node_char_0', color: '#38bdf8' },
-  { fromId: 'pillar_character', toId: 'node_char_45', color: '#38bdf8' },
-  { fromId: 'pillar_character', toId: 'node_char_90', color: '#38bdf8' },
-  { fromId: 'pillar_character', toId: 'node_char_135', color: '#38bdf8' },
-  { fromId: 'pillar_character', toId: 'node_char_180', color: '#38bdf8' },
+  // ─── HỘI TỤ 5 GÓC VÀO TRỤ BỘ MỐC HOÀN CHỈNH (GATEWAY TO ACTIONS) ───
+  { fromId: 'node_char_0', toId: 'pillar_character', color: '#38bdf8' },
+  { fromId: 'node_char_45', toId: 'pillar_character', color: '#38bdf8' },
+  { fromId: 'node_char_90', toId: 'pillar_character', color: '#38bdf8' },
+  { fromId: 'node_char_135', toId: 'pillar_character', color: '#38bdf8' },
+  { fromId: 'node_char_180', toId: 'pillar_character', color: '#38bdf8' },
+
+  // ─── GIAI ĐOẠN 3: TỪ BỘ MỐC 5 GÓC MỚI MỞ KHÓA RA CÁC TRỤ HÀNH ĐỘNG ───
+  { fromId: 'pillar_character', toId: 'pillar_locomotion', color: '#34d399', animated: true },
+  { fromId: 'pillar_character', toId: 'pillar_actions', color: '#f59e0b', animated: true },
+  { fromId: 'pillar_character', toId: 'pillar_face', color: '#ec4899', animated: true },
+  { fromId: 'pillar_character', toId: 'pillar_weapons', color: '#c084fc', animated: true },
 
   // Pillar 2: Locomotion (Đi Bộ & Chạy độc lập)
   { fromId: 'pillar_locomotion', toId: 'hub_walk', color: '#34d399', animated: true },

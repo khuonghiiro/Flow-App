@@ -13,8 +13,18 @@ import sys
 import uuid
 import aiohttp
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from agent.services.prompt_templates import format_template, get_action_templates
+from agent.services.prompt_templates import (
+    format_template,
+    get_action_templates,
+    ANIMATION_PRIORITY_SEQUENCE,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("action_generator")
@@ -23,11 +33,27 @@ BASE_OUTPUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", 
 PLANS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "plans"))
 
 ACTION_FOLDER_MAP = {
+    # Tier 1: Core Locomotion & Baseline
     "idle": ("dung-yen", "Đứng Yên"),
     "walk": ("di-bo", "Đi Bộ"),
     "run": ("chay", "Chạy"),
+    # Tier 2: Acting, Etiquette & Social
+    "wave": ("vay-tay", "Vẫy Tay Chào"),
+    "bow": ("hanh-le", "Hành Lễ Cúi Chào"),
+    "cover_mouth_laugh": ("che-mieng-cuoi", "Che Miệng Cười"),
+    "cover-mouth": ("che-mieng-cuoi", "Che Miệng Cười"),
+    "talking": ("noi-chuyen", "Nói Chuyện"),
+    "nod": ("gat-dau", "Gật Đầu"),
+    "think": ("suy-nghi", "Suy Nghĩ"),
+    # Tier 3: Emotional Reactions
+    "surprise": ("kinh-ngac", "Kinh Ngạc"),
+    "cheer": ("reo-ho", "Reo Hò Ăn Mừng"),
+    "sad": ("buon-ba", "Buồn Bã Thở Dài"),
+    "angry": ("tuc-gian", "Tức Giận Dỗi"),
+    # Tier 4: Combat & Impact
     "attack": ("danh-cong", "Đánh Công"),
     "defend": ("phong-thu", "Phòng Thủ"),
+    "hurt": ("trung-don", "Trúng Đòn"),
 }
 
 
@@ -283,24 +309,151 @@ async def run_batch(character_key: str, tasks: list[tuple[str, str]], concurrenc
         logger.info("Batch summary: %d/%d successful", sum(results), len(results))
 
 
+def inspect_character_pipeline(character_key: str, actions: list[str] = None) -> tuple[dict, list[tuple[str, str]]]:
+    """Inspect character_meta.json and return (report_dict, pending_tasks_in_priority_order)."""
+    char_dir = os.path.join(BASE_OUTPUT_DIR, character_key)
+    meta_path = os.path.join(char_dir, "character_meta.json")
+    if not os.path.exists(meta_path):
+        logger.error("character_meta.json not found in %s", char_dir)
+        return {}, []
+
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    angles = ["0", "45", "90", "135", "180"]
+    action_list = actions or ANIMATION_PRIORITY_SEQUENCE
+
+    base_ready = {}
+    for ang in angles:
+        adata = meta.get(f"angle_{ang}", {})
+        has_id = bool(adata.get("media_id"))
+        is_completed = adata.get("status") in ("COMPLETED", "SUCCESSFUL") or has_id
+        file_path = os.path.join(char_dir, adata.get("file", f"angle_{ang}.png"))
+        file_ok = os.path.exists(file_path) and os.path.getsize(file_path) > 1000
+        base_ready[ang] = {
+            "ready": bool(has_id and is_completed),
+            "has_local_file": file_ok,
+            "media_id": adata.get("media_id"),
+        }
+
+    missing_tasks = []
+    matrix = {}
+
+    for act in action_list:
+        folder, label = ACTION_FOLDER_MAP.get(act, (act, act))
+        act_entry = meta.get("actions", {}).get(folder, {})
+        matrix[act] = {"label": label, "folder": folder, "angles": {}}
+
+        for ang in angles:
+            ang_data = act_entry.get(f"angle_{ang}", {})
+            vid_id = ang_data.get("media_id")
+            vid_file = ang_data.get("file", f"{folder}/{act}_{ang}.mp4")
+            vid_path = os.path.join(char_dir, vid_file)
+            has_local = os.path.exists(vid_path) and os.path.getsize(vid_path) > 1000
+            is_completed = (
+                bool(vid_id)
+                and ang_data.get("status") in ("COMPLETED", "SUCCESSFUL")
+            )
+            # If completed on Flow or physically exists
+            is_ok = is_completed or has_local
+
+            matrix[act]["angles"][ang] = {
+                "ok": is_ok,
+                "has_local": has_local,
+                "file": vid_file if has_local else None,
+                "media_id": vid_id,
+            }
+
+            if not is_ok:
+                missing_tasks.append((act, ang))
+
+    return {
+        "character_key": character_key,
+        "project_id": meta.get("project_id"),
+        "base_angles": base_ready,
+        "matrix": matrix,
+    }, missing_tasks
+
+
+def print_status_report(report: dict, pending_tasks: list[tuple[str, str]]):
+    angles = ["0", "45", "90", "135", "180"]
+    print("\n" + "=" * 80)
+    print(f"TIẾN ĐỘ HOẠT HÌNH: Nhân Vật [{report['character_key']}]")
+    print(f"Project ID Google Flow: {report.get('project_id')}")
+    print("-" * 80)
+    base_str = "  ".join([f"{a}°: {'[OK]' if report['base_angles'].get(a, {}).get('ready') else '[THIẾU]'}" for a in angles])
+    print(f"5 Ảnh Mốc Cơ Bản: {base_str}")
+    print("-" * 80)
+    print(f"{'Hành Động (Action)':<22} | {'0°':<5} | {'45°':<5} | {'90°':<5} | {'135°':<5} | {'180°':<5} | Tiến Độ")
+    print("-" * 80)
+
+    for act, data in report["matrix"].items():
+        label = data["label"]
+        statuses = []
+        done_count = 0
+        for ang in angles:
+            ok = data["angles"][ang]["ok"]
+            if ok:
+                done_count += 1
+                statuses.append(" OK  ")
+            else:
+                statuses.append(" --- ")
+        prog = f"{done_count}/5 ({done_count * 20}%)"
+        print(f"{label:<22} | " + " | ".join(statuses) + f" | {prog}")
+
+    print("=" * 80)
+    print(f"-> Tổng animation còn thiếu: {len(pending_tasks)} video 4s loop")
+    if pending_tasks:
+        print("-> Trình tự ưu tiên cần tạo tiếp:")
+        for idx, (act, ang) in enumerate(pending_tasks[:8], 1):
+            folder, label = ACTION_FOLDER_MAP.get(act, (act, act))
+            print(f"   [{idx}] {label} ({act}) góc {ang}°")
+        if len(pending_tasks) > 8:
+            print(f"   ... và {len(pending_tasks) - 8} task tiếp theo.")
+    else:
+        print("-> CHÚC MỪNG: Tất cả hoạt ảnh animation trong pipeline đều đã HOÀN THÀNH 100%!")
+    print("=" * 80 + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate seamless action loops for characters.")
     parser.add_argument("--character", required=True, help="Character key (e.g. diep-thanh-lam)")
-    parser.add_argument("--action", default=None, help="Action name: idle, walk, run, attack, defend")
-    parser.add_argument("--angle", default=None, help="Angle: 0, 45, 90, 135, 180 (or comma-separated e.g. 0,45,90)")
+    parser.add_argument("--action", default=None, help="Action name: idle, walk, run, wave, bow, etc.")
+    parser.add_argument("--angle", default=None, help="Angle: 0, 45, 90, 135, 180 (or comma-separated)")
+    parser.add_argument("--status", action="store_true", help="Inspect character_meta.json and show progress report")
+    parser.add_argument("--resume", action="store_true", help="Auto-read character_meta.json & plan, generate missing in priority order")
+    parser.add_argument("--limit", type=int, default=0, help="Limit number of missing animation tasks to run (0 = all)")
     parser.add_argument("--all", action="store_true", help="Generate all actions for all angles")
     parser.add_argument("--force", action="store_true", help="Force re-generation and overwrite existing videos")
     parser.add_argument("--concurrency", type=int, default=6, help="Number of concurrent generations (default: 6)")
     args = parser.parse_args()
 
-    all_actions = ["idle", "walk", "run", "attack", "defend"]
     all_angles = ["0", "45", "90", "135", "180"]
 
+    if args.status:
+        report, pending = inspect_character_pipeline(args.character)
+        print_status_report(report, pending)
+        return
+
+    if args.resume:
+        report, pending = inspect_character_pipeline(args.character)
+        print_status_report(report, pending)
+        if not pending:
+            logger.info("Nothing to resume! All animations completed for %s.", args.character)
+            return
+
+        tasks = pending
+        if args.limit > 0:
+            tasks = tasks[:args.limit]
+            logger.info("Applying --limit %d: Running %d missing tasks in priority order.", args.limit, len(tasks))
+        else:
+            logger.info("Resuming %d missing tasks in strict priority order for %s...", len(tasks), args.character)
+
+        asyncio.run(run_batch(args.character, tasks, concurrency=args.concurrency, force=args.force))
+        return
+
     if args.all:
-        tasks = []
-        for act in all_actions:
-            for ang in all_angles:
-                tasks.append((act, ang))
+        tasks = [(act, ang) for act in ANIMATION_PRIORITY_SEQUENCE for ang in all_angles]
         logger.info("Queued ALL %d action-angle combinations for %s (concurrency: %d, force: %s)", len(tasks), args.character, args.concurrency, args.force)
         asyncio.run(run_batch(args.character, tasks, concurrency=args.concurrency, force=args.force))
     elif args.action:
@@ -314,9 +467,13 @@ def main():
             logger.info("Queued %d tasks (actions=%s, angles=%s, concurrency: %d, force: %s)", len(tasks), acts, angs, args.concurrency, args.force)
             asyncio.run(run_batch(args.character, tasks, concurrency=args.concurrency, force=args.force))
     else:
-        parser.print_help()
+        # Default: show status and guide
+        report, pending = inspect_character_pipeline(args.character)
+        print_status_report(report, pending)
+        print("Gợi ý: Dùng --resume để tự động tạo tiếp các animation còn thiếu theo đúng thứ tự ưu tiên!")
 
 
 if __name__ == "__main__":
     main()
+
 

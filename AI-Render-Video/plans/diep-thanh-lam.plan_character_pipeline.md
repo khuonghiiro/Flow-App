@@ -57,12 +57,40 @@ character:
 | **135°** | `3ffa0744-297e-4c5f-96be-2aee38ae7d8c` | [angle_135.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_135.png) | **Hoàn Thành** | Dual-Ref Mannequin Nữ 135° (Thân xoay 8h, chân trái nghiêng 9h, nơ lệch 45°) |
 | **180°** | `636a69fb-00ea-4e42-b488-0fa7e9f6d44d` | [angle_180.png](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/angle_180.png) | **Hoàn Thành** | Dual-Ref Mannequin Nữ 180° (Symmetrical Rear View) |
 
-## 5. Registry Hoạt Ảnh Động Tác (Action Videos Seamless Loop 1.3s - 2.0s)
+## 5. Registry Hoạt Ảnh Động Tác (Action Videos Seamless Loop)
+
+### Tiến Độ Tổng Quan Đối Ứng Với `character_meta.json`:
+- **5 Ảnh Mốc Cơ Bản**: 0° [OK], 45° [OK], 90° [OK], 135° [OK], 180° [OK] (100%)
+- **Đứng Yên (`idle`)**: 5/5 góc [Hoàn Thành 100%]
+- **Đi Bộ (`walk`)**: 2/5 góc [45°, 135° OK] — Còn thiếu: 0°, 90°, 180°
+- **Chạy (`run`)**: 2/5 góc [45°, 135° OK] — Còn thiếu: 0°, 90°, 180°
+- **Đánh Công (`attack`)**: 3/5 góc [0°, 90°, 180° OK] — Còn thiếu: 45°, 135°
+- **Nhóm Diễn Xuất Hoạt Hình (Tier 2 Acting)**: `wave`, `bow`, `cover_mouth_laugh`, `talking`, `nod`, `think` — [Đang chờ tạo bù theo thứ tự ưu tiên]
+- **Nhóm Cảm Xúc & Combat Còn Lại (Tier 3 & 4)**: `surprise`, `cheer`, `sad`, `angry`, `defend`, `hurt` — [Đang chờ tạo bù]
 
 | Động Tác | Góc | Media ID (Flow) | Video MP4 | Thông Số | Trạng Thái |
 |---|---|---|---|---|---|
-| **Đứng Yên (Loop Chuẩn 2.0s)** | 0° | `81eac10f-773a-4e0c-8088-a5f54e51bc85` | [idle_0.mp4](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0.mp4) | 720x1280, **2.00s**, 858 KB | **Hoàn Thành** (Tay buông xuôi cố định 100%, ngực thở nhẹ, gió nhẹ nhàng, không sinh trang sức ở tóc) |
-| **Đứng Yên (Loop Nhanh 1.6s)** | 0° | `81eac10f-773a-4e0c-8088-a5f54e51bc85` | [idle_0_1.6s.mp4](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0_1.6s.mp4) | 720x1280, **1.60s**, 790 KB | **Hoàn Thành** (Chu kỳ nhịp 1.6s nhanh gọn mượt mà cho Sprite 2D) |
-| **Đứng Yên (Bản gốc 4.0s)** | 0° | `81eac10f-773a-4e0c-8088-a5f54e51bc85` | [idle_0_4s.mp4](file:///e:/UngDung_PC/Flow-App/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0_4s.mp4) | 720x1280, 4.00s, 1.01 MB | **Lưu trữ gốc** |
+| **Đứng Yên** | 0° | `a605fef8-8cfc-4ebf-8701-4ba120e66d7e` | [idle_0.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_0.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đứng Yên** | 45° | `f354384a-563f-4808-a06f-d61a624efd9a` | [idle_45.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_45.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đứng Yên** | 90° | `8819674d-10ed-4371-ae0a-74ff2fe9524e` | [idle_90.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_90.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đứng Yên** | 135° | `666d1700-ff30-456e-aeb6-e0bb6b4560f7` | [idle_135.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_135.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đứng Yên** | 180° | `dea10d52-8055-47c6-a5b9-7db305e4f2ab` | [idle_180.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/dung-yen/idle_180.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đi Bộ** | 45° | `d6db6716-34e9-4a06-9220-2adaa01a0c6c` | [walk_45.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/di-bo/walk_45.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đi Bộ** | 135° | `a798bd89-94ea-4f7f-a831-b6597c28838e` | [walk_135.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/di-bo/walk_135.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Chạy** | 45° | `ed5a260b-f956-4bcc-a4fa-6f7b013cb42d` | [run_45.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/chay/run_45.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Chạy** | 135° | `d4dcfeef-d95c-4323-8c9c-67a07b8302f2` | [run_135.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/chay/run_135.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đánh Công** | 0° | `0450cd90-a8c2-420d-8ff8-ed512270751e` | [attack_0.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/danh-cong/attack_0.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đánh Công** | 90° | `8fdb09b7-df23-41b9-bba4-ea31b014aad4` | [attack_90.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/danh-cong/attack_90.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+| **Đánh Công** | 180° | `6fa3cf32-97c7-4359-961a-26dd8480fafd` | [attack_180.mp4](file:///d:/_DuAn/App_Desktop/workflows/Flow-My/AI-Render-Video/agent-veo3/output/diep-thanh-lam/danh-cong/attack_180.mp4) | 720x1280, 4.00s | **Hoàn Thành** |
+
+### Lệnh Tạo Tiếp Bù Các Hoạt Ảnh Thiếu (Auto-Resume):
+```bash
+# Quét tiến độ
+python agent-veo3/scripts/generate_action_loop.py --character diep-thanh-lam --status
+
+# Tạo bù tự động theo đúng thứ tự ưu tiên
+python agent-veo3/scripts/generate_action_loop.py --character diep-thanh-lam --resume
+```
+
 
 

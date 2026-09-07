@@ -15,7 +15,7 @@ export const LOCOMOTION_NODES: SkillTreeNode[] = [
     tier: 1,
     x: -3868,
     y: 608,
-    parentId: 'root_master',
+    parentId: 'pillar_character',
     isHub: true,
     badge: '10 prompts',
   },

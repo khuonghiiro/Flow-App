@@ -222,20 +222,68 @@ Pha 2B (Sau khi 180° chốt):
 
 ---
 
-### Tầng 3: Tạo 25 Video Loop 4s Seamless
+### Tầng 3: Hệ Thống Hoạt Ảnh Diễn Xuất Hoạt Hình Mở Rộng & Trình Tự Ưu Tiên
 
 > [!CAUTION]
 > **ĐIỀU KIỆN TIÊN QUYẾT TRƯỚC KHI TẠO VIDEO:**
 > - Chỉ khi đã tuyển chọn và chốt **ĐỦ 5 ẢNH MỐC ĐẠT CHUẨN 10/10**, lúc đó mới được phép kích hoạt Tầng 3 tạo video!
-> - Tuyệt đối **KHÔNG** đưa từ khóa miêu tả phụ kiện không có thật vào prompt video.
-> - Giữ vững nhịp thở tự nhiên, tà áo và suối tóc khẽ lay động mềm mại theo gió thoảng (`tranquil delicate breeze`), hai tay buông tự nhiên hoặc thi triển động tác dứt khoát.
+> - Mọi video đều tuân thủ cơ chế **Start Frame = End Frame = Ảnh mốc góc tương ứng** (thời lượng 4s, seamless loop i2v_fl trên nền xanh `#00FF00`).
 
-```
-Bước: image_to_video (start_image = end_image = ảnh mốc tương ứng)
-Thời lượng: 4 giây
-Chế độ: 5 slots chạy song song (Sliding Window)
-Output: 25 video 1080p lưu vào 5 thư mục con: di-bo/, dung-yen/, chay/, danh-cong/, phong-thu/
-```
+#### 1. Thư Viện 16+ Hoạt Ảnh Hoạt Hình Chuẩn Diễn Xuất (Animation Acting & Emotion Catalog)
+
+Để tạo một bộ phim hoạt hình hoặc hoạt cảnh sống động, nhân vật không thể chỉ có các động tác game đối kháng đơn điệu, mà bắt buộc phải có đầy đủ các cử chỉ diễn xuất đời sống, giao tiếp và cảm xúc:
+
+| Phân Tầng | Tên Hành Động | Mã Key | Folder Output | Mô Tả Diễn Xuất Hoạt Hình Chuẩn |
+|---|---|---|---|---|
+| **Tier 1: Core Locomotion** | **Đứng Yên** | `idle` | `dung-yen/` | Thở nhẹ, tà áo rủ tự nhiên, tay cố định, không sinh trang sức tóc lạ |
+| | **Đi Bộ** | `walk` | `di-bo/` | Nhịp bước chân tự nhiên theo trọng tâm, vung tay nhẹ dưới ngực |
+| | **Chạy** | `run` | `chay/` | Nhịp chạy thể thao linh hoạt, khuỷu tay gập 90°, vạt áo bay theo đà |
+| **Tier 2: Acting & Social** | **Vẫy Tay Chào** | `wave` | `vay-tay/` | Nâng cẳng tay vẫy chào thân thiện 2 nhịp rồi thu tay về vị trí nghỉ |
+| *(Giao tiếp cốt lõi)* | **Hành Lễ Cúi Chào** | `bow` | `hanh-le/` | Chắp tay trước ngực (bao quan lễ / cúi đầu 15-20° tôn kính) rồi đứng thẳng |
+| | **Che Miệng Cười** | `cover_mouth_laugh` | `che-mieng-cuoi/` | Nâng tay áo che nụ cười e ấp/khúc khích, vai rung nhẹ vui tươi |
+| | **Nói Chuyện** | `talking` | `noi-chuyen/` | Gật đầu theo nhịp thoại, cử chỉ tay diễn thuyết tự nhiên trước ngực |
+| | **Gật Đầu Đồng Ý** | `nod` | `gat-dau/` | Hai nhịp gật đầu chậm rãi tán thành, tư thế vững chãi |
+| | **Suy Nghĩ** | `think` | `suy-nghi/` | Đưa tay lên cằm đăm chiêu, nghiêng nhẹ đầu ngẫm nghĩ rồi hạ tay |
+| **Tier 3: Emotion Reactions**| **Kinh Ngạc** | `surprise` | `kinh-ngac/` | Giật mình lùi nửa bước, hai tay nâng ngang ngực ngỡ ngàng rồi định thần |
+| *(Cảm xúc hoạt cảnh)* | **Reo Hò Ăn Mừng** | `cheer` | `reo-ho/` | Nâng nắm đấm reo vui chiến thắng, nhún nhẹ đầy phấn khởi |
+| | **Buồn Bã Thở Dài** | `sad` | `buon-ba/` | Đầu cúi thấp, vai chùng xuống thở dài ủ rũ rồi từ từ ngẩng lên |
+| | **Tức Giận Dỗi** | `angry` | `tuc-gian/` | Khoanh tay trước ngực, ngoảnh mặt hờn dỗi, chân dậm nhẹ |
+| **Tier 4: Combat & Impact** | **Đánh Công** | `attack` | `danh-cong/` | Chưởng pháp quyền cước tay không dứt khoát theo phong cách nhân vật |
+| *(Chiến đấu & Tác động)* | **Phòng Thủ** | `defend` | `phong-thu/` | Thế thủ hộ thân, nâng tay chắn đỡ linh lực vững chãi |
+| | **Trúng Đòn** | `hurt` | `trung-don/` | Giật lùi vì trúng lực đẩy, ôm ngực lảo đảo rồi hồi phục thế đứng |
+
+---
+
+#### 2. Trình Tự Ưu Tiên Sinh Hoạt Ảnh (Priority Generation Pipeline)
+
+AI Agent hoặc script bắt buộc phải tuân theo thứ tự sinh hoạt ảnh từ gốc đến ngọn:
+1. **Ưu tiên 1**: Tạo `idle` cho cả 5 góc để nghiệm thu khóa dáng và nhịp thở.
+2. **Ưu tiên 2**: Tạo bộ di chuyển cơ bản (`walk`, `run`).
+3. **Ưu tiên 3**: Tạo bộ giao tiếp & diễn xuất đời thường (`wave`, `bow`, `cover_mouth_laugh`, `talking`, `nod`, `think`).
+4. **Ưu tiên 4**: Tạo bộ cảm xúc hoạt cảnh (`surprise`, `cheer`, `sad`, `angry`).
+5. **Ưu tiên 5**: Tạo bộ chiến đấu & tương tác va chạm (`attack`, `defend`, `hurt`).
+
+---
+
+#### 3. Cơ Chế Tự Động Đối Chiếu Diff & Tiếp Tục Sinh Bù (Resume / Auto-diff)
+
+Khi kích hoạt tiến trình tạo hoạt ảnh cho nhân vật:
+1. **Đọc `character_meta.json`**: Quét toàn bộ trạng thái của 5 ảnh mốc và các video trong `meta["actions"]`.
+2. **Kiểm tra tiêu chí "Hoàn Thành (OK)"**:
+   - Mục hành động đã có `media_id` hợp lệ và `status == "COMPLETED"`.
+   - File `.mp4` vật lý tồn tại trên đĩa cứng với dung lượng hợp lệ (> 100KB).
+3. **Phát hiện thiếu sót & Xếp hàng ưu tiên**:
+   - Nếu hành động nào bị thiếu hoặc chưa đủ 5 góc $\rightarrow$ Tự động đưa vào danh sách task ưu tiên theo đúng trình tự từ Tier 1 đến Tier 4.
+4. **Tự động cập nhật hai chiều**:
+   - Sinh xong video nào $\rightarrow$ Lưu ngay vào `character_meta.json` và đồng bộ cập nhật bảng trong file plan `plans/<ten-nhan-vat>.plan_character_pipeline.md`.
+5. **Lệnh thực thi nhanh**:
+   ```bash
+   # Kiểm tra trạng thái hiện tại (đã xong gì, thiếu gì)
+   python agent-veo3/scripts/generate_action_loop.py --character <ten-nhan-vat> --status
+
+   # Tự động tiếp tục tạo nốt tất cả hành động còn thiếu theo đúng thứ tự ưu tiên
+   python agent-veo3/scripts/generate_action_loop.py --character <ten-nhan-vat> --resume
+   ```
 
 ---
 
@@ -253,11 +301,10 @@ CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
    - At 45° and 135°, stride direction MUST step strictly along the true 45-degree diagonal axis aligned with body orientation.
    - STRICTLY FORBIDDEN to crab-walk sideways. Feet remain anchored to floor plane. ZERO hopping, ZERO bouncing, ZERO floating.
 3. STRICT POSE PRESERVATION, WHISPER BREEZE & ANTI-HALLUCINATION (ALL IDLE ANGLES):
-   - KHÓA CỐ ĐỊNH DÁNG ĐỨNG GỐC 100% (POSE FROZEN): Cả hai tay, ngón tay, cẳng tay và bàn chân giữ nguyên 100% tư thế từ ảnh mốc của góc tương ứng (buông xuôi bên hông hoặc theo dáng profile). Cố định bất động tuyệt đối (100% FROZEN AND IMMOBILE), cấm vung tay, cấm nhấc tay, cấm làm động tác hay đổi thế đứng.
+   - KHÓA CỐ ĐỊNH DÁNG ĐỨNG GỐC 100% (POSE FROZEN): Cả hai tay, ngón tay, cẳng tay và bàn chân giữ nguyên 100% tư thế từ ảnh mốc của góc tương ứng. Cố định bất động tuyệt đối, cấm vung tay, cấm nhấc tay, cấm đổi thế đứng.
    - HÍT THỞ CƠ THỂ NHẸ NHÀNG (SUBTLE CHEST BREATHING): Lồng ngực phập phồng nhẹ nhàng êm ái tự nhiên, toàn bộ tư thế vai, đầu, thân người và bàn chân đứng yên vững chãi.
-   - GIÓ HIU HIU NHẸ NHÀNG (WHISPER-LIGHT BREEZE, ZERO STRONG WIND): Cơn gió thoảng cực nhẹ chỉ tạo dao động vi mô rất khẽ ở tà áo thụng và gấu váy lụa rủ xuôi theo trọng lực. CẤM GIÓ TO, cấm tà áo hay tay áo bay văng phấp phới như cánh chim.
-   - TRIỆT TIÊU TRANG SỨC ẢO TRÊN TÓC (ANTI-HAIR-ORNAMENT HALLUCINATION): Giữ nguyên suối tóc trơn mượt tự nhiên, CẤM TUYỆT ĐỐI AI tự sinh thêm tua rua, hạt ngọc, nơ hay trâm cài ở các sợi tóc hay ngọn tóc khi tóc đung đưa. Cấm vật thể lạ lơ lửng phía sau lưng hoặc đầu.
-   - CHU KỲ LẶP NHANH 1.3s - 2.0s (SPRITE 2D STANDARD): Nhịp chuyển động đứng yên lặp lại nhanh gọn trong chu kỳ 1.3s – 2.0s để cắt lát sprite mượt mà, không bị lê thê.
+   - GIÓ HIU HIU NHẸ NHÀNG (WHISPER-LIGHT BREEZE): Cơn gió thoảng cực nhẹ chỉ tạo dao động vi mô rất khẽ ở tà áo thụng và gấu váy lụa rủ xuôi theo trọng lực.
+   - TRIỆT TIÊU TRANG SỨC ẢO TRÊN TÓC: Giữ nguyên suối tóc trơn mượt tự nhiên, CẤM TUYỆT ĐỐI AI tự sinh thêm tua rua, hạt ngọc, nơ hay trâm cài ở các sợi tóc khi tóc đung đưa.
 4. UNIFORM SKIN & ZERO PROPS PRESERVATION:
    - Completely blank, smooth mannequin head MUST remain intact with uniform natural skin color matching neck and hands. STRICTLY ZERO facial expressions, ZERO mouth opening.
    - STRICTLY ZERO weapons, swords, instruments, or props. STRICTLY ZERO neon glow.
@@ -267,13 +314,10 @@ CRITICAL MOTION STABILITY CONSTRAINTS (STRICT ANTI-GLITCH LOCK):
 
 ## Phần D — Hướng Dẫn Vận Hành Quy Trình Cho AI Agent
 
-Khi người dùng ra lệnh tạo nhân vật mới:
-1. **Bước 1**: Đọc yêu cầu $\rightarrow$ Chọn/tạo phong cách tóc và đai lưng đa dạng từ Thư Viện Mục 2 & 3.
-2. **Bước 2**: Gọi API `POST /api/projects` tạo Project riêng trên Google Flow $\rightarrow$ Lưu link dự án.
-3. **Bước 3**: Tạo file plan `plans/<ten-nhan-vat>.plan_character_pipeline.md` và thư mục output vật lý.
-4. **Bước 4 (Stage 1)**: Sinh batch 3 candidates cho góc 0° $\rightarrow$ Dùng `view_file` kiểm tra trâm cài, cổ áo, mặt trơn $\rightarrow$ Chọn Best Pick đạt 10/10 (hoặc retry nếu lỗi).
-5. **Bước 5 (Stage 2)**:
-   - Pha 2A: Sinh batch 3 candidates cho 45° (xoay theo tay phải) và 180° (đai phẳng cấm nơ) $\rightarrow$ Tuyển chọn Best Pick.
-   - Pha 2B: Sinh batch 3 candidates cho 90° (vai xa che khuất) và 135° $\rightarrow$ Tuyển chọn Best Pick.
-6. **Bước 6 (Stage 3)**: Sinh 25 video 4s loop qua sliding window 5 slots $\rightarrow$ Tải về các folder `di-bo/`, `dung-yen/`, `chay/`, `danh-cong/`, `phong-thu/`.
-7. **Bước 7**: Báo cáo tổng kết đầy đủ với link kiểm tra từng file.
+Khi người dùng ra lệnh tạo hoặc bổ sung hoạt ảnh nhân vật:
+1. **Bước 1**: Đọc `character_meta.json` và file plan của nhân vật để nắm rõ hồ sơ và kiểm tra 5 ảnh mốc góc xoay.
+2. **Bước 2**: Chạy lệnh `--status` để quét danh sách hoạt ảnh đã hoàn thành và danh sách còn thiếu.
+3. **Bước 3**: Chạy lệnh `--resume` (hoặc chỉ định hành động cụ thể) để sinh bù theo đúng trình tự ưu tiên (Đứng yên $\rightarrow$ Đi bộ $\rightarrow$ Chạy $\rightarrow$ Vẫy tay $\rightarrow$ Cúi chào $\rightarrow$ Che miệng cười $\rightarrow$ Nói chuyện...).
+4. **Bước 4**: Tự động cập nhật `character_meta.json` và cập nhật bảng registry trong file plan tương ứng của nhân vật.
+5. **Bước 5**: Báo cáo tổng kết với bảng tiến độ rõ ràng từng góc và từng phân tầng hoạt ảnh.
+
