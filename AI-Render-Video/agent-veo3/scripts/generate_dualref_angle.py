@@ -146,20 +146,24 @@ def run_angle_batch(character_key: str, project_id: str, angle: str, character_m
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--character", default="so-tieu-dao")
-    parser.add_argument("--project-id", default="f4262993-3551-4382-8d5f-328b2e10a6d4")
+    parser.add_argument("--character", required=True)
+    parser.add_argument("--project-id", default=None)
     parser.add_argument("--angle", required=True)
-    parser.add_argument("--refs", nargs="+", required=True)
+    parser.add_argument("--refs", nargs="*", default=None)
     parser.add_argument("--count", type=int, default=2)
     args = parser.parse_args()
+
+    meta_file = OUTPUT_BASE / args.character / "character_meta.json"
+    mannequin_file = OUTPUT_BASE / args.character / "mannequin_refs.json"
+    project_id = args.project_id
 
     customizer = {
         "characterName": "Sở Tiêu Dao (Chu Xiaoyao)",
         "style": "2D Xianxia/Fantasy manhwa anime chibi sprite, bold clean linework, flat cel-shaded coloring, mature 4.8-5.0 heads ratio",
         "gender": "male",
         "age": "young adult (20-22)",
-        "hairStyleColor": "Long silky natural black hair flowing loosely in soft rogue locks, loosely tied back at nape with a simple cloth ribbon, face-framing sidelocks draping past chin, natural fringe bangs",
-        "outfitDescription": "Two-layer rogue martial artist daoist robe: inner layer unbleached ivory white cross-collar robe, outer layer muted slate-cyan and deep indigo linen robe with subtle cloudy patterns, layered wide cloth sash with a rustic braided rope belt tied simply at waist, flat cloth martial boots with zero heels",
+        "hairStyleColor": "Long silky natural black hair flowing loosely in soft rogue locks",
+        "outfitDescription": "Two-layer rogue martial artist daoist robe",
         "primaryColor": "Muted Slate Cyan & Deep Indigo Linen",
         "accentColor": "Natural Flaxen Ivory & Charcoal Gray",
         "skinTone": "Fair warm ivory natural skin tone seamlessly matching neck and hands",
@@ -169,4 +173,55 @@ if __name__ == "__main__":
         "waistRearMotionLock": "strictly continuous flat belt band behind back, ZERO bow, ZERO ribbon knot",
     }
 
-    run_angle_batch(args.character, args.project_id, args.angle, args.refs, customizer, args.count)
+    if meta_file.exists():
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        if not project_id:
+            project_id = meta.get("project_id")
+        profile = meta.get("profile", {})
+        gender = meta.get("gender", "male")
+        is_male = (gender.lower() == "male")
+        rear_belt = (
+            "strictly continuous flat belt band behind back, ZERO bow, ZERO ribbon knot"
+            if is_male else
+            "delicate silk ribbon sash draping calmly downward without flapping under natural gravity"
+        )
+        customizer = {
+            "characterName": meta.get("name", "Character"),
+            "style": profile.get("style", customizer["style"]),
+            "gender": gender,
+            "age": meta.get("age", profile.get("age", "young adult (20-22)")),
+            "hairStyleColor": profile.get("hair", ""),
+            "outfitDescription": profile.get("outfit", ""),
+            "primaryColor": profile.get("primary_color", ""),
+            "accentColor": profile.get("accent_color", ""),
+            "skinTone": profile.get("skin", "Fair warm ivory natural healthy skin tone"),
+            "weaponType": "None (empty hands, pure martial arts)",
+            "spellElement": profile.get("combat_style", ""),
+            "chromaBgHex": profile.get("chroma_bg", "#00FF00"),
+            "waistRearMotionLock": rear_belt,
+        }
+
+    refs = args.refs
+    if not refs:
+        mannequin_refs = {}
+        if mannequin_file.exists():
+            with open(mannequin_file, "r", encoding="utf-8") as f:
+                mannequin_refs = json.load(f)
+
+        m_id = mannequin_refs.get(args.angle)
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        id_0 = meta.get("angle_0", {}).get("media_id")
+        id_180 = meta.get("angle_180", {}).get("media_id")
+
+        if args.angle == "135":
+            # 135° rule: mannequin_135 FIRST, then angle_180
+            refs = [m_id, id_180]
+        else:
+            refs = [id_0, m_id]
+
+    if not project_id:
+        raise ValueError("Project ID not found. Specify --project-id or set in character_meta.json")
+
+    run_angle_batch(args.character, project_id, args.angle, refs, customizer, args.count)

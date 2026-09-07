@@ -547,21 +547,15 @@ function keepAlive() {
 }
 
 function sendToAgent(msg) {
-  // API responses (with msg.id) go via HTTP — immune to WS disconnect
+  if (ws?.readyState === WebSocket.OPEN) {
+    try { ws.send(JSON.stringify(msg)); } catch (e) {}
+  }
   if (msg.id) {
     fetch('http://127.0.0.1:8100/api/ext/callback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(msg),
-    }).catch(() => {
-      // HTTP failed — fallback to WS
-      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
-    });
-    return;
-  }
-  // Non-response messages (ping, status) or no secret yet — use WS
-  if (ws?.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(msg));
+    }).catch(() => {});
   }
 }
 

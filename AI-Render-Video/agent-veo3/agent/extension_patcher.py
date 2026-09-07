@@ -33,6 +33,8 @@ def patch_models_and_config():
         return
 
     try:
+        from agent.flowkit_loader import bootstrap_flowkit
+        bootstrap_flowkit()
         from agent import config
         with open(_MODELS_EXT_FILE, encoding="utf-8") as f:
             ext_data = json.load(f)
@@ -47,6 +49,8 @@ def patch_models_and_config():
 def patch_flow_client():
     """Enrich FlowClient with duration, crop coordinates, and browser actions."""
     try:
+        from agent.flowkit_loader import bootstrap_flowkit
+        bootstrap_flowkit()
         from agent.services.flow_client import FlowClient
         from agent.services.flow_client_helpers import (
             get_crop_coordinates,
@@ -65,18 +69,24 @@ def patch_flow_client():
             aspect_ratio: str = "VIDEO_ASPECT_RATIO_PORTRAIT",
             end_image_media_id: str = None,
             user_paygate_tier: str = "PAYGATE_TIER_TWO",
-            duration: Optional[float] = None,
+            duration: Optional[float] = 4.0,
             crop_coordinates: Optional[dict] = None,
         ) -> dict:
             gen_type = "start_end_frame_2_video" if end_image_media_id else "frame_2_video"
             model_key = resolve_video_model_key(
                 config.VIDEO_MODELS, user_paygate_tier, gen_type, aspect_ratio, duration
             )
+            # Guarantee lite low-priority model to prevent spending tokens/credits
             if not model_key:
-                return await orig_generate_video(
-                    self, start_image_media_id, prompt, project_id, scene_id,
-                    aspect_ratio, end_image_media_id, user_paygate_tier
-                )
+                if gen_type == "start_end_frame_2_video":
+                    model_key = "veo_3_1_i2v_s_lite_4s_fl_low_priority"
+                else:
+                    model_key = "veo_3_1_i2v_lite_low_priority"
+
+            logger.info(
+                "[VEO3 VIDEO DISPATCH] gen_type=%s model_key=%s duration=%s tier=%s end_frame=%s",
+                gen_type, model_key, duration, user_paygate_tier, bool(end_image_media_id)
+            )
 
             import time
             import uuid
