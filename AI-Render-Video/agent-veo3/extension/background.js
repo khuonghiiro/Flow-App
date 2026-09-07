@@ -263,7 +263,8 @@ if (chrome.runtime?.onConnect) {
             target = act[0]?.id;
           }
           if (target && url) {
-            await chrome.tabs.update(target, { url, active: true });
+            const shouldActivate = msg.params?.active === true;
+            await chrome.tabs.update(target, { url, ...(shouldActivate ? { active: true } : {}) });
             sendToAgent({ id: msg.id, result: { updated: true, tabId: target, url } });
           } else {
             sendToAgent({ id: msg.id, error: 'NO_TARGET_OR_URL' });
@@ -351,6 +352,15 @@ if (chrome.runtime?.onConnect) {
               func: (mode) => {
                 try {
                   const html = document.documentElement.innerHTML || '';
+                  if (mode === 'open_project') {
+                    const match = Array.from(document.querySelectorAll('*')).find(e => e.children.length === 0 && ((e.innerText || '').includes('Mở dự án') || (e.innerText || '').includes('Dự án')));
+                    if (match) {
+                      const clickable = match.closest('button, a, [role="button"], div[tabindex]') || match;
+                      clickable.click();
+                      return { success: true, text: match.innerText.trim(), tag: clickable.tagName };
+                    }
+                    return { success: false, error: 'Project element not found' };
+                  }
                   if (mode === 'open_video') {
                     const cards = Array.from(document.querySelectorAll('button, [role="button"], div')).filter(el => {
                       const t = el.innerText || '';
@@ -656,6 +666,81 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
   return { error: 'NO_CAPTCHA_LISTENER' };
 }
 
+async function ensureProjectTab() {
+  try {
+    let tabs = await chrome.tabs.query({
+      url: [
+        'https://flow.google.com/*',
+        'https://labs.google/fx/tools/flow*',
+        'https://labs.google/fx/*',
+        'https://labs.google/*',
+      ],
+    });
+    tabs = tabs.filter(
+      (t) =>
+        t.url &&
+        !t.url.startsWith('chrome://') &&
+        !t.url.startsWith('chrome-extension://') &&
+        !t.url.includes('/about'),
+    );
+
+    // 1. Existing project tab? Return immediately
+    const projectTab = tabs.find((t) => t.url && t.url.includes('/project/'));
+    if (projectTab) return projectTab;
+
+    // 2. Flow homepage tab exists? Click "Dự án mới" silently in background
+    const flowTab = tabs[0];
+    if (flowTab) {
+      await chrome.scripting.executeScript({
+        target: { tabId: flowTab.id },
+        func: () => {
+          const match = Array.from(document.querySelectorAll('*')).find(
+            (e) =>
+              e.children.length === 0 &&
+              ((e.innerText || '').includes('Mở dự án') ||
+                (e.innerText || '').includes('Dự án mới') ||
+                (e.innerText || '').includes('Dự án')),
+          );
+          if (match) {
+            const clickable = match.closest('button, a, [role="button"], div[tabindex]') || match;
+            clickable.click();
+          }
+        },
+      }).catch(() => {});
+      await sleep(2500);
+      const updated = await chrome.tabs.get(flowTab.id).catch(() => null);
+      if (updated) return updated;
+    }
+
+    // 3. No Flow tab at all -> open in BACKGROUND (active: false)
+    console.log('[FlowAgent] Opening background Flow tab (no focus steal)...');
+    const newTab = await chrome.tabs.create({ url: 'https://flow.google.com/', active: false });
+    await sleep(4000);
+    await chrome.scripting.executeScript({
+      target: { tabId: newTab.id },
+      func: () => {
+        const match = Array.from(document.querySelectorAll('*')).find(
+          (e) =>
+            e.children.length === 0 &&
+            ((e.innerText || '').includes('Mở dự án') ||
+              (e.innerText || '').includes('Dự án mới') ||
+              (e.innerText || '').includes('Dự án')),
+        );
+        if (match) {
+          const clickable = match.closest('button, a, [role="button"], div[tabindex]') || match;
+          clickable.click();
+        }
+      },
+    }).catch(() => {});
+    await sleep(2000);
+    const finalTab = await chrome.tabs.get(newTab.id).catch(() => newTab);
+    return finalTab;
+  } catch (e) {
+    console.warn('[FlowAgent] ensureProjectTab failed:', e);
+    return null;
+  }
+}
+
 async function solveCaptcha(requestId, captchaAction) {
   let tabs = await chrome.tabs.query({
     url: [
@@ -675,19 +760,11 @@ async function solveCaptcha(requestId, captchaAction) {
       !t.url.includes('/about'),
   );
 
-  // Candidate order:
-  // 1. Active tab (crucial when user switches account in active tab)
-  // 2. Project tabs
-  // 3. Other Flow tabs
+  // Candidate order: Project tabs FIRST, then others (all checked SILENTLY in background)
   const candidateTabs = [];
-  const activeTab = tabs.find((t) => t.active);
-  if (activeTab) candidateTabs.push(activeTab);
-
   for (const t of tabs) {
-    if (!candidateTabs.some((c) => c.id === t.id)) {
-      if (t.url && t.url.includes('/project/')) {
-        candidateTabs.push(t);
-      }
+    if (t.url && t.url.includes('/project/')) {
+      candidateTabs.push(t);
     }
   }
   for (const t of tabs) {
@@ -696,7 +773,7 @@ async function solveCaptcha(requestId, captchaAction) {
     }
   }
 
-  // Try candidate tabs silently without stealing OS focus
+  // Try candidate tabs silently in background without stealing OS focus
   for (const tab of candidateTabs) {
     try {
       const resp = await Promise.race([
@@ -711,17 +788,18 @@ async function solveCaptcha(requestId, captchaAction) {
     }
   }
 
-  // Fallback: Auto-open Flow tab and solve
+  // Fallback: Ensure a project tab exists in background and solve
   try {
-    console.log('[FlowAgent] Opening fallback Flow tab to solve captcha...');
-    const newTab = await chrome.tabs.create({ url: 'https://flow.google.com/', active: true });
-    await sleep(4000);
-    const resp = await Promise.race([
-      requestCaptchaFromTab(newTab.id, requestId, captchaAction),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
-    ]);
-    if (resp && resp.token) return resp;
-    return resp;
+    const projTab = await ensureProjectTab();
+    if (projTab) {
+      const resp = await Promise.race([
+        requestCaptchaFromTab(projTab.id, requestId, captchaAction),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 25000)),
+      ]);
+      if (resp && resp.token) return resp;
+      return resp;
+    }
+    return { error: 'NO_FLOW_TAB' };
   } catch (e) {
     return { error: e.message || 'NO_FLOW_TAB' };
   }

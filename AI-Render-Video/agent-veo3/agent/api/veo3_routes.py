@@ -26,11 +26,19 @@ flow_veo3_router = APIRouter(prefix="/flow", tags=["flow_extensions"])
 requests_veo3_router = APIRouter(prefix="/requests", tags=["requests_extensions"])
 
 
+class EnhancedGenerateImageRequest(BaseModel):
+    prompt: str
+    project_id: Optional[str] = ""
+    aspect_ratio: str = "IMAGE_ASPECT_RATIO_PORTRAIT"
+    user_paygate_tier: str = "PAYGATE_TIER_ONE"
+    character_media_ids: Optional[list[str]] = None
+
+
 class EnhancedGenerateVideoRequest(BaseModel):
     start_image_media_id: str
     prompt: str
-    project_id: str
-    scene_id: str
+    project_id: str = ""
+    scene_id: str = ""
     aspect_ratio: str = "VIDEO_ASPECT_RATIO_PORTRAIT"
     end_image_media_id: Optional[str] = None
     user_paygate_tier: str = "PAYGATE_TIER_ONE"
@@ -43,8 +51,8 @@ class EnhancedGenerateVideoRequest(BaseModel):
 class EnhancedGenerateVideoRefsRequest(BaseModel):
     reference_media_ids: list[str]
     prompt: str
-    project_id: str
-    scene_id: str
+    project_id: str = ""
+    scene_id: str = ""
     aspect_ratio: str = "VIDEO_ASPECT_RATIO_PORTRAIT"
     user_paygate_tier: str = "PAYGATE_TIER_ONE"
     model_family: Literal["veo", "omni_flash"] = "veo"
@@ -57,7 +65,37 @@ class StartPipelineRequest(BaseModel):
     actions: Optional[list[str]] = None
 
 
-# ─── Enhanced Video Generation Endpoints ──────────────────────────────
+async def _get_or_detect_project_id(client, project_id: str = "") -> str:
+    """Return explicit project_id or detect active project from extension tabs."""
+    if project_id:
+        return project_id
+    try:
+        details = await client._send("get_status", {}, timeout=5)
+        for t in details.get("tabs", []):
+            u = t.get("url", "")
+            if "/project/" in u:
+                return u.split("/project/")[1].split("/")[0].split("?")[0]
+    except Exception:
+        pass
+    return project_id
+
+
+# ─── Enhanced Generation Endpoints ────────────────────────────────────
+
+@flow_veo3_router.post("/generate-image")
+async def generate_image_enhanced(body: EnhancedGenerateImageRequest):
+    """Generate image with automatic project detection and fallback."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    pid = await _get_or_detect_project_id(client, body.project_id or "")
+    payload = body.model_dump()
+    payload["project_id"] = pid
+    result = await client.generate_images(**payload)
+    if result.get("error") or (isinstance(result.get("status"), int) and result["status"] >= 400):
+        raise HTTPException(result.get("status", 502), result.get("error", result.get("data")))
+    return result.get("data", result)
+
 
 @flow_veo3_router.post("/generate-video")
 async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
@@ -65,6 +103,8 @@ async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
     client = get_flow_client()
     if not client.connected:
         raise HTTPException(503, "Extension not connected")
+
+    body.project_id = await _get_or_detect_project_id(client, body.project_id)
 
     if body.model_family == "omni_flash":
         from agent.services.omni_flash import (
@@ -116,7 +156,7 @@ async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
 
     req_id = result.get("_req_id", "")
     data = result.get("data", result)
-    if req_id and body.model_family != "omni_flash":
+    if body.model_family != "omni_flash":
         asyncio.create_task(bg_poll_and_notify_video(client, data, req_id, body.project_id))
     return data
 
@@ -127,6 +167,8 @@ async def generate_video_refs_enhanced(body: EnhancedGenerateVideoRefsRequest):
     client = get_flow_client()
     if not client.connected:
         raise HTTPException(503, "Extension not connected")
+
+    body.project_id = await _get_or_detect_project_id(client, body.project_id)
 
     result = await client.generate_video_from_references(
         reference_media_ids=body.reference_media_ids,
@@ -142,7 +184,7 @@ async def generate_video_refs_enhanced(body: EnhancedGenerateVideoRefsRequest):
 
     req_id = result.get("_req_id", "")
     data = result.get("data", result)
-    if req_id and body.model_family != "omni_flash":
+    if body.model_family != "omni_flash":
         asyncio.create_task(bg_poll_and_notify_video(client, data, req_id, body.project_id))
     return data
 
@@ -312,44 +354,49 @@ async def cancel_all_requests():
     return {"status": "ok", "cancelled": cancelled}
 
 
-# ─── Background Video Poller Helper ──────────────────────────────────
-
-async def bg_poll_and_notify_video(client, data: dict, req_id: str, project_id: str):
+async def bg_poll_and_notify_video(client, data: dict, req_id: str = "", project_id: str = ""):
     """Poll video status in background and notify extension UI of completion."""
     from agent.config import VIDEO_POLL_INTERVAL
+    from agent.services.omni_flash import _fetch_media_url
 
-    poll_items = []
-    for op in data.get("operations", []):
-        poll_items.append(op)
-    for m in data.get("media", []):
-        name = m.get("name", "")
-        if name:
-            poll_items.append({"name": name, "projectId": project_id})
+    # 1. Identify primary media ID and workflows
+    workflows = data.get("workflows", [])
+    primary_mid = ""
+    wf_name = ""
+    if workflows and isinstance(workflows, list):
+        wf0 = workflows[0]
+        meta = wf0.get("metadata", {})
+        primary_mid = meta.get("primaryMediaId") or wf0.get("primaryMediaId", "")
+        wf_name = wf0.get("name", "")
 
-    if not poll_items:
+    if not primary_mid:
+        media = data.get("media", [])
+        if media and isinstance(media, list):
+            primary_mid = media[0].get("name", "")
+
+    if not primary_mid:
         return
+
+    pid = project_id
+    if not pid and workflows:
+        pid = workflows[0].get("projectId", "")
 
     for _ in range(60):  # max ~10 min
         await asyncio.sleep(VIDEO_POLL_INTERVAL)
         try:
-            status_res = await client.check_video_status(poll_items)
-            if not status_res or status_res.get("error"):
-                continue
-            sdata = status_res.get("data", status_res)
-
-            for op in sdata.get("operations", []):
-                st = op.get("status", "")
-                if st in ("MEDIA_GENERATION_STATUS_SUCCESSFUL", "SUCCESSFUL"):
-                    vid = op.get("operation", {}).get("metadata", {}).get("video", {})
-                    mid = vid.get("mediaId", "")
-                    url = vid.get("fifeUrl", "")
+            # Check if video is ready via authenticated redirect
+            url_res = await _fetch_media_url(client, primary_mid)
+            if url_res and not url_res.get("error"):
+                v_data = url_res.get("data", {})
+                v_url = v_data.get("url", "")
+                if v_url:
+                    logger.info("BG video poll complete: %s (url=%s)", primary_mid[:8], v_url[:50])
                     if hasattr(client, "notify_request_status"):
-                        await client.notify_request_status(req_id=req_id, media_id=mid, status="COMPLETED", output_url=url)
-                    return
-                elif st in ("MEDIA_GENERATION_STATUS_FAILED", "FAILED"):
-                    mid = op.get("operation", {}).get("metadata", {}).get("video", {}).get("mediaId", "")
-                    if hasattr(client, "notify_request_status"):
-                        await client.notify_request_status(req_id=req_id, media_id=mid, status="FAILED")
+                        await client.notify_request_status(
+                            req_id=req_id, media_id=primary_mid, status="COMPLETED", output_url=v_url
+                        )
                     return
         except Exception as exc:
-            logger.debug("Background poll exception: %s", exc)
+            logger.debug("Background poll check error: %s", exc)
+
+    logger.warning("Background poll timed out for video %s", primary_mid[:8])

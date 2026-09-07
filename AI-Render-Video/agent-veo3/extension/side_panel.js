@@ -141,14 +141,8 @@ function updateRequestLog(entries) {
 
     const isAsync = ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(entry.type);
     let badgeHtml;
-    if (status === 'COMPLETED' || (isAsync && entry.outputUrl)) {
+    if (status === 'COMPLETED' || status === 'success' || (isAsync && entry.outputUrl)) {
       badgeHtml = '<span class="badge badge-ok">&#10003; done</span>';
-    } else if (status === 'success') {
-      if (isAsync) {
-        badgeHtml = '<span class="badge badge-proc">&#9203; queued</span>';
-      } else {
-        badgeHtml = '<span class="badge badge-ok">&#10003; done</span>';
-      }
     } else if (status === 'FAILED' || status === 'failed' || (typeof status === 'number' && status >= 400)) {
       badgeHtml = '<span class="badge badge-fail">&#10007; fail</span>';
     } else if (status === 'PROCESSING' || status === 'processing') {

@@ -28,6 +28,7 @@
             }
           }).catch(() => {});
         }
+      } catch {}
       try {
         const opts = args[1];
         let auth = null;

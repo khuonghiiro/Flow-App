@@ -44,12 +44,7 @@ function escHtml(str) {
 
 function badgeHtml(status, type = '', entry = null) {
   const isAsync = ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(type);
-  if (status === 'COMPLETED' || (isAsync && entry?.outputUrl)) {
-    return '<span class="badge badge-ok">&#10003; done</span>';
-  } else if (status === 'success') {
-    if (isAsync) {
-      return '<span class="badge badge-proc">&#9203; queued</span>';
-    }
+  if (status === 'COMPLETED' || status === 'success' || (isAsync && entry?.outputUrl)) {
     return '<span class="badge badge-ok">&#10003; done</span>';
   } else if (status === 'FAILED' || status === 'failed' || (typeof status === 'number' && status >= 400)) {
     return '<span class="badge badge-fail">&#10007; fail</span>';
