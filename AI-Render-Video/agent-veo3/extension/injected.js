@@ -141,7 +141,7 @@
     }
   }
 
-  function waitForGrecaptcha(timeout = 15000) {
+  function waitForGrecaptcha(timeout = 22000) {   // it loads lazily; 10s/15s was optimistic
     return new Promise((resolve, reject) => {
       const start = Date.now();
       let attemptedInject = false;

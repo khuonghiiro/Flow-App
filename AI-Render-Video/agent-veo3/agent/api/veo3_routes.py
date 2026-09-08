@@ -66,7 +66,7 @@ class StartPipelineRequest(BaseModel):
 
 
 async def _get_or_detect_project_id(client, project_id: str = "") -> str:
-    """Return explicit project_id or detect active project from extension tabs."""
+    """Return explicit project_id, detect active project from extension tabs, or fall back to pinned Flow project."""
     if project_id:
         return project_id
     try:
@@ -77,7 +77,12 @@ async def _get_or_detect_project_id(client, project_id: str = "") -> str:
                 return u.split("/project/")[1].split("/")[0].split("?")[0]
     except Exception:
         pass
-    return project_id
+    if hasattr(client, "flow_project_id"):
+        fb = client.flow_project_id()
+        if fb:
+            return str(fb)
+    from agent.config import FLOW_PROJECT_ID
+    return FLOW_PROJECT_ID or project_id
 
 
 # ─── Enhanced Generation Endpoints ────────────────────────────────────

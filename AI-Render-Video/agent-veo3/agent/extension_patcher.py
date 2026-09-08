@@ -41,19 +41,24 @@ def patch_models_and_config():
 
         ext_video_models = ext_data.get("video_models", {})
         _deep_merge_dict(config.VIDEO_MODELS, ext_video_models)
+
+        if "default_image_model" in ext_data and not hasattr(config, "DEFAULT_IMAGE_MODEL"):
+            config.DEFAULT_IMAGE_MODEL = ext_data["default_image_model"]
+
         logger.info("Successfully merged Veo3 custom models & durations into VIDEO_MODELS")
     except Exception as exc:
         logger.error("Failed to patch models & config: %s", exc)
 
 
 def patch_flow_client():
-    """Enrich FlowClient with duration, crop coordinates, and browser actions."""
+    """Enrich FlowClient with duration, crop coordinates, batch transport and browser actions."""
     try:
         from agent.flowkit_loader import bootstrap_flowkit
         bootstrap_flowkit()
         from agent.services.flow_client import FlowClient
         from agent.services.flow_client_helpers import (
             get_crop_coordinates,
+            get_batch_crop_list,
             resolve_video_model_key,
         )
         from agent import config
@@ -72,11 +77,54 @@ def patch_flow_client():
             duration: Optional[float] = 4.0,
             crop_coordinates: Optional[dict] = None,
         ) -> dict:
+            from agent.config import USE_BATCH_RPC, FLOW_ALLOW_DEGRADED
+            from agent.services import flow_batch as fb
+            from agent.services.flow_client import _as_pending_operation, _batch_error, _unsupported
+
             gen_type = "start_end_frame_2_video" if end_image_media_id else "frame_2_video"
+
+            # ─── Flow batchexecute transport (Current path on flow.google.com) ───
+            if USE_BATCH_RPC:
+                if end_image_media_id:
+                    if not FLOW_ALLOW_DEGRADED:
+                        return {"error": _unsupported(
+                            "start+end frame chaining",
+                            "the new payload's end-image slot was never captured",
+                        )}
+                    logger.warning(
+                        "Scene %s: dropping end frame %s — chaining is not on the batch path, "
+                        "running plain i2v because FLOW_ALLOW_DEGRADED=1",
+                        str(scene_id)[:12], end_image_media_id[:12],
+                    )
+
+                batch_model = self._batch_video_model(user_paygate_tier, gen_type, aspect_ratio)
+                crop_list = get_batch_crop_list(aspect_ratio, crop_coordinates)
+
+                logger.info(
+                    "[VEO3 BATCH DISPATCH] gen_type=%s model=%s aspect=%s duration=%s end_frame=%s",
+                    gen_type, batch_model, aspect_ratio, duration, bool(end_image_media_id)
+                )
+
+                try:
+                    pid = self._batch_project_id(project_id)
+                    freq = fb.video_request(
+                        prompt, pid, start_image_media_id, crop=crop_list, aspect=aspect_ratio,
+                        model=batch_model,
+                    )
+                    payload = await self._batch_payload(
+                        fb.RPC_GEN_VIDEO, freq, fb.CAPTCHA_VIDEO, timeout=120
+                    )
+                    operation = fb.read_operation(payload)
+                except Exception as e:
+                    return _batch_error(e)
+
+                self._remember_operation(operation.operation_id, pid)
+                return {"status": 200, "data": {"operations": [_as_pending_operation(operation.operation_id)]}}
+
+            # ─── Legacy REST transport fallback (pre-migration aisandbox-pa) ───
             model_key = resolve_video_model_key(
                 config.VIDEO_MODELS, user_paygate_tier, gen_type, aspect_ratio, duration
             )
-            # Guarantee lite low-priority model to prevent spending tokens/credits
             if not model_key:
                 if gen_type == "start_end_frame_2_video":
                     model_key = "veo_3_1_i2v_s_lite_4s_fl_low_priority"
@@ -84,7 +132,7 @@ def patch_flow_client():
                     model_key = "veo_3_1_i2v_lite_low_priority"
 
             logger.info(
-                "[VEO3 VIDEO DISPATCH] gen_type=%s model_key=%s duration=%s tier=%s end_frame=%s",
+                "[VEO3 LEGACY REST DISPATCH] gen_type=%s model_key=%s duration=%s tier=%s end_frame=%s",
                 gen_type, model_key, duration, user_paygate_tier, bool(end_image_media_id)
             )
 

@@ -1,7 +1,13 @@
-// Flow Kit — Chrome Extension Background Service Worker
 const AGENT_WS_URL = 'ws://127.0.0.1:9222';
 const API_KEY = 'AIzaSyBtrm0o5ab1c-Ec8ZuLcGt3oJAA5VWt3pY';
 const RECAPTCHA_SITE_KEY = '6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV';
+
+const flowUrls = [
+  'https://flow.google.com/*',
+  'https://labs.google/fx/tools/flow*',
+  'https://labs.google/fx/*/tools/flow*',
+];
+const FLOW_TAB_URL = 'https://flow.google.com/';
 
 let ws = null;
 let flowKey = null;
@@ -245,7 +251,9 @@ if (chrome.runtime?.onConnect) {
     try {
       const msg = JSON.parse(data);
 
-      if (msg.method === 'api_request') {
+      if (msg.method === 'batch_rpc') {
+        await handleBatchRpc(msg);
+      } else if (msg.method === 'api_request') {
         await handleApiRequest(msg);
       } else if (msg.method === 'trpc_request') {
         await handleTrpcRequest(msg);
@@ -323,7 +331,7 @@ if (chrome.runtime?.onConnect) {
         try {
           let target = tabId;
           if (!target) {
-            const tabs = await chrome.tabs.query({ url: ['https://flow.google.com/*', 'https://labs.google/*'] });
+            const tabs = await chrome.tabs.query({ url: flowUrls });
             target = tabs[0]?.id;
           }
           if (!target) {
@@ -349,108 +357,13 @@ if (chrome.runtime?.onConnect) {
           } else {
             const results = await chrome.scripting.executeScript({
               target: { tabId: target },
-              func: (mode) => {
-                try {
-                  const html = document.documentElement.innerHTML || '';
-                  if (mode === 'open_project') {
-                    const match = Array.from(document.querySelectorAll('*')).find(e => e.children.length === 0 && ((e.innerText || '').includes('Mở dự án') || (e.innerText || '').includes('Dự án')));
-                    if (match) {
-                      const clickable = match.closest('button, a, [role="button"], div[tabindex]') || match;
-                      clickable.click();
-                      return { success: true, text: match.innerText.trim(), tag: clickable.tagName };
-                    }
-                    return { success: false, error: 'Project element not found' };
-                  }
-                  if (mode === 'open_video') {
-                    const cards = Array.from(document.querySelectorAll('button, [role="button"], div')).filter(el => {
-                      const t = el.innerText || '';
-                      return t.includes('play_circle') && !t.includes('play_circle\n');
-                    });
-                    const targetCards = cards.length ? cards : Array.from(document.querySelectorAll('button, [role="button"], div')).filter(el => (el.innerText || '').includes('play_circle'));
-                    if (targetCards.length) {
-                      // Click innermost element
-                      const target = targetCards[targetCards.length - 1];
-                      target.click();
-                      return { success: true, clicked: target.innerText.slice(0, 60) };
-                    }
-                    return { success: false, reason: 'Card not found' };
-                  }
-                  if (mode === 'click_720p') {
-                    const item = Array.from(document.querySelectorAll('.mat-mdc-menu-item, [role="menuitem"]')).find(el => el.innerText.includes('720p'));
-                    if (item) {
-                      item.click();
-                      return { success: true, text: item.innerText.trim() };
-                    }
-                    return { success: false, error: '720p button not found' };
-                  }
-                  if (mode === 'click_download') {
-                    const dlBtn = Array.from(document.querySelectorAll('button, [role="button"], a, .mat-mdc-menu-item, [role="menuitem"]')).find(el => (el.innerText || '').includes('download') || (el.innerText || '').includes('Tải xuống') || (el.getAttribute('aria-label') || '').toLowerCase().includes('download'));
-                    if (dlBtn) {
-                      dlBtn.click();
-                      return { success: true, text: (dlBtn.innerText || dlBtn.getAttribute('aria-label') || '').trim() };
-                    }
-                    return { success: false, error: 'download button not found' };
-                  }
-                  if (mode === 'storage') {
-                    const keys = Object.keys(localStorage);
-                    const tokens = [];
-                    for (const k of keys) {
-                      const v = localStorage.getItem(k) || '';
-                      if (v.includes('ya29.') || v.includes('Bearer')) {
-                        const m = v.match(/ya29\.[a-zA-Z0-9_\-]+/);
-                        if (m) tokens.push(m[0]);
-                      }
-                    }
-                    return { success: true, keyCount: keys.length, tokens };
-                  }
-                  if (mode === 'click_more') {
-                    const hotbar = document.querySelector('flow-video-hotbar');
-                    const btn = hotbar?.querySelector('button[aria-label*="Tuỳ chọn"], button[aria-label*="More"], button[aria-label*="khác"]');
-                    if (btn) {
-                      btn.click();
-                      return { success: true };
-                    }
-                    return { success: false, error: 'button not found' };
-                  }
-                  if (mode === 'inspect_menu') {
-                    const items = Array.from(document.querySelectorAll('.mat-mdc-menu-item, [role="menuitem"], .cdk-overlay-container a, .cdk-overlay-container button')).map(el => ({
-                      tag: el.tagName,
-                      text: el.innerText.trim(),
-                      href: el.href || el.getAttribute('href'),
-                      html: el.outerHTML.slice(0, 300),
-                    }));
-                    return { success: true, count: items.length, items };
-                  }
-                  if (mode === 'buttons') {
-                    const buttons = Array.from(document.querySelectorAll('button, [role="tab"], [role="button"], a')).map(b => (b.innerText || b.textContent || b.getAttribute('aria-label') || '').trim()).filter(Boolean);
-                    return { success: true, count: buttons.length, buttons: Array.from(new Set(buttons)).slice(0, 50) };
-                  }
-                  if (mode === 'asb') {
-                    const matches = html.match(/https?:\/\/[^\s"'>]*\/asb\/[^\s"'>]*/gi) || [];
-                    return { success: true, count: matches.length, asb: Array.from(new Set(matches)) };
-                  }
-                  if (mode === 'video_tags') {
-                    const vids = Array.from(document.querySelectorAll('video, [data-video-id], [data-media-id]')).map(v => ({
-                      tag: v.tagName,
-                      src: v.src || v.currentSrc,
-                      dataset: { ...v.dataset },
-                      className: v.className,
-                    }));
-                    return { success: true, vids };
-                  }
-                  return {
-                    success: true,
-                    title: document.title,
-                    location: window.location.href,
-                    htmlLen: html.length,
-                    imgCount: document.querySelectorAll('img').length,
-                    vidCount: document.querySelectorAll('video').length,
-                  };
-                } catch (e) {
-                  return { success: false, error: e.message };
-                }
-              },
-              args: [code || ''],
+              func: () => ({
+                success: true,
+                title: document.title,
+                location: window.location.href,
+                imgCount: document.querySelectorAll('img').length,
+                vidCount: document.querySelectorAll('video').length,
+              }),
             });
             sendToAgent({ id: msg.id, result: results[0]?.result });
           }
@@ -660,142 +573,84 @@ async function requestCaptchaFromTab(tabId, requestId, pageAction) {
   return { error: 'NO_CAPTCHA_LISTENER' };
 }
 
-async function ensureProjectTab() {
-  try {
-    let tabs = await chrome.tabs.query({
-      url: [
-        'https://flow.google.com/*',
-        'https://labs.google/fx/tools/flow*',
-        'https://labs.google/fx/*',
-        'https://labs.google/*',
-      ],
-    });
-    tabs = tabs.filter(
-      (t) =>
-        t.url &&
-        !t.url.startsWith('chrome://') &&
-        !t.url.startsWith('chrome-extension://') &&
-        !t.url.includes('/about'),
-    );
 
-    // 1. Existing project tab? Return immediately
-    const projectTab = tabs.find((t) => t.url && t.url.includes('/project/'));
-    if (projectTab) return projectTab;
 
-    // 2. Flow homepage tab exists? Click "Dự án mới" silently in background
-    const flowTab = tabs[0];
-    if (flowTab) {
-      await chrome.scripting.executeScript({
-        target: { tabId: flowTab.id },
-        func: () => {
-          const match = Array.from(document.querySelectorAll('*')).find(
-            (e) =>
-              e.children.length === 0 &&
-              ((e.innerText || '').includes('Mở dự án') ||
-                (e.innerText || '').includes('Dự án mới') ||
-                (e.innerText || '').includes('Dự án')),
-          );
-          if (match) {
-            const clickable = match.closest('button, a, [role="button"], div[tabindex]') || match;
-            clickable.click();
-          }
-        },
-      }).catch(() => {});
-      await sleep(2500);
-      const updated = await chrome.tabs.get(flowTab.id).catch(() => null);
-      if (updated) return updated;
+async function reviveTabIfNeeded(tab) {
+  if (!tab) return null;
+  if (tab.discarded) {
+    try {
+      await chrome.tabs.reload(tab.id);
+      await sleep(3000);
+      return await chrome.tabs.get(tab.id);
+    } catch (e) {
+      return null;
     }
-
-    // 3. No Flow tab at all -> open in BACKGROUND (active: false)
-    console.log('[FlowAgent] Opening background Flow tab (no focus steal)...');
-    const newTab = await chrome.tabs.create({ url: 'https://flow.google.com/', active: false });
-    await sleep(4000);
-    await chrome.scripting.executeScript({
-      target: { tabId: newTab.id },
-      func: () => {
-        const match = Array.from(document.querySelectorAll('*')).find(
-          (e) =>
-            e.children.length === 0 &&
-            ((e.innerText || '').includes('Mở dự án') ||
-              (e.innerText || '').includes('Dự án mới') ||
-              (e.innerText || '').includes('Dự án')),
-        );
-        if (match) {
-          const clickable = match.closest('button, a, [role="button"], div[tabindex]') || match;
-          clickable.click();
-        }
-      },
-    }).catch(() => {});
-    await sleep(2000);
-    const finalTab = await chrome.tabs.get(newTab.id).catch(() => newTab);
-    return finalTab;
-  } catch (e) {
-    console.warn('[FlowAgent] ensureProjectTab failed:', e);
-    return null;
   }
+  return tab;
+}
+
+function captchaFromTab(tabId, requestId, captchaAction) {
+  return Promise.race([
+    requestCaptchaFromTab(tabId, requestId, captchaAction),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 30000)),
+  ]);
 }
 
 async function solveCaptcha(requestId, captchaAction) {
-  let tabs = await chrome.tabs.query({
-    url: [
-      'https://flow.google.com/*',
-      'https://labs.google/fx/tools/flow*',
-      'https://labs.google/fx/*',
-      'https://labs.google/*',
-    ],
-  });
+  let tabs = await chrome.tabs.query({ url: flowUrls });
 
-  // Filter out any chrome://, extension, or marketing /about pages
-  tabs = tabs.filter(
-    (t) =>
-      t.url &&
-      !t.url.startsWith('chrome://') &&
-      !t.url.startsWith('chrome-extension://') &&
-      !t.url.includes('/about'),
-  );
-
-  // Candidate order: Project tabs FIRST, then others (all checked SILENTLY in background)
-  const candidateTabs = [];
-  for (const t of tabs) {
-    if (t.url && t.url.includes('/project/')) {
-      candidateTabs.push(t);
-    }
-  }
-  for (const t of tabs) {
-    if (!candidateTabs.some((c) => c.id === t.id)) {
-      candidateTabs.push(t);
-    }
-  }
-
-  // Try candidate tabs silently in background without stealing OS focus
-  for (const tab of candidateTabs) {
+  // No Flow tab at all — spawn one and let it settle.
+  if (!tabs.length) {
     try {
-      const resp = await Promise.race([
-        requestCaptchaFromTab(tab.id, requestId, captchaAction),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 15000)),
-      ]);
-      if (resp && resp.token) return resp;
-      if (resp && !resp.error) return resp;
-      console.warn(`[FlowAgent] Tab ${tab.id} returned captcha error:`, resp?.error);
+      await chrome.tabs.create({ url: FLOW_TAB_URL, active: false });
+      await sleep(3000);
+      tabs = await chrome.tabs.query({ url: flowUrls });
     } catch (e) {
-      console.warn(`[FlowAgent] Captcha failed on tab ${tab.id} (${tab.url}):`, e);
+      return { error: e.message || 'NO_FLOW_TAB' };
+    }
+    if (!tabs.length) return { error: 'NO_FLOW_TAB' };
+  }
+
+  // Try each Flow tab in turn. A tab that answers "no grecaptcha" is a tab
+  // sitting on a page that never loaded it — another Flow tab may well be
+  // fine. Returning on the first one let one stale tab veto every generation.
+  const errors = [];
+  for (const candidate of tabs) {
+    const tab = await reviveTabIfNeeded(candidate);
+    if (!tab) continue;
+    try {
+      const resp = await captchaFromTab(tab.id, requestId, captchaAction);
+      if (!resp?.token) {
+        errors.push(resp?.error || 'NO_TOKEN');
+        continue;
+      }
+      return resp;
+    } catch (e) {
+      const msg = e?.message || '';
+      errors.push(msg);
+      // Tab evaporated mid-call (window closed, discarded again, navigated
+      // away). Move on to the next candidate rather than failing the job.
+      if (
+        msg.includes('No current window') ||
+        msg.includes('No tab with id') ||
+        msg.includes('Receiving end does not exist')
+      ) {
+        continue;
+      }
+      return { error: msg };
     }
   }
 
-  // Fallback: Ensure a project tab exists in background and solve
+  // Every candidate failed — last-ditch, spawn a fresh tab and try it once.
   try {
-    const projTab = await ensureProjectTab();
-    if (projTab) {
-      const resp = await Promise.race([
-        requestCaptchaFromTab(projTab.id, requestId, captchaAction),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('CAPTCHA_TIMEOUT')), 25000)),
-      ]);
-      if (resp && resp.token) return resp;
-      return resp;
-    }
-    return { error: 'NO_FLOW_TAB' };
+    await chrome.tabs.create({ url: FLOW_TAB_URL, active: false });
+    await sleep(3000);
+    const fresh = await chrome.tabs.query({ url: flowUrls });
+    const target = fresh.find((t) => !t.discarded) || fresh[0];
+    if (!target) return { error: 'NO_FLOW_TAB' };
+    return await captchaFromTab(target.id, requestId, captchaAction);
   } catch (e) {
-    return { error: e.message || 'NO_FLOW_TAB' };
+    return { error: e?.message || errors[0] || 'NO_FLOW_TAB' };
   }
 }
 
@@ -814,6 +669,136 @@ async function handleSolveCaptcha(msg) {
   chrome.storage.local.set({ metrics });
 
   sendToAgent({ id, result });
+}
+
+// ─── Page-context RPC runner (the current path) ─────────────
+//
+// Flow's frontend signs its calls with cookies and a per-page `at` token, and
+// every generate carries a single-use reCAPTCHA. None of that can be replayed
+// from the service worker, so the request has to be issued by the Flow page
+// itself: mint a fresh captcha through the grecaptcha bridge, then run the
+// batchexecute POST in the page's MAIN world, where at / f.sid / bl live.
+
+const CAPTCHA_SLOT = '__CAPTCHA__';
+const MAX_RPC_TEXT = 32000000; // the project listing alone is past 17 MB
+
+async function runBatchRpc(cmd) {
+  const tabs = await chrome.tabs.query({ url: flowUrls });
+  let candidate = tabs.find((t) => !t.discarded) || tabs[0];
+  if (!candidate) {
+    // No Flow tab — open one and give the app a moment to boot, otherwise
+    // WIZ_global_data is not on the page yet and `at` comes back empty.
+    try {
+      await chrome.tabs.create({ url: FLOW_TAB_URL, active: false });
+      await sleep(5000);
+      const fresh = await chrome.tabs.query({ url: flowUrls });
+      candidate = fresh.find((t) => !t.discarded) || fresh[0];
+    } catch (e) {
+      return { error: e?.message || 'NO_FLOW_TAB' };
+    }
+    if (!candidate) return { error: 'NO_FLOW_TAB' };
+  }
+  // Chrome discards backgrounded tabs; executeScript throws on a dead one.
+  const tab = await reviveTabIfNeeded(candidate);
+  if (!tab) return { error: 'FLOW_TAB_DISCARDED' };
+
+  let freq = cmd.freq;
+  if (cmd.captchaAction) {
+    const solved = await solveCaptcha(cmd.id, cmd.captchaAction);
+    if (!solved?.token) return { error: `CAPTCHA_FAILED: ${solved?.error || 'no token'}` };
+    freq = freq.split(CAPTCHA_SLOT).join(solved.token);
+  }
+
+  const [injected] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    world: 'MAIN',
+    args: [cmd.rpcid, freq, MAX_RPC_TEXT, cmd.match || null],
+    func: async (rpcid, freqStr, maxText, match) => {
+      const wiz = globalThis.WIZ_global_data || {};
+      const at = wiz.SNlM0e;
+      const sid = wiz.FdrFJe;
+      const bl = wiz.cfb2h;
+      if (!at) return { error: 'NO_AT_TOKEN' };
+      const reqid = Math.floor(Math.random() * 900000) + 100000;
+      const url =
+        `/_/AiSandboxAngularFrontend/data/batchexecute?rpcids=${encodeURIComponent(rpcid)}` +
+        `&f.sid=${encodeURIComponent(sid || '')}&bl=${encodeURIComponent(bl || '')}` +
+        `&hl=en-AU&_reqid=${reqid}&rt=c`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          'x-same-domain': '1',
+        },
+        body: new URLSearchParams({ 'f.req': freqStr, at }),
+      });
+      const text = await resp.text();
+      // The project listing is tens of megabytes and all we ever want from it
+      // is one entry. Cutting it down here keeps that payload inside the tab
+      // instead of pushing it through the bridge on every poll.
+      if (match) {
+        const found = text.indexOf(match);   // not `at` — that is the CSRF token above
+        return {
+          status: resp.status,
+          matched: found !== -1,
+          text: found === -1 ? '' : text.slice(found, found + 800),
+        };
+      }
+      return { status: resp.status, text: text.slice(0, maxText) };
+    },
+  });
+
+  return injected?.result || { error: 'NO_INJECTION_RESULT' };
+}
+
+async function handleBatchRpc(msg) {
+  const { id, params } = msg;
+  const { rpcid, freq, captchaAction, match } = params || {};
+  if (!rpcid || !freq) {
+    sendToAgent({ id, status: 400, error: 'INVALID_BATCH_RPC' });
+    return;
+  }
+
+  setState('running');
+  const hasCaptcha = !!captchaAction;
+  if (hasCaptcha) metrics.requestCount++;
+  // Polls and listing lookups run constantly; only the generates are worth
+  // a row in the log the popup shows.
+  const visible = hasCaptcha;
+  if (visible) {
+    addRequestLog({
+      id, type: `RPC:${rpcid}`, time: new Date().toISOString(),
+      status: 'processing', error: null, outputUrl: null, url: rpcid,
+      payloadSummary: freq.slice(0, 200),
+    });
+  }
+
+  try {
+    const out = await runBatchRpc({ id, rpcid, freq, captchaAction, match });
+    if (out.error) {
+      if (hasCaptcha) { metrics.failedCount++; metrics.lastError = out.error; }
+      if (visible) updateRequestLog(id, { status: 'failed', error: out.error });
+      sendToAgent({ id, status: 502, error: out.error });
+    } else {
+      if (hasCaptcha) { metrics.successCount++; metrics.lastError = null; }
+      if (visible) {
+        updateRequestLog(id, {
+          status: 'success', httpStatus: out.status,
+          responseSummary: (out.text || '').slice(0, 300),
+        });
+      }
+      sendToAgent({ id, status: out.status, data: out.text });
+    }
+  } catch (e) {
+    const err = e?.message || 'BATCH_RPC_FAILED';
+    if (hasCaptcha) { metrics.failedCount++; metrics.lastError = err; }
+    if (visible) updateRequestLog(id, { status: 'failed', error: err });
+    sendToAgent({ id, status: 500, error: err });
+  }
+
+  chrome.storage.local.set({ metrics });
+  setState('idle');
 }
 
 // ─── API Request Proxy ──────────────────────────────────────
@@ -1067,14 +1052,12 @@ chrome.runtime.onMessage.addListener((msg, _, reply) => {
   }
 
   if (msg.type === 'OPEN_FLOW_TAB') {
-    chrome.tabs.query({
-      url: ['https://flow.google.com/*', 'https://labs.google/fx/tools/flow*', 'https://labs.google/fx/*', 'https://labs.google/*'],
-    }).then((tabs) => {
+    chrome.tabs.query({ url: flowUrls }).then((tabs) => {
       if (tabs.length) {
         chrome.tabs.update(tabs[0].id, { active: true });
         reply({ ok: true, tabId: tabs[0].id });
       } else {
-        chrome.tabs.create({ url: 'https://flow.google.com/' })
+        chrome.tabs.create({ url: FLOW_TAB_URL })
           .then((tab) => reply({ ok: true, tabId: tab.id }))
           .catch((e) => reply({ error: e.message }));
       }

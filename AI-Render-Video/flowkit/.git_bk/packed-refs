@@ -1,7 +1,0 @@
-# pack-refs with: peeled fully-peeled sorted 
-d6513266eee8437711853d94acc8350e50dc7a55 refs/remotes/origin/claude/general-session-iGsbm
-78fa69be7160d1a8aa4aaf4aa13fd4a9a21bcf3f refs/remotes/origin/claude/general-session-qQZST
-f5ef7feea29945705dc16b0248469bd0bf7d01ba refs/remotes/origin/fix/ref-image-no-duplicate-upload
-c7fe6c11939cd2667540c74c810e90aa84c97ee8 refs/remotes/origin/fix/ref-image-retry-saves-credits
-64a23e5e79003e769365409f0e9362cc5fd480dd refs/remotes/origin/main
-64a23e5e79003e769365409f0e9362cc5fd480dd refs/tags/prod

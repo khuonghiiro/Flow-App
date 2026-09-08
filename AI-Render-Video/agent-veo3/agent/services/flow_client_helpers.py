@@ -12,6 +12,8 @@ def should_failover(result: dict) -> bool:
     return any(marker in message for marker in (
         "no_flow_key",
         "no_flow_tab",
+        "no_at_token",
+        "flow_tab_discarded",
         "no current window",
         "extension not connected",
         "extension disconnected",
@@ -97,6 +99,12 @@ def get_crop_coordinates(aspect_ratio: str, crop_coordinates: Optional[dict] = N
     if aspect_ratio == "VIDEO_ASPECT_RATIO_LANDSCAPE":
         return {"top": 0.3430232558139535, "left": 0, "bottom": 0.6569767441860466, "right": 1}
     return {"top": 0.003875968992248007, "left": 0, "bottom": 0.9961240310077519, "right": 1}
+
+
+def get_batch_crop_list(aspect_ratio: str, crop_coordinates: Optional[dict] = None) -> list:
+    """Return crop list formatted for batchexecute RPC: [None, top, right, bottom]."""
+    coords = get_crop_coordinates(aspect_ratio, crop_coordinates)
+    return [None, coords.get("top", 0.0038759689922481244), coords.get("right", 1), coords.get("bottom", 0.9961240310077519)]
 
 
 def build_status_check_body(
