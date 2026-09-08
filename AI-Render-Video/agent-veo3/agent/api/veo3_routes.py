@@ -65,6 +65,15 @@ class StartPipelineRequest(BaseModel):
     actions: Optional[list[str]] = None
 
 
+class CreateFlowProjectRequest(BaseModel):
+    title: str = "New Project"
+
+
+class RenameFlowProjectRequest(BaseModel):
+    project_id: str
+    title: str
+
+
 async def _get_or_detect_project_id(client, project_id: str = "") -> str:
     """Return explicit project_id, detect active project from extension tabs, or fall back to pinned Flow project."""
     if project_id:
@@ -335,6 +344,33 @@ async def get_captured_video_urls():
         raise HTTPException(503, "Extension not connected")
     res = await client._send("get_captured_video_urls", {}, timeout=10)
     return res.get("result", []) if isinstance(res, dict) else []
+
+
+@flow_veo3_router.post("/project/create")
+async def create_flow_project(body: CreateFlowProjectRequest):
+    """Create a new project on Google Flow via jHPbke RPC."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    result = await client.create_project(body.title)
+    if result.get("error"):
+        raise HTTPException(502, result["error"])
+    return result.get("data", result)
+
+
+@flow_veo3_router.post("/project/rename")
+async def rename_flow_project(body: RenameFlowProjectRequest):
+    """Rename an existing project on Google Flow via o8DA4 RPC."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+    if hasattr(client, "rename_project"):
+        result = await client.rename_project(body.project_id, body.title)
+    else:
+        raise HTTPException(501, "rename_project method not implemented")
+    if result.get("error"):
+        raise HTTPException(502, result["error"])
+    return result.get("data", result)
 
 
 # ─── Queue / Request Operations ──────────────────────────────────────

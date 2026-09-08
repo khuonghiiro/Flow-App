@@ -26,3 +26,7 @@
 - Dùng `useMemo` và `useCallback` cho các hàm tính toán vị trí node, path SVG, link curves để tránh lag giật khi kéo thả canvas.
 - Không mutate state trực tiếp.
 - Giữ type safety: Đầy đủ interface/type cho Node, Link, TreeState.
+
+## 5. Nguyên Tắc Bảo Toàn Mã Nguồn Gốc (Upstream Isolation)
+- **TUYỆT ĐỐI KHÔNG sửa đổi mã nguồn gốc trong `flowkit/`**: Thư mục này là repo upstream của tác giả để kéo cập nhật (`git pull`).
+- Mọi logic mở rộng, vá lỗi, dynamic patch, REST routes mới BẮT BUỘC chỉ viết trong `agent-veo3/` (thông qua `agent/extension_patcher.py`, `agent/flowkit_loader.py`, `agent/api/veo3_routes.py` hoặc `extension/`).

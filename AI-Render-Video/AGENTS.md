@@ -51,3 +51,14 @@ Tài liệu này được tự động nạp vào System Prompt của AI cho wor
   - Gọi API `start_end_frame_2_video` (i2v_fl) với thời lượng **4s** để tạo chu kỳ chuyển động lặp vô tận (idle loop, breath, combat stance) hoàn hảo cho Sprite 2D.
   - Phông nền: Luôn giữ nguyên màu xanh đồng nhất `#00FF00` (Chroma Key) để nạp thẳng vào Tab 1.3 (Video Animation Slicer) tách nền tự động.
 
+---
+
+## 🛡️ 6. Quy Tắc Bất Khả Xâm Phạm Về Code Nguồn (Upstream Isolation)
+- **TUYỆT ĐỐI KHÔNG sửa đổi bất kỳ file nào trong thư mục gốc `flowkit/`**:
+  - Thư mục `flowkit/` là repo upstream của tác giả, dùng để cập nhật tính năng mới qua `git pull`. Mọi sửa đổi trực tiếp trong `flowkit/` sẽ gây xung đột (merge conflicts) khi nâng cấp.
+  - Bắt buộc luôn giữ thư mục `flowkit/` ở trạng thái clean 100% (không có file modified hay untracked).
+- **Toàn bộ logic mở rộng, vá lỗi, override BẮT BUỘC thực hiện trong `agent-veo3/`**:
+  - Kế thừa và mở rộng động thông qua `agent-veo3/agent/flowkit_loader.py` và `agent-veo3/agent/extension_patcher.py` (runtime patching, hooks, wrappers, subclasses).
+  - Thêm mới / ghi đè REST endpoints trong `agent-veo3/agent/api/veo3_routes.py`.
+  - Mọi thay đổi về Chrome Extension (Manifest, background script, popup, content script) phải nằm độc quyền trong `agent-veo3/extension/`.
+

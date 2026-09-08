@@ -286,7 +286,84 @@ def patch_flow_client():
                 return res.get("result", []) if isinstance(res, dict) else []
             FlowClient.get_captured_video_urls = get_captured_video_urls
 
-        logger.info("Successfully patched FlowClient with Veo3 enhancements")
+        # ─── Batch RPC project creation (jHPbke) & renaming (o8DA4) ───
+        orig_create_project = FlowClient.create_project
+
+        async def enhanced_create_project(self, project_title: str, tool_name: str = "PINHOLE") -> dict:
+            from agent.config import USE_BATCH_RPC
+            from agent.services import flow_batch as fb
+            if not USE_BATCH_RPC:
+                return await orig_create_project(self, project_title, tool_name)
+
+            title = (project_title or f"Project {int(time.time())}").strip()
+            try:
+                inner_create = ["projects/*", [None, [title]], [None, 22]]
+                freq_create = fb.build_envelope("jHPbke", inner_create)
+                payload = await self._batch_payload("jHPbke", freq_create, timeout=60)
+
+                new_project_id = None
+                if isinstance(payload, list) and len(payload) > 0:
+                    new_project_id = payload[0]
+                elif isinstance(payload, str):
+                    new_project_id = payload
+
+                if not new_project_id or not isinstance(new_project_id, str):
+                    raise fb.FlowBatchError(f"Could not parse project ID from jHPbke response: {payload}")
+
+                logger.info("Successfully created Flow project via jHPbke RPC: %s ('%s')", new_project_id, title)
+
+                try:
+                    inner_rename = [f"projects/{new_project_id}", [title], [["project_title"]], [None, 22]]
+                    freq_rename = fb.build_envelope("o8DA4", inner_rename)
+                    await self._batch_payload("o8DA4", freq_rename, timeout=30)
+                    logger.info("Successfully synced project title via o8DA4 RPC: '%s'", title)
+                except Exception as ren_err:
+                    logger.warning("Optional project rename via o8DA4: %s", ren_err)
+
+                self.override_flow_project_id = new_project_id
+                config.FLOW_PROJECT_ID = new_project_id
+
+                return {"status": 200, "data": {"projectId": new_project_id}}
+            except Exception as e:
+                logger.error("Batch project creation (jHPbke) failed: %s", e)
+                pinned = self.flow_project_id()
+                if pinned:
+                    logger.warning("Falling back to pinned project %s", pinned)
+                    return {"status": 200, "data": {"projectId": pinned}}
+                return {"error": f"Failed to create Flow project: {e}"}
+
+        FlowClient.create_project = enhanced_create_project
+
+        async def rename_project(self, project_id: str, new_title: str) -> dict:
+            from agent.services import flow_batch as fb
+            pid = (project_id or self.flow_project_id() or "").strip()
+            if not pid:
+                return {"error": "Missing project_id"}
+            title = (new_title or "").strip()
+            if not title:
+                return {"error": "Missing new_title"}
+            try:
+                inner_rename = [f"projects/{pid}", [title], [["project_title"]], [None, 22]]
+                freq_rename = fb.build_envelope("o8DA4", inner_rename)
+                payload = await self._batch_payload("o8DA4", freq_rename, timeout=30)
+                logger.info("Successfully renamed project %s to '%s' via o8DA4", pid, title)
+                return {"status": 200, "data": {"projectId": pid, "title": title, "result": payload}}
+            except Exception as e:
+                logger.error("Rename project (o8DA4) failed: %s", e)
+                return {"error": f"Failed to rename project: {e}"}
+
+        FlowClient.rename_project = rename_project
+
+        orig_flow_project_id = FlowClient.flow_project_id
+
+        def enhanced_flow_project_id(self, override: str | None = None) -> str:
+            if override in ("new", "create", "__new__"):
+                return None
+            return orig_flow_project_id(self, override)
+
+        FlowClient.flow_project_id = enhanced_flow_project_id
+
+        logger.info("Successfully patched FlowClient with Veo3 enhancements & jHPbke/o8DA4 project RPCs")
     except Exception as exc:
         logger.error("Failed to patch FlowClient: %s", exc)
 
