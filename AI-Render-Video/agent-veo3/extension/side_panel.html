@@ -376,9 +376,15 @@
       font-family: var(--font);
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       color: var(--accent);
     }
+    .td-type.type-img { color: #38bdf8; }
+    .td-type.type-vid { color: #c084fc; }
+    .td-type.type-upload { color: #fb923c; }
+    .td-type.type-download { color: #4ade80; }
+    .td-type.type-project { color: #facc15; }
+    .td-type.type-rename { color: #818cf8; }
 
     .td-time {
       font-size: 10px;
@@ -507,29 +513,29 @@
   <div class="metrics">
     <div class="metric-card">
       <div class="metric-value" id="m-total">0</div>
-      <div class="metric-label">Total</div>
+      <div class="metric-label">Tổng thao tác</div>
     </div>
     <div class="metric-card">
       <div class="metric-value green" id="m-success">0</div>
-      <div class="metric-label">Success</div>
+      <div class="metric-label">Thành công</div>
     </div>
     <div class="metric-card">
       <div class="metric-value red" id="m-failed">0</div>
-      <div class="metric-label">Failed</div>
+      <div class="metric-label">Lỗi</div>
     </div>
   </div>
 
   <!-- State bar -->
   <div class="state-bar">
-    STATE
-    <span id="state-badge" class="off">off</span>
-    <span id="token-status" class="bad">no token</span>
+    TRẠNG THÁI
+    <span id="state-badge" class="off">tắt</span>
+    <span id="token-status" class="bad">chưa có token</span>
   </div>
 
   <!-- Request log -->
   <div class="log-section">
     <div class="log-header">
-      Request Log
+      Nhật Ký Thao Tác
       <span id="log-count">0</span>
     </div>
 
@@ -538,15 +544,15 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Type</th>
-            <th>Time</th>
-            <th>Status</th>
-            <th>Error</th>
+            <th>Thao tác</th>
+            <th>Thời gian</th>
+            <th>Trạng thái</th>
+            <th>Chi tiết/Lỗi</th>
           </tr>
         </thead>
         <tbody id="log-body">
           <tr>
-            <td colspan="5" class="log-empty">No requests yet</td>
+            <td colspan="5" class="log-empty">Chưa có thao tác nào</td>
           </tr>
         </tbody>
       </table>
@@ -555,10 +561,10 @@
 
   <!-- Actions -->
   <div class="actions">
-    <button class="btn btn-primary" id="btn-flow">Open Flow Tab</button>
-    <button class="btn" id="btn-token">Refresh Token</button>
-    <button class="btn" id="btn-clear-log">Clear Logs</button>
-    <button class="btn" id="btn-reload-ext" title="Reload Extension">Reload Ext</button>
+    <button class="btn btn-primary" id="btn-flow">Mở Tab Flow</button>
+    <button class="btn" id="btn-token">Lấy lại Token</button>
+    <button class="btn" id="btn-clear-log">Xóa Nhật Ký</button>
+    <button class="btn" id="btn-reload-ext" title="Tải lại Extension">Tải lại Ext</button>
   </div>
 
   <!-- Signature -->

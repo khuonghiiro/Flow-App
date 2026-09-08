@@ -25,7 +25,24 @@ let metrics = {
 // ─── URL → Log Type Classifier ─────────────────────────────
 
 // Visible log types — only these appear in the request log
-const _VISIBLE_TYPES = new Set(['GEN_IMG', 'GEN_VID', 'GEN_VID_REF', 'UPSCALE', 'TRACKING', 'URL_REFRESH']);
+const _VISIBLE_TYPES = new Set([
+  'GEN_IMG', 'GEN_VID', 'GEN_VID_REF', 'UPLOAD', 'FETCH_BLOB',
+  'UPSCALE', 'CREATE_PROJECT', 'RENAME', 'RENAME_ASSET', 'RENAME_PROJECT',
+  'TRACKING', 'URL_REFRESH'
+]);
+
+function _classifyRpc(rpcid) {
+  if (rpcid === 'ogiZ0b') return 'GEN_IMG';
+  if (rpcid === 'eb1hJf') return 'GEN_VID';
+  if (rpcid === 'maseQ')  return 'UPLOAD';
+  if (rpcid === 'mYWVGd') return 'RENAME';
+  if (rpcid === 'jHPbke') return 'CREATE_PROJECT';
+  if (rpcid === 'o8DA4')  return 'RENAME_PROJECT';
+  if (rpcid === 'wXbhsf') return 'POLL';
+  if (rpcid === 'kFhKBc') return 'MEDIA';
+  if (rpcid === 'vv2eKe') return 'LIST_MEDIA';
+  return `RPC:${rpcid}`;
+}
 
 function _classifyApiUrl(url) {
   if (url.includes('uploadImage'))                     return 'UPLOAD';
@@ -37,6 +54,7 @@ function _classifyApiUrl(url) {
   if (url.includes('upsampleImage'))                   return 'UPS_IMG';
   if (url.includes('/media/'))                         return 'MEDIA';
   if (url.includes('/credits'))                        return 'CREDITS';
+  if (url.includes('fetch_blob'))                      return 'FETCH_BLOB';
   return 'API';
 }
 
@@ -303,11 +321,22 @@ if (chrome.runtime?.onConnect) {
         });
       } else if (msg.method === 'fetch_blob') {
         const { url } = msg.params || {};
+        if (url) {
+          addRequestLog({
+            id: msg.id,
+            type: 'FETCH_BLOB',
+            time: new Date().toISOString(),
+            status: 'processing',
+            url: url.slice(0, 100),
+            payloadSummary: 'Tải media blob',
+          });
+        }
         try {
           const fetchHeaders = {};
           if (flowKey) fetchHeaders['authorization'] = `Bearer ${flowKey}`;
           const resp = await fetch(url, { headers: fetchHeaders, credentials: 'include' });
           if (!resp.ok) {
+            updateRequestLog(msg.id, { status: 'failed', error: `HTTP_${resp.status}` });
             sendToAgent({ id: msg.id, status: resp.status, error: `HTTP_${resp.status}` });
           } else {
             const buffer = await resp.arrayBuffer();
@@ -319,9 +348,11 @@ if (chrome.runtime?.onConnect) {
               binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
             }
             const base64Data = btoa(binary);
+            updateRequestLog(msg.id, { status: 'success', responseSummary: `${len} bytes` });
             sendToAgent({ id: msg.id, status: 200, size: len, data: base64Data });
           }
         } catch (e) {
+          updateRequestLog(msg.id, { status: 'failed', error: e.message });
           sendToAgent({ id: msg.id, status: 500, error: e.message });
         }
       } else if (msg.method === 'get_captured_video_urls') {
@@ -774,12 +805,13 @@ async function handleBatchRpc(msg) {
   setState('running');
   const hasCaptcha = !!captchaAction;
   if (hasCaptcha) metrics.requestCount++;
-  // Polls and listing lookups run constantly; only the generates are worth
-  // a row in the log the popup shows.
-  const visible = hasCaptcha;
+  // Hiển thị các thao tác quan trọng: tạo ảnh, tạo video, up ảnh, đổi tên, tạo dự án
+  const importantRpcs = ['ogiZ0b', 'eb1hJf', 'maseQ', 'mYWVGd', 'jHPbke', 'o8DA4'];
+  const visible = hasCaptcha || importantRpcs.includes(rpcid);
+  const logType = _classifyRpc(rpcid);
   if (visible) {
     addRequestLog({
-      id, type: `RPC:${rpcid}`, time: new Date().toISOString(),
+      id, type: logType, time: new Date().toISOString(),
       status: 'processing', error: null, outputUrl: null, url: rpcid,
       payloadSummary: freq.slice(0, 200),
     });

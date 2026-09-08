@@ -15,39 +15,108 @@ if (reloadOnce) {
 // ── Type label map ───────────────────────────────────────────
 
 const TYPE_LABELS = {
-  // Worker request types
-  GENERATE_IMAGE:           'GEN IMAGE',
-  REGENERATE_IMAGE:         'REGEN IMAGE',
-  EDIT_IMAGE:               'EDIT IMAGE',
-  GENERATE_CHARACTER_IMAGE: 'GEN REF',
-  REGENERATE_CHARACTER_IMAGE: 'REGEN REF',
-  EDIT_CHARACTER_IMAGE:     'EDIT REF',
-  GENERATE_VIDEO:           'GEN VIDEO',
-  GENERATE_VIDEO_REFS:      'GEN VIDEO FROM REFS',
-  UPSCALE_VIDEO:            'UPSCALE VIDEO',
-  // Captcha action types
-  IMAGE_GENERATION:         'GEN IMAGE',
-  VIDEO_GENERATION:         'GEN VIDEO',
-  // Extension-classified API types
-  GEN_IMG:                  'GEN IMAGE',
-  GEN_VID:                  'GEN VIDEO',
-  GEN_VID_REF:              'GEN VIDEO FROM REFS',
-  UPSCALE:                  'UPSCALE VIDEO',
-  UPS_IMG:                  'UPSCALE IMAGE',
-  POLL:                     'CHECK GEN VIDEO',
-  CREDITS:                  'CHECK CREDIT',
-  CREATE_PROJECT:           'CREATE PROJECT',
-  UPLOAD:                   'UPLOAD IMAGE',
-  MEDIA:                    'READ MEDIA',
-  TRACKING:                 'GOOGLE FLOW TRACK',
-  URL_REFRESH:              'URL REFRESH',
-  TRPC:                     'TRPC',
-  API:                      'API',
+  // Hình ảnh
+  GEN_IMG:                    'Tạo ảnh',
+  GENERATE_IMAGE:             'Tạo ảnh',
+  IMAGE_GENERATION:           'Tạo ảnh',
+  REGEN_IMG:                  'Tạo lại ảnh',
+  REGENERATE_IMAGE:           'Tạo lại ảnh',
+  EDIT_IMG:                   'Sửa ảnh',
+  EDIT_IMAGE:                 'Sửa ảnh',
+  GEN_CHARACTER_IMAGE:        'Tạo ảnh ref',
+  REGENERATE_CHARACTER_IMAGE: 'Tạo lại ref',
+  EDIT_CHARACTER_IMAGE:       'Sửa ảnh ref',
+  GEN_REF:                    'Tạo ảnh ref',
+
+  // Tải lên & Tải về
+  UPLOAD:                     'Up ảnh',
+  UPLOAD_IMAGE:               'Up ảnh',
+  uploadImage:                'Up ảnh',
+  FETCH_BLOB:                 'Tải ảnh',
+  fetch_blob:                 'Tải ảnh',
+  DOWNLOAD:                   'Tải ảnh/video',
+  DOWNLOAD_IMAGE:             'Tải ảnh',
+  MEDIA:                      'Tải media',
+
+  // Video
+  GEN_VID:                    'Tạo video',
+  GENERATE_VIDEO:             'Tạo video',
+  VIDEO_GENERATION:           'Tạo video',
+  GEN_VID_REF:                'Tạo video ref',
+  GENERATE_VIDEO_REFS:        'Tạo video ref',
+  UPSCALE:                    'Nâng cấp video',
+  UPSCALE_VIDEO:              'Nâng cấp video',
+  UPS_IMG:                    'Nâng cấp ảnh',
+  POLL:                       'Check video',
+
+  // Dự án & Quản lý
+  CREATE_PROJECT:             'Tạo dự án',
+  RENAME:                     'Đổi tên',
+  RENAME_ASSET:               'Đổi tên asset',
+  RENAME_PROJECT:             'Đổi tên dự án',
+  LIST_MEDIA:                 'DS media',
+
+  // Hệ thống & Xác thực
+  REFRESH_TOKEN:              'Lấy token',
+  TOKEN_CAPTURED:             'Đã nhận token',
+  CAPTCHA:                    'Giải captcha',
+  URL_REFRESH:                'Làm mới link',
+  TRACKING:                   'Theo dõi Flow',
+  TRPC:                       'TRPC Link',
+  API:                        'API Flow',
+
+  // Fallback Google RPC Codes
+  'RPC:ogiZ0b':               'Tạo ảnh',
+  'ogiZ0b':                   'Tạo ảnh',
+  'RPC:eb1hJf':               'Tạo video',
+  'eb1hJf':                   'Tạo video',
+  'RPC:maseQ':                'Up ảnh',
+  'maseQ':                    'Up ảnh',
+  'RPC:mYWVGd':               'Đổi tên',
+  'mYWVGd':                   'Đổi tên',
+  'RPC:jHPbke':               'Tạo dự án',
+  'jHPbke':                   'Tạo dự án',
+  'RPC:o8DA4':                'Đổi tên dự án',
+  'o8DA4':                    'Đổi tên dự án',
+  'RPC:wXbhsf':               'Check video',
+  'wXbhsf':                   'Check video',
+  'RPC:kFhKBc':               'Tải media',
+  'kFhKBc':                   'Tải media',
+  'RPC:vv2eKe':               'DS media',
+  'vv2eKe':                   'DS media',
 };
 
-function formatType(type) {
+function formatType(type, entry = null) {
   if (!type) return '—';
-  return TYPE_LABELS[type] || type.slice(0, 5).toUpperCase();
+  if (TYPE_LABELS[type]) return TYPE_LABELS[type];
+
+  // Try stripping 'RPC:'
+  const stripped = String(type).replace(/^RPC:/i, '');
+  if (TYPE_LABELS[stripped]) return TYPE_LABELS[stripped];
+
+  // Inspect URL or fallback
+  const url = entry?.url || '';
+  if (url.includes('uploadImage') || stripped === 'maseQ') return 'Up ảnh';
+  if (url.includes('batchGenerateImages') || stripped === 'ogiZ0b') return 'Tạo ảnh';
+  if (url.includes('batchAsyncGenerateVideo') || stripped === 'eb1hJf') return 'Tạo video';
+  if (url.includes('ReferenceImages')) return 'Tạo video ref';
+  if (url.includes('UpsampleVideo')) return 'Nâng cấp video';
+  if (url.includes('createProject') || stripped === 'jHPbke') return 'Tạo dự án';
+  if (url.includes('rename') || stripped === 'mYWVGd' || stripped === 'o8DA4') return 'Đổi tên';
+  if (url.includes('fetch_blob') || url.includes('/media/')) return 'Tải ảnh';
+
+  return type.length > 12 ? type.slice(0, 12) : type;
+}
+
+function getTypeClass(type, label = '') {
+  const l = (label || '').toLowerCase();
+  if (l.includes('ảnh') && !l.includes('up') && !l.includes('tải')) return 'type-img';
+  if (l.includes('up')) return 'type-upload';
+  if (l.includes('tải')) return 'type-download';
+  if (l.includes('video')) return 'type-vid';
+  if (l.includes('dự án')) return 'type-project';
+  if (l.includes('tên')) return 'type-rename';
+  return '';
 }
 
 // ── Time formatting ──────────────────────────────────────────
@@ -134,7 +203,8 @@ function updateRequestLog(entries) {
   // Render newest first (entries already sorted DESC by background.js)
   const rows = entries.map((entry) => {
     const shortId = entry.id ? String(entry.id).slice(0, 8) : '—';
-    const type   = formatType(entry.type || entry.method);
+    const type   = formatType(entry.type || entry.method, entry);
+    const typeCls = getTypeClass(entry.type || entry.method, type);
     const time   = formatTime(entry.time || entry.timestamp || entry.createdAt);
     const status = entry.status || entry.state || 'pending';
     const error  = entry.error || '';
@@ -142,13 +212,13 @@ function updateRequestLog(entries) {
     const isAsync = ['GEN_VID', 'GEN_VID_REF', 'UPSCALE'].includes(entry.type);
     let badgeHtml;
     if (status === 'COMPLETED' || status === 'success' || (isAsync && entry.outputUrl)) {
-      badgeHtml = '<span class="badge badge-ok">&#10003; done</span>';
+      badgeHtml = '<span class="badge badge-ok">&#10003; xong</span>';
     } else if (status === 'FAILED' || status === 'failed' || (typeof status === 'number' && status >= 400)) {
-      badgeHtml = '<span class="badge badge-fail">&#10007; fail</span>';
+      badgeHtml = '<span class="badge badge-fail">&#10007; lỗi</span>';
     } else if (status === 'PROCESSING' || status === 'processing') {
-      badgeHtml = '<span class="badge badge-proc">&#9203; gen...</span>';
+      badgeHtml = '<span class="badge badge-proc">&#9203; đang tạo...</span>';
     } else {
-      badgeHtml = '<span class="badge badge-proc">&#9203; sent</span>';
+      badgeHtml = '<span class="badge badge-proc">&#9203; đã gửi</span>';
     }
 
     const errorDisplay = error
@@ -157,7 +227,7 @@ function updateRequestLog(entries) {
 
     return `<tr>
       <td class="td-id" data-request-id="${escHtml(entry.id || '')}">${escHtml(shortId)}</td>
-      <td class="td-type">${escHtml(type)}</td>
+      <td class="td-type ${typeCls}">${escHtml(type)}</td>
       <td class="td-time">${escHtml(time)}</td>
       <td>${badgeHtml}</td>
       ${errorDisplay}
@@ -200,18 +270,18 @@ function showRequestDetail(reqId) {
   const title = document.getElementById('detail-title');
   const body = document.getElementById('detail-body');
 
-  title.textContent = `Request ${String(reqId).slice(0, 12)}`;
+  title.textContent = `Chi tiết thao tác ${String(reqId).slice(0, 12)}`;
 
   const fields = [
-    ['ID', entry.id],
-    ['Type', formatType(entry.type || entry.method)],
-    ['Time', formatTime(entry.time || entry.timestamp || entry.createdAt)],
-    ['Status', entry.status || entry.state || 'pending'],
-    ['HTTP', entry.httpStatus || '—'],
-    ['URL', entry.url || '—'],
-    ['Payload', entry.payloadSummary || '—'],
-    ['Response', entry.responseSummary || '—'],
-    ['Error', entry.error || '—'],
+    ['Mã ID', entry.id],
+    ['Thao tác', formatType(entry.type || entry.method, entry)],
+    ['Thời gian', formatTime(entry.time || entry.timestamp || entry.createdAt)],
+    ['Trạng thái', entry.status || entry.state || 'pending'],
+    ['Mã HTTP', entry.httpStatus || '—'],
+    ['Đường dẫn URL', entry.url || '—'],
+    ['Dữ liệu gửi', entry.payloadSummary || '—'],
+    ['Kết quả nhận', entry.responseSummary || '—'],
+    ['Thông báo lỗi', entry.error || '—'],
   ];
 
   body.innerHTML = fields.map(([label, value]) => {

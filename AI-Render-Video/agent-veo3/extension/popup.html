@@ -139,6 +139,12 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .entry-type.type-img { color: #38bdf8; }
+    .entry-type.type-vid { color: #c084fc; }
+    .entry-type.type-upload { color: #fb923c; }
+    .entry-type.type-download { color: #4ade80; }
+    .entry-type.type-project { color: #facc15; }
+    .entry-type.type-rename { color: #818cf8; }
 
     .entry-time {
       font-size: 9px;
@@ -234,19 +240,19 @@
   </header>
 
   <div class="log-header">
-    Recent Requests
+    Nhật Ký Thao Tác
     <div style="display:flex;align-items:center;gap:6px">
       <span id="log-count">0</span>
-      <button id="btn-clear-log" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:3px;" title="Clear Logs">Clear</button>
-      <button id="btn-reload-ext" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:3px;" title="Reload Extension">Reload</button>
+      <button id="btn-clear-log" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:3px;" title="Xóa nhật ký">Xóa</button>
+      <button id="btn-reload-ext" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;padding:1px 5px;border-radius:3px;" title="Tải lại extension">Tải lại</button>
     </div>
   </div>
 
   <div id="log-list">
-    <div class="log-empty">No requests yet</div>
+    <div class="log-empty">Chưa có thao tác nào</div>
   </div>
 
-  <div class="footer">Click a row to expand details</div>
+  <div class="footer">Nhấp vào dòng để xem chi tiết</div>
 
   <script src="popup.js"></script>
 </body>
