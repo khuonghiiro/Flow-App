@@ -45,9 +45,81 @@ def patch_models_and_config():
         if "default_image_model" in ext_data and not hasattr(config, "DEFAULT_IMAGE_MODEL"):
             config.DEFAULT_IMAGE_MODEL = ext_data["default_image_model"]
 
+        # Enable degraded fallback for chaining on batch API dynamically at runtime
+        config.FLOW_ALLOW_DEGRADED = True
+
         logger.info("Successfully merged Veo3 custom models & durations into VIDEO_MODELS")
     except Exception as exc:
         logger.error("Failed to patch models & config: %s", exc)
+
+
+def patch_db_and_crud():
+    """Patch SQLite schema connection and crud methods for concurrency and upsert support."""
+    try:
+        from agent.flowkit_loader import bootstrap_flowkit
+        bootstrap_flowkit()
+        from agent.db import schema, crud
+
+        # 1. Patch schema.get_db to enforce busy_timeout=30000
+        orig_get_db = schema.get_db
+
+        async def enhanced_get_db():
+            conn = await orig_get_db()
+            try:
+                await conn.execute("PRAGMA busy_timeout=30000")
+            except Exception:
+                pass
+            return conn
+
+        schema.get_db = enhanced_get_db
+
+        # 2. Patch crud.create_project to safely update existing project on id conflict
+        orig_create_project = crud.create_project
+
+        async def enhanced_create_project(
+            name: str,
+            description: str = None,
+            story: str = None,
+            language: str = "en",
+            user_paygate_tier: str = "PAYGATE_TIER_ONE",
+            id: str = None,
+            material: str = None,
+            allow_music: bool = False,
+            allow_voice: bool = False,
+        ) -> dict:
+            if id:
+                existing = await crud.get_project(id)
+                if existing:
+                    await crud.update_project(
+                        id,
+                        name=name,
+                        description=description,
+                        story=story,
+                        language=language,
+                        user_paygate_tier=user_paygate_tier,
+                        material=material,
+                        allow_music=int(allow_music),
+                        allow_voice=int(allow_voice),
+                    )
+                    db = await schema.get_db()
+                    return await crud._get_with_db(db, "project", "id", id)
+
+            return await orig_create_project(
+                name=name,
+                description=description,
+                story=story,
+                language=language,
+                user_paygate_tier=user_paygate_tier,
+                id=id,
+                material=material,
+                allow_music=allow_music,
+                allow_voice=allow_voice,
+            )
+
+        crud.create_project = enhanced_create_project
+        logger.info("Successfully patched SQLite schema & crud with concurrency and upsert support")
+    except Exception as exc:
+        logger.warning("Failed to patch db and crud: %s", exc)
 
 
 def patch_flow_client():
@@ -309,6 +381,7 @@ def mount_extension_routes(app):
 def apply_all_patches(app=None):
     """One-stop bootstrap function to apply all Veo3 runtime enhancements."""
     patch_models_and_config()
+    patch_db_and_crud()
     patch_flow_client()
     patch_worker_parsing()
     if app is not None:
