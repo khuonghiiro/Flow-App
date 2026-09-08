@@ -8,29 +8,36 @@ Usage:
 
 ---
 
-## 🎯 1. Quy Chuẩn Đặt Tên Bắt Buộc (Naming Conventions)
+## 🎯 1. Quy Chuẩn Đặt Tên & Điều Kiện Áp Dụng (Naming Rules)
 
-Khi AI tạo bất kỳ ảnh hoặc video nào (video hoạt ảnh 4s loop, video hành động, clip câu chuyện, cảnh nối tiếp), **BẮT BUỘC** gán hoặc đổi tên asset ngay trên Google Flow theo cấu trúc:
+### Điều kiện áp dụng:
+1. **Khi thực hiện tạo nhân vật & video theo Master Plan (`plans/plan_character_pipeline.md`)**:
+   - **BẮT BUỘC** áp dụng chuẩn đặt tên: `[{động tác gì - góc bao nhiêu độ}] {tên nhân vật - số thứ tự tạo}`.
+2. **Khi User có yêu cầu đặt tên cụ thể**:
+   - **Luôn lắng nghe và tuân thủ 100%** theo cách đặt tên mà User mong muốn.
+3. **Khi User KHÔNG yêu cầu đặt tên và KHÔNG theo quy trình `plan_character_pipeline.md`**:
+   - **KHÔNG tự ý sửa tên**, giữ nguyên tên mặc định do hệ thống Flow sinh ra.
 
-### 📸 Cho Ảnh Tĩnh (Images):
+### Cấu trúc chuẩn khi chạy Master Plan:
 ```
-[IMG] {Tên Nhân Vật / Chủ Thể} - {Tư Thế / Góc Nhìn} - {Tag/Số thứ tự}
+[{động tác gì - góc bao nhiêu độ}] {tên nhân vật - số thứ tự tạo}
 ```
-*Ví dụ:*
-- `[IMG] Han Lang Phong - Idle Stance - 01`
-- `[IMG] Cyber Samurai - Front View - 02`
-- `[IMG] Magic Staff Weapon - Item Icon - 01`
 
-### 🎬 Cho Video Hoạt Ảnh (Videos):
-```
-[VID] {Tên Nhân Vật / Chủ Thể} - {Hành Động} - {Thời lượng}s Loop - {Tag/Số thứ tự}
-```
-*(Nếu video thường không loop thì bỏ chữ Loop, ví dụ `{Thời lượng}s`)*
-*Ví dụ:*
-- `[VID] Han Lang Phong - Breathing Idle - 4s Loop - 01`
-- `[VID] Cyber Samurai - Sword Slash - 4s Loop - 02`
-- `[VID] Flying Dragon - Wing Flap - 4s Loop - 01`
-- `[VID] Battlefield Intro - Camera Pan - 8s - 01`
+- Trong đó:
+  - `{động tác gì}`: Hành động cụ thể (ví dụ: `đi bộ`, `đứng thở`, `vung kiếm`, `chạy`, `chuẩn bị`, `đứng yên`).
+  - `{góc bao nhiêu độ}`: Góc quay camera (ví dụ: `0`, `45`, `90`, `135`, `180`, `225`, `270`, `315`).
+  - `{tên nhân vật}`: Tên nhân vật hoặc chủ thể (ví dụ: `Liễu như viên`, `Hàn Lập`, `Tiêu Viêm`).
+  - `{số thứ tự tạo}`: Đánh số 2 chữ số (`01`, `02`, `03`...) là số asset thứ mấy được tạo ra cho động tác và góc quay đó.
+
+### 🎬 Ví dụ Cho Video:
+- `[đi bộ - 45] Liễu như viên - 01` *(video đi bộ góc 45 độ lần 1)*
+- `[đi bộ - 45] Liễu như viên - 02` *(video đi bộ góc 45 độ lần 2 nếu tạo lại)*
+- `[đứng thở - 0] Liễu như viên - 01` *(video idle loop 4s góc chính diện)*
+- `[vung kiếm - 90] Liễu như viên - 01` *(video chém kiếm góc nhìn ngang)*
+
+### 📸 Ví dụ Cho Ảnh Tĩnh:
+- `[đứng yên - 0] Liễu như viên - 01`
+- `[chuẩn bị - 45] Liễu như viên - 01`
 
 ---
 
@@ -50,7 +57,7 @@ curl -X POST http://127.0.0.1:8100/api/flow/generate-video \
     "duration": 4.0,
     "duration_s": 4,
     "project_id": "<PID>",
-    "title": "[VID] Han Lang Phong - Combat Stance - 4s Loop - 01"
+    "title": "[đi bộ - 45] Liễu như viên - 01"
   }'
 ```
 
@@ -63,7 +70,7 @@ curl -X POST http://127.0.0.1:8100/api/flow/video/rename \
   -H "Content-Type: application/json" \
   -d '{
     "asset_id": "<VIDEO_OPERATION_ID_HOẶC_MEDIA_ID>",
-    "title": "[VID] Han Lang Phong - Breathing Idle - 4s Loop - 01",
+    "title": "[đi bộ - 45] Liễu như viên - 01",
     "project_id": "<PID>"
   }'
 ```
@@ -74,7 +81,7 @@ curl -X POST http://127.0.0.1:8100/api/flow/image/rename \
   -H "Content-Type: application/json" \
   -d '{
     "asset_id": "<IMAGE_ASSET_ID_HOẶC_MEDIA_ID>",
-    "title": "[IMG] Han Lang Phong - Idle Stance - 01",
+    "title": "[đứng yên - 0] Liễu như viên - 01",
     "project_id": "<PID>"
   }'
 ```
@@ -91,7 +98,7 @@ Bất cứ khi nào người dùng yêu cầu:
 - *"Tạo một loạt hoạt ảnh combat"*
 
 **AI phải thực hiện tuần tự:**
-1. Sinh ảnh (hoặc lấy ảnh có sẵn) -> Đổi tên thành `[IMG] ...`.
-2. Tạo video với prompt hành động phù hợp.
-3. **Ngay sau khi có kết quả video** (hoặc ngay lúc submit): Gọi API đổi tên video thành `[VID] {Nhân Vật} - {Hành Động} - {Thời lượng}s Loop - {Tag}`.
+1. Sinh ảnh (hoặc lấy ảnh có sẵn) -> Đổi tên thành `[{tư thế - góc độ}] {Tên nhân vật} - {STT}` (ví dụ: `[đứng yên - 0] Liễu như viên - 01`).
+2. Tạo video với prompt hành động và góc quay tương ứng.
+3. **Ngay sau khi có kết quả video** (hoặc ngay lúc submit): Gọi API đổi tên video thành `[{động tác - góc độ}] {Tên nhân vật} - {STT}` (ví dụ: `[đi bộ - 45] Liễu như viên - 01`).
 4. Báo cáo lại cho người dùng ID và Tên hiển thị rõ ràng trên Google Flow.

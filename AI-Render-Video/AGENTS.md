@@ -64,16 +64,23 @@ Tài liệu này được tự động nạp vào System Prompt của AI cho wor
 
 ---
 
-## 🏷️ 7. Quy Chuẩn Đổi Tên Ảnh & Video Tự Động (Auto-Rename via mYWVGd)
-- **Bắt buộc đặt tên rõ ràng, dễ nhớ sau khi tạo ảnh / video**:
-  - Khi AI sinh ảnh hoặc video cho người dùng, **BẮT BUỘC đổi tên asset ngay trên Google Flow** bằng API `mYWVGd` (hoặc truyền `title` / `display_name` trực tiếp khi gọi `/flow/generate-image` và `/flow/generate-video`).
-  - **Quy tắc đặt tên chuẩn (Naming Convention)**:
-    - **Ảnh**: `[IMG] {Tên Nhân Vật / Chủ Thể} - {Tư Thế / Góc Nhìn} - {Timestamp / Tag}`
-      *(Ví dụ: `[IMG] Han Lang Phong - Idle Stance - 01`)*
-    - **Video**: `[VID] {Tên Nhân Vật / Chủ Thể} - {Hành Động} - {Thời lượng}s Loop - {Tag}`
-      *(Ví dụ: `[VID] Han Lang Phong - Combat Idle - 4s Loop - 01`)*
-  - **Endpoint đổi tên bất kỳ lúc nào**:
-    - `POST /api/flow/image/rename`
-    - `POST /api/flow/video/rename`
-    - Payload: `{"asset_id": "<asset_id_hoặc_media_id>", "title": "<tên_mới>", "project_id": "<project_id>"}`
+## 🏷️ 7. Quy Chuẩn Đổi Tên Ảnh & Video (Auto-Rename via mYWVGd)
+- **Điều kiện kích hoạt đổi tên**:
+  1. **Khi thực hiện theo quy trình Master Plan (`plans/plan_character_pipeline.md`)**:
+     - **BẮT BUỘC** đổi tên toàn bộ ảnh mốc và video tạo ra theo đúng quy chuẩn:
+       `[{động tác gì - góc bao nhiêu độ}] {tên nhân vật - số thứ tự tạo}`
+       - `{động tác gì}`: Hành động cụ thể (ví dụ: `đi bộ`, `đứng thở`, `vung kiếm`, `chạy`, `chuẩn bị`, `đứng yên`).
+       - `{góc bao nhiêu độ}`: Góc quay (ví dụ: `0`, `45`, `90`, `135`, `180`, `225`, `270`, `315`).
+       - `{tên nhân vật}`: Tên nhân vật / chủ thể (ví dụ: `Liễu như viên`, `Hàn Lập`).
+       - `{số thứ tự tạo}`: Đánh số (`01`, `02`...) là số video/ảnh thứ mấy tạo ở động tác và góc đó.
+       - **Ví dụ Video**: `[đi bộ - 45] Liễu như viên - 01`, `[vung kiếm - 90] Tiêu Viêm - 02`, `[đứng thở - 0] Hàn Lập - 01`
+       - **Ví dụ Ảnh**: `[đứng yên - 0] Liễu như viên - 01`, `[chuẩn bị - 45] Liễu như viên - 01`
+  2. **Khi User có yêu cầu cụ thể về tên asset**:
+     - **BẮT BUỘC nghe theo và đặt tên chính xác theo ý muốn của User** (bất kể định dạng User yêu cầu).
+  3. **Khi User KHÔNG bảo đặt tên và KHÔNG theo quy trình `plan_character_pipeline.md`**:
+     - **KHÔNG tự ý sửa tên ảnh và video**, giữ nguyên tên mặc định do Google Flow tạo ra.
+- **Endpoint đổi tên**:
+  - `POST /api/flow/image/rename`
+  - `POST /api/flow/video/rename`
+  - Payload: `{"asset_id": "<asset_id_hoặc_media_id>", "title": "<tên_mới>", "project_id": "<project_id>"}`
 

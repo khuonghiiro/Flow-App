@@ -32,6 +32,13 @@ Tài liệu này là **Master Template** chuẩn cấp cao áp dụng cho toàn 
    - **Quy trình đối chiếu so sánh**: AI Agent nhận ảnh xong phải lập tức so sánh đối chiếu chi tiết (đai lưng, cổ áo, trâm cài, màu sắc từng lớp trang phục) với ảnh mốc 0°. Nếu candidate nào khớp $\rightarrow$ chọn làm mốc; nếu không khớp $\rightarrow$ tạo lại batch 2 ảnh mới cho góc đó.
    - **Tạo Video Song Song (Parallel Batch Video Generation)**: Khi đã đủ 5 ảnh mốc đạt chuẩn 10/10, **TUYỆT ĐỐI KHÔNG TẠO VIDEO TUẦN TỰ TỪNG GÓC**, mà **BẮT BUỘC GỬI SONG SONG ĐỒNG LOẠT NHIỀU REQUEST** (concurrency 5 – 6 slots cùng lúc). Gửi đồng loạt 5 góc của 1 hành động trong vòng vài giây, để Google Cloud GPU render đồng thời, rút ngắn thời gian tạo toàn bộ 25-80 video xuống nhiều lần.
 
+5. **Quy tắc Đặt Tên Asset Trên Google Flow (mYWVGd) (BẮT BUỘC CHO PIPELINE NÀY)**:
+   - Toàn bộ ảnh mốc và video tạo ra theo quy trình pipeline này **BẮT BUỘC đổi tên ngay trên Google Flow** qua API `mYWVGd` theo quy chuẩn:
+     `[{động tác gì - góc bao nhiêu độ}] {tên nhân vật - số thứ tự tạo}`
+     - **Ví dụ Video**: `[đi bộ - 45] Liễu như viên - 01`, `[đứng thở - 0] Hàn Lập - 01`, `[vung kiếm - 90] Tiêu Viêm - 01`... (trong đó `01`, `02`... là số thứ tự video tạo ở động tác và góc đó).
+     - **Ví dụ Ảnh mốc**: `[đứng yên - 0] Liễu như viên - 01`, `[đứng yên - 45] Liễu như viên - 01`...
+   - Thực hiện tự động bằng cách truyền `title` khi gọi generate hoặc gọi `POST /api/flow/video/rename` / `POST /api/flow/image/rename`.
+
 ---
 
 ## Phần A — Hồ Sơ Nhân Vật Mẫu & Thư Viện Phong Cách Đa Dạng

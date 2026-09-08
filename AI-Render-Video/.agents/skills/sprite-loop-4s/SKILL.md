@@ -43,7 +43,7 @@ Biến ảnh tĩnh nhân vật 2D / vũ khí / VFX thành hoạt ảnh lặp vô
    ```bash
    curl -X POST http://127.0.0.1:8100/api/flow/video/rename \
      -H "Content-Type: application/json" \
-     -d '{"asset_id": "<video_operation_id_or_media_id>", "title": "[VID] Cyber Warrior - Combat Stance - 4s Loop", "project_id": "<PID>"}'
+     -d '{"asset_id": "<video_operation_id_or_media_id>", "title": "[đi bộ - 45] Liễu như viên - 01", "project_id": "<PID>"}'
    ```
 6. **Chuyển tiếp vào Studio 2D**:
    - Mở **Tab 1.3: Video Animation Slicer & AI Matting** để tách nền xanh và cắt ra sprite sheet PNG.
