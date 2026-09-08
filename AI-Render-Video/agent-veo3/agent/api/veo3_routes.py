@@ -37,7 +37,7 @@ class EnhancedGenerateImageRequest(BaseModel):
 
 
 class EnhancedGenerateVideoRequest(BaseModel):
-    start_image_media_id: str
+    start_image_media_id: Optional[str] = ""
     prompt: str
     project_id: str = ""
     scene_id: str = ""
@@ -47,7 +47,9 @@ class EnhancedGenerateVideoRequest(BaseModel):
     duration: Optional[float] = None
     crop_coordinates: Optional[dict] = None
     model_family: Literal["veo", "omni_flash"] = "veo"
-    duration_s: int = 8
+    duration_s: int = 4
+    quality: str = "720p"
+    count: int = 1
     title: Optional[str] = None
     display_name: Optional[str] = None
 
@@ -144,40 +146,31 @@ async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
         raise HTTPException(503, "Extension not connected")
 
     body.project_id = await _get_or_detect_project_id(client, body.project_id)
+    dur_s = int(body.duration) if body.duration is not None else body.duration_s
 
     if body.model_family == "omni_flash":
-        from agent.services.omni_flash import (
-            generate_omni_flash_first_last_video,
-            generate_omni_flash_video,
-        )
+        from agent.services.omni_batch import generate_omni_flash_video
         try:
-            if body.end_image_media_id:
-                result = await generate_omni_flash_first_last_video(
-                    client=client,
-                    start_image_media_id=body.start_image_media_id,
-                    end_image_media_id=body.end_image_media_id,
-                    prompt=body.prompt,
-                    project_id=body.project_id,
-                    scene_id=body.scene_id,
-                    aspect_ratio=body.aspect_ratio,
-                    user_paygate_tier=body.user_paygate_tier,
-                    duration_s=body.duration_s,
-                )
-            else:
-                result = await generate_omni_flash_video(
-                    client=client,
-                    start_image_media_id=body.start_image_media_id,
-                    prompt=body.prompt,
-                    project_id=body.project_id,
-                    scene_id=body.scene_id,
-                    aspect_ratio=body.aspect_ratio,
-                    user_paygate_tier=body.user_paygate_tier,
-                    duration_s=body.duration_s,
-                )
-        except ValueError as exc:
-            raise HTTPException(400, str(exc)) from exc
+            result = await generate_omni_flash_video(
+                client=client,
+                prompt=body.prompt,
+                project_id=body.project_id,
+                start_image_media_id=body.start_image_media_id or None,
+                end_image_media_id=body.end_image_media_id or None,
+                duration_s=dur_s,
+                quality=body.quality,
+                aspect_ratio=body.aspect_ratio,
+                count=body.count,
+            )
+        except Exception as exc:
+            logger.error("Omni Flash video generation error: %s", exc, exc_info=True)
+            raise HTTPException(502, f"Omni Flash generation error: {exc}") from exc
     else:
-        dur = body.duration if body.duration is not None else float(body.duration_s)
+        if not body.start_image_media_id:
+            raise HTTPException(
+                400,
+                "Veo requires start_image_media_id. For Text-to-Video, set model_family='omni_flash'.",
+            )
         result = await client.generate_video(
             start_image_media_id=body.start_image_media_id,
             prompt=body.prompt,
@@ -186,7 +179,7 @@ async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
             aspect_ratio=body.aspect_ratio,
             end_image_media_id=body.end_image_media_id,
             user_paygate_tier=body.user_paygate_tier,
-            duration=dur,
+            duration=float(dur_s),
             crop_coordinates=body.crop_coordinates,
         )
 
@@ -199,22 +192,27 @@ async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
 
     if target_name and hasattr(client, "rename_asset"):
         try:
+            assets = data.get("assets", [])
             ops = data.get("operations", [])
             wfs = data.get("workflows", [])
-            op_id = None
-            if ops and isinstance(ops, list):
-                op_id = ops[0].get("operation", {}).get("name")
+            target_id = None
+            if assets and isinstance(assets, list):
+                target_id = assets[0].get("node_id") or assets[0].get("media_id")
+            elif ops and isinstance(ops, list):
+                target_id = ops[0].get("operation", {}).get("node_id") or ops[0].get("operation", {}).get("name")
             elif wfs and isinstance(wfs, list):
-                op_id = wfs[0].get("name")
-            if op_id:
-                ren_res = await client.rename_asset(op_id, target_name, body.project_id)
+                target_id = wfs[0].get("name") or wfs[0].get("primaryMediaId")
+
+            if target_id:
+                ren_res = await client.rename_asset(target_id, target_name, body.project_id)
                 if isinstance(data, dict):
                     data["rename_result"] = ren_res
         except Exception as ren_err:
             logger.warning("Auto-rename for generated video failed: %s", ren_err)
 
-    if body.model_family != "omni_flash":
-        asyncio.create_task(bg_poll_and_notify_video(client, data, req_id, body.project_id))
+    asyncio.create_task(bg_poll_and_notify_video(
+        client, data, req_id, body.project_id, model_family=body.model_family
+    ))
     return data
 
 
@@ -322,11 +320,21 @@ async def navigate_tab(body: dict):
 
 @flow_veo3_router.get("/media-redirect-url/{media_id}")
 async def get_media_redirect_url(media_id: str):
-    """Get signed Cloud CDN download URL for any media via Flow redirect."""
-    from agent.services.omni_flash import _fetch_media_url
+    """Get signed Cloud CDN download URL for any media via Flow redirect / as29s."""
     client = get_flow_client()
     if not client.connected:
         raise HTTPException(503, "Extension not connected")
+    try:
+        from agent.services import flow_batch as fb
+        freq = fb.media_request(media_id)
+        payload = await client._batch_payload(fb.RPC_MEDIA, freq, timeout=20)
+        urls = fb.read_media_urls(payload, media_id)
+        if urls.video or urls.image:
+            return {"status": 200, "data": {"url": urls.video or urls.image, "video": urls.video, "image": urls.image}}
+    except Exception as exc:
+        logger.debug("as29s resolution fallback for %s: %s", media_id, exc)
+
+    from agent.services.omni_flash import _fetch_media_url
     return await _fetch_media_url(client, media_id)
 
 
@@ -465,20 +473,33 @@ async def cancel_all_requests():
     return {"status": "ok", "cancelled": cancelled}
 
 
-async def bg_poll_and_notify_video(client, data: dict, req_id: str = "", project_id: str = ""):
+async def bg_poll_and_notify_video(
+    client, data: dict, req_id: str = "", project_id: str = "", model_family: str = "veo"
+):
     """Poll video status in background and notify extension UI of completion."""
     from agent.config import VIDEO_POLL_INTERVAL
-    from agent.services.omni_flash import _fetch_media_url
 
-    # 1. Identify primary media ID and workflows
-    workflows = data.get("workflows", [])
+    # 1. Identify primary media ID
+    assets = data.get("assets", [])
     primary_mid = ""
-    wf_name = ""
-    if workflows and isinstance(workflows, list):
-        wf0 = workflows[0]
-        meta = wf0.get("metadata", {})
-        primary_mid = meta.get("primaryMediaId") or wf0.get("primaryMediaId", "")
-        wf_name = wf0.get("name", "")
+    if assets and isinstance(assets, list):
+        primary_mid = assets[0].get("media_id", "")
+
+    if not primary_mid:
+        workflows = data.get("workflows", [])
+        if workflows and isinstance(workflows, list):
+            wf0 = workflows[0]
+            meta = wf0.get("metadata", {})
+            primary_mid = meta.get("primaryMediaId") or wf0.get("primaryMediaId", "")
+            if not primary_mid and wf0.get("name"):
+                primary_mid = wf0.get("name", "")
+
+    if not primary_mid:
+        ops = data.get("operations", [])
+        if ops and isinstance(ops, list):
+            op0 = ops[0]
+            op_data = op0.get("operation", op0)
+            primary_mid = op_data.get("name", "")
 
     if not primary_mid:
         media = data.get("media", [])
@@ -488,18 +509,47 @@ async def bg_poll_and_notify_video(client, data: dict, req_id: str = "", project
     if not primary_mid:
         return
 
-    pid = project_id
-    if not pid and workflows:
-        pid = workflows[0].get("projectId", "")
-
     for _ in range(60):  # max ~10 min
         await asyncio.sleep(VIDEO_POLL_INTERVAL)
         try:
-            # Check if video is ready via authenticated redirect
-            url_res = await _fetch_media_url(client, primary_mid)
-            if url_res and not url_res.get("error"):
-                v_data = url_res.get("data", {})
-                v_url = v_data.get("url", "")
+            if model_family == "omni_flash":
+                from agent.services.omni_batch import check_omni_media_status
+                res = await check_omni_media_status(client, primary_mid)
+                st = res.get("status")
+                v_url = res.get("video_url")
+                if st == "COMPLETED" and v_url:
+                    logger.info("BG Omni video poll complete: %s (url=%s)", primary_mid[:8], v_url[:50])
+                    if hasattr(client, "notify_request_status"):
+                        await client.notify_request_status(
+                            req_id=req_id, media_id=primary_mid, status="COMPLETED", output_url=v_url
+                        )
+                    return
+                elif st == "FAILED":
+                    err = res.get("error", "Omni generation failed")
+                    logger.warning("BG Omni video poll failed: %s: %s", primary_mid[:8], err)
+                    if hasattr(client, "notify_request_status"):
+                        await client.notify_request_status(
+                            req_id=req_id, media_id=primary_mid, status="FAILED", output_url=""
+                        )
+                    return
+            else:
+                from agent.services import flow_batch as fb
+                freq = fb.media_request(primary_mid)
+                v_url = None
+                try:
+                    payload = await client._batch_payload(fb.RPC_MEDIA, freq, timeout=20)
+                    urls = fb.read_media_urls(payload, primary_mid)
+                    v_url = urls.video
+                except Exception:
+                    pass
+
+                if not v_url:
+                    from agent.services.omni_flash import _fetch_media_url
+                    url_res = await _fetch_media_url(client, primary_mid)
+                    if url_res and not url_res.get("error"):
+                        v_data = url_res.get("data", {})
+                        v_url = v_data.get("url", "")
+
                 if v_url:
                     logger.info("BG video poll complete: %s (url=%s)", primary_mid[:8], v_url[:50])
                     if hasattr(client, "notify_request_status"):
