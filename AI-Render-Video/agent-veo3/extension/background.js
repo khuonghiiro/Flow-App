@@ -339,6 +339,10 @@ if (chrome.runtime?.onConnect) {
           } else if (code === 'reload') {
             await chrome.tabs.reload(target);
             sendToAgent({ id: msg.id, result: { success: true, reloaded: true, tabId: target } });
+          } else if (code && (code.startsWith('http://') || code.startsWith('https://') || code.startsWith('nav:'))) {
+            const destUrl = code.startsWith('nav:') ? code.slice(4).trim() : code.trim();
+            await chrome.tabs.update(target, { url: destUrl });
+            sendToAgent({ id: msg.id, result: { success: true, navigated: true, tabId: target, url: destUrl } });
           } else if (code && code.startsWith('js:')) {
             const rawJs = code.slice(3);
             const results = await chrome.scripting.executeScript({
@@ -709,45 +713,52 @@ async function runBatchRpc(cmd) {
     freq = freq.split(CAPTCHA_SLOT).join(solved.token);
   }
 
-  const [injected] = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: 'MAIN',
-    args: [cmd.rpcid, freq, MAX_RPC_TEXT, cmd.match || null],
-    func: async (rpcid, freqStr, maxText, match) => {
-      const wiz = globalThis.WIZ_global_data || {};
-      const at = wiz.SNlM0e;
-      const sid = wiz.FdrFJe;
-      const bl = wiz.cfb2h;
-      if (!at) return { error: 'NO_AT_TOKEN' };
-      const reqid = Math.floor(Math.random() * 900000) + 100000;
-      const url =
-        `/_/AiSandboxAngularFrontend/data/batchexecute?rpcids=${encodeURIComponent(rpcid)}` +
-        `&f.sid=${encodeURIComponent(sid || '')}&bl=${encodeURIComponent(bl || '')}` +
-        `&hl=en-AU&_reqid=${reqid}&rt=c`;
-      const resp = await fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'x-same-domain': '1',
-        },
-        body: new URLSearchParams({ 'f.req': freqStr, at }),
-      });
-      const text = await resp.text();
-      // The project listing is tens of megabytes and all we ever want from it
-      // is one entry. Cutting it down here keeps that payload inside the tab
-      // instead of pushing it through the bridge on every poll.
-      if (match) {
-        const found = text.indexOf(match);   // not `at` — that is the CSRF token above
-        return {
-          status: resp.status,
-          matched: found !== -1,
-          text: found === -1 ? '' : text.slice(found, found + 800),
-        };
-      }
-      return { status: resp.status, text: text.slice(0, maxText) };
-    },
-  });
+  let injected = null;
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: 'MAIN',
+      args: [cmd.rpcid, freq, MAX_RPC_TEXT, cmd.match || null],
+      func: async (rpcid, freqStr, maxText, match) => {
+        try {
+          const wiz = globalThis.WIZ_global_data || {};
+          const at = wiz.SNlM0e;
+          const sid = wiz.FdrFJe;
+          const bl = wiz.cfb2h;
+          if (!at) return { error: 'NO_AT_TOKEN' };
+          const reqid = Math.floor(Math.random() * 900000) + 100000;
+          const url =
+            `/_/AiSandboxAngularFrontend/data/batchexecute?rpcids=${encodeURIComponent(rpcid)}` +
+            `&f.sid=${encodeURIComponent(sid || '')}&bl=${encodeURIComponent(bl || '')}` +
+            `&hl=en-AU&_reqid=${reqid}&rt=c`;
+          const resp = await fetch(url, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+              'x-same-domain': '1',
+            },
+            body: new URLSearchParams({ 'f.req': freqStr, at }),
+          });
+          const text = await resp.text();
+          if (match) {
+            const found = text.indexOf(match);
+            return {
+              status: resp.status,
+              matched: found !== -1,
+              text: found === -1 ? '' : text.slice(found, found + 800),
+            };
+          }
+          return { status: resp.status, text: text.slice(0, maxText) };
+        } catch (fetchErr) {
+          return { error: 'FETCH_ERROR: ' + fetchErr.message };
+        }
+      },
+    });
+    injected = results?.[0];
+  } catch (execErr) {
+    return { error: 'EXEC_SCRIPT_ERROR: ' + execErr.message };
+  }
 
   return injected?.result || { error: 'NO_INJECTION_RESULT' };
 }
