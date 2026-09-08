@@ -39,5 +39,11 @@ Biến ảnh tĩnh nhân vật 2D / vũ khí / VFX thành hoạt ảnh lặp vô
      -H "Content-Type: application/json" \
      -d '{"requests": [{"type": "GENERATE_VIDEO", "scene_id": "<SID>", "project_id": "<PID>", "video_id": "<VID>", "orientation": "HORIZONTAL"}]}'
    ```
-5. **Chuyển tiếp vào Studio 2D**:
+5. **Đổi tên Video & Ảnh trên Google Flow (mYWVGd)**:
+   ```bash
+   curl -X POST http://127.0.0.1:8100/api/flow/video/rename \
+     -H "Content-Type: application/json" \
+     -d '{"asset_id": "<video_operation_id_or_media_id>", "title": "[VID] Cyber Warrior - Combat Stance - 4s Loop", "project_id": "<PID>"}'
+   ```
+6. **Chuyển tiếp vào Studio 2D**:
    - Mở **Tab 1.3: Video Animation Slicer & AI Matting** để tách nền xanh và cắt ra sprite sheet PNG.

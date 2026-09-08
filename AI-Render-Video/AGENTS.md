@@ -62,3 +62,18 @@ Tài liệu này được tự động nạp vào System Prompt của AI cho wor
   - Thêm mới / ghi đè REST endpoints trong `agent-veo3/agent/api/veo3_routes.py`.
   - Mọi thay đổi về Chrome Extension (Manifest, background script, popup, content script) phải nằm độc quyền trong `agent-veo3/extension/`.
 
+---
+
+## 🏷️ 7. Quy Chuẩn Đổi Tên Ảnh & Video Tự Động (Auto-Rename via mYWVGd)
+- **Bắt buộc đặt tên rõ ràng, dễ nhớ sau khi tạo ảnh / video**:
+  - Khi AI sinh ảnh hoặc video cho người dùng, **BẮT BUỘC đổi tên asset ngay trên Google Flow** bằng API `mYWVGd` (hoặc truyền `title` / `display_name` trực tiếp khi gọi `/flow/generate-image` và `/flow/generate-video`).
+  - **Quy tắc đặt tên chuẩn (Naming Convention)**:
+    - **Ảnh**: `[IMG] {Tên Nhân Vật / Chủ Thể} - {Tư Thế / Góc Nhìn} - {Timestamp / Tag}`
+      *(Ví dụ: `[IMG] Han Lang Phong - Idle Stance - 01`)*
+    - **Video**: `[VID] {Tên Nhân Vật / Chủ Thể} - {Hành Động} - {Thời lượng}s Loop - {Tag}`
+      *(Ví dụ: `[VID] Han Lang Phong - Combat Idle - 4s Loop - 01`)*
+  - **Endpoint đổi tên bất kỳ lúc nào**:
+    - `POST /api/flow/image/rename`
+    - `POST /api/flow/video/rename`
+    - Payload: `{"asset_id": "<asset_id_hoặc_media_id>", "title": "<tên_mới>", "project_id": "<project_id>"}`
+

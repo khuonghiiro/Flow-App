@@ -32,6 +32,8 @@ class EnhancedGenerateImageRequest(BaseModel):
     aspect_ratio: str = "IMAGE_ASPECT_RATIO_PORTRAIT"
     user_paygate_tier: str = "PAYGATE_TIER_ONE"
     character_media_ids: Optional[list[str]] = None
+    title: Optional[str] = None
+    display_name: Optional[str] = None
 
 
 class EnhancedGenerateVideoRequest(BaseModel):
@@ -46,6 +48,8 @@ class EnhancedGenerateVideoRequest(BaseModel):
     crop_coordinates: Optional[dict] = None
     model_family: Literal["veo", "omni_flash"] = "veo"
     duration_s: int = 8
+    title: Optional[str] = None
+    display_name: Optional[str] = None
 
 
 class EnhancedGenerateVideoRefsRequest(BaseModel):
@@ -111,11 +115,25 @@ async def generate_image_enhanced(body: EnhancedGenerateImageRequest):
         raise HTTPException(503, "Extension not connected")
     pid = await _get_or_detect_project_id(client, body.project_id or "")
     payload = body.model_dump()
+    target_name = payload.pop("display_name", None) or payload.pop("title", None)
     payload["project_id"] = pid
     result = await client.generate_images(**payload)
     if result.get("error") or (isinstance(result.get("status"), int) and result["status"] >= 400):
         raise HTTPException(result.get("status", 502), result.get("error", result.get("data")))
-    return result.get("data", result)
+
+    data = result.get("data", result)
+    if target_name and hasattr(client, "rename_asset"):
+        try:
+            m_list = data.get("media", [])
+            mid = (m_list[0].get("name") or m_list[0].get("id")) if m_list else None
+            if mid:
+                ren_res = await client.rename_asset(mid, target_name, pid)
+                if isinstance(data, dict):
+                    data["rename_result"] = ren_res
+        except Exception as ren_err:
+            logger.warning("Auto-rename for generated image failed: %s", ren_err)
+
+    return data
 
 
 @flow_veo3_router.post("/generate-video")
@@ -177,6 +195,24 @@ async def generate_video_enhanced(body: EnhancedGenerateVideoRequest):
 
     req_id = result.get("_req_id", "")
     data = result.get("data", result)
+    target_name = body.display_name or body.title
+
+    if target_name and hasattr(client, "rename_asset"):
+        try:
+            ops = data.get("operations", [])
+            wfs = data.get("workflows", [])
+            op_id = None
+            if ops and isinstance(ops, list):
+                op_id = ops[0].get("operation", {}).get("name")
+            elif wfs and isinstance(wfs, list):
+                op_id = wfs[0].get("name")
+            if op_id:
+                ren_res = await client.rename_asset(op_id, target_name, body.project_id)
+                if isinstance(data, dict):
+                    data["rename_result"] = ren_res
+        except Exception as ren_err:
+            logger.warning("Auto-rename for generated video failed: %s", ren_err)
+
     if body.model_family != "omni_flash":
         asyncio.create_task(bg_poll_and_notify_video(client, data, req_id, body.project_id))
     return data
