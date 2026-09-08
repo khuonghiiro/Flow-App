@@ -74,6 +74,13 @@ class RenameFlowProjectRequest(BaseModel):
     title: str
 
 
+class RenameAssetRequest(BaseModel):
+    asset_id: str
+    name: str = ""
+    title: str = ""
+    project_id: Optional[str] = ""
+
+
 async def _get_or_detect_project_id(client, project_id: str = "") -> str:
     """Return explicit project_id, detect active project from extension tabs, or fall back to pinned Flow project."""
     if project_id:
@@ -368,6 +375,33 @@ async def rename_flow_project(body: RenameFlowProjectRequest):
         result = await client.rename_project(body.project_id, body.title)
     else:
         raise HTTPException(501, "rename_project method not implemented")
+    if result.get("error"):
+        raise HTTPException(502, result["error"])
+    return result.get("data", result)
+
+
+@flow_veo3_router.post("/asset/rename")
+@flow_veo3_router.post("/image/rename")
+@flow_veo3_router.post("/video/rename")
+async def rename_flow_asset(body: RenameAssetRequest):
+    """Rename an existing asset (image or video) on Google Flow via mYWVGd RPC."""
+    client = get_flow_client()
+    if not client.connected:
+        raise HTTPException(503, "Extension not connected")
+
+    new_name = (body.name or body.title or "").strip()
+    if not new_name:
+        raise HTTPException(400, "Missing new asset name/title")
+
+    project_id = await _get_or_detect_project_id(client, body.project_id or "")
+    if not project_id:
+        raise HTTPException(400, "Missing project_id")
+
+    if hasattr(client, "rename_asset"):
+        result = await client.rename_asset(body.asset_id, new_name, project_id)
+    else:
+        raise HTTPException(501, "rename_asset method not implemented")
+
     if result.get("error"):
         raise HTTPException(502, result["error"])
     return result.get("data", result)

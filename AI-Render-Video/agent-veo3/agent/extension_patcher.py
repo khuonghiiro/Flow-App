@@ -354,6 +354,75 @@ def patch_flow_client():
 
         FlowClient.rename_project = rename_project
 
+        async def rename_asset(self, asset_id: str, new_name: str, project_id: str = "") -> dict:
+            from agent.services import flow_batch as fb
+            pid = (project_id or self.flow_project_id() or "").strip()
+            if not pid:
+                return {"error": "Missing project_id"}
+            aid = (asset_id or "").strip()
+            if not aid:
+                return {"error": "Missing asset_id"}
+            name = (new_name or "").strip()
+            if not name:
+                return {"error": "Missing new_name"}
+            async def _do_rename(target_id: str):
+                inner = [[target_id, None, None, [name], pid], [["metadata.display_name"]]]
+                freq = fb.build_envelope("mYWVGd", inner)
+                return await self._batch_payload("mYWVGd", freq, timeout=30)
+
+            try:
+                try:
+                    payload = await _do_rename(aid)
+                except Exception as first_err:
+                    # If direct aid failed, it might be a media_id. Try resolving to node opId via project listing.
+                    logger.debug("Direct rename for %s failed (%s), trying project media listing lookup...", aid, first_err)
+                    resolved_id = None
+                    try:
+                        freq_list = fb.project_media_request(pid)
+                        list_payload = await self._batch_payload(fb.RPC_PROJECT_MEDIA, freq_list, timeout=30)
+                        for node in fb._walk_lists(list_payload):
+                            if len(node) >= 4 and isinstance(node[3], list):
+                                detail = node[3]
+                                if len(detail) > 4 and detail[4] == aid:
+                                    resolved_id = str(node[0])
+                                    break
+                    except Exception as list_err:
+                        logger.debug("Project listing lookup failed: %s", list_err)
+
+                    if resolved_id:
+                        logger.info("Resolved media_id %s -> asset node ID %s", aid, resolved_id)
+                        aid = resolved_id
+                        payload = await _do_rename(aid)
+                    else:
+                        raise first_err
+
+                logger.info("Successfully renamed asset %s to '%s' via mYWVGd RPC", aid, name)
+
+                updated_title = name
+                media_id = None
+                if isinstance(payload, list) and len(payload) > 3 and isinstance(payload[3], list):
+                    meta_list = payload[3]
+                    if len(meta_list) > 0 and isinstance(meta_list[0], str):
+                        updated_title = meta_list[0]
+                    if len(meta_list) > 4 and isinstance(meta_list[4], str):
+                        media_id = meta_list[4]
+
+                return {
+                    "status": 200,
+                    "data": {
+                        "assetId": aid,
+                        "displayName": updated_title,
+                        "mediaId": media_id,
+                        "projectId": pid,
+                        "result": payload,
+                    },
+                }
+            except Exception as e:
+                logger.error("Rename asset (mYWVGd) failed: %s", e)
+                return {"error": f"Failed to rename asset: {e}"}
+
+        FlowClient.rename_asset = rename_asset
+
         orig_flow_project_id = FlowClient.flow_project_id
 
         def enhanced_flow_project_id(self, override: str | None = None) -> str:
@@ -363,7 +432,7 @@ def patch_flow_client():
 
         FlowClient.flow_project_id = enhanced_flow_project_id
 
-        logger.info("Successfully patched FlowClient with Veo3 enhancements & jHPbke/o8DA4 project RPCs")
+        logger.info("Successfully patched FlowClient with Veo3 enhancements, jHPbke/o8DA4 & mYWVGd RPCs")
     except Exception as exc:
         logger.error("Failed to patch FlowClient: %s", exc)
 
